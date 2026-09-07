@@ -1,0 +1,41 @@
+name: build-matrix
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  portable:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [web-browser, electron-renderer, electron-host, expo-web, expo-ios-bundle]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run matrix:check
+      - run: npm run matrix:build -- ${{ matrix.target }}
+
+  macos-electron:
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [electron-macos-arm64-dmg, electron-macos-x64-dmg]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run matrix:build -- ${{ matrix.target }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: apps/workbench-electron/release/OpenCraft-*

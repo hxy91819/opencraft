@@ -1,0 +1,367 @@
+import type { AppServerClient } from "@opencraft/appserver-client";
+import type {
+  ThreadForkParams,
+  TurnStartParams,
+} from "@opencraft/appserver-protocol";
+import type {
+  DynamicToolSpec,
+  UserInput,
+} from "@opencraft/appserver-protocol/generated/v2";
+import {
+  asTurnId,
+  type ConversationKey,
+  type HostId,
+  type TurnId,
+} from "@opencraft/chat-core";
+import type {
+  ConversationCommandPort,
+  InteractionResponse,
+} from "@opencraft/chat-runtime";
+import type { SubmissionReceipt, SubmitIntent } from "@opencraft/composer-core";
+
+import {
+  compileSubmitIntent,
+  type SubmitCompileDiagnostic,
+  type SubmitCompilerOptions,
+} from "./compiler";
+
+export interface InteractionResponsePort {
+  respond(key: ConversationKey, response: InteractionResponse): Promise<void>;
+}
+
+export interface AppServerConversationCommandPortConfig {
+  readonly hostId: HostId;
+  readonly client: Pick<AppServerClient, "hostId" | "request">;
+  readonly interactions: InteractionResponsePort;
+  readonly compiler?: SubmitCompilerOptions;
+  /** Product-owned tools installed on every newly-created Thread. */
+  readonly dynamicTools?: readonly DynamicToolSpec[];
+  readonly now?: () => number;
+  readonly createCommandId?: () => string;
+  readonly createClientMessageId?: () => string;
+  readonly onDiagnostic?: (
+    diagnostic: SubmitCompileDiagnostic,
+    intent: SubmitIntent,
+  ) => void;
+}
+
+export class AppServerConversationCommandError extends Error {
+  readonly code: "HOST_MISMATCH";
+
+  constructor(
+    code: AppServerConversationCommandError["code"],
+    message: string,
+  ) {
+    super(message);
+    this.name = "AppServerConversationCommandError";
+    this.code = code;
+  }
+}
+
+function targetHostId(intent: SubmitIntent): HostId {
+  return intent.target.type === "new-thread"
+    ? intent.target.execution.hostId
+    : intent.target.key.hostId;
+}
+
+function forkOptions(
+  options: ReturnType<typeof compileSubmitIntent>["threadOptions"],
+): Omit<ThreadForkParams, "threadId"> {
+  return {
+    ...(options.model === undefined ? {} : { model: options.model }),
+    ...(options.modelProvider === undefined
+      ? {}
+      : { modelProvider: options.modelProvider }),
+    ...(options.serviceTier === undefined
+      ? {}
+      : { serviceTier: options.serviceTier }),
+    ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+    ...(options.runtimeWorkspaceRoots === undefined
+      ? {}
+      : { runtimeWorkspaceRoots: options.runtimeWorkspaceRoots }),
+    ...(options.approvalPolicy === undefined
+      ? {}
+      : { approvalPolicy: options.approvalPolicy }),
+    ...(options.approvalsReviewer === undefined
+      ? {}
+      : { approvalsReviewer: options.approvalsReviewer }),
+    ...(options.sandbox === undefined ? {} : { sandbox: options.sandbox }),
+    ...(options.permissions === undefined
+      ? {}
+      : { permissions: options.permissions }),
+    ...(options.config === undefined ? {} : { config: options.config }),
+    ...(options.baseInstructions === undefined
+      ? {}
+      : { baseInstructions: options.baseInstructions }),
+    ...(options.developerInstructions === undefined
+      ? {}
+      : { developerInstructions: options.developerInstructions }),
+  };
+}
+
+export function createAppServerConversationCommandPort(
+  config: AppServerConversationCommandPortConfig,
+): ConversationCommandPort {
+  const now = config.now ?? Date.now;
+  const createCommandId =
+    config.createCommandId ?? (() => `continue-command-${crypto.randomUUID()}`);
+  const createClientMessageId =
+    config.createClientMessageId ?? (() => `continue-message-${crypto.randomUUID()}`);
+
+  const assertConversationHost = (key: ConversationKey): void => {
+    if (
+      key.hostId !== config.hostId ||
+      config.client.hostId !== config.hostId
+    ) {
+      throw new AppServerConversationCommandError(
+        "HOST_MISMATCH",
+        `Conversation host ${key.hostId} cannot be sent through AppServer host ${config.hostId}`,
+      );
+    }
+  };
+
+  const execute = async (
+    intent: SubmitIntent,
+  ): Promise<SubmissionReceipt> => {
+    const hostId = targetHostId(intent);
+    if (hostId !== config.hostId || config.client.hostId !== config.hostId) {
+      throw new AppServerConversationCommandError(
+        "HOST_MISMATCH",
+        `SubmitIntent host ${hostId} cannot be sent through AppServer host ${config.hostId}`,
+      );
+    }
+    const compiled = compileSubmitIntent(intent, config.compiler);
+    for (const diagnostic of compiled.diagnostics)
+      config.onDiagnostic?.(diagnostic, intent);
+    let threadId: string;
+    let turnId: string | null;
+
+    switch (intent.target.type) {
+      case "new-thread": {
+        const started = await config.client.request("thread/start", {
+          ...compiled.threadOptions,
+          ...(config.dynamicTools === undefined
+            ? {}
+            : { dynamicTools: [...config.dynamicTools] }),
+          ...(intent.target.execution.workspace.cwd === null
+            ? {}
+            : { cwd: intent.target.execution.workspace.cwd }),
+          runtimeWorkspaceRoots: [
+            ...intent.target.execution.workspace.runtimeWorkspaceRoots,
+          ],
+          ...(intent.target.execution.workspace.projectId == null
+            ? {}
+            : { projectId: intent.target.execution.workspace.projectId }),
+        });
+        threadId = started.thread.id;
+        const turn = await config.client.request("turn/start", {
+          threadId,
+          clientUserMessageId: intent.clientMessageId,
+          input: [...compiled.input],
+          ...(compiled.additionalContext === null
+            ? {}
+            : { additionalContext: compiled.additionalContext }),
+          ...compiled.turnOptions,
+        });
+        turnId = turn.turn.id;
+        break;
+      }
+      case "fork-thread": {
+        const forked = await config.client.request("thread/fork", {
+          threadId: intent.target.key.threadId,
+          lastTurnId: intent.target.fromTurnId,
+          ...forkOptions(compiled.threadOptions),
+        });
+        threadId = forked.thread.id;
+        const turn = await config.client.request("turn/start", {
+          threadId,
+          clientUserMessageId: intent.clientMessageId,
+          input: [...compiled.input],
+          ...(compiled.additionalContext === null
+            ? {}
+            : { additionalContext: compiled.additionalContext }),
+          ...compiled.turnOptions,
+        });
+        turnId = turn.turn.id;
+        break;
+      }
+      case "existing-thread": {
+        threadId = intent.target.key.threadId;
+        const turn = await config.client.request("turn/start", {
+          threadId,
+          clientUserMessageId: intent.clientMessageId,
+          input: [...compiled.input],
+          ...(compiled.additionalContext === null
+            ? {}
+            : { additionalContext: compiled.additionalContext }),
+          ...compiled.turnOptions,
+        });
+        turnId = turn.turn.id;
+        break;
+      }
+      case "steer-active-turn": {
+        threadId = intent.target.key.threadId;
+        const turn = await config.client.request("turn/steer", {
+          threadId,
+          clientUserMessageId: intent.clientMessageId,
+          input: [...compiled.input],
+          expectedTurnId: intent.target.turnId,
+          ...(compiled.additionalContext === null
+            ? {}
+            : { additionalContext: compiled.additionalContext }),
+        });
+        turnId = turn.turnId;
+        break;
+      }
+      case "enqueue-follow-up": {
+        threadId = intent.target.key.threadId;
+        await config.client.request("thread/queue/add", {
+          threadId,
+          input: [...compiled.input],
+          clientUserMessageId: intent.clientMessageId,
+        });
+        turnId = null;
+        break;
+      }
+    }
+
+    const receipt: SubmissionReceipt = {
+      commandId: intent.commandId,
+      clientMessageId: intent.clientMessageId,
+      hostId,
+      threadId,
+      turnId,
+      acceptedAt: now(),
+      replayed: false,
+    };
+    return receipt;
+  };
+
+  const createThread = async (intent: SubmitIntent): Promise<SubmissionReceipt> => {
+    if (intent.target.type !== "new-thread") {
+      throw new Error("Only a New Thread intent can create a Thread");
+    }
+    const hostId = targetHostId(intent);
+    if (hostId !== config.hostId || config.client.hostId !== config.hostId) {
+      throw new AppServerConversationCommandError(
+        "HOST_MISMATCH",
+        `SubmitIntent host ${hostId} cannot be sent through AppServer host ${config.hostId}`,
+      );
+    }
+    const compiled = compileSubmitIntent(intent, config.compiler);
+    for (const diagnostic of compiled.diagnostics)
+      config.onDiagnostic?.(diagnostic, intent);
+    const started = await config.client.request("thread/start", {
+      ...compiled.threadOptions,
+      ...(config.dynamicTools === undefined
+        ? {}
+        : { dynamicTools: [...config.dynamicTools] }),
+      ...(intent.target.execution.workspace.cwd === null
+        ? {}
+        : { cwd: intent.target.execution.workspace.cwd }),
+      runtimeWorkspaceRoots: [
+        ...intent.target.execution.workspace.runtimeWorkspaceRoots,
+      ],
+      ...(intent.target.execution.workspace.projectId == null
+        ? {}
+        : { projectId: intent.target.execution.workspace.projectId }),
+    });
+    return {
+      commandId: intent.commandId,
+      clientMessageId: intent.clientMessageId,
+      hostId,
+      threadId: started.thread.id,
+      turnId: null,
+      acceptedAt: now(),
+      replayed: false,
+    };
+  };
+
+  return {
+    createThread,
+    submit: execute,
+    async interrupt(key, turnId) {
+      if (key.hostId !== config.hostId) {
+        throw new AppServerConversationCommandError(
+          "HOST_MISMATCH",
+          "Conversation belongs to a different Host",
+        );
+      }
+      await config.client.request("turn/interrupt", {
+        threadId: key.threadId,
+        turnId,
+      });
+    },
+    async continueTurn(key) {
+      assertConversationHost(key);
+      const commandId = createCommandId();
+      const clientMessageId = createClientMessageId();
+      const result = await config.client.request("turn/start", {
+        threadId: key.threadId,
+        input: [],
+        clientUserMessageId: clientMessageId,
+      });
+      return {
+        commandId, clientMessageId, hostId: key.hostId,
+        threadId: key.threadId, turnId: result.turn.id,
+        acceptedAt: now(), replayed: false,
+      };
+    },
+    respond: (key, response) => config.interactions.respond(key, response),
+    async updateQueuedSubmission(
+      key,
+      queuedSubmissionId,
+      input: readonly UserInput[],
+    ) {
+      assertConversationHost(key);
+      const response = await config.client.request("thread/queue/update", {
+        threadId: key.threadId,
+        queuedSubmissionId,
+        input: [...input],
+      });
+      return response.queuedSubmission;
+    },
+    async deleteQueuedSubmission(key, queuedSubmissionId) {
+      assertConversationHost(key);
+      const response = await config.client.request("thread/queue/delete", {
+        threadId: key.threadId,
+        queuedSubmissionId,
+      });
+      return response.deleted;
+    },
+    async reorderQueuedSubmissions(key, queuedSubmissionIds) {
+      assertConversationHost(key);
+      await config.client.request("thread/queue/reorder", {
+        threadId: key.threadId,
+        queuedSubmissionIds: [...queuedSubmissionIds],
+      });
+    },
+    async startQueuedSubmission(key, queuedSubmissionId) {
+      assertConversationHost(key);
+      const response = await config.client.request("thread/queue/start", {
+        threadId: key.threadId,
+        ...(queuedSubmissionId === undefined ? {} : { queuedSubmissionId }),
+      });
+      return asTurnId(response.turn.id);
+    },
+    async steerQueuedSubmission(key, queuedSubmission, activeTurnId) {
+      assertConversationHost(key);
+      const response = await config.client.request("turn/steer", {
+        threadId: key.threadId,
+        expectedTurnId: activeTurnId,
+        clientUserMessageId: queuedSubmission.clientUserMessageId,
+        input: [...queuedSubmission.input],
+      });
+      const deleted = await config.client.request("thread/queue/delete", {
+        threadId: key.threadId,
+        queuedSubmissionId: queuedSubmission.id,
+      });
+      if (!deleted.deleted) {
+        throw new Error(
+          `Steered queued submission ${queuedSubmission.id}, but AppServer did not remove it from the queue`,
+        );
+      }
+      return asTurnId(response.turnId);
+    },
+  };
+}

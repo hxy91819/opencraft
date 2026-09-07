@@ -1,0 +1,1065 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { buildCodexThemeCssProperties } from "@opencraft/design-system/theme-engine";
+import { menuGeometry } from "@opencraft/design-system/tokens";
+
+import {
+  createWebTimelineViewportSnapshot,
+  resizeObserverBlockSize,
+  resolveWebTimelinePlatform,
+  shouldAcceptWebConversationInvalidation,
+  timelineReflowScrollAdjustment,
+} from "@opencraft/timeline-host-web";
+import { ScrollToBottomButton } from "../apps/workbench-web/src/components/scroll-to-bottom-button";
+import {
+  resolveThreadEdgeScroll,
+  THREAD_EDGE_SCROLL_MINIMUM_WIDTH_REM,
+} from "../apps/workbench-web/src/app-shell-edge-scroll-model";
+
+const workbenchStyles = readFileSync(
+  new URL("../apps/workbench-web/src/styles/app.scss", import.meta.url),
+  "utf8",
+);
+const workbenchEntry = readFileSync(
+  new URL("../apps/workbench-web/src/main.tsx", import.meta.url),
+  "utf8",
+);
+const workbenchApp = readFileSync(
+  new URL("../apps/workbench-web/src/app.tsx", import.meta.url),
+  "utf8",
+);
+const settingsPageSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/components/settings-page.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const pendingConversationSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/components/pending-conversation-page.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const newThreadDraftSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/components/new-thread-draft-page.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
+test("Settings navigation enters through a semantic route adapter", () => {
+  assert.match(
+    workbenchApp,
+    /onOpenSettings=\{openSettingsFromConversation\}/u,
+  );
+  assert.doesNotMatch(
+    workbenchApp,
+    /onOpenSettings=\{workbenchNavigation\.openSettings\}/u,
+  );
+});
+
+test("the first submit atomically hands presentation from Draft to Conversation ownership", () => {
+  assert.match(
+    workbenchApp,
+    /draft !== null && draft\.submission === null[\s\S]{0,160}?<NewThreadDraftPage/u,
+  );
+  assert.match(
+    workbenchApp,
+    /draft !== null \? \([\s\S]{0,120}?<PendingConversationPage/u,
+  );
+  assert.doesNotMatch(newThreadDraftSource, /Starting task/u);
+  assert.match(pendingConversationSource, /contains no Draft[\s\S]*Composer/u);
+});
+const webConversationSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/components/conversation.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const webViewportOwnerSource = readFileSync(
+  new URL(
+    "../packages/timeline-host-web/src/conversation-viewport-owner.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const expoFrameSource = readFileSync(
+  new URL(
+    "../apps/workbench-expo/src/components/workbench-frame.shared.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const expoConversationSource = readFileSync(
+  new URL(
+    "../apps/workbench-expo/src/components/workbench-conversation.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const stableEventSource = readFileSync(
+  new URL("../packages/react-runtime/src/use-stable-event.ts", import.meta.url),
+  "utf8",
+);
+const appShellSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/components/app-shell.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const appShellHeaderSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/components/app-shell-header.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const responsiveSidebarDockSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/components/use-responsive-sidebar-dock.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const rightPanelSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/components/app-shell-right-panel.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const rightPanelTabsSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/components/right-panel.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const browserPanelSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/browser/browser-panel-plugin.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const webBrowserRuntimeSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/browser/web-browser-runtime.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const browserPresentationSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/browser/browser-presentation-coordinator.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const browserSurfaceHostSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/browser/web-browser-surface-host.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const panelAnimationSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/components/use-panel-animation.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const navigationRailSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/components/user-message-navigation-rail.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const panelRuntimeSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/runtime/panel-runtime-context.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const builtinPanelSource = readFileSync(
+  new URL(
+    "../apps/workbench-web/src/panels/builtin-panel-plugin.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+const composerSource = readFileSync(
+  new URL("../packages/codex-composer/src/codex-composer.tsx", import.meta.url),
+  "utf8",
+);
+test("theme bootstrap is owned by the application root, not a removable header control", () => {
+  assert.match(
+    workbenchEntry,
+    /import\s*\{\s*initializeAppearanceTheme\s*\}\s*from\s*["']\.\/appearance-theme["']/u,
+  );
+  assert.match(workbenchEntry, /initializeAppearanceTheme\(\);/u);
+  assert.match(workbenchApp, /theme:\s*appearanceTheme\.resolvedTheme/u);
+  assert.match(webConversationSource, /theme=\{documentContext\.theme\}/u);
+  assert.doesNotMatch(
+    webConversationSource,
+    /documentElement\.dataset\.theme/u,
+  );
+  assert.doesNotMatch(webConversationSource, /toolJsonTheme/u);
+
+  const lightTheme = buildCodexThemeCssProperties("light");
+  for (const token of [
+    "--color-background-button-tertiary-hover",
+    "--color-surface-tertiary",
+    "--color-background-elevated-primary-opaque",
+    "--color-border-default",
+  ] as const) {
+    assert.ok(
+      lightTheme[token],
+      `${token} must survive as a runtime theme token`,
+    );
+  }
+});
+
+test("Settings swaps route slots inside the one physical AppShell", () => {
+  assert.match(
+    workbenchApp,
+    /const settingsRoute = settingsOpen \? \(/u,
+  );
+  assert.match(
+    workbenchApp,
+    /<AppShell[\s\S]*?leftPanel=\{[\s\S]*?settingsOpen \? settingsNavigation : <Sidebar[\s\S]*?<div className="workbench-route-stage">[\s\S]*?\{settingsRoute\}[\s\S]*?<\/AppShell>/u,
+  );
+  assert.match(workbenchApp, /hidden=\{!conversationRouteOpen\}/u);
+  assert.doesNotMatch(workbenchApp, /ApplicationShellRoot/u);
+  assert.doesNotMatch(settingsPageSource, /ApplicationShellRoot/u);
+  assert.match(settingsPageSource, /export function SettingsNavigation/u);
+  assert.match(settingsPageSource, /export function SettingsContent/u);
+  assert.match(
+    workbenchStyles,
+    /\.workbench-conversation-route\[hidden\]\s*\{\s*display:\s*none;/u,
+  );
+  assert.match(
+    workbenchApp,
+    /const headerNavigationActions = settingsOpen\s*\? \[\]\s*:\s*chromePolicy\.leadingNavigationActions/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.settings-page\s*\{[^}]*display:\s*flex;[^}]*overflow:\s*hidden;/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.settings-page__viewport\s*\{[^}]*height:\s*100%;[^}]*overflow-y:\s*auto;/u,
+  );
+});
+
+test("Draft menus consume one design-system rhythm and stay out of the hero title", () => {
+  assert.deepEqual(menuGeometry, {
+    collisionPadding: 6,
+    rootSideOffset: 6,
+    submenuSideOffset: 4,
+    surfacePadding: 5,
+    itemGap: 2,
+    itemRadius: 8,
+  });
+  assert.match(
+    newThreadDraftSource,
+    /className="new-thread-project-menu new-thread-host-menu"[\s\S]*?align="end"[\s\S]*?sideOffset=\{menuGeometry\.rootSideOffset\}[\s\S]*?collisionPadding=\{menuGeometry\.collisionPadding\}/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.new-thread-project-menu__items\s*\{[^}]*display:\s*grid;[^}]*gap:\s*var\(--menu-item-gap\)/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.new-thread-project-menu\s*\{[\s\S]*?padding:\s*var\(--menu-surface-padding\)/u,
+  );
+});
+
+test("dark primary actions preserve inverted foreground contrast", () => {
+  const darkTheme = buildCodexThemeCssProperties("dark");
+
+  assert.equal(darkTheme["--color-background-button-primary"], "#ffffff");
+  assert.equal(darkTheme["--color-text-button-primary"], "#181818");
+  assert.notEqual(
+    darkTheme["--color-background-button-primary"],
+    darkTheme["--color-text-button-primary"],
+    "the Composer send arrow must not collapse into its button background",
+  );
+});
+
+test("light primary action hover remains an opaque inverted surface", () => {
+  const lightTheme = buildCodexThemeCssProperties("light");
+  const primary = lightTheme["--color-background-button-primary"];
+  const hover = lightTheme["--color-background-button-primary-hover"];
+
+  assert.equal(primary, "#1a1c1f");
+  assert.match(hover, /^rgb\(/u);
+  assert.notEqual(hover, lightTheme["--color-background-surface"]);
+  assert.notEqual(hover, lightTheme["--color-text-button-primary"]);
+  assert.match(
+    workbenchStyles,
+    /\.codex-composer-submit\s*\{[\s\S]*?&:not\(:disabled\):not\(\.is-stop\):hover\s*\{[^}]*var\(--color-background-button-primary-hover\)[\s\S]*?&\.is-stop:not\(:disabled\):hover\s*\{[^}]*var\(--color-background-button-secondary-hover\)/u,
+  );
+});
+
+test("Composer material does not encode editor focus", () => {
+  const shellStart = workbenchStyles.indexOf(".codex-composer-shell {");
+  const shellEnd = workbenchStyles.indexOf("@supports not", shellStart);
+
+  assert.notEqual(shellStart, -1);
+  assert.notEqual(shellEnd, -1);
+
+  const shellRules = workbenchStyles.slice(shellStart, shellEnd);
+  assert.doesNotMatch(shellRules, /:focus-within|:hover/u);
+  assert.doesNotMatch(shellRules, /transition\s*:/u);
+  assert.match(shellRules, /box-shadow\s*:/u);
+  assert.match(workbenchStyles, /\.codex-composer-editor\s*\{[^}]*outline:\s*none/u);
+  assert.match(workbenchStyles, /\.codex-composer-submit\s*\{[\s\S]*?&:focus-visible/u);
+});
+
+test("renderer measurement requests are generation fenced before Web layout work", () => {
+  const request = {
+    documentId: "doc-1",
+    generation: 4,
+    geometryChanged: true,
+    reason: "image-load",
+  };
+  assert.equal(shouldAcceptWebConversationInvalidation(3, request), true);
+  assert.equal(shouldAcceptWebConversationInvalidation(4, request), true);
+  assert.equal(shouldAcceptWebConversationInvalidation(5, request), false);
+  assert.equal(
+    shouldAcceptWebConversationInvalidation(3, {
+      ...request,
+      geometryChanged: false,
+    }),
+    false,
+  );
+});
+
+test("Composer menus live in the root overlay plane with Codex viewport constraints", () => {
+  assert.equal(
+    Array.from(composerSource.matchAll(/<DropdownMenu\.Portal>/gu)).length,
+    2,
+  );
+  assert.equal(
+    Array.from(composerSource.matchAll(/modal=\{false\}/gu)).length,
+    2,
+  );
+  assert.match(
+    composerSource,
+    /window\.addEventListener\("blur", dismissOnWindowBlur\)/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.codex-composer-selection-menu\s*\{[^}]*--radix-dropdown-menu-content-available-width[^}]*--radix-dropdown-menu-content-available-height/u,
+  );
+  assert.doesNotMatch(
+    workbenchStyles,
+    /\.codex-composer-selection-menu\s*\{[^}]*position:\s*absolute/u,
+  );
+  assert.match(
+    composerSource,
+    /codex-composer-selection-menu__trailing[\s\S]*?<Check size=\{16\}/u,
+  );
+  assert.match(composerSource, /How should OpenCraft actions be approved\?/u);
+  assert.match(
+    workbenchStyles,
+    /grid-template-columns:\s*auto minmax\(0, 1fr\) auto/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /container:\s*composer-footer\s*\/\s*inline-size/u,
+  );
+  assert.match(composerSource, /openPicker === "intelligence"/u);
+  assert.doesNotMatch(composerSource, /openPicker === "(?:model|effort)"/u);
+  assert.match(
+    workbenchStyles,
+    /\.codex-composer-footer__attachment,[\s\S]{0,120}?\.codex-composer-footer__end\s*\{[\s\S]{0,120}?flex:\s*0 0 auto/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.codex-composer-mode__model-label\s*\{[\s\S]{0,120}?flex:\s*1 1 auto/u,
+  );
+  assert.doesNotMatch(
+    workbenchStyles,
+    /codex-composer-selection-menu__item\.is-selected/u,
+  );
+});
+
+test("Composer intelligence keeps model and reasoning in one catalog-owned menu", () => {
+  assert.doesNotMatch(composerSource, /<DropdownMenu\.Sub(?:Trigger|Content)/u);
+  assert.match(
+    composerSource,
+    /codex-composer-selection-menu__heading">\s*Model/u,
+  );
+  assert.match(
+    composerSource,
+    /codex-composer-selection-menu__heading">\s*Reasoning/u,
+  );
+  assert.doesNotMatch(composerSource, /Power presets|>\s*Advanced\s*</u);
+  assert.doesNotMatch(
+    composerSource,
+    /buildPowerOptions|powerPreviewId|role="slider"/u,
+  );
+  assert.doesNotMatch(workbenchStyles, /\.codex-composer-power-track\s*\{/u);
+  assert.doesNotMatch(workbenchStyles, /codex-composer-selection-menu__item--field/u);
+  assert.match(workbenchApp, /function reasoningEffortLabel\(value: string\)/u);
+  assert.match(workbenchApp, /case "low":\s*return "Light"/u);
+});
+
+test("Composer EditorView and submission callbacks are fenced by Conversation View ownership", () => {
+  assert.match(
+    composerSource,
+    /pendingSubmissionRef\.current\?\.controller === controller/u,
+  );
+  assert.match(
+    composerSource,
+    /editorViewRef\.current === view[\s\S]{0,180}?editorControllerRef\.current === controller[\s\S]{0,120}?!view\.isDestroyed/u,
+  );
+  assert.match(
+    composerSource,
+    /if \(editorViewRef\.current === view\) editorViewRef\.current = null;[\s\S]{0,260}?view\.destroy\(\);/u,
+  );
+  assert.doesNotMatch(
+    composerSource,
+    /setTimeout\(\(\) => view\.destroy\(\)/u,
+  );
+  assert.doesNotMatch(composerSource, /submitPendingRef/u);
+});
+
+test("Composer submission preserves View-owned focus across primary action swaps", () => {
+  assert.match(
+    composerSource,
+    /requestAnimationFrame\(\(\) => \{[\s\S]{0,160}?disabledRef\.current[\s\S]{0,120}?controller\.focus\(\)/u,
+  );
+  assert.equal(
+    composerSource.match(
+      /onPointerDown=\{\(event\) => \{\s*if \(event\.button === 0\) event\.preventDefault\(\);\s*\}\}/gu,
+    )?.length,
+    2,
+    "Send and Stop must not take pointer focus from the current EditorView",
+  );
+  assert.doesNotMatch(
+    composerSource,
+    /setTimeout\([\s\S]{0,120}?(?:controller|view)\.focus/u,
+  );
+});
+
+test("an existing Thread adopts a submission before remote acknowledgement", () => {
+  assert.match(
+    workbenchApp,
+    /const submission = hostCatalog\.submit\(submittedIntent\);[\s\S]{0,220}?intent\.target\.type !== "new-thread"[\s\S]{0,520}?void submission\.catch[\s\S]{0,360}?return true;/u,
+  );
+  assert.match(
+    workbenchApp,
+    /The Conversation Scope synchronously owns the immutable first Turn[\s\S]{0,500}?void submission\.catch\(\(\) => \{[\s\S]{0,300}?return true;/u,
+    "New Thread input must clear once its immutable intent is owned by the Draft scope",
+  );
+  assert.doesNotMatch(
+    workbenchApp,
+    /const sendMessage = useCallback\(\s*async/u,
+    "an async wrapper would make every existing-Thread handoff look remotely pending to the Composer",
+  );
+});
+
+test("a new-thread workspace is an optional execution override, not Composer ownership", () => {
+  assert.match(
+    newThreadDraftSource,
+    /disabled=\{draftSubmissionOwnsNavigation\(draft\.phase\)\}/u,
+  );
+  assert.doesNotMatch(newThreadDraftSource, /workspaceReady/u);
+  assert.doesNotMatch(
+    newThreadDraftSource,
+    /runtimeWorkspaceRoots[\s\S]{0,160}?disabled/u,
+  );
+});
+
+test("user messages preserve Codex's authored-message width invariant", () => {
+  assert.match(
+    workbenchStyles,
+    /&__bubble\s*\{\s*max-width:\s*77%/u,
+  );
+  assert.doesNotMatch(workbenchStyles, /--thread-user-message-inline-gutter/u);
+});
+
+test("the transcript and Composer consume Codex's shared toolbar inset", () => {
+  assert.match(
+    workbenchStyles,
+    /\.thread-layout-width\s*\{[\s\S]{0,240}?padding-inline:\s*var\(--padding-toolbar\)/u,
+  );
+  assert.doesNotMatch(workbenchStyles, /--thread-toolbar-inline-padding/u);
+});
+
+test("workbench preserves Codex's native themed scrollbar contract", () => {
+  assert.match(
+    workbenchStyles,
+    /\*\s*\{[\s\S]*?scrollbar-color:\s*var\(--scrollbar-thumb\)\s+transparent;[\s\S]*?scrollbar-width:\s*thin;[\s\S]*?\}/u,
+  );
+  assert.doesNotMatch(
+    workbenchStyles,
+    /\.thread-scroll\s*\{[\s\S]{0,600}?scrollbar-width:\s*none/u,
+  );
+});
+
+test("the collapsing sidebar divider stays below the fixed toolbar", () => {
+  assert.match(
+    workbenchStyles,
+    /\.app-shell-left-panel__resize\s*\{[\s\S]*?z-index:\s*20;[\s\S]*?\}/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.app-shell-header\s*\{[\s\S]*?z-index:\s*30;[\s\S]*?\}/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\[data-sidebar-presentation="layout-transition"\][\s\S]*?\.app-shell-left-panel__resize:not\(\[data-resizing="true"\]\)[\s\S]*?pointer-events:\s*none;/u,
+  );
+});
+
+test("Web owns one desktop sidebar topology with animated narrow-window collapse", () => {
+  assert.match(
+    appShellSource,
+    /usePanelAnimation\(\{[\s\S]*?animation:\s*sidebarAnimation,[\s\S]*?isVisible:\s*sidebarOpen/u,
+  );
+  assert.doesNotMatch(
+    appShellSource,
+    /compactOverlay|sidebarLayout|sidebarAnimation\.set\(sidebarOpen \? 1 : 0\)/u,
+  );
+  assert.match(
+    responsiveSidebarDockSource,
+    /SIDEBAR_AUTO_COLLAPSE_MEDIA_QUERY\s*=\s*"\(max-width: 720px\)"/u,
+  );
+  assert.match(
+    responsiveSidebarDockSource,
+    /if \(event\.matches\) setSidebarOpen\(false\)/u,
+  );
+  assert.doesNotMatch(
+    workbenchStyles,
+    /data-sidebar-layout|sidebar-panel__mobile-toolbar/u,
+  );
+});
+
+test("narrow desktop header keeps Codex's intrinsic action rail", () => {
+  assert.match(
+    workbenchStyles,
+    /\.app-shell-header__window-controls\s*\{[\s\S]*?width:\s*var\(--app-shell-header-left-slot-width\);[\s\S]*?min-width:\s*var\(--app-shell-header-left-fit-width\);/u,
+  );
+  assert.doesNotMatch(
+    workbenchStyles,
+    /--app-shell-header-left-slot-width:\s*86px/u,
+  );
+});
+
+test("narrow desktop header preserves the thread identity icon", () => {
+  assert.match(appShellHeaderSource, /className="thread-header-project-icon"/u);
+  assert.doesNotMatch(
+    workbenchStyles,
+    /\.thread-header-project-icon\s*\{[^}]*display:\s*none;/u,
+  );
+});
+
+test("Electron titlebar subtracts only real controls from its native drag surface", () => {
+  assert.match(
+    workbenchStyles,
+    /\.app-shell-header\s*\{[\s\S]{0,760}?-webkit-app-region:\s*drag/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.app-shell-floating-left-panel__header\s*\{[\s\S]{0,520}?-webkit-app-region:\s*drag/u,
+  );
+  assert.doesNotMatch(appShellHeaderSource, /className="thread-header-title no-drag"/u);
+  assert.match(appShellHeaderSource, /className="thread-header-title"/u);
+  assert.match(appShellHeaderSource, /className="chrome-button no-drag/u);
+  assert.match(
+    appShellHeaderSource,
+    /className="app-shell-header__window-action no-drag"/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.app-shell-header__window-controls-rail\s*\{[\s\S]*?pointer-events:\s*none;[\s\S]*?\.app-shell-header__window-action\s*\{[\s\S]*?pointer-events:\s*auto;[\s\S]*?-webkit-app-region:\s*no-drag;/u,
+  );
+});
+
+test("the header end slot measures fit width outside its animated geometry", () => {
+  assert.match(appShellHeaderSource, /ref=\{endActionsMeasureRef\}/u);
+  assert.match(
+    workbenchStyles,
+    /\.app-shell-header__end-measure\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?width:\s*max-content;[\s\S]*?min-width:\s*max-content;[\s\S]*?visibility:\s*hidden;/u,
+  );
+  assert.match(
+    appShellHeaderSource,
+    /minWidth:\s*headerRightWidthPx,[\s\S]*?width:\s*rightPanelAnimatedWidthPx/u,
+  );
+});
+
+test("a full-width right panel exclusively owns the center toolbar", () => {
+  assert.match(
+    appShellHeaderSource,
+    /className="app-shell-header__context-surface"[\s\S]*?aria-hidden=\{rightPanelFullWidth\}[\s\S]*?data-app-shell-header-context-hidden=\{rightPanelFullWidth\}/u,
+  );
+  assert.match(
+    workbenchApp,
+    /rightPanelFullWidth=\{conversationRouteOpen && presentedRightPanelFullWidth\}/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.app-shell-header__context-surface\[data-app-shell-header-context-hidden="true"\]\s*\{[\s\S]*?visibility:\s*hidden;[\s\S]*?pointer-events:\s*none;/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.main-content-viewport\[data-app-shell-right-panel-full-width="true"\]\s*\{[\s\S]*?width:\s*0;[\s\S]*?flex:\s*none;[\s\S]*?overflow:\s*hidden;/u,
+  );
+});
+
+test("right-panel maximize is one semantic-to-motion geometry transaction", () => {
+  assert.match(
+    appShellSource,
+    /const rightPanelWidth = rightPanelFullWidth\s*\? mainContentWidth\s*:\s*regularRightPanelWidth/u,
+  );
+  assert.match(
+    appShellSource,
+    /const rightPanelAnimatedWidth = rightPanelFullWidth\s*\? zeroWidth\s*:\s*regularRightPanelAnimatedWidth/u,
+  );
+  assert.doesNotMatch(appShellSource, /rightPanelLayoutMode/u);
+  assert.match(
+    appShellSource,
+    /const mainContentTargetWidth = !rightPanelOpen[\s\S]*?\? mainContentWidth[\s\S]*?: rightPanelFullWidth[\s\S]*?\? zeroWidth[\s\S]*?: regularMainContentTargetWidth/u,
+  );
+  assert.match(
+    appShellSource,
+    /const headerLeftFitWidth = useMotionValue\([\s\S]*?getHeaderStartMinimumWidth\(windowChrome\)[\s\S]*?const fullWidthTabBarLeftInset = useTransform\(\s*\[animatedSidebarWidth, headerLeftFitWidth\][\s\S]*?Number\(startMinimumWidth\) - Number\(leftWidth\)[\s\S]*?const rightPanelTabBarLeftInset = rightPanelFullWidth/u,
+  );
+  assert.match(
+    appShellSource,
+    /const headerLeftSlotWidth = useTransform\(\s*animatedSidebarWidth[\s\S]*?const headerLeftFitWidthPx = useTransform\(\s*headerLeftFitWidth/u,
+  );
+  assert.match(
+    appShellHeaderSource,
+    /hostRole !== "persistent"[\s\S]*?measure\.getBoundingClientRect\(\)\.width[\s\S]*?headerLeftFitWidth\.set\(width\)/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.app-shell-header__window-controls-measure\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?width:\s*max-content;[\s\S]*?visibility:\s*hidden;[\s\S]*?\.app-shell-header__window-controls-rail\s*\{[\s\S]*?padding:[\s\S]*?calc\(var\(--spacing-token-safe-header-left\) \+ 6px\)/u,
+  );
+  assert.match(
+    rightPanelTabsSource,
+    /className="right-panel-header-start-spacer"[\s\S]*?style=\{\{ width: tabBarLeftInsetPx \}\}/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.right-panel-header-start-spacer\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?pointer-events:\s*none;/u,
+  );
+});
+
+test("right-panel visibility and geometry remain AppShell-owned signals", () => {
+  assert.match(
+    appShellSource,
+    /const rightPanelAnimation = useMotionValue\(rightPanelOpen \? 1 : 0\)/u,
+  );
+  assert.match(
+    appShellSource,
+    /usePanelVisibilityAnimation\(rightPanelOpen, rightPanelAnimation\)/u,
+  );
+  assert.match(
+    appShellSource,
+    /const regularRightPanelAnimatedWidth = useTransform\([\s\S]*?rightPanelAnimation[\s\S]*?regularRightPanelWidth/u,
+  );
+  assert.match(appShellSource, /const regularMainContentTargetWidth = useTransform/u);
+  assert.match(rightPanelSource, /readonly animation: MotionValue<number>/u);
+  assert.doesNotMatch(rightPanelSource, /headerSlotWidth/u);
+  assert.doesNotMatch(rightPanelSource, /useMotionValue/u);
+  assert.match(
+    panelAnimationSource,
+    /isMounted:\s*isVisible \|\| animation\.get\(\) > 0/u,
+  );
+  assert.match(panelAnimationSource, /"animationComplete"/u);
+});
+
+test("a wide viewport never invents an open right-panel route", () => {
+  assert.match(
+    panelRuntimeSource,
+    /return createWorkbenchPanelReactRuntime\(\{\}, context\);/u,
+  );
+  assert.doesNotMatch(panelRuntimeSource, /matchMedia/u);
+  assert.doesNotMatch(panelRuntimeSource, /defaultRightPanelOpen:\s*true/u);
+});
+
+test("right-panel chrome is persistent while its default route is lazy", () => {
+  assert.doesNotMatch(builtinPanelSource, /initialTab:/u);
+  assert.match(
+    workbenchApp,
+    /allowEmpty:\s*panelState\.right\.tabs\.length === 0/u,
+  );
+  assert.doesNotMatch(workbenchApp, /rightPanelAvailable/u);
+  assert.doesNotMatch(workbenchApp, /panels\.open\(panelThreadId, "changes"/u);
+  assert.match(
+    appShellHeaderSource,
+    /aria-label=\{[\s\S]*?"Hide task details"[\s\S]*?"Show task details"/u,
+  );
+  assert.match(appShellHeaderSource, /app-shell-header__right-panel-toggle/u);
+  assert.match(appShellHeaderSource, /aria-pressed=\{rightPanelOpen\}/u);
+  assert.match(
+    appShellHeaderSource,
+    /<RightPanelToggleIcon panelOpen=\{rightPanelOpen\} \/>/u,
+  );
+});
+
+test("an incomplete navigation projection reuses one empty anchor snapshot", () => {
+  assert.match(
+    navigationRailSource,
+    /const EMPTY_NAVIGATION_ANCHORS:[\s\S]*?= \[\];/u,
+  );
+  assert.match(navigationRailSource, /:\s*EMPTY_NAVIGATION_ANCHORS;/u);
+  assert.doesNotMatch(
+    navigationRailSource,
+    /snapshot\.completeness === "complete" \? snapshot\.anchors : \[\]/u,
+  );
+});
+
+test("the prompt rail owns a scroll-position-aware edge fade and the viewport owns its overlay host", () => {
+  assert.match(
+    navigationRailSource,
+    /const \[railHost, setRailHost\] = useState<HTMLElement \| null>\(null\)/u,
+  );
+  assert.match(
+    navigationRailSource,
+    /setRailHost\(\(current\) => current === nextRailHost \? current : nextRailHost\)/u,
+  );
+  assert.match(
+    navigationRailSource,
+    /createPortal\(<nav className="conversation-navigation-rail"[\s\S]*?, railHost\)/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.conversation-navigation-rail__list[\s\S]*?animation-timeline:\s*scroll\(self y\)/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /@keyframes conversation-navigation-edge-fade[\s\S]*?--navigation-rail-top-fade:\s*0px[\s\S]*?--navigation-rail-bottom-fade:\s*var\(--edge-fade-distance\)[\s\S]*?--navigation-rail-top-fade:\s*var\(--edge-fade-distance\)[\s\S]*?--navigation-rail-bottom-fade:\s*0px/u,
+  );
+  assert.match(
+    navigationRailSource,
+    /const observationKey = useMemo\(\(\) => navigationObservationKey\(items\), \[items\]\)/u,
+  );
+  assert.match(
+    navigationRailSource,
+    /if \(mutationsChangeMountedTurns\(records\)\) reconcile\(\)/u,
+  );
+  assert.match(
+    navigationRailSource,
+    /setVisibleItemIds\(\(current\) => equalStringSets\(current, next\) \? current : next\)/u,
+  );
+  assert.match(
+    navigationRailSource,
+    /\}, \[getScrollElement, observationKey\]\);/u,
+  );
+});
+
+test("a virtualizer handoff gap cannot promote the newest prompt marker", () => {
+  assert.match(
+    navigationRailSource,
+    /const firstVisibleIndex = items\.findIndex\([\s\S]*?if \(firstVisibleIndex < 0\) return;/u,
+  );
+  assert.doesNotMatch(
+    navigationRailSource,
+    /if \(firstVisibleIndex < 0\)[\s\S]{0,160}?setVisibleItemIds/u,
+  );
+});
+
+test("history pagination keeps one callback identity across viewport measurements", () => {
+  assert.match(
+    workbenchApp,
+    /const loadOlderConversation = useStableEvent\(\s*\(\) => activeThreadLease\?\.loadOlder\(\) \?\? Promise\.resolve\(\),?\s*\)/u,
+  );
+  assert.match(workbenchApp, /\? loadOlderConversation\s*:\s*undefined/u);
+  assert.doesNotMatch(
+    workbenchApp,
+    /onLoadOlder=\{[\s\S]*?\? \(\) => activeThreadLease\?\.loadOlder\(\)/u,
+  );
+  assert.match(
+    expoFrameSource,
+    /const loadOlderConversation = useStableEvent\(\(\) => activeThreadLease\?\.loadOlder\(\) \?\? Promise\.resolve\(\)\)/u,
+  );
+  assert.match(expoFrameSource, /\? loadOlderConversation : undefined/u);
+  assert.match(stableEventSource, /useInsertionEffect\(\(\) => \{/u);
+  assert.match(stableEventSource, /return useCallback\([\s\S]*?\[\]\);/u);
+  for (const source of [webConversationSource, expoConversationSource]) {
+    assert.match(source, /useTurnHistoryBackfill\(\{/u);
+    assert.doesNotMatch(source, /loadOlderPendingRef/u);
+  }
+  assert.match(webConversationSource, /historyBackfill\.invalidate\(\);/u);
+  assert.match(
+    webViewportOwnerSource,
+    /previousClientHeightPx === clientHeightPx[\s\S]*?previousScrollHeightPx === scrollHeightPx/u,
+  );
+});
+
+test("right-panel resize interaction is owned only by its edge handle", () => {
+  assert.doesNotMatch(rightPanelSource, /data-resizing=\{resizing\}/u);
+  assert.doesNotMatch(
+    workbenchStyles,
+    /\.app-shell-right-panel\s*\{[^}]*data-resizing/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.right-panel-resize-handle\s*\{[\s\S]*?cursor:\s*col-resize;[\s\S]*?touch-action:\s*none;[\s\S]*?user-select:\s*none;/u,
+  );
+});
+
+test("right-panel surface width and minimum share one atomic target signal", () => {
+  assert.match(
+    rightPanelSource,
+    /"--app-shell-right-panel-target-width":\s*rightPanelTargetWidthPx/u,
+  );
+  assert.doesNotMatch(
+    rightPanelSource,
+    /style=\{\{\s*minWidth:\s*rightPanelWidth,\s*width:\s*rightPanelWidth\s*\}\}/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.app-shell-right-panel__surface\s*\{[\s\S]*?width:\s*var\(--app-shell-right-panel-target-width\);[\s\S]*?min-width:\s*var\(--app-shell-right-panel-target-width\);/u,
+  );
+});
+
+test("browser portal commits one dual-coordinate viewport transaction", () => {
+  assert.match(
+    rightPanelSource,
+    /progress\.on\("change",[\s\S]*?rightPanelLayoutTick\.set/u,
+  );
+  assert.match(
+    browserPanelSource,
+    /rightPanelLayoutTick\.on\([\s\S]*?"change",[\s\S]*?scheduleMeasure/u,
+  );
+  assert.match(
+    browserPanelSource,
+    /requestAnimationFrame\([\s\S]*?presentation\.measure\(\)/u,
+  );
+  assert.match(
+    browserSurfaceHostSource,
+    /container\.style\.width = `\$\{visualBounds\.width\}px`;[\s\S]*?iframe\.style\.width = `\$\{viewportSize\.width\}px`;/u,
+  );
+  assert.match(
+    browserSurfaceHostSource,
+    /container\.style\.height = `\$\{visualBounds\.height\}px`;[\s\S]*?iframe\.style\.height = `\$\{viewportSize\.height\}px`;/u,
+  );
+  assert.match(
+    browserSurfaceHostSource,
+    /iframe\.style\.transform = scale === 1 \? "" : `scale\(\$\{scale\}\)`;/u,
+  );
+  assert.match(
+    browserPresentationSource,
+    /intersectBrowserPresentationBounds\([\s\S]*?this\.surfaces\.commit/u,
+  );
+  assert.doesNotMatch(webBrowserRuntimeSource, /HTMLIFrameElement|HTMLElement|ResizeObserver/u);
+  assert.doesNotMatch(browserSurfaceHostSource, /PanelTab|\bviewId\b|BrowserTabId/u);
+  assert.doesNotMatch(browserPresentationSource, /framesRemaining/u);
+});
+
+test("browser presentation retires with the physical panel presence", () => {
+  assert.match(
+    appShellSource,
+    /const \[rightPanelPresentationActive, setRightPanelPresentationActive\] =\s*useState/u,
+  );
+  assert.match(
+    appShellSource,
+    /if \(progress <= 0\.001\) setRightPanelPresentationActive\(false\)/u,
+  );
+  assert.match(
+    browserPanelSource,
+    /\|\| !rightPanelPresentationActive\s*\) return;/u,
+  );
+  assert.match(browserPanelSource, /presentation\.dispose\(\);/u);
+});
+
+test("thread edge-scroll is one measured AppShell state", () => {
+  const threshold = THREAD_EDGE_SCROLL_MINIMUM_WIDTH_REM * 16;
+  assert.equal(
+    resolveThreadEdgeScroll({
+      mainContentWidthPx: threshold - 0.01,
+      leftChromeWidthPx: 0,
+      rightPanelFullWidth: false,
+      rootFontSizePx: 16,
+    }),
+    false,
+  );
+  assert.equal(
+    resolveThreadEdgeScroll({
+      mainContentWidthPx: threshold,
+      leftChromeWidthPx: 0,
+      rightPanelFullWidth: false,
+      rootFontSizePx: 16,
+    }),
+    true,
+  );
+  assert.equal(
+    resolveThreadEdgeScroll({
+      mainContentWidthPx: threshold - 275,
+      leftChromeWidthPx: 275,
+      rightPanelFullWidth: false,
+      rootFontSizePx: 16,
+    }),
+    true,
+    "left application chrome must not disable immersive thread layout",
+  );
+  assert.equal(
+    resolveThreadEdgeScroll({
+      mainContentWidthPx: threshold + 300,
+      leftChromeWidthPx: 0,
+      rightPanelFullWidth: true,
+      rootFontSizePx: 16,
+    }),
+    false,
+  );
+
+  assert.match(
+    workbenchStyles,
+    /\.main-content-top-fade\s*\{[\s\S]*?transition:\s*opacity\s+var\(--transition-duration-basic\);[\s\S]*?\}/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /html\[data-codex-window-type="browser"\]\s+\.main-content-top-fade\s*\{[\s\S]*?display:\s*none;[\s\S]*?\}/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.app-shell-header[\s\S]*?&\[data-app-shell-header-edge-scroll="true"\]\s*\{[\s\S]*?background:\s*transparent;/u,
+  );
+  assert.match(
+    appShellSource,
+    /data-app-shell-thread-edge-scroll=\{isHeaderEdgeScroll\}/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.main-content-viewport\[data-app-shell-main-content-layout="thread-edge-scroll"\]\[data-app-shell-thread-edge-scroll="true"\][\s\S]*?\.main-content-frame/u,
+  );
+  assert.doesNotMatch(
+    workbenchStyles,
+    /\[data-app-shell-main-content-layout="thread-edge-scroll"\]\s+&\[data-app-shell-thread-edge-scroll="true"\]/u,
+  );
+});
+
+test("scroll-to-bottom action stays mounted in the Composer zero-height overlay", () => {
+  assert.match(
+    workbenchStyles,
+    /\.thread-scroll-to-bottom-anchor\s*\{[\s\S]*?position:\s*relative;[\s\S]*?height:\s*0;[\s\S]*?\}/u,
+  );
+  assert.match(
+    workbenchStyles,
+    /\.thread-scroll-to-bottom-button\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?bottom:\s*calc\(100% \+ 6 \* var\(--spacing\)\);[\s\S]*?opacity:\s*0;[\s\S]*?pointer-events:\s*none;/u,
+  );
+
+  const hidden = renderToStaticMarkup(
+    createElement(ScrollToBottomButton, {
+      label: "Scroll to bottom",
+      onClick: () => undefined,
+      show: false,
+    }),
+  );
+  assert.match(hidden, /aria-hidden="true"/u);
+  assert.match(hidden, /tabindex="-1"/u);
+  assert.match(hidden, /data-visible="false"/u);
+
+  const working = renderToStaticMarkup(
+    createElement(ScrollToBottomButton, {
+      label: "Scroll to bottom",
+      onClick: () => undefined,
+      show: true,
+      showWorkingDots: true,
+    }),
+  );
+  assert.match(working, /aria-hidden="false"/u);
+  assert.match(working, /tabindex="0"/u);
+  assert.equal(
+    working.match(/thread-scroll-to-bottom-button__dot/g)?.length,
+    3,
+  );
+});
+
+test("iPad desktop-class user agents still select the iOS viewport host", () => {
+  assert.equal(
+    resolveWebTimelinePlatform({
+      maxTouchPoints: 5,
+      navigatorPlatform: "MacIntel",
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+    }),
+    "ios",
+  );
+  assert.equal(
+    resolveWebTimelinePlatform({
+      maxTouchPoints: 0,
+      navigatorPlatform: "MacIntel",
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)",
+    }),
+    "darwin",
+  );
+});
+
+test("VisualViewport snapshots expose keyboard occlusion but not pinch zoom", () => {
+  const keyboard = createWebTimelineViewportSnapshot({
+    editableFocused: true,
+    layoutHeightPx: 1_024,
+    layoutWidthPx: 1_366,
+    revision: 4,
+    visualHeightPx: 650,
+    visualWidthPx: 1_366,
+  });
+  assert.equal(keyboard.keyboardInsetBottomPx, 374);
+  assert.equal(keyboard.revision, 4);
+
+  const zoom = createWebTimelineViewportSnapshot({
+    editableFocused: true,
+    layoutHeightPx: 1_024,
+    layoutWidthPx: 1_366,
+    revision: 5,
+    scale: 1.5,
+    visualHeightPx: 650,
+    visualOffsetTopPx: 80,
+    visualWidthPx: 900,
+  });
+  assert.equal(zoom.keyboardInsetBottomPx, 0);
+});
+
+test("footer measurement prefers the ResizeObserver border box", () => {
+  const entry = {
+    borderBoxSize: [{ blockSize: 116.5, inlineSize: 700 }],
+    contentRect: { height: 100 },
+  } as unknown as ResizeObserverEntry;
+  assert.equal(resizeObserverBlockSize(entry), 116.5);
+});
+
+test("the Web Conversation owns one horizontal plane for transcript and Composer", () => {
+  assert.doesNotMatch(webConversationSource, /footerAttachment|thread-scroll-footer-spacer/u);
+  assert.doesNotMatch(workbenchStyles, /thread-scroll-chrome-inline|viewport-overlay/u);
+  assert.match(
+    webConversationSource,
+    /className="thread-scroll-surface"[\s\S]*?className="thread-content thread-layout-width"[\s\S]*?\{footerElement\}/u,
+  );
+  assert.equal(
+    webConversationSource.match(/wideContentOffsetPx/g)?.length,
+    2,
+    "the surface consumes the horizontal offset once and derives only the wide-block CSS value",
+  );
+});
+
+test("the conversation scrollport terminates browser boundary scrolling", () => {
+  const threadScrollRule = workbenchStyles.match(
+    /\.thread-scroll\s*\{[\s\S]*?\n\}/u,
+  )?.[0] ?? "";
+  assert.match(threadScrollRule, /overscroll-behavior:\s*none/u);
+  assert.doesNotMatch(workbenchStyles, /data-timeline-overscroll/u);
+});
+
+test("reflow pinning follows Codex window-zoom compensation", () => {
+  assert.equal(timelineReflowScrollAdjustment(200, 260), 60);
+  assert.equal(timelineReflowScrollAdjustment(200, 260, 1.5), 40);
+});

@@ -1,0 +1,16 @@
+{
+  "name": "@opencraft/design-system",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./theme": "./src/theme.ts",
+    "./theme-engine": "./src/theme-engine.ts",
+    "./tokens": "./src/tokens.shared.ts",
+    "./tokens.native": "./src/tokens.native.ts",
+    "./tokens.web": "./src/tokens.web.scss"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

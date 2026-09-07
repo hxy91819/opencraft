@@ -1,0 +1,276 @@
+import assert from "node:assert/strict";
+import { createServer } from "node:http";
+import test from "node:test";
+
+import WebSocket from "ws";
+import { WebSocketServer } from "ws";
+
+import { startLocalAgentHost } from "../apps/local-agent-host/src/main.js";
+
+async function fakeDsh() {
+  const streams = new Map<WebSocket, string>();
+  const calls: Array<{ method: string; payload: Record<string, unknown> }> = [];
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? "/", "http://127.0.0.1");
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) chunks.push(Buffer.from(chunk));
+    const envelope = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { method: string; payload: Record<string, unknown>; rpcId: string };
+    calls.push({ method: envelope.method, payload: envelope.payload });
+    let value: unknown = {};
+    if (envelope.method === "host.describe") value = {
+      home: "/home/tester",
+      cwd: "/workspace/demo",
+      version: "0.0.1-test",
+      provider: "deepseek",
+      model: "deepseek-v4-flash",
+    };
+    if (envelope.method === "settings.describe") value = {
+      writable: true,
+      hasDocument: true,
+      namespaces: [
+        {
+          ns: "agent-default-model",
+          schema: {},
+          value: { provider: "deepseek", model: "deepseek-v4-flash", reasoningEffort: "high" },
+          user: {},
+          applies: "live",
+          secrets: [],
+          revision: 2,
+        },
+        {
+          ns: "llm-deepseek",
+          schema: {},
+          value: { apiKeyEnv: "DEEPSEEK_API_KEY" },
+          user: {},
+          applies: "live",
+          secrets: [],
+          revision: 3,
+        },
+      ],
+    };
+    if (envelope.method === "settings.mutate") value = {
+      ns: envelope.payload.ns,
+      schema: {},
+      value: {},
+      applies: "live",
+      secrets: [],
+      revision: 4,
+    };
+    if (envelope.method === "credentials.describe") value = {
+      credentials: { DEEPSEEK_API_KEY: { configured: true, source: "file", writable: true } },
+    };
+    if (envelope.method === "credentials.set" || envelope.method === "credentials.unset") value = {};
+    if (envelope.method === "llm.providers") value = {
+      providers: [{ provider: "deepseek", displayName: "DeepSeek", settingsNs: "llm-deepseek", settingsPath: [], active: true }],
+    };
+    if (envelope.method === "session.list") value = { items: [{ sessionId: "s1", updatedAt: 1_788_000_000_000, running: false, blank: false, cwd: "/workspace/demo", projections: { asOfSeq: 8, values: { title: "Demo" } } }] };
+    if (envelope.method === "session.history") value = {
+      events: [
+        { event: { type: "turn/start", seq: 0, time: 1_788_000_000_000, data: { turn: 1 } } },
+        { event: { type: "step/start", seq: 1, time: 1_788_000_000_001, data: { turn: 1, step: 1 } } },
+        { event: { type: "user/message", seq: 2, time: 1_788_000_000_002, data: { id: "m-user", role: "user", content: [{ type: "text", text: "hello" }], source: { kind: "human" } } } },
+        { event: { type: "user/message", seq: 3, time: 1_788_000_000_002, data: { id: "m-system", role: "user", content: [{ type: "text", text: "runtime context" }], source: { kind: "plugin", plugin: "system-prompt" } } } },
+        { event: { type: "assistant/message", seq: 4, time: 1_788_000_000_003, data: { turn: 1, step: 1, message: { id: "m-agent", role: "assistant", content: [{ type: "reasoning", text: "think" }, { type: "text", text: "world" }] } } } },
+        { event: { type: "turn/end", seq: 5, time: 1_788_000_000_004, data: { turn: 1, reason: "completed" } } },
+      ],
+      hasMore: false,
+      projections: { asOfSeq: 5, values: { title: "Demo" } },
+    };
+    if (envelope.method === "session.models") value = {
+      current: { provider: "deepseek", model: "deepseek-v4-flash", reasoningEffort: "high" },
+      routable: true,
+      groups: [{ id: "deepseek", name: "DeepSeek", models: [{ id: "deepseek-v4-flash", name: "V4 Flash" }] }],
+      failures: [],
+    };
+    if (envelope.method === "session.create") value = { sessionId: "s-new", agentPreset: "standard" };
+    if (envelope.method === "session.prompt") {
+      value = { accepted: true };
+      setTimeout(() => {
+        const frame = JSON.stringify({ payload: {
+          type: "session/event",
+          sessionId: "s-new",
+          event: { type: "turn/start", seq: 10, time: 1_788_000_000_100, data: { turn: 1 } },
+        } });
+        for (const [stream, path] of streams) if (path === "/api/events.mux") stream.send(frame);
+      }, 0);
+    }
+    if (envelope.method === "llm.models") value = {
+      groups: [{ id: "deepseek", name: "DeepSeek", models: [{ id: "deepseek-v4-flash", name: "V4 Flash" }] }],
+      failures: [],
+    };
+    if (envelope.method === "llm.discoverModels") value = {
+      models: [{ id: "gpt-test", name: "GPT Test", contextWindow: 128000, maxTokens: 16384 }],
+    };
+    response.setHeader("content-type", "application/json");
+    response.end(JSON.stringify({ type: "server-response", rpcId: envelope.rpcId, result: { ok: true, value } }));
+  });
+  const downlinks = new WebSocketServer({ noServer: true });
+  server.on("upgrade", (request, socket, head) => {
+    const path = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+    if (path !== "/api/events.mux" && path !== "/api/events.host") {
+      socket.destroy();
+      return;
+    }
+    downlinks.handleUpgrade(request, socket, head, (client) => downlinks.emit("connection", client, request));
+  });
+  downlinks.on("connection", (socket, request) => {
+    const path = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+    streams.set(socket, path);
+    socket.once("close", () => streams.delete(socket));
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => resolve());
+  });
+  const address = server.address();
+  if (address === null || typeof address === "string") throw new Error("fake DSH did not listen");
+  return {
+    url: `http://127.0.0.1:${address.port}`,
+    calls,
+    async close() {
+      for (const stream of streams.keys()) stream.close();
+      downlinks.close();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    },
+  };
+}
+
+function connect(url: string): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(url);
+    socket.once("open", () => resolve(socket));
+    socket.once("error", reject);
+  });
+}
+
+function request(socket: WebSocket, id: number, method: string, params: unknown = {}): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const listener = (data: WebSocket.RawData) => {
+      const frame = JSON.parse(data.toString()) as { id?: number; result?: unknown; error?: unknown };
+      if (frame.id !== id) return;
+      socket.off("message", listener);
+      frame.error === undefined ? resolve(frame.result) : reject(frame.error);
+    };
+    socket.on("message", listener);
+    socket.send(JSON.stringify({ jsonrpc: "2.0", id, method, params }));
+  });
+}
+
+test("local Agent Host authenticates and projects DSH history into stable AppServer turns", async () => {
+  const dsh = await fakeDsh();
+  const host = await startLocalAgentHost({ dshUrl: dsh.url, token: "test-token" });
+  try {
+    await assert.rejects(connect(host.websocketUrl.replace("test-token", "wrong")));
+    const socket = await connect(host.websocketUrl);
+    try {
+      const initialized = await request(socket, 1, "initialize", {});
+      assert.equal(initialized.codexHome, "/home/tester");
+      const listed = await request(socket, 2, "thread/list", { limit: 10 });
+      assert.equal(listed.data[0].name, "Demo");
+      const models = await request(socket, 4, "model/list", { limit: 10 });
+      assert.equal(models.data[0].displayName, "V4 Flash");
+      assert.equal(models.data[0].isDefault, true);
+      const resumed = await request(socket, 3, "thread/resume", { threadId: "s1" });
+      assert.equal(resumed.thread.turns.length, 1);
+      assert.deepEqual(resumed.thread.turns[0].items.map((item: { type: string }) => item.type), ["userMessage", "reasoning", "agentMessage"]);
+      assert.equal(resumed.thread.turns[0].items[0].content[0].text, "hello");
+      assert.equal(resumed.thread.turns[0].items[2].text, "world");
+    } finally {
+      socket.close();
+    }
+  } finally {
+    await host.close();
+    await dsh.close();
+  }
+});
+
+test("local Agent Host applies the selected DSH model before opening a real event-owned Turn", async () => {
+  const dsh = await fakeDsh();
+  const host = await startLocalAgentHost({ dshUrl: dsh.url, token: "turn-token" });
+  try {
+    const socket = await connect(host.websocketUrl);
+    try {
+      await request(socket, 10, "initialize", {});
+      const models = await request(socket, 11, "model/list", { limit: 10 });
+      const started = await request(socket, 12, "thread/start", {
+        cwd: "/workspace/demo",
+        model: models.data[0].id,
+      });
+      const turn = await request(socket, 13, "turn/start", {
+        threadId: started.thread.id,
+        model: models.data[0].id,
+        effort: "high",
+        input: [{ type: "text", text: "hello", text_elements: [] }],
+      });
+      assert.equal(turn.turn.id, "dsh-turn-s-new-1");
+      assert.equal(dsh.calls.filter((call) => call.method === "session.selectModel").length, 2);
+      assert.deepEqual(
+        dsh.calls.findLast((call) => call.method === "session.selectModel")?.payload,
+        { sessionId: "s-new", provider: "deepseek", model: "deepseek-v4-flash", reasoningEffort: "high" },
+      );
+      assert.equal(dsh.calls.find((call) => call.method === "session.prompt")?.payload.mode, "queue");
+    } finally {
+      socket.close();
+    }
+  } finally {
+    await host.close();
+    await dsh.close();
+  }
+});
+
+test("local Agent Host exposes generic runtime settings without leaking DSH method names to the client", async () => {
+  const dsh = await fakeDsh();
+  const host = await startLocalAgentHost({ dshUrl: dsh.url, token: "settings-token" });
+  try {
+    const socket = await connect(host.websocketUrl);
+    try {
+      await request(socket, 20, "initialize", {});
+      const status = await request(socket, 21, "runtime/status/read", {});
+      assert.deepEqual(status, {
+        engineId: "dsh",
+        displayName: "DeepSeek Harness",
+        version: "0.0.1-test",
+        cwd: "/workspace/demo",
+        provider: "deepseek",
+        model: "deepseek-v4-flash",
+      });
+      const settings = await request(socket, 22, "runtime/settings/describe", {});
+      assert.equal(settings.namespaces[0].ns, "agent-default-model");
+      const credentials = await request(socket, 23, "runtime/credentials/describe", { refs: ["DEEPSEEK_API_KEY"] });
+      assert.equal(credentials.credentials.DEEPSEEK_API_KEY.configured, true);
+      await request(socket, 24, "runtime/settings/mutate", {
+        ns: "agent-default-model",
+        expectedRevision: 2,
+        ops: [{ op: "set", path: ["model"], value: "deepseek-v4-flash" }],
+      });
+      await request(socket, 25, "runtime/credentials/set", { ref: "DEEPSEEK_API_KEY", value: "write-only" });
+      const discovered = await request(socket, 26, "runtime/models/discover", {
+        settingsNs: "llm-pi-ai",
+        provider: "openai",
+        apiKey: "probe-only",
+      });
+      assert.equal(discovered.models[0].id, "gpt-test");
+      assert.deepEqual(
+        dsh.calls.findLast((call) => call.method === "settings.mutate")?.payload,
+        {
+          ns: "agent-default-model",
+          expectedRevision: 2,
+          ops: [{ op: "set", path: ["model"], value: "deepseek-v4-flash" }],
+        },
+      );
+      assert.deepEqual(
+        dsh.calls.findLast((call) => call.method === "llm.discoverModels")?.payload,
+        { settingsNs: "llm-pi-ai", provider: "openai", apiKey: "probe-only" },
+      );
+      assert.deepEqual(
+        dsh.calls.findLast((call) => call.method === "credentials.set")?.payload,
+        { ref: "DEEPSEEK_API_KEY", value: "write-only" },
+      );
+    } finally {
+      socket.close();
+    }
+  } finally {
+    await host.close();
+    await dsh.close();
+  }
+});

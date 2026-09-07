@@ -1,0 +1,472 @@
+import type {
+  ThreadResumeHistoryRequest,
+  ThreadResumeHistoryResponse,
+  AppServerThread,
+  AppServerThreadItem,
+  AppServerTurn,
+  CursorPage,
+  ThreadItemPageEntry,
+  ThreadItemsListRequest,
+  ThreadTurnsListRequest,
+} from "./resume-history";
+import type {
+  ReplicaMutateParams,
+  ReplicaMutateResponse,
+  ReplicaSyncParams,
+  ReplicaSyncResponse,
+} from "./replica";
+import type {
+  ThreadQueueAddParams as GeneratedThreadQueueAddParams,
+  ThreadQueueAddResponse as GeneratedThreadQueueAddResponse,
+  ThreadQueueDeleteParams as GeneratedThreadQueueDeleteParams,
+  ThreadQueueDeleteResponse as GeneratedThreadQueueDeleteResponse,
+  ThreadQueueListParams as GeneratedThreadQueueListParams,
+  ThreadQueueListResponse as GeneratedThreadQueueListResponse,
+  ThreadQueueReorderParams as GeneratedThreadQueueReorderParams,
+  ThreadQueueReorderResponse as GeneratedThreadQueueReorderResponse,
+  ThreadQueueStartParams as GeneratedThreadQueueStartParams,
+  ThreadQueueStartResponse as GeneratedThreadQueueStartResponse,
+  ThreadQueueUpdateParams as GeneratedThreadQueueUpdateParams,
+  ThreadQueueUpdateResponse as GeneratedThreadQueueUpdateResponse,
+  ThreadForkParams as GeneratedThreadForkParams,
+  ThreadForkResponse as GeneratedThreadForkResponse,
+  ThreadListParams as GeneratedThreadListParams,
+  ThreadListResponse as GeneratedThreadListResponse,
+  ThreadStartParams as GeneratedThreadStartParams,
+  ThreadStartResponse as GeneratedThreadStartResponse,
+  ModelListParams as GeneratedModelListParams,
+  ModelListResponse as GeneratedModelListResponse,
+  PermissionProfileListParams as GeneratedPermissionProfileListParams,
+  PermissionProfileListResponse as GeneratedPermissionProfileListResponse,
+  SkillsListParams as GeneratedSkillsListParams,
+  SkillsListResponse as GeneratedSkillsListResponse,
+  ProjectCreateParams as GeneratedProjectCreateParams,
+  ProjectCreateResponse as GeneratedProjectCreateResponse,
+  ProjectListParams as GeneratedProjectListParams,
+  ProjectListResponse as GeneratedProjectListResponse,
+  FsReadDirectoryParams as GeneratedFsReadDirectoryParams,
+  FsReadDirectoryResponse as GeneratedFsReadDirectoryResponse,
+  FsReadFileParams as GeneratedFsReadFileParams,
+  FsReadFileResponse as GeneratedFsReadFileResponse,
+  FsGetMetadataParams as GeneratedFsGetMetadataParams,
+  FsGetMetadataResponse as GeneratedFsGetMetadataResponse,
+  FsWatchParams as GeneratedFsWatchParams,
+  FsWatchResponse as GeneratedFsWatchResponse,
+  FsUnwatchParams as GeneratedFsUnwatchParams,
+  FsUnwatchResponse as GeneratedFsUnwatchResponse,
+  FsWriteFileParams as GeneratedFsWriteFileParams,
+  FsWriteFileResponse as GeneratedFsWriteFileResponse,
+  TurnInterruptParams as GeneratedTurnInterruptParams,
+  TurnInterruptResponse as GeneratedTurnInterruptResponse,
+  TurnStartParams as GeneratedTurnStartParams,
+  TurnStartResponse as GeneratedTurnStartResponse,
+  TurnSteerParams as GeneratedTurnSteerParams,
+  TurnSteerResponse as GeneratedTurnSteerResponse,
+  CommandExecParams as GeneratedCommandExecParams,
+  CommandExecResponse as GeneratedCommandExecResponse,
+  CommandExecWriteParams as GeneratedCommandExecWriteParams,
+  CommandExecWriteResponse as GeneratedCommandExecWriteResponse,
+  CommandExecResizeParams as GeneratedCommandExecResizeParams,
+  CommandExecResizeResponse as GeneratedCommandExecResizeResponse,
+  CommandExecTerminateParams as GeneratedCommandExecTerminateParams,
+  CommandExecTerminateResponse as GeneratedCommandExecTerminateResponse,
+} from "./generated/v2";
+import type {
+  FuzzyFileSearchParams,
+  FuzzyFileSearchResponse,
+  FuzzyFileSearchSessionStartParams,
+  FuzzyFileSearchSessionStartResponse,
+  FuzzyFileSearchSessionStopParams,
+  FuzzyFileSearchSessionStopResponse,
+  FuzzyFileSearchSessionUpdateParams,
+  FuzzyFileSearchSessionUpdateResponse,
+} from "./generated";
+import type { AppServerBotMethodMap } from "./bot-conversations";
+import type {
+  RuntimeCredentialSetParams,
+  RuntimeCredentialUnsetParams,
+  RuntimeCredentialsDescribeParams,
+  RuntimeCredentialsDescribeResponse,
+  RuntimeModelsListResponse,
+  RuntimeModelsDiscoverParams,
+  RuntimeModelsDiscoverResponse,
+  RuntimeProvidersListResponse,
+  RuntimeSettingsDescribeResponse,
+  RuntimeSettingsMutateParams,
+  RuntimeSettingsNamespaceView,
+  RuntimeStatusResponse,
+} from "./runtime-settings";
+
+export interface AppServerClientInfo {
+  name: string;
+  version: string;
+  title?: string | null;
+}
+
+export interface AppServerInitializeCapabilities {
+  experimentalApi?: boolean;
+  extensions?: Readonly<Record<string, unknown>> | null;
+  mcpServerOpenaiFormElicitation?: boolean;
+  optOutNotificationMethods?: readonly string[] | null;
+  requestAttestation?: boolean;
+}
+
+export interface AppServerInitializeParams {
+  clientInfo: AppServerClientInfo;
+  capabilities?: AppServerInitializeCapabilities | null;
+}
+
+export interface AppServerInitializeResponse {
+  codexHome: string;
+  platformFamily: string;
+  platformOs: string;
+  userAgent: string;
+  serverInfo?: AppServerClientInfo;
+  capabilities?: {
+    extensions?: Readonly<Record<string, unknown>> | null;
+  } | null;
+}
+
+export type ThreadResumeParams = ThreadResumeHistoryRequest & {
+  threadId: string;
+  [field: string]: unknown;
+};
+
+export type ThreadResumeResponse = ThreadResumeHistoryResponse<AppServerTurn> & {
+  approvalPolicy: unknown;
+  approvalsReviewer: unknown;
+  cwd: string;
+  instructionSources?: readonly string[];
+  model: string;
+  modelProvider: string;
+  reasoningEffort?: unknown;
+  sandbox: unknown;
+  serviceTier?: string | null;
+  thread: AppServerThread;
+  [field: string]: unknown;
+};
+
+export interface ThreadReadParams {
+  threadId: string;
+  includeTurns: boolean;
+}
+
+export interface ThreadReadResponse {
+  thread: AppServerThread;
+}
+
+export type ThreadTurnsListResponse = CursorPage<AppServerTurn> & {
+  backwardsCursor?: string | null;
+  itemsPaginationByTurnId?: Readonly<Record<string, unknown>>;
+};
+
+export type ThreadItemsListResponse = CursorPage<ThreadItemPageEntry | AppServerThreadItem>;
+
+export type ThreadStartParams = GeneratedThreadStartParams & {
+  /** Host-owned execution Agent. Omitted means the Host default. */
+  agentId?: string | null;
+};
+export type ThreadStartResponse = GeneratedThreadStartResponse;
+export type ModelListParams = GeneratedModelListParams;
+export type ModelListResponse = GeneratedModelListResponse;
+export type PermissionProfileListParams = GeneratedPermissionProfileListParams;
+export type PermissionProfileListResponse = GeneratedPermissionProfileListResponse;
+export type SkillsListParams = GeneratedSkillsListParams;
+export type SkillsListResponse = GeneratedSkillsListResponse;
+export type ProjectCreateParams = GeneratedProjectCreateParams;
+export type ProjectCreateResponse = GeneratedProjectCreateResponse;
+export type ProjectListParams = GeneratedProjectListParams;
+export type ProjectListResponse = GeneratedProjectListResponse;
+export type FsReadDirectoryParams = GeneratedFsReadDirectoryParams;
+export type FsReadDirectoryResponse = GeneratedFsReadDirectoryResponse;
+export type FsReadFileParams = GeneratedFsReadFileParams;
+export type FsReadFileResponse = GeneratedFsReadFileResponse;
+export type ThreadForkParams = GeneratedThreadForkParams;
+export type ThreadForkResponse = GeneratedThreadForkResponse;
+export type ThreadListParams = GeneratedThreadListParams;
+export type ThreadListResponse = GeneratedThreadListResponse;
+export type TurnStartParams = GeneratedTurnStartParams;
+export type TurnStartResponse = GeneratedTurnStartResponse;
+export type TurnSteerParams = GeneratedTurnSteerParams;
+export type TurnSteerResponse = GeneratedTurnSteerResponse;
+export type TurnInterruptParams = GeneratedTurnInterruptParams;
+export type TurnInterruptResponse = GeneratedTurnInterruptResponse;
+export type ThreadQueueAddParams = GeneratedThreadQueueAddParams;
+export type ThreadQueueAddResponse = GeneratedThreadQueueAddResponse;
+export type ThreadQueueListParams = GeneratedThreadQueueListParams;
+export type ThreadQueueListResponse = GeneratedThreadQueueListResponse;
+export type ThreadQueueUpdateParams = GeneratedThreadQueueUpdateParams;
+export type ThreadQueueUpdateResponse = GeneratedThreadQueueUpdateResponse;
+export type ThreadQueueDeleteParams = GeneratedThreadQueueDeleteParams;
+export type ThreadQueueDeleteResponse = GeneratedThreadQueueDeleteResponse;
+export type ThreadQueueReorderParams = GeneratedThreadQueueReorderParams;
+export type ThreadQueueReorderResponse = GeneratedThreadQueueReorderResponse;
+export type ThreadQueueStartParams = GeneratedThreadQueueStartParams;
+export type ThreadQueueStartResponse = GeneratedThreadQueueStartResponse;
+export type FsGetMetadataParams = GeneratedFsGetMetadataParams;
+export type FsGetMetadataResponse = GeneratedFsGetMetadataResponse;
+export type FsWatchParams = GeneratedFsWatchParams;
+export type FsWatchResponse = GeneratedFsWatchResponse;
+export type FsUnwatchParams = GeneratedFsUnwatchParams;
+export type FsUnwatchResponse = GeneratedFsUnwatchResponse;
+export type FsWriteFileParams = GeneratedFsWriteFileParams;
+export type FsWriteFileResponse = GeneratedFsWriteFileResponse;
+export type CommandExecParams = GeneratedCommandExecParams;
+export type CommandExecResponse = GeneratedCommandExecResponse;
+export type CommandExecWriteParams = GeneratedCommandExecWriteParams;
+export type CommandExecWriteResponse = GeneratedCommandExecWriteResponse;
+export type CommandExecResizeParams = GeneratedCommandExecResizeParams;
+export type CommandExecResizeResponse = GeneratedCommandExecResizeResponse;
+export type CommandExecTerminateParams = GeneratedCommandExecTerminateParams;
+export type CommandExecTerminateResponse = GeneratedCommandExecTerminateResponse;
+
+export interface AgentCatalogEntry {
+  readonly id: string;
+  readonly displayName: string;
+  readonly description: string;
+  readonly engineKind: string;
+  readonly isDefault: boolean;
+  readonly defaultModel: string | null;
+  readonly modelIds: readonly string[];
+  readonly available: boolean;
+  readonly unavailableReason: string | null;
+}
+
+export interface AgentListParams {
+  readonly cursor?: string | null;
+  readonly limit?: number | null;
+}
+
+export interface AgentListResponse {
+  readonly data: readonly AgentCatalogEntry[];
+  readonly nextCursor: string | null;
+}
+
+export interface ThreadArchiveParams {
+  threadId: string;
+}
+
+/**
+ * Typed method registry. It is intentionally declaration-mergeable so feature
+ * packages can add protocol methods without introducing an untyped index
+ * signature into the core client.
+ */
+export interface AppServerMethodMap extends AppServerBotMethodMap {
+  "runtime/status/read": {
+    params: Record<string, never>;
+    result: RuntimeStatusResponse;
+  };
+  "runtime/settings/describe": {
+    params: Record<string, never>;
+    result: RuntimeSettingsDescribeResponse;
+  };
+  "runtime/settings/mutate": {
+    params: RuntimeSettingsMutateParams;
+    result: RuntimeSettingsNamespaceView;
+  };
+  "runtime/credentials/describe": {
+    params: RuntimeCredentialsDescribeParams;
+    result: RuntimeCredentialsDescribeResponse;
+  };
+  "runtime/credentials/set": {
+    params: RuntimeCredentialSetParams;
+    result: Record<string, never>;
+  };
+  "runtime/credentials/unset": {
+    params: RuntimeCredentialUnsetParams;
+    result: Record<string, never>;
+  };
+  "runtime/providers/list": {
+    params: Record<string, never>;
+    result: RuntimeProvidersListResponse;
+  };
+  "runtime/models/list": {
+    params: Record<string, never>;
+    result: RuntimeModelsListResponse;
+  };
+  "runtime/models/discover": {
+    params: RuntimeModelsDiscoverParams;
+    result: RuntimeModelsDiscoverResponse;
+  };
+  "agent/list": {
+    params: AgentListParams;
+    result: AgentListResponse;
+  };
+  initialize: {
+    params: AppServerInitializeParams;
+    result: AppServerInitializeResponse;
+  };
+  "thread/resume": {
+    params: ThreadResumeParams;
+    result: ThreadResumeResponse;
+  };
+  "thread/read": {
+    params: ThreadReadParams;
+    result: ThreadReadResponse;
+  };
+  "thread/list": {
+    params: ThreadListParams;
+    result: ThreadListResponse;
+  };
+  "thread/turns/list": {
+    params: ThreadTurnsListRequest;
+    result: ThreadTurnsListResponse;
+  };
+  "thread/items/list": {
+    params: ThreadItemsListRequest;
+    result: ThreadItemsListResponse;
+  };
+  "thread/start": {
+    params: ThreadStartParams;
+    result: ThreadStartResponse;
+  };
+  "thread/fork": {
+    params: ThreadForkParams;
+    result: ThreadForkResponse;
+  };
+  "turn/start": {
+    params: TurnStartParams;
+    result: TurnStartResponse;
+  };
+  "turn/steer": {
+    params: TurnSteerParams;
+    result: TurnSteerResponse;
+  };
+  "turn/interrupt": {
+    params: TurnInterruptParams;
+    result: TurnInterruptResponse;
+  };
+  "thread/queue/add": {
+    params: ThreadQueueAddParams;
+    result: ThreadQueueAddResponse;
+  };
+  "thread/queue/list": {
+    params: ThreadQueueListParams;
+    result: ThreadQueueListResponse;
+  };
+  "thread/queue/update": {
+    params: ThreadQueueUpdateParams;
+    result: ThreadQueueUpdateResponse;
+  };
+  "thread/queue/delete": {
+    params: ThreadQueueDeleteParams;
+    result: ThreadQueueDeleteResponse;
+  };
+  "thread/queue/reorder": {
+    params: ThreadQueueReorderParams;
+    result: ThreadQueueReorderResponse;
+  };
+  "thread/queue/start": {
+    params: ThreadQueueStartParams;
+    result: ThreadQueueStartResponse;
+  };
+  "thread/archive": {
+    params: ThreadArchiveParams;
+    result: unknown;
+  };
+  "thread/unarchive": {
+    params: ThreadArchiveParams;
+    result: unknown;
+  };
+  "model/list": {
+    params: ModelListParams;
+    result: ModelListResponse;
+  };
+  "permissionProfile/list": {
+    params: PermissionProfileListParams;
+    result: PermissionProfileListResponse;
+  };
+  "skills/list": {
+    params: SkillsListParams;
+    result: SkillsListResponse;
+  };
+  "project/list": {
+    params: ProjectListParams;
+    result: ProjectListResponse;
+  };
+  "project/create": {
+    params: ProjectCreateParams;
+    result: ProjectCreateResponse;
+  };
+  "fs/readDirectory": {
+    params: FsReadDirectoryParams;
+    result: FsReadDirectoryResponse;
+  };
+  "fs/readFile": {
+    params: FsReadFileParams;
+    result: FsReadFileResponse;
+  };
+  "fs/getMetadata": {
+    params: FsGetMetadataParams;
+    result: FsGetMetadataResponse;
+  };
+  "fs/watch": {
+    params: FsWatchParams;
+    result: FsWatchResponse;
+  };
+  "fs/unwatch": {
+    params: FsUnwatchParams;
+    result: FsUnwatchResponse;
+  };
+  "fs/writeFile": {
+    params: FsWriteFileParams;
+    result: FsWriteFileResponse;
+  };
+  "command/exec": {
+    params: CommandExecParams;
+    result: CommandExecResponse;
+  };
+  "command/exec/write": {
+    params: CommandExecWriteParams;
+    result: CommandExecWriteResponse;
+  };
+  "command/exec/resize": {
+    params: CommandExecResizeParams;
+    result: CommandExecResizeResponse;
+  };
+  "command/exec/terminate": {
+    params: CommandExecTerminateParams;
+    result: CommandExecTerminateResponse;
+  };
+  fuzzyFileSearch: {
+    params: FuzzyFileSearchParams;
+    result: FuzzyFileSearchResponse;
+  };
+  "fuzzyFileSearch/sessionStart": {
+    params: FuzzyFileSearchSessionStartParams;
+    result: FuzzyFileSearchSessionStartResponse;
+  };
+  "fuzzyFileSearch/sessionUpdate": {
+    params: FuzzyFileSearchSessionUpdateParams;
+    result: FuzzyFileSearchSessionUpdateResponse;
+  };
+  "fuzzyFileSearch/sessionStop": {
+    params: FuzzyFileSearchSessionStopParams;
+    result: FuzzyFileSearchSessionStopResponse;
+  };
+  "replica/sync": {
+    params: ReplicaSyncParams;
+    result: ReplicaSyncResponse;
+  };
+  "replica/mutate": {
+    params: ReplicaMutateParams;
+    result: ReplicaMutateResponse;
+  };
+}
+
+export type AppServerMethod = keyof AppServerMethodMap & string;
+export type AppServerMethodParams<TMethod extends AppServerMethod> =
+  AppServerMethodMap[TMethod]["params"];
+export type AppServerMethodResult<TMethod extends AppServerMethod> =
+  AppServerMethodMap[TMethod]["result"];
+
+export interface AppServerNotification<TParams = unknown> {
+  method: string;
+  params: TParams;
+}
+
+export interface AppServerServerRequest<TParams = unknown> {
+  id: string | number;
+  method: string;
+  params: TParams;
+}
