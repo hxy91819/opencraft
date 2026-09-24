@@ -1081,14 +1081,11 @@ export function App({
       settingsOpen,
     ],
   );
-  const workspaceBrowseRoot =
-    activeHost.workspaceBrowseRoots[0] ??
-    draft?.target.execution.workspace.runtimeWorkspaceRoots[0] ??
-    null;
+  const workspaceBrowseRoot = activeHost.workspaceBrowseRoots[0] ?? "/";
   const localProjectPicker = nativeProjectPicker(activeHost);
   const browseWorkspace = useCallback(async () => {
     if (localProjectPicker === null) {
-      if (workspaceBrowseRoot !== null) setWorkspacePickerOpen(true);
+      setWorkspacePickerOpen(true);
       return;
     }
     const epoch = workspaceSelectionEpoch.current;
@@ -1649,10 +1646,9 @@ export function App({
           open={
             !settingsOpen &&
             workspacePickerOpen &&
-            draft !== null &&
-            workspaceBrowseRoot !== null
+            draft !== null
           }
-          rootPath={workspaceBrowseRoot ?? "/"}
+          rootPath={workspaceBrowseRoot}
           initialPath={draft?.target.execution.workspace.cwd}
           title="Choose a folder"
           description={`Browse folders on ${activeHost.label}.`}

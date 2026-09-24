@@ -11,6 +11,7 @@ export function normalizeWorkspacePath(path: string): string {
 export function isWorkspacePathWithinRoot(path: string, rootPath: string): boolean {
   const pathValue = normalizeWorkspacePath(path);
   const rootValue = normalizeWorkspacePath(rootPath);
+  if (rootValue === "/") return true;
   return pathValue === rootValue || pathValue.startsWith(`${rootValue}/`);
 }
 

@@ -232,8 +232,6 @@ function ExecutionUtilityBar({
   const displayedHost = switchingHostId === null
     ? activeHost
     : hostOptions.find((host) => host.id === switchingHostId) ?? activeHost;
-  const canBrowseWorkspace = nativeWorkspacePicking || (activeHost?.workspaceBrowseRoots.length ?? 0) > 0
-    || workspace.runtimeWorkspaceRoots.length > 0;
   const filteredWorkspaces = useMemo(() => {
     return searchDraftWorkspaceOptions(workspaceOptions, projectQuery);
   }, [projectQuery, workspaceOptions]);
@@ -319,7 +317,7 @@ function ExecutionUtilityBar({
             <DropdownMenu.Separator className="new-thread-project-menu__separator" />
             <DropdownMenu.Item
               className="new-thread-project-menu__item"
-              disabled={executionLocked || pickingWorkspace || connectionPhase !== "ready" || !canBrowseWorkspace}
+              disabled={executionLocked || pickingWorkspace || connectionPhase !== "ready" || activeHost === null}
               onSelect={() => {
                 setWorkspaceSelectionError(null);
                 setPickingWorkspace(true);
@@ -331,9 +329,8 @@ function ExecutionUtilityBar({
               <FolderPlus size={15} />
               <span>
                 <strong>Add project</strong>
-                <small>{connectionPhase !== "ready" ? "Connect to this node before adding a project" : canBrowseWorkspace
-                  ? nativeWorkspacePicking ? "Choose a folder on this device" : "Choose a folder from this node"
-                  : "This node does not advertise a browse root"}</small>
+                <small>{connectionPhase !== "ready" ? "Connect to this node before adding a project"
+                  : nativeWorkspacePicking ? "Choose a folder on this device" : "Choose a folder from this node"}</small>
               </span>
             </DropdownMenu.Item>
           </DropdownMenu.Content>
