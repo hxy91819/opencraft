@@ -1275,6 +1275,13 @@ hostless shells use the same Settings route; neither creates an Environment pare
 or a second model settings service. Removing the page from view must not dispose a
 Host, alter the active conversation, or rewrite model/provider configuration.
 
+Electron activates these settings with its daemon-owned `local` and
+`local-codex` Host profiles. A Web deployment can enable the same Model Services
+and Codex Accounts views with `VITE_WEB_BUILTIN_AGENTS=enabled` and explicit
+`local` and `local-codex` profiles in `VITE_APPSERVER_HOSTS_JSON`. The Web
+extension registers presentation only; the deployment's WebSocket profiles own
+the Host connections, and provider credentials remain on the AppServer Host.
+
 Implement a feature in this order:
 
 1. protocol/domain types;

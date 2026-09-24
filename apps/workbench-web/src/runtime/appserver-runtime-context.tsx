@@ -1012,21 +1012,24 @@ export async function createWebWorkbenchApplicationSupervisor(
     if (import.meta.env.VITE_INCLUDE_BUILTIN_AGENTS_PLUGIN === "true") {
       await extensions.loadOptional("vela.builtin-agents", async () => {
         const { createBuiltinAgentsExtension } = await import("@opencraft/plugin-builtin-agents");
-        return createBuiltinAgentsExtension({
-          requestHost: async (hostId, method, params) => {
-            const result = await agentRuntimes.request(hostId, method, params);
-            if (changesComposerCapabilities(method)) {
-              // UI requests start after application construction. Invalidate the
-              // existing host-scoped catalog owner, never a session's selection.
-              void invalidateComposerCapabilities(queryClient, hostId).catch(() => undefined);
-            }
-            return result;
-          },
-          createTransport: (hostId) => {
-            if (electronAppHost === null) throw new Error("Electron App Host is unavailable");
-            return electronAppHost.createTransport(hostId);
-          },
-        });
+        const requestHost: Parameters<typeof createBuiltinAgentsExtension>[0]["requestHost"] = async (hostId, method, params) => {
+          const result = await agentRuntimes.request(hostId, method, params);
+          if (changesComposerCapabilities(method)) {
+            // UI requests start after application construction. Invalidate the
+            // existing host-scoped catalog owner, never a session's selection.
+            void invalidateComposerCapabilities(queryClient, hostId).catch(() => undefined);
+          }
+          return result;
+        };
+        return platform === "web"
+          ? createBuiltinAgentsExtension({ platform: "web", requestHost })
+          : createBuiltinAgentsExtension({
+            requestHost,
+            createTransport: (hostId) => {
+              if (electronAppHost === null) throw new Error("Electron App Host is unavailable");
+              return electronAppHost.createTransport(hostId);
+            },
+          });
       });
     }
     // Keep this expression direct: Vite can erase the entire dynamic-import

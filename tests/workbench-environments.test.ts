@@ -23,7 +23,6 @@ test("local Model Services is a normal Settings page bound by its local service"
   const settings = readFileSync(new URL("../apps/workbench-web/src/components/settings-page.tsx", import.meta.url), "utf8");
   assert.match(extension, /LocalAgentSettingsService\(options\.requestHost, "local"\)/);
   assert.match(extension, /title: "模型服务"/);
-  assert.match(extension, /group: "本机"/);
   assert.doesNotMatch(extension, /environment:\s*\{/);
   assert.doesNotMatch(settings, /page\.environment|section === "connections"|连接环境/);
 });

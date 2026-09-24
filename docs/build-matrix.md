@@ -114,9 +114,12 @@ alone does not isolate Skill writes. `scripts/skills-desktop-fixture.ts` seeds
 only a synthetic loopback model and temporary roots for manual desktop QA.
 
 The `web-browser` artifact does not contain the local Host, DSH, Node APIs, or
-their extension entry. Its `/appserver` endpoint is owned by the deployment
+a native Host process. Its `/appserver` endpoint is owned by the deployment
 gateway and may route to a cloud Host. This is a packaging boundary: desktop
 ships the Agent next to the application; Web ships only the AppServer client.
+When `VITE_WEB_BUILTIN_AGENTS=enabled`, Web also bundles the built-in Agent
+settings views. The deployment must provide `local` and `local-codex` AppServer
+endpoints; this flag does not bundle an execution engine.
 
 ## macOS Developer ID 签名包运行手册
 
