@@ -7,7 +7,7 @@ import { ModelServicesController } from "../plugins/builtin-agents/src/model-ser
 import { createModelServicesView } from "../plugins/builtin-agents/src/model-services/view";
 import { LocalAgentSettingsService, type HostProtocolRequest } from "../plugins/builtin-agents/src/local-agent-settings-service";
 
-function fixture() {
+function fixture(discovered: readonly { id: string; input?: readonly ("text" | "image")[] }[] = []) {
   const calls: { method: string; params: any }[] = [];
   let revision = 7, config: any = { baseURL: "https://example.invalid/v1", api: "openai-completions", apiKeyEnv: "TEST_REF", models: [{ id: "test-model", input: [] }] };
   const provider = { provider: "test", displayName: "Test", settingsNs: "llm-pi-ai", settingsPath: ["providers", "test"], active: true, configured: true, enabled: true, configuration: { modelDeclarations: true, apis: ["openai-completions"] as const, canProbe: true } };
@@ -16,6 +16,7 @@ function fixture() {
     if (method === "runtime/settings/describe") return { writable: true, namespaces: [{ ns: "llm-pi-ai", revision, value: { providers: { test: config } } }] };
     if (method === "runtime/providers/list") return { providers: [provider] };
     if (method === "runtime/models/list") return { groups: [{ id: "test", models: [{ id: "test-model", name: "Test model" }] }] };
+    if (method === "runtime/models/discover") return { models: discovered };
     if (method === "runtime/providers/apply") { if (params.expectedRevision !== revision) throw new Error("settings-conflict"); config = { ...config, baseURL: params.baseURL, ...(params.models ? { models: params.models } : {}), apiKeyEnv: "UPDATED_REF" }; revision++; return { saved: true, revision }; }
     if (method === "runtime/models/probe") return { ok: true, elapsedMs: 1, model: params.model };
     if (method === "runtime/models/check") return { ok: true, elapsedMs: 1, model: params.model };
@@ -129,6 +130,17 @@ test("custom model image capability is explicit, reversible, and saved through t
   assert.deepEqual(f.calls.filter(call => call.method === "runtime/providers/apply").at(-1)?.params.models, [
     { id: "test-model", input: ["text"] },
   ]);
+  assert.deepEqual(f.service.providerConfiguration(f.provider).models[0]?.input, ["text"]);
+  f.controller.dispose(); f.service.dispose();
+});
+
+test("fetching models fills missing image metadata without overwriting an explicit text-only choice", async () => {
+  const f = fixture([{ id: "test-model", input: ["text", "image"] }]);
+  await f.service.refresh();
+  await f.controller.fetchModels(f.provider);
+  assert.deepEqual(f.service.providerConfiguration(f.provider).models[0]?.input, ["text", "image"]);
+  await f.controller.setModelImageInput(f.provider, "test-model", false);
+  await f.controller.fetchModels(f.provider);
   assert.deepEqual(f.service.providerConfiguration(f.provider).models[0]?.input, ["text"]);
   f.controller.dispose(); f.service.dispose();
 });

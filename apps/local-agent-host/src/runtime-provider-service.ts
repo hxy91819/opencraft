@@ -33,6 +33,43 @@ function endpoint(value: string, validateOperation = true): string {
   return url.toString().replace(/\/+$/, "");
 }
 
+/** Ollama's OpenAI-compatible /models lists IDs; its native show API owns modalities. */
+async function ollamaVisionModelIds(baseURL: string, models: readonly { id: string }[]): Promise<Set<string>> {
+  const base = new URL(baseURL);
+  if (!base.pathname.endsWith("/v1")) return new Set();
+  base.pathname = `${base.pathname.slice(0, -3)}/api/show`;
+  const showURL = base.toString();
+  const vision = new Set<string>();
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(4, models.length) }, async () => {
+    while (cursor < models.length) {
+      const model = models[cursor++]!;
+      try {
+        const response = await fetch(showURL, {
+          method: "POST", redirect: "error", signal: AbortSignal.timeout(4_000),
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: JSON.stringify({ model: model.id }),
+        });
+        if (!response.ok) { await response.body?.cancel(); continue; }
+        const reader = response.body?.getReader();
+        if (!reader) continue;
+        const chunks: Uint8Array[] = []; let size = 0;
+        try {
+          while (true) {
+            const part = await reader.read(); if (part.done) break;
+            size += part.value.byteLength;
+            if (size > 64 * 1024) throw new Error("Ollama model metadata is too large");
+            chunks.push(part.value);
+          }
+        } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+        const metadata = object(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+        if (Array.isArray(metadata.capabilities) && metadata.capabilities.includes("vision")) vision.add(model.id);
+      } catch { /* Metadata is optional; the user can set image input explicitly. */ }
+    }
+  }));
+  return vision;
+}
+
 /** Runtime protocol coordinator; product persistence is owned by the injected configuration bridge. */
 export class RuntimeProviderService {
   private modelInfoReader?: RuntimeModelInfoReader;
@@ -355,7 +392,8 @@ export class RuntimeProviderService {
     if (input.source !== "endpoint" || !input.baseURL || !APIS.includes(input.api as typeof APIS[number])) throw new Error("Endpoint discovery requires a supported protocol and base URL");
     if (input.apiKey !== undefined && (typeof input.apiKey !== "string" || /[\r\n\0]/.test(input.apiKey))) throw new Error("Invalid discovery credential");
     // Explicit draft credentials only. Never send a stored provider secret to a new endpoint implicitly.
-    const url = `${endpoint(input.baseURL)}/models`;
+    const baseURL = endpoint(input.baseURL);
+    const url = `${baseURL}/models`;
     const response = await fetch(url, {
       redirect: "error", signal: AbortSignal.timeout(10_000),
       headers: { accept: "application/json", ...(input.apiKey?.trim() ? { authorization: `Bearer ${input.apiKey.trim()}` } : {}) },
@@ -383,6 +421,8 @@ export class RuntimeProviderService {
       ids.add(model.id.trim());
       return [{ id: model.id.trim(), ...(typeof model.name === "string" ? { name: model.name } : {}) }];
     });
-    return { models };
+    if (input.provider !== "ollama-cloud") return { models };
+    const vision = await ollamaVisionModelIds(baseURL, models);
+    return { models: models.map(model => vision.has(model.id) ? { ...model, input: ["text", "image"] as const } : model) };
   }
 }

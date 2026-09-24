@@ -103,7 +103,17 @@ export class ModelServicesController {
     const source = draft.config.baseURL && draft.config.api ? "endpoint" : "catalog";
     const models = await this.service.discoverModels(provider, this.input(provider), source);
     const merged = new Map(draft.config.models.map(model => [model.id, model]));
-    for (const model of models) if (!merged.has(model.id)) merged.set(model.id, model);
+    for (const model of models) {
+      const previous = merged.get(model.id);
+      if (!previous) { merged.set(model.id, model); continue; }
+      merged.set(model.id, {
+        ...previous,
+        ...(previous.name === undefined && model.name !== undefined ? { name: model.name } : {}),
+        ...(previous.contextWindow === undefined && model.contextWindow !== undefined ? { contextWindow: model.contextWindow } : {}),
+        ...(previous.maxTokens === undefined && model.maxTokens !== undefined ? { maxTokens: model.maxTokens } : {}),
+        ...(previous.input === undefined && model.input !== undefined ? { input: model.input } : {}),
+      });
+    }
     this.edit(provider, { models: [...merged.values()] });
     await this.commit(provider, true);
     this.message = `已获取 ${models.length} 个模型；未执行推理检查`;

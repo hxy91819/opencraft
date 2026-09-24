@@ -346,6 +346,37 @@ test("endpoint discovery hits /models even for a catalog provider; preserves pre
   } finally { await new Promise<void>((resolve) => server.close(() => resolve())); }
 });
 
+test("Ollama Cloud discovery uses its show API to declare image input without forwarding the draft key", async () => {
+  const requests: { path: string; auth: string | undefined; model?: string }[] = [];
+  const server = createServer(async (request, response) => {
+    response.setHeader("content-type", "application/json");
+    if (request.url === "/v1/models") {
+      requests.push({ path: request.url, auth: request.headers.authorization });
+      response.end(JSON.stringify({ data: [{ id: "vision-model" }, { id: "text-model" }, { id: "metadata-unavailable" }] }));
+      return;
+    }
+    const chunks: Buffer[] = []; for await (const chunk of request) chunks.push(Buffer.from(chunk));
+    const model = JSON.parse(Buffer.concat(chunks).toString("utf8")).model as string;
+    requests.push({ path: request.url!, auth: request.headers.authorization, model });
+    if (model === "metadata-unavailable") { response.statusCode = 503; response.end("{}"); return; }
+    response.end(JSON.stringify({ capabilities: model === "vision-model" ? ["completion", "vision"] : ["completion"] }));
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const baseURL = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`;
+    const result = await fixture().service.discover({ source: "endpoint", settingsNs: "llm-pi-ai", provider: "ollama-cloud", baseURL, api: "openai-completions", apiKey: "synthetic-draft-key" });
+    assert.deepEqual(result.models, [
+      { id: "vision-model", input: ["text", "image"] }, { id: "text-model" }, { id: "metadata-unavailable" },
+    ]);
+    assert.equal(requests.find(row => row.path === "/v1/models")?.auth, "Bearer synthetic-draft-key");
+    assert.equal(requests.filter(row => row.path === "/api/show").length, 3);
+    assert.ok(requests.filter(row => row.path === "/api/show").every(row => row.auth === undefined));
+    requests.length = 0;
+    await fixture().service.discover({ source: "endpoint", settingsNs: "llm-pi-ai", provider: "other", baseURL, api: "openai-completions" });
+    assert.deepEqual(requests.map(row => row.path), ["/v1/models"]);
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+});
+
 test("settings frontend saves through a single application command, never writes credentials", async () => {
   const f = fixture(); const methods: string[] = [];
   const request = (async (_host: string, method: string, params: any) => {
