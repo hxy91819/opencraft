@@ -274,6 +274,14 @@ test("direct apply cannot bypass enabling authentication validation", async () =
   assert.equal(f.calls.some((call) => call.method === "settings.mutate"), false);
 });
 
+test("an empty model connection cannot be enabled or leave a saved failed engine state", async () => {
+  const f = fixture();
+  await assert.rejects(f.service.apply({ target: { kind: "update", id: "existing" }, expectedRevision: 7,
+    baseURL: "https://original.test/v1", enabled: true, credential: { kind: "replace", value: "synthetic-key" } }), /先获取模型，并启用至少一个模型/);
+  assert.equal(f.calls.some(call => call.method === "settings.mutate"), false);
+  assert.equal(f.calls.some(call => call.method === "credentials.set"), false);
+});
+
 for (const failure of ["conflict", "reject"] as const) test(`${failure}: remove only uncommitted staged credential, never shared key`, async () => {
   const f = fixture(); f.fail(failure);
   await assert.rejects(f.service.apply(createInput()));

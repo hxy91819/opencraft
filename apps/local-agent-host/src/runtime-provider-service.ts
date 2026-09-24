@@ -282,6 +282,16 @@ export class RuntimeProviderService {
       const credentials = await this.client.call<{ credentials: Record<string, { configured: boolean }> }>("credentials.describe", { refs: [ref] });
       if (!credentials.credentials[ref]?.configured) throw new Error("Configure authentication before enabling this provider");
     }
+    if (input.enabled === true && ns === CUSTOM_NS) {
+      const declared = input.models ?? (Array.isArray(current.models) ? current.models : []);
+      const previousIds = new Set(Array.isArray(current.models) ? current.models.map(model => object(model).id) : []);
+      const policy = object(namespace.value).modelSelection;
+      const disabled = new Set(Array.isArray(object(policy)[id]) ? object(policy)[id] as string[] : []);
+      if (!declared.some(model => !disabled.has(model.id)
+        && !(input.disableNewModels === true && !previousIds.has(model.id)))) {
+        throw new Error("请先获取模型，并启用至少一个模型，再启用提供商");
+      }
+    }
     if (stagedRef && input.credential.kind === "replace") {
       try { await this.client.call("credentials.set", { ref: stagedRef, value: input.credential.value.trim() }); }
       catch { throw new DshClientError("provider-credential-uncertain", `Credential staging could not be confirmed. Configuration was not submitted. Recovery reference: ${stagedRef}`); }

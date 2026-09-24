@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {ModelConfigurationRepository,ModelCredentialRepository} from '../apps/local-agent-host/src/model-config/repository';
 import {ModelConfigurationService} from '../apps/local-agent-host/src/model-config/service';
+import {DshModelEngineAdapter} from '../apps/local-agent-host/src/model-config/dsh-adapter';
 import type {ConfiguredProvider} from '../apps/local-agent-host/src/model-config/model-document';
 import {migrateDshModels} from '../apps/local-agent-host/src/model-config/migrate-dsh';
 const provider:ConfiguredProvider={id:'custom-test',name:'Test',protocol:'openai-completions',baseUrl:'http://127.0.0.1:1/v1',credentialRef:'TEST_REF',enabled:true,models:[{id:'model-test',enabled:true}]};
@@ -23,6 +24,18 @@ test('OpenCraft JSON survives a fresh repository and engine replacement without 
 });
 test('invalid or engine-specific JSON does not overwrite the committed document',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'opencraft-model-store-'));try{const repo=new ModelConfigurationRepository(dir);await repo.initialize();await assert.rejects(repo.update(0,d=>{(d as any)['llm-pi-ai']={}}));assert.equal((await repo.read()).revision,0);await assert.rejects(repo.update(0,d=>{d.providers.push({...provider,baseUrl:'https://user:secret@example.invalid'})}));assert.equal((await repo.read()).providers.length,0)}finally{await rm(dir,{recursive:true,force:true})}
+});
+test('an existing enabled provider without models reports an actionable failure without touching DSH',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'opencraft-empty-provider-'));try{
+  const repo=new ModelConfigurationRepository(dir),credentials=new ModelCredentialRepository(dir);
+  await repo.initialize({schemaVersion:1,revision:0,providers:[{...provider,models:[]}],defaultModel:null});
+  let calls=0;
+  const service=new ModelConfigurationService(repo,credentials,new DshModelEngineAdapter({call:async()=>{calls++;throw Error('DSH should not be called')}} as any));
+  await service.synchronize();
+  assert.equal(service.application.state,'failed');
+  assert.match(service.application.error??'',/没有已启用模型。请先获取模型/);
+  assert.equal(calls,0);
+ }finally{await rm(dir,{recursive:true,force:true})}
 });
 test('legacy DSH import is one-way, preserves IDs and leaves secrets out of models.json',async()=>{
  const root=await mkdtemp(join(tmpdir(),'opencraft-model-migration-'));try{

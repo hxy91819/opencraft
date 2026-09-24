@@ -5,7 +5,7 @@ import {ModelConfigurationConflict} from './repository.js';
 import {createHash} from 'node:crypto';
 import {modelBaseUrlError} from '@opencraft/appserver-protocol';
 import type {ConfiguredProvider,ModelDocument} from './model-document.js';
-import {ModelConfigurationService,type ModelEnginePort,type ModelCredentialResolver} from './service.js';
+import {ModelConfigurationApplyError,ModelConfigurationService,type ModelEnginePort,type ModelCredentialResolver} from './service.js';
 
 const object=(v:unknown):Record<string,any>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,any>:{};
 const modelNamespaces=new Set(['llm-pi-ai','llm-deepseek','agent-default-model']);
@@ -43,7 +43,10 @@ export function fromDshProfile(id:string,value:unknown,disabled:unknown,catalogI
 export class DshModelEngineAdapter implements ModelEnginePort {
   constructor(private readonly client:Pick<DshClient,'call'>){}
   async apply(doc:ModelDocument,credentials:ModelCredentialResolver){
-    for(const provider of doc.providers){const issue=modelBaseUrlError(provider.baseUrl);if(issue)throw new Error(issue);}
+    for(const provider of doc.providers){
+      const issue=modelBaseUrlError(provider.baseUrl);if(issue)throw new Error(issue);
+      if(provider.enabled&&!provider.models.some(model=>model.enabled))throw new ModelConfigurationApplyError(`“${provider.name}”没有已启用模型。请先获取模型，并启用至少一个模型。`);
+    }
     const raw=await this.client.call<RuntimeSettingsDescribeResponse>('settings.describe');
     // Resolve everything before changing engine configuration. Values never enter the product document.
     const execution=structuredClone(doc);

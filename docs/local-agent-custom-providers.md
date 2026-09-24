@@ -42,6 +42,11 @@ reads `/v1/models`; imported models stay disabled until the user enables them.
 The entry does not install a separate Ollama runtime or change local Ollama
 connections. An API key is required before enabling inference unless the Host
 already provides `OLLAMA_API_KEY`.
+An enabled provider also needs at least one enabled model. The Host rejects
+an enable command before persisting when no model is ready. A previously saved
+empty enabled connection reports an actionable application error; fetching
+models and enabling one repairs the engine projection without changing the
+stored credential or default model.
 
 ## AppServer surface
 
