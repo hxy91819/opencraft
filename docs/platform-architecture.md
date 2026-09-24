@@ -278,7 +278,10 @@ Electron Main exposes a narrow, trusted-main-renderer `projects.pickDirectory`
 port. It opens a parented directory-only system dialog, validates the selected
 absolute directory, and returns a path or null on cancellation. It does not
 create a Project. The shared project menu consumes the port only for `local`;
-Web/remote Hosts retain their Host-scoped filesystem picker and advertised roots.
+Web/remote Hosts use their Host-scoped `fs/readDirectory` picker. Advertised
+`workspaceBrowseRoots` select its starting boundary when present. Without one,
+the picker starts at the filesystem root so a connected Web user can add an
+existing server folder without rebuilding the Web bundle.
 Adding a Project requires the selected Host transport to be ready; the menu
 explains why it is unavailable while connecting.
 An interaction epoch invalidates picker/create results when the draft, Host,

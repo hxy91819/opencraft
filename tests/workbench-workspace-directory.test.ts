@@ -38,3 +38,11 @@ test("an outside or missing initial folder resolves to the authoritative root", 
     "/workspace/projects/mono2",
   );
 });
+
+test("an unconfigured server browser can navigate from the filesystem root", () => {
+  assert.equal(isWorkspacePathWithinRoot("/projects/sample", "/"), true);
+  assert.equal(resolveWorkspacePickerInitialPath("/projects/sample", "/"), "/projects/sample");
+  assert.equal(workspaceParentPath("/projects/sample", "/"), "/projects");
+  assert.equal(workspaceParentPath("/projects", "/"), "/");
+  assert.equal(workspaceParentPath("/", "/"), "/");
+});
