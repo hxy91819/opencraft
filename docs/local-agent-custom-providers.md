@@ -39,6 +39,11 @@ list it. Its new connection draft uses OpenCode's OpenAI-compatible endpoint
 `https://ollama.com/v1`, the `openai-completions` wire format and the optional
 Host environment reference `OLLAMA_API_KEY`. The existing endpoint discovery
 reads `/v1/models`; imported models stay disabled until the user enables them.
+For Ollama Cloud, discovery also reads each model's same-origin `/api/show`
+capabilities with a bounded, unauthenticated request. A reported `vision`
+capability adds image input to the model declaration; missing metadata stays
+conservative. Re-fetching fills missing metadata on existing models while
+preserving an explicit user choice to keep a model text-only.
 The entry does not install a separate Ollama runtime or change local Ollama
 connections. An API key is required before enabling inference unless the Host
 already provides `OLLAMA_API_KEY`.
