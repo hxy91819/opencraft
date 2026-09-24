@@ -92,7 +92,7 @@ export class RuntimeProviderService {
       const provider = directory.providers.find(entry => entry.provider === group.id && entry.active) ?? directory.providers.find(entry => entry.provider === group.id);
       const declared = object(object(config.providers)[group.id]).models;
       const builtin = provider?.settingsNs === CUSTOM_NS && Array.isArray(declared) && declared.length
-        ? provider.declared ? new Set<string>() : new Set((await this.client.call<RuntimeModelsDiscoverResponse>("llm.discoverModels", { settingsNs: CUSTOM_NS, provider: group.id })).models.map(model => model.id))
+        ? provider.declared || provider.provider === "ollama-cloud" ? new Set<string>() : new Set((await this.client.call<RuntimeModelsDiscoverResponse>("llm.discoverModels", { settingsNs: CUSTOM_NS, provider: group.id })).models.map(model => model.id))
         : null;
       const disabled = new Set(Array.isArray(policy[group.id]) ? policy[group.id] as string[] : []);
       return { ...group, models: (await Promise.all(group.models.map(async model => {
@@ -153,7 +153,9 @@ export class RuntimeProviderService {
       const value = at(section?.value, provider.settingsPath);
       const configured = value !== undefined;
       return { ...provider, configured, enabled: configured && object(value).enabled !== false,
-        ...(provider.settingsNs === CUSTOM_NS ? { configuration: { modelDeclarations: true, apis: APIS, canToggle: true, canProbe: true } } : {}),
+        ...(provider.settingsNs === CUSTOM_NS ? { configuration: { modelDeclarations: true, apis: APIS, canToggle: true, canProbe: true,
+          ...(provider.provider === "ollama-cloud" ? { defaultBaseURL: "https://ollama.com/v1", defaultApi: "openai-completions" as const, defaultCredentialRef: "OLLAMA_API_KEY" } : {}),
+        } } : {}),
         // The pinned native DeepSeek adapter speaks Chat Completions. These are
         // public draft-probe defaults, never a readback of credentials or env overrides.
         ...(provider.settingsNs === "llm-deepseek" && provider.provider === "deepseek-official" ? { configuration: {
@@ -252,8 +254,10 @@ export class RuntimeProviderService {
     switch (input.credential?.kind) {
       case "keep": {
         const oldEndpoint = typeof current.baseURL === "string" ? endpoint(current.baseURL, false) : "";
-        if (!create && baseURL !== oldEndpoint && !input.credential.allowEndpointChange) throw new Error("Changing the endpoint requires confirmation before reusing its credential");
+        if (!create && baseURL !== oldEndpoint && !input.credential.allowEndpointChange
+          && !(id === "ollama-cloud" && typeof current.apiKeyEnv !== "string")) throw new Error("Changing the endpoint requires confirmation before reusing its credential");
         if (create) set("apiKeyEnv", `OPENCRAFT_UNBOUND_${randomUUID().replaceAll("-", "_")}`);
+        else if (id === "ollama-cloud" && typeof current.apiKeyEnv !== "string") set("apiKeyEnv", "OLLAMA_API_KEY");
         break;
       }
       case "replace":

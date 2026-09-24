@@ -65,7 +65,7 @@ export interface RuntimeProviderView {
   readonly enabled?: boolean;
   readonly declared?: boolean;
   readonly configuration?: { readonly modelDeclarations: boolean; readonly apis: readonly RuntimeOpenAIProtocol[]; readonly canToggle?: boolean; readonly canProbe?: boolean; readonly canCheckSaved?: boolean;
-    readonly defaultBaseURL?: string; readonly defaultApi?: RuntimeOpenAIProtocol };
+    readonly defaultBaseURL?: string; readonly defaultApi?: RuntimeOpenAIProtocol; readonly defaultCredentialRef?: string };
 }
 
 export interface RuntimeProvidersListResponse {

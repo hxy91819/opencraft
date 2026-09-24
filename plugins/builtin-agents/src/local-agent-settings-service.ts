@@ -86,16 +86,16 @@ export class LocalAgentSettingsService {
     const namespace = this.snapshot.settings?.namespaces.find((entry) => entry.ns === provider.settingsNs);
     const profile = record(atPath(namespace?.value, provider.settingsPath));
     return {
-      baseURL: typeof profile.baseURL === "string" ? profile.baseURL : "",
+      baseURL: typeof profile.baseURL === "string" ? profile.baseURL : !provider.configured && provider.configuration?.modelDeclarations ? provider.configuration.defaultBaseURL ?? "" : "",
       displayName: typeof profile.displayName === "string" ? profile.displayName : provider.displayName,
-      api: profile.api === "openai-completions" || profile.api === "openai-responses" ? profile.api : undefined,
+      api: profile.api === "openai-completions" || profile.api === "openai-responses" ? profile.api : !provider.configured && provider.configuration?.modelDeclarations ? provider.configuration.defaultApi : undefined,
       // DSH materializes an omitted optional modality array as []. The public
       // command uses omission for inherited capabilities and rejects explicit
       // empty declarations. Normalize the read projection, not the stored data.
       models: Array.isArray(profile.models) ? (profile.models as RuntimeDiscoveredModelView[]).map(model =>
         Array.isArray(model.input) && model.input.length === 0 ? { ...model, input: undefined } : model) : [],
       credentialRef: typeof profile.apiKeyEnv === "string" && profile.apiKeyEnv.trim() !== ""
-        ? profile.apiKeyEnv.trim() : defaultCredentialRef(provider.provider),
+        ? profile.apiKeyEnv.trim() : provider.configuration?.defaultCredentialRef ?? defaultCredentialRef(provider.provider),
     };
   }
 

@@ -5,6 +5,7 @@ const providerAliases = new Map(Object.entries({
   "ant-ling": "antgroup", "azure-openai-responses": "azure", "google-vertex": "vertexai",
   "cloudflare-ai-gateway": "cloudflare", "cloudflare-workers-ai": "cloudflare",
   "github-copilot": "githubcopilot", "kimi-coding": "kimi", "z-ai": "zai",
+  "ollama-cloud": "ollama",
 }));
 const modelFamilies: readonly [RegExp, string][] = [
   [/(?:^|[/:.])claude(?:[-_.\d]|$)/i, "claude"],

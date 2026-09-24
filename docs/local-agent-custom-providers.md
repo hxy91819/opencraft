@@ -34,6 +34,15 @@ The bundled pi-ai adapter supports `openai-completions` and `openai-responses`.
 These are API wire formats, not authentication mechanisms or a guarantee that
 every provider implements every model capability. Codex OAuth remains separate.
 
+Ollama Cloud is a fixed provider entry even when the pinned DSH catalog does not
+list it. Its new connection draft uses OpenCode's OpenAI-compatible endpoint
+`https://ollama.com/v1`, the `openai-completions` wire format and the optional
+Host environment reference `OLLAMA_API_KEY`. The existing endpoint discovery
+reads `/v1/models`; imported models stay disabled until the user enables them.
+The entry does not install a separate Ollama runtime or change local Ollama
+connections. An API key is required before enabling inference unless the Host
+already provides `OLLAMA_API_KEY`.
+
 ## AppServer surface
 
 - `runtime/models/check`: 调用方只能传 provider、model、expectedRevision。后端绑定已保存的地址、协议、模型和凭据引用，缺失密钥才提示配置；解析凭据后再次检查连接快照，防止新地址接收旧密钥。可以检查尚未启用的完整连接，但不改变启用或默认模型状态。前端仅在宿主声明 canCheckSaved 时呈现此能力。

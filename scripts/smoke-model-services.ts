@@ -64,6 +64,13 @@ try {
   };
   await page.goto(`http://127.0.0.1:${(vite.httpServer!.address() as { port:number }).port}`);
   await page.getByRole('heading', { name: 'DeepSeek', exact: true }).waitFor();
+  await page.getByRole('textbox', { name: '搜索提供商' }).fill('Ollama Cloud');
+  await page.getByRole('button', { name: 'Ollama Cloud', exact: true }).click();
+  await page.getByRole('heading', { name: 'Ollama Cloud', exact: true }).waitFor();
+  assert.equal(await page.getByLabel('API 基础地址（Base URL）', { exact: true }).inputValue(), 'https://ollama.com/v1');
+  await page.locator('.model-services__detail [data-brand-kind="provider"] [data-brand-id="ollama"]').waitFor();
+  await page.getByRole('textbox', { name: '搜索提供商' }).fill('');
+  await page.getByRole('button', { name: 'DeepSeek', exact: true }).click();
   assert.equal(await page.locator('.model-services__provider-row button input').count(),0);
   assert.equal(await page.getByRole('switch',{name:'启用提供商：DeepSeek',exact:true}).getAttribute('aria-checked'),'true');
   assert.equal(await page.getByRole('switch',{name:'启用提供商：DeepSeek',exact:true}).isDisabled(),true);

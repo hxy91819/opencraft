@@ -10,6 +10,15 @@ import {ModelConfigurationService,type ModelEnginePort,type ModelCredentialResol
 const object=(v:unknown):Record<string,any>=>v&&typeof v==='object'&&!Array.isArray(v)?v as Record<string,any>:{};
 const modelNamespaces=new Set(['llm-pi-ai','llm-deepseek','agent-default-model']);
 const native=(p:ConfiguredProvider)=>p.id==='deepseek-official'&&p.catalogId==='deepseek';
+const OLLAMA_CLOUD_ID='ollama-cloud';
+function withOllamaCloud(directory:RuntimeProvidersListResponse):RuntimeProvidersListResponse{
+  if(directory.providers.some(provider=>provider.provider===OLLAMA_CLOUD_ID))return {...directory,providers:directory.providers.map(provider=>
+    provider.provider===OLLAMA_CLOUD_ID?{...provider,declared:false}:provider)};
+  return {...directory,providers:[...directory.providers,{
+    provider:OLLAMA_CLOUD_ID,displayName:'Ollama Cloud',declared:false,
+    settingsNs:'llm-pi-ai',settingsPath:['providers',OLLAMA_CLOUD_ID],active:false,
+  }]};
+}
 function profile(p:ConfiguredProvider){return {displayName:p.name,enabled:p.enabled,...(p.baseUrl?{baseURL:p.baseUrl}:{}),apiKeyEnv:p.credentialRef??'OPENCRAFT_UNBOUND',api:p.protocol,models:p.models.map(({enabled,...m})=>m)}}
 
 /** Engine-specific format exists only in this adapter, never in models.json. */
@@ -63,7 +72,7 @@ export class DshModelConfigurationBridge {
   private rawSettings:RuntimeSettingsDescribeResponse={writable:true,hasDocument:false,namespaces:[]};
   private rawProviders:RuntimeProvidersListResponse={providers:[]};
   constructor(private readonly client:Pick<DshClient,'call'>,readonly config:ModelConfigurationService){}
-  async initialize(){await this.config.repository.initialize();this.rawSettings=await this.client.call('settings.describe');this.rawProviders=await this.client.call('llm.providers');await this.config.synchronize();}
+  async initialize(){await this.config.repository.initialize();this.rawSettings=await this.client.call('settings.describe');this.rawProviders=withOllamaCloud(await this.client.call('llm.providers'));await this.config.synchronize();}
   private async describe(){
     try{this.rawSettings=await this.client.call('settings.describe')}catch{/* Product configuration remains readable if execution fails. */}
     const doc=await this.config.repository.read(), values=sections(doc,this.rawSettings);
@@ -97,7 +106,7 @@ export class DshModelConfigurationBridge {
     await this.config.synchronize();
     if(method==='settings.describe')return await this.describe() as T;
     if(method==='llm.providers'){
-      try{this.rawProviders=await this.client.call('llm.providers')}catch{/* Use last known catalog metadata. */}
+      try{this.rawProviders=withOllamaCloud(await this.client.call('llm.providers'))}catch{/* Use last known catalog metadata. */}
       const doc=await this.config.repository.read();
       const providers=this.rawProviders.providers.filter(p=>!p.declared||doc.providers.some(v=>v.id===p.provider)).map(p=>({...p,displayName:doc.providers.find(v=>v.id===p.provider)?.name??p.displayName,active:this.config.application.state==='applied'&&p.active}));
       for(const p of doc.providers)if(!providers.some(v=>v.provider===p.id))providers.push({provider:p.id,displayName:p.name,declared:!p.catalogId,settingsNs:native(p)?'llm-deepseek':'llm-pi-ai',settingsPath:native(p)?[]:['providers',p.id],active:false});
