@@ -3731,8 +3731,12 @@ html[data-codex-window-type="browser"] .main-content-top-fade {
 
 .workspace-picker-primary {
   border: 1px solid transparent;
-  background: var(--color-text);
-  color: var(--color-background-primary);
+  background: var(--color-background-button-primary);
+  color: var(--color-text-button-primary);
+
+  &:not(:disabled):hover {
+    background: var(--color-background-button-primary-hover);
+  }
 }
 
 @keyframes workspace-picker-spin {
