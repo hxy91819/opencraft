@@ -41,9 +41,21 @@ Host environment reference `OLLAMA_API_KEY`. The existing endpoint discovery
 reads `/v1/models`; imported models stay disabled until the user enables them.
 For Ollama Cloud, discovery also reads each model's same-origin `/api/show`
 capabilities with a bounded, unauthenticated request. A reported `vision`
-capability adds image input to the model declaration; missing metadata stays
+capability adds image input. String levels reported in `thinking.values` add
+the corresponding reasoning efforts (`minimal`, `low`, `medium`, `high`,
+`xhigh`, `max`) to the model declaration. The `false` value is not mapped to
+Off: omitting `reasoning_effort` on the OpenAI-compatible endpoint does not
+guarantee that Ollama disables its default thinking. Missing metadata stays
 conservative. Re-fetching fills missing metadata on existing models while
-preserving an explicit user choice to keep a model text-only.
+preserving explicit user choices. Model actions let users set supported
+reasoning levels individually when an endpoint does not expose that metadata;
+the model endpoint must actually accept the chosen `reasoning_effort` value.
+The product model document persists these declarations and projects them to
+DSH, so they survive Host restart and feed the Composer reasoning selector.
+Other providers' catalog and OpenAI-compatible `/models` discovery currently
+return model IDs without reliable per-model reasoning levels. Built-in DSH
+models can still report their own capabilities at runtime; declared custom
+models can use the same manual setting instead of guessing from model names.
 The entry does not install a separate Ollama runtime or change local Ollama
 connections. An API key is required before enabling inference unless the Host
 already provides `OLLAMA_API_KEY`.

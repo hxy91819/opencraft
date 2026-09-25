@@ -146,6 +146,11 @@ try {
   await page.getByText(/已收到文本响应/).waitFor();
   await page.getByText('未启用模型', { exact:true }).click();
   assert.equal(await page.getByRole('switch', {name:'启用 imported-model',exact:true}).getAttribute('aria-checked'),'false');
+  await page.getByRole('button', { name:'模型操作：imported-model' }).click();
+  await page.getByRole('switch', { name:'imported-model：高思考' }).click();
+  await page.getByRole('status').getByText('已添加思考档位', { exact:true }).waitFor();
+  await page.keyboard.press('Escape');
+  await page.getByText('思考档位：高', { exact:true }).waitFor();
   await setProviderDefault('Test gateway');
   await page.getByText('默认模型已更新，已有会话保持原选择', {exact:true}).waitFor();
   await page.locator('.model-services__navigation .model-services__provider-row').filter({hasText:'Test gateway'}).first().click({button:'right'});

@@ -9,6 +9,11 @@ import { modelBaseUrlError } from "@opencraft/appserver-protocol";
 import { ModelServicesController } from "./controller";
 import { BrandMark } from "./brand-mark";
 
+const REASONING_LEVELS = [
+  ["minimal", "最少"], ["low", "低"], ["medium", "中"],
+  ["high", "高"], ["xhigh", "很高"], ["max", "最高"],
+] as const;
+
 function MoreActions({ label, children }: { label: string; children: React.ReactNode }) {
   return <Popover.Root><Popover.Trigger asChild><SettingsIconButton label={label}><Ellipsis size={16} /></SettingsIconButton></Popover.Trigger>
     <Popover.Portal><Popover.Content className="model-services-actions" align="end" sideOffset={6} collisionPadding={12} aria-label={label}>{children}</Popover.Content></Popover.Portal>
@@ -140,9 +145,15 @@ function ProviderDetail({ controller, provider }: { controller: ModelServicesCon
     const supportsImages = model.input?.includes("image") === true;
     const capabilityEditable = provider.configuration?.modelDeclarations === true && declared !== undefined;
     const capabilityPending = controller.isModelCapabilityPending(provider.provider, model.id);
+    const declaredEfforts = declared?.reasoningEfforts;
+    const reasoningEditable = capabilityEditable && (declaredEfforts !== undefined || !model.reasoning?.efforts.length);
+    const reasoningLabels = REASONING_LEVELS.filter(([level]) =>
+      declaredEfforts
+        ? Object.hasOwn(declaredEfforts, level)
+        : model.reasoning?.efforts.some(effort => effort.id === level)).map(([, label]) => label);
     return <div className="model-services__model" key={model.id}>
     <BrandMark kind="model" id={model.id} size={32} />
-    <div><strong>{model.name}</strong></div>
+    <div><strong>{model.name}</strong>{reasoningLabels.length ? <small>思考档位：{reasoningLabels.join("、")}</small> : null}</div>
     {isDefault(model.id) ? <span className="model-services__kind">默认</span> : null}
     <MoreActions label={`模型操作：${model.id}`}><small>{model.id}</small>
       <Popover.Close asChild><SettingsButton variant="quiet" aria-label={`设为默认：${model.id}`} disabled={!editable || draft.dirty || !provider.active || model.enabled === false || isDefault(model.id)} onClick={() => { void controller.setDefault(provider, model.id); }}>设为默认</SettingsButton></Popover.Close>
@@ -153,6 +164,20 @@ function ProviderDetail({ controller, provider }: { controller: ModelServicesCon
           : <SettingsSwitch label={`允许 ${model.name} 接收图片输入`} checked={supportsImages} disabled={!editable || draft.dirty}
             title={draft.dirty ? "请先保存或取消连接配置的修改" : undefined}
             onCheckedChange={value => { void controller.setModelImageInput(provider, model.id, value); }} />}
+      </div> : null}
+      {reasoningEditable ? <div className="model-services-actions__reasoning">
+        <strong>思考档位</strong>
+        <small>{provider.provider === "ollama-cloud" ? "获取模型会补齐已知档位；仅开启实际可用的档位" : "按模型接口实际支持的档位设置"}</small>
+        <div className="model-services-actions__reasoning-levels">
+          {REASONING_LEVELS.map(([level, label]) => <div key={level}>
+            <span>{label}</span>
+            <SettingsSwitch label={`${model.name}：${label}思考`}
+              checked={declaredEfforts !== false && Object.hasOwn(declaredEfforts ?? {}, level)}
+              disabled={!editable || draft.dirty || capabilityPending}
+              onCheckedChange={value => { void controller.setModelReasoningLevel(provider, model.id, level, value); }} />
+          </div>)}
+        </div>
+        {capabilityPending ? <small role="status">正在保存模型能力…</small> : null}
       </div> : null}
     </MoreActions>
     <SettingsSwitch label={`启用 ${model.name}`} checked={model.enabled !== false} disabled={!editable || draft.dirty || isDefault(model.id)} onCheckedChange={value => { void controller.changeModel(provider, model.id, value); }} />

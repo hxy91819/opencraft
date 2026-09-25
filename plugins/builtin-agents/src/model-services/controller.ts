@@ -112,6 +112,7 @@ export class ModelServicesController {
         ...(previous.contextWindow === undefined && model.contextWindow !== undefined ? { contextWindow: model.contextWindow } : {}),
         ...(previous.maxTokens === undefined && model.maxTokens !== undefined ? { maxTokens: model.maxTokens } : {}),
         ...(previous.input === undefined && model.input !== undefined ? { input: model.input } : {}),
+        ...(previous.reasoningEfforts === undefined && model.reasoningEfforts !== undefined ? { reasoningEfforts: model.reasoningEfforts } : {}),
       });
     }
     this.edit(provider, { models: [...merged.values()] });
@@ -124,7 +125,8 @@ export class ModelServicesController {
     this.edit(provider, { models: [...draft.config.models, model] });
     await this.commit(provider);
   }); }
-  async setModelImageInput(provider: RuntimeProviderView, modelId: string, enabled: boolean) {
+  private async updateModelCapabilities(provider: RuntimeProviderView, modelId: string,
+    update: (model: RuntimeDiscoveredModelView) => RuntimeDiscoveredModelView, message: string) {
     const pendingKey = this.modelCapabilityKey(provider.provider, modelId);
     if (this.disposed || this.pendingModelCapabilities.has(pendingKey)) return;
     this.pendingModelCapabilities.add(pendingKey); this.error = null; this.message = null; this.notify();
@@ -134,8 +136,7 @@ export class ModelServicesController {
       if (draft.dirty) throw new Error("请先保存或取消连接配置的修改");
       const model = draft.config.models.find(entry => entry.id === modelId);
       if (!model) throw new Error("模型声明已变化，请刷新后重试");
-      const input = enabled ? ["text", "image"] as const : ["text"] as const;
-      const models = draft.config.models.map(entry => entry.id === modelId ? { ...entry, input } : entry);
+      const models = draft.config.models.map(entry => entry.id === modelId ? update(entry) : entry);
       await this.service.saveProvider(provider, {
         baseURL: draft.config.baseURL,
         credential: { kind: "keep" },
@@ -144,13 +145,28 @@ export class ModelServicesController {
         models,
       }, draft.revision);
       this.drafts.delete(provider.provider);
-      this.message = enabled ? "已允许图片输入" : "已设为仅文本输入";
+      this.message = message;
     } catch (error) {
       this.error = error instanceof Error ? error.message : String(error);
     } finally {
       this.pendingModelCapabilities.delete(pendingKey);
       if (!this.disposed) this.notify();
     }
+  }
+  setModelImageInput(provider: RuntimeProviderView, modelId: string, enabled: boolean) {
+    return this.updateModelCapabilities(provider, modelId, model => ({
+      ...model, input: enabled ? ["text", "image"] : ["text"],
+    }), enabled ? "已允许图片输入" : "已设为仅文本输入");
+  }
+  setModelReasoningLevel(provider: RuntimeProviderView, modelId: string,
+    level: "minimal" | "low" | "medium" | "high" | "xhigh" | "max", enabled: boolean) {
+    return this.updateModelCapabilities(provider, modelId, model => {
+      const current = model.reasoningEfforts || {};
+      const next = { ...current };
+      if (enabled) next[level] = level;
+      else delete next[level];
+      return { ...model, reasoningEfforts: Object.keys(next).length ? next : false };
+    }, enabled ? "已添加思考档位" : "已移除思考档位");
   }
   create(name: string) { return this.run(async () => {
     const previous = this.creationIds.get(name);
