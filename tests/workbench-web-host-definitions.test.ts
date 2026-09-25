@@ -107,6 +107,27 @@ test("browser Host definitions preserve identity and reject ambiguous or credent
   ]), "wss://fallback.example/rpc"), /must use ws: or wss:/u);
 });
 
+test("same-origin Host paths use the page's WebSocket scheme and authority", () => {
+  const definition = [{ hostId: "local", label: "Server", kind: "remote-control", url: "/appserver" }];
+  assert.equal(
+    parseWebHostDefinitions(JSON.stringify(definition), "wss://fallback.example/rpc")[0]?.url,
+    "wss://ui.example/appserver",
+  );
+  const originalLocation = window.location;
+  Object.defineProperty(window, "location", {
+    configurable: true,
+    value: { href: "http://server.example:8082/", protocol: "http:" },
+  });
+  try {
+    assert.equal(
+      parseWebHostDefinitions(JSON.stringify(definition), "ws://fallback.example/rpc")[0]?.url,
+      "ws://server.example:8082/appserver",
+    );
+  } finally {
+    Object.defineProperty(window, "location", { configurable: true, value: originalLocation });
+  }
+});
+
 test("WebSocket connection provider enforces the browser security boundary", () => {
   const context = { platform: "web" as const, hostId: "host:test", profileRevision: 0 };
   assert.deepEqual(
