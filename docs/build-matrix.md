@@ -120,6 +120,9 @@ ships the Agent next to the application; Web ships only the AppServer client.
 When `VITE_WEB_BUILTIN_AGENTS=enabled`, Web also bundles the built-in Agent
 settings views. The deployment must provide `local` and `local-codex` AppServer
 endpoints; this flag does not bundle an execution engine.
+Host definitions may use root-relative WebSocket paths such as `/appserver` and
+`/codex-appserver`. The browser resolves them against its current HTTP or HTTPS
+origin, so one Web build works behind both authenticated entry points.
 
 ## macOS Developer ID 签名包运行手册
 

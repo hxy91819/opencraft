@@ -386,6 +386,10 @@ export function parseWebHostDefinitions(
       throw new Error(`Host definition ${index} requires hostId, label and url`);
     }
     const parsedUrl = new URL(url, window.location.href);
+    const sameOriginPath = url.startsWith("/") && !url.startsWith("//");
+    if (sameOriginPath) {
+      parsedUrl.protocol = parsedUrl.protocol === "https:" ? "wss:" : "ws:";
+    }
     if (parsedUrl.protocol !== "ws:" && parsedUrl.protocol !== "wss:") {
       throw new Error(`Host definition ${hostId} must use ws: or wss:`);
     }
@@ -403,7 +407,7 @@ export function parseWebHostDefinitions(
       transportEndpoint,
       executionLocation,
       workspaceBrowseRoots,
-      url,
+      url: sameOriginPath ? parsedUrl.href : url,
       kind: kind as HostRuntimeDescriptor["kind"],
     };
   });
