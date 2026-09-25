@@ -124,6 +124,7 @@
     "smoke:workspace-presentation": "tsx scripts/smoke-workspace-presentation.ts",
     "smoke:side-chat-appserver": "tsx scripts/smoke-side-chat-appserver.ts",
     "smoke:codex-account-pool": "tsx scripts/smoke-codex-account-pool.ts",
+    "smoke:codex-device-copy": "tsx scripts/smoke-codex-device-copy.ts",
     "smoke:codex-engine": "tsx scripts/smoke-codex-engine.ts",
     "smoke:url-presentation": "tsx scripts/smoke-url-presentation.ts",
     "test:environments": "tsx --test tests/workbench-environments.test.ts tests/lightvela-environment-creation.test.ts tests/environment-directory.test.ts",

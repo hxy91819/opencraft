@@ -255,7 +255,7 @@ export function CodexDeviceLoginContent({ login, canceling, onCancel }: {
     </header>
     <div className="codex-device-login">
       <span className="codex-device-login__eyebrow">设备验证码</span>
-      <div className="codex-device-login__code"><strong>{login.userCode}</strong><SettingsCopyButton value={login.userCode} label="复制" /></div>
+      <div className="codex-device-login__code"><strong>{login.userCode}</strong><SettingsCopyButton value={login.userCode} label="复制" successLabel="已复制" errorLabel="复制失败，请手动选中验证码复制" /></div>
       <p>验证码将在 {formatDate(login.expiresAt)} 失效。</p>
       <div className="codex-device-login__waiting" role="status"><span aria-hidden="true" />正在等待浏览器授权…</div>
     </div>

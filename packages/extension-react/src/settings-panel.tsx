@@ -22,17 +22,50 @@ export const SettingsIconButton = forwardRef<HTMLButtonElement, ButtonHTMLAttrib
   },
 );
 
-export function SettingsCopyButton({ value, label, icon }: { value: string; label: string; icon?: ReactNode }) {
+function copyWithSelection(value: string, container: HTMLElement): boolean {
+  const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const selection = window.getSelection();
+  const ranges = selection ? Array.from({ length: selection.rangeCount }, (_, index) => selection.getRangeAt(index).cloneRange()) : [];
+  const field = document.createElement("textarea");
+  field.value = value;
+  field.readOnly = true;
+  field.style.position = "fixed";
+  field.style.left = "-9999px";
+  container.appendChild(field);
+  try {
+    field.focus();
+    field.select();
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    field.remove();
+    selection?.removeAllRanges();
+    for (const range of ranges) selection?.addRange(range);
+    focused?.focus({ preventScroll: true });
+  }
+}
+
+export function SettingsCopyButton({ value, label, icon, successLabel = "Copied", errorLabel = "Could not copy. Please try again." }: {
+  value: string; label: string; icon?: ReactNode; successLabel?: string; errorLabel?: string;
+}) {
   const [status, setStatus] = useState("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const container = useRef<HTMLSpanElement>(null);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-  return <span className="settings-copy-control">
+  const copy = async () => {
+    if (container.current && copyWithSelection(value, container.current)) return;
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard is unavailable");
+    await navigator.clipboard.writeText(value);
+  };
+  return <span className="settings-copy-control" ref={container}>
     <SettingsButton type="button" variant="quiet" title={label} onClick={() => {
-      void navigator.clipboard.writeText(value).then(() => {
-        setStatus("Copied");
+      setStatus("");
+      void copy().then(() => {
+        setStatus(successLabel);
         if (timer.current) clearTimeout(timer.current);
         timer.current = setTimeout(() => setStatus(""), 2000);
-      }).catch(() => setStatus("Could not copy. Please try again."));
+      }).catch(() => setStatus(errorLabel));
     }}><span aria-hidden="true">{icon}</span>{label}</SettingsButton>
     <span className="settings-copy-control__status" role="status">{status}</span>
   </span>;
