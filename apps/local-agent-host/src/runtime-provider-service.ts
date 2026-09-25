@@ -6,7 +6,7 @@ import type {
   RuntimeModelsDiscoverParams, RuntimeModelsDiscoverResponse,
   RuntimeProviderSetEnabledParams,
   RuntimeModelsListResponse, RuntimeModelMutationParams,
-  RuntimeModelProbeParams,
+  RuntimeModelProbeParams, RuntimeDiscoveredModelView, RuntimeModelView,
 } from "@opencraft/appserver-protocol";
 import { probeRuntimeModel } from "./runtime-model-probe.js";
 import { modelBaseUrlError } from "@opencraft/appserver-protocol";
@@ -33,13 +33,23 @@ function endpoint(value: string, validateOperation = true): string {
   return url.toString().replace(/\/+$/, "");
 }
 
-/** Ollama's OpenAI-compatible /models lists IDs; its native show API owns modalities. */
-async function ollamaVisionModelIds(baseURL: string, models: readonly { id: string }[]): Promise<Set<string>> {
+const OLLAMA_REASONING_LEVELS = new Set(["minimal", "low", "medium", "high", "xhigh", "max"]);
+const REASONING_ORDER = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
+
+function declaredReasoning(value: unknown): RuntimeModelView["reasoning"] | undefined {
+  if (value === undefined || value === false) return undefined;
+  const efforts = object(value);
+  const declared = REASONING_ORDER.filter(level => Object.hasOwn(efforts, level));
+  return declared.length ? { efforts: declared.map(level => ({ id: level, name: level })) } : undefined;
+}
+
+/** Ollama's OpenAI-compatible /models lists IDs; its native show API owns capabilities. */
+async function ollamaModelMetadata(baseURL: string, models: readonly { id: string }[]): Promise<Map<string, Pick<RuntimeDiscoveredModelView, "input" | "reasoningEfforts">>> {
   const base = new URL(baseURL);
-  if (!base.pathname.endsWith("/v1")) return new Set();
+  if (!base.pathname.endsWith("/v1")) return new Map();
   base.pathname = `${base.pathname.slice(0, -3)}/api/show`;
   const showURL = base.toString();
-  const vision = new Set<string>();
+  const metadataByModel = new Map<string, Pick<RuntimeDiscoveredModelView, "input" | "reasoningEfforts">>();
   let cursor = 0;
   await Promise.all(Array.from({ length: Math.min(4, models.length) }, async () => {
     while (cursor < models.length) {
@@ -63,11 +73,20 @@ async function ollamaVisionModelIds(baseURL: string, models: readonly { id: stri
           }
         } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
         const metadata = object(JSON.parse(Buffer.concat(chunks).toString("utf8")));
-        if (Array.isArray(metadata.capabilities) && metadata.capabilities.includes("vision")) vision.add(model.id);
+        const input = Array.isArray(metadata.capabilities) && metadata.capabilities.includes("vision")
+          ? ["text", "image"] as const : undefined;
+        const thinking = object(metadata.thinking);
+        const levels = Array.isArray(thinking.values)
+          ? [...new Set(thinking.values.filter((value): value is string =>
+            typeof value === "string" && OLLAMA_REASONING_LEVELS.has(value)))] : [];
+        const reasoningEfforts = levels.length
+          ? Object.fromEntries(levels.map(level => [level, level])) as Exclude<RuntimeDiscoveredModelView["reasoningEfforts"], false | undefined>
+          : undefined;
+        if (input || reasoningEfforts) metadataByModel.set(model.id, { ...(input ? { input } : {}), ...(reasoningEfforts ? { reasoningEfforts } : {}) });
       } catch { /* Metadata is optional; the user can set image input explicitly. */ }
     }
   }));
-  return vision;
+  return metadataByModel;
 }
 
 /** Runtime protocol coordinator; product persistence is owned by the injected configuration bridge. */
@@ -117,10 +136,11 @@ export class RuntimeProviderService {
         const declared = provider.settingsNs === CUSTOM_NS ? object(object(config.providers)[provider.provider]).models
           : object(at(section?.value, provider.settingsPath)).models;
         if (Array.isArray(declared)) groups = [...groups, { id: provider.provider, name: provider.displayName,
-          models: declared.map(entry => { const model = object(entry); return { id: String(model.id), name: String(model.name ?? model.id),
+          models: declared.map(entry => { const model = object(entry); const reasoning = declaredReasoning(model.reasoningEfforts); return { id: String(model.id), name: String(model.name ?? model.id),
             ...(typeof model.contextWindow === "number" ? { contextWindow: model.contextWindow } : {}),
             ...(typeof model.maxTokens === "number" ? { maxTokens: model.maxTokens } : {}),
             ...(Array.isArray(model.input ?? model.inputModalities) ? { input: (model.input ?? model.inputModalities) as ("text" | "image")[] } : {}),
+            ...(reasoning ? { reasoning } : {}),
           }; }),
         }];
       }
@@ -243,6 +263,13 @@ export class RuntimeProviderService {
         if (model.name !== undefined && (typeof model.name !== "string" || !model.name.trim())) throw new Error("Model display names must be nonempty");
         if (model.contextWindow !== undefined && model.maxTokens !== undefined && model.maxTokens > model.contextWindow) throw new Error("Output limit cannot exceed the context window");
         if (model.input !== undefined && (!Array.isArray(model.input) || !model.input.includes("text") || new Set(model.input).size !== model.input.length || model.input.some((value: unknown) => value !== "text" && value !== "image"))) throw new Error("Model input must include text and optionally image");
+        if (model.reasoningEfforts !== undefined && model.reasoningEfforts !== false) {
+          const efforts = object(model.reasoningEfforts);
+          if (!Object.keys(efforts).some(level => level !== "off") || Object.entries(efforts).some(([level, wire]) =>
+            !["off", "minimal", "low", "medium", "high", "xhigh", "max"].includes(level)
+            || (wire !== null && (typeof wire !== "string" || !wire.trim()))
+            || (level !== "off" && wire === null))) throw new Error("Invalid model reasoning efforts");
+        }
       }
       const defaults = object(settings.namespaces.find((entry) => entry.ns === "agent-default-model")?.value);
       if (defaults.provider === id && Array.isArray(current.models)
@@ -422,7 +449,7 @@ export class RuntimeProviderService {
       return [{ id: model.id.trim(), ...(typeof model.name === "string" ? { name: model.name } : {}) }];
     });
     if (input.provider !== "ollama-cloud") return { models };
-    const vision = await ollamaVisionModelIds(baseURL, models);
-    return { models: models.map(model => vision.has(model.id) ? { ...model, input: ["text", "image"] as const } : model) };
+    const metadata = await ollamaModelMetadata(baseURL, models);
+    return { models: models.map(model => ({ ...model, ...metadata.get(model.id) })) };
   }
 }

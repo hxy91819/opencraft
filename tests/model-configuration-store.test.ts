@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {ModelConfigurationRepository,ModelCredentialRepository} from '../apps/local-agent-host/src/model-config/repository';
 import {ModelConfigurationService} from '../apps/local-agent-host/src/model-config/service';
-import {DshModelEngineAdapter} from '../apps/local-agent-host/src/model-config/dsh-adapter';
+import {DshModelEngineAdapter,fromDshProfile} from '../apps/local-agent-host/src/model-config/dsh-adapter';
 import type {ConfiguredProvider} from '../apps/local-agent-host/src/model-config/model-document';
 import {migrateDshModels} from '../apps/local-agent-host/src/model-config/migrate-dsh';
 const provider:ConfiguredProvider={id:'custom-test',name:'Test',protocol:'openai-completions',baseUrl:'http://127.0.0.1:1/v1',credentialRef:'TEST_REF',enabled:true,models:[{id:'model-test',enabled:true}]};
@@ -22,8 +22,34 @@ test('OpenCraft JSON survives a fresh repository and engine replacement without 
   const results=await Promise.allSettled([repo.update(1,d=>{d.providers[0]!.name='A'}),fresh.update(1,d=>{d.providers[0]!.name='B'})]);assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
  }finally{await rm(dir,{recursive:true,force:true})}
 });
+test('model reasoning efforts persist in the product document and survive engine replacement',async()=>{
+ const dir=await mkdtemp(join(tmpdir(),'opencraft-reasoning-store-'));try{
+  const repo=new ModelConfigurationRepository(dir);await repo.initialize();
+  await repo.update(0,d=>d.providers.push({...provider,models:[{id:'thinking-model',enabled:true,reasoningEfforts:{low:'low',high:'high',max:'max'}}]}));
+  const fresh=new ModelConfigurationRepository(dir);
+  assert.deepEqual((await fresh.read()).providers[0]?.models[0]?.reasoningEfforts,{low:'low',high:'high',max:'max'});
+ }finally{await rm(dir,{recursive:true,force:true})}
+});
+test('saved reasoning efforts reach the DSH model declaration and survive the settings projection',async()=>{
+ const model={id:'thinking-model',enabled:true,reasoningEfforts:{low:'low',high:'high',max:'max'}};
+ const writes:Array<{ns:string;ops:Array<{path:string[];value:unknown}>}>=[];
+ const engine=new DshModelEngineAdapter({call:async(method:string,payload:any)=>{
+  if(method==='settings.describe')return {namespaces:[
+   {ns:'llm-pi-ai',revision:1,value:{providers:{}}},
+   {ns:'llm-deepseek',revision:1,value:{},base:{}},
+   {ns:'agent-default-model',revision:1,value:{}},
+  ]};
+  if(method==='settings.mutate'){writes.push(payload);return {revision:2};}
+  if(method==='credentials.set')return {};
+  throw new Error(`Unexpected DSH command: ${method}`);
+ }} as any);
+ await engine.apply({schemaVersion:1,revision:1,providers:[{...provider,models:[model]}],defaultModel:null},{resolve:async()=> 'synthetic-key'});
+ const providerWrite=writes.find(write=>write.ns==='llm-pi-ai')?.ops.find(op=>op.path[0]==='providers')?.value as any;
+ assert.deepEqual(providerWrite['custom-test'].models[0].reasoningEfforts,model.reasoningEfforts);
+ assert.deepEqual(fromDshProfile('custom-test',providerWrite['custom-test'],[]).models[0]?.reasoningEfforts,model.reasoningEfforts);
+});
 test('invalid or engine-specific JSON does not overwrite the committed document',async()=>{
- const dir=await mkdtemp(join(tmpdir(),'opencraft-model-store-'));try{const repo=new ModelConfigurationRepository(dir);await repo.initialize();await assert.rejects(repo.update(0,d=>{(d as any)['llm-pi-ai']={}}));assert.equal((await repo.read()).revision,0);await assert.rejects(repo.update(0,d=>{d.providers.push({...provider,baseUrl:'https://user:secret@example.invalid'})}));assert.equal((await repo.read()).providers.length,0)}finally{await rm(dir,{recursive:true,force:true})}
+ const dir=await mkdtemp(join(tmpdir(),'opencraft-model-store-'));try{const repo=new ModelConfigurationRepository(dir);await repo.initialize();await assert.rejects(repo.update(0,d=>{(d as any)['llm-pi-ai']={}}));assert.equal((await repo.read()).revision,0);await assert.rejects(repo.update(0,d=>{d.providers.push({...provider,baseUrl:'https://user:secret@example.invalid'})}));await assert.rejects(repo.update(0,d=>{d.providers.push({...provider,models:[{id:'invalid-off-only',enabled:true,reasoningEfforts:{off:null}}]})}));assert.equal((await repo.read()).providers.length,0)}finally{await rm(dir,{recursive:true,force:true})}
 });
 test('an existing enabled provider without models reports an actionable failure without touching DSH',async()=>{
  const dir=await mkdtemp(join(tmpdir(),'opencraft-empty-provider-'));try{

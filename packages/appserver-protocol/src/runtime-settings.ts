@@ -155,6 +155,8 @@ export interface RuntimeDiscoveredModelView {
   readonly contextWindow?: number;
   readonly maxTokens?: number;
   readonly input?: readonly ("text" | "image")[];
+  /** Explicitly offered reasoning levels and their provider wire spellings. */
+  readonly reasoningEfforts?: false | Partial<Record<"off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max", string | null>>;
 }
 
 /** Explicit one-off draft probe. No persisted credential or session may be resolved for it. */

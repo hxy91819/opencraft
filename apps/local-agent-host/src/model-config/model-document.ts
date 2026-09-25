@@ -5,6 +5,7 @@ export interface ConfiguredModel {
   contextWindow?: number;
   maxTokens?: number;
   input?: ("text" | "image")[];
+  reasoningEfforts?: false | Partial<Record<"off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max", string | null>>;
 }
 export interface ConfiguredProvider {
   id: string;
@@ -41,13 +42,20 @@ export function validateModelDocument(value: unknown): asserts value is ModelDoc
     if(p.baseUrl){let url:URL;try{url=new URL(p.baseUrl)}catch{throw new Error('模型地址无效')}if(!['http:','https:'].includes(url.protocol)||url.username||url.password||url.search||url.hash)throw new Error('模型地址不得包含认证或查询信息');}
     const models=new Set<string>();
     for(const m of p.models){
-      fields(m,['id','name','enabled','contextWindow','maxTokens','input']);
+      fields(m,['id','name','enabled','contextWindow','maxTokens','input','reasoningEfforts']);
       if(typeof m.id!=='string'||!m.id.trim()||models.has(m.id)||typeof m.enabled!=='boolean')throw new Error('模型 ID 无效或重复');
       models.add(m.id);
       if(m.name!==undefined&&(typeof m.name!=='string'||!m.name.trim()))throw new Error('模型名称无效');
       for(const key of ['contextWindow','maxTokens'])if(m[key]!==undefined&&(!Number.isSafeInteger(m[key])||Number(m[key])<=0))throw new Error('模型限制无效');
       if(m.contextWindow!==undefined&&m.maxTokens!==undefined&&Number(m.maxTokens)>Number(m.contextWindow))throw new Error('输出限制超过上下文');
       if(m.input!==undefined&&(!Array.isArray(m.input)||!m.input.includes('text')||m.input.some(v=>v!=='text'&&v!=='image')))throw new Error('模型输入类型无效');
+      if(m.reasoningEfforts!==undefined&&m.reasoningEfforts!==false){
+        const levels=m.reasoningEfforts;
+        if(!plain(levels)||!Object.keys(levels).some(level=>level!=='off')||Object.entries(levels).some(([level,wire])=>
+          !['off','minimal','low','medium','high','xhigh','max'].includes(level)||
+          (wire!==null&&(typeof wire!=='string'||!wire.trim()))||
+          (level!=='off'&&wire===null)))throw new Error('模型思考档位无效');
+      }
     }
   }
   if(value.defaultModel!==null){fields(value.defaultModel,['providerId','modelId','reasoningEffort']);const d=value.defaultModel;const p=value.providers.find(p=>p.id===d.providerId);if(!p?.enabled||!p.models.some((m:ConfiguredModel)=>m.id===d.modelId&&m.enabled))throw new Error('默认模型必须存在并已启用');if(d.reasoningEffort!==undefined&&typeof d.reasoningEffort!=='string')throw new Error('推理强度无效');}

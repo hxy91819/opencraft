@@ -37,7 +37,7 @@ function protocol(id:string){if(id==='anthropic')return 'anthropic-messages';if(
 export function fromDshProfile(id:string,value:unknown,disabled:unknown,catalogId?:string):ConfiguredProvider{
   const p=object(value), off=new Set(Array.isArray(disabled)?disabled:[]);
   return {id,name:p.displayName|| (catalogId==='deepseek'?'DeepSeek':id),...(catalogId?{catalogId}:{}),protocol:p.api||protocol(id),baseUrl:p.baseURL||(catalogId==='deepseek'?'https://api.deepseek.com':''),credentialRef:p.apiKeyEnv||null,enabled:p.enabled!==false,
-    models:(Array.isArray(p.models)?p.models:[]).map((m:any)=>({id:m.id,...(m.name?{name:m.name}:{}),enabled:!off.has(m.id),...(m.contextWindow?{contextWindow:m.contextWindow}:{}),...(m.maxTokens?{maxTokens:m.maxTokens}:{}),...((m.input??m.inputModalities)?.length?{input:m.input??m.inputModalities}:{})}))};
+    models:(Array.isArray(p.models)?p.models:[]).map((m:any)=>({id:m.id,...(m.name?{name:m.name}:{}),enabled:!off.has(m.id),...(m.contextWindow?{contextWindow:m.contextWindow}:{}),...(m.maxTokens?{maxTokens:m.maxTokens}:{}),...((m.input??m.inputModalities)?.length?{input:m.input??m.inputModalities}:{}),...(m.reasoningEfforts!==undefined?{reasoningEfforts:m.reasoningEfforts}:{})}))};
 }
 
 export class DshModelEngineAdapter implements ModelEnginePort {

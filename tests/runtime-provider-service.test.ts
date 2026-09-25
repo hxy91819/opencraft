@@ -110,7 +110,7 @@ test("model declarations preserve supported metadata and reject inconsistent cap
   await f.service.apply({ ...createInput(), models: [{ id: "shared-model", name: "My model", contextWindow: 32768, maxTokens: 4096, input: ["text", "image"] }] });
   assert.deepEqual((f.section().user as any).providers["custom-test"].models[0],
     { id: "shared-model", name: "My model", contextWindow: 32768, maxTokens: 4096, input: ["text", "image"] });
-  for (const models of [[{ id: "bad", contextWindow: 100, maxTokens: 200 }], [{ id: "bad", input: ["audio"] }], [{ id: "bad", name: " " }]]) {
+  for (const models of [[{ id: "bad", contextWindow: 100, maxTokens: 200 }], [{ id: "bad", input: ["audio"] }], [{ id: "bad", name: " " }], [{ id: "bad", reasoningEfforts: { off: null } }]]) {
     const invalid = fixture();
     await assert.rejects(invalid.service.apply({ ...createInput(), models: models as any }));
     assert.equal(invalid.calls.some(call => call.method === "credentials.set" || call.method === "settings.mutate"), false);
@@ -359,14 +359,21 @@ test("Ollama Cloud discovery uses its show API to declare image input without fo
     const model = JSON.parse(Buffer.concat(chunks).toString("utf8")).model as string;
     requests.push({ path: request.url!, auth: request.headers.authorization, model });
     if (model === "metadata-unavailable") { response.statusCode = 503; response.end("{}"); return; }
-    response.end(JSON.stringify({ capabilities: model === "vision-model" ? ["completion", "vision"] : ["completion"] }));
+    response.end(JSON.stringify({
+      capabilities: model === "vision-model" ? ["completion", "vision", "thinking"] : ["completion", "thinking"],
+      thinking: model === "vision-model"
+        ? { values: [false, "low", "high", "max"], default: "high" }
+        : { values: ["low", "high"], default: "low" },
+    }));
   });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   try {
     const baseURL = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`;
     const result = await fixture().service.discover({ source: "endpoint", settingsNs: "llm-pi-ai", provider: "ollama-cloud", baseURL, api: "openai-completions", apiKey: "synthetic-draft-key" });
     assert.deepEqual(result.models, [
-      { id: "vision-model", input: ["text", "image"] }, { id: "text-model" }, { id: "metadata-unavailable" },
+      { id: "vision-model", input: ["text", "image"], reasoningEfforts: { low: "low", high: "high", max: "max" } },
+      { id: "text-model", reasoningEfforts: { low: "low", high: "high" } },
+      { id: "metadata-unavailable" },
     ]);
     assert.equal(requests.find(row => row.path === "/v1/models")?.auth, "Bearer synthetic-draft-key");
     assert.equal(requests.filter(row => row.path === "/api/show").length, 3);

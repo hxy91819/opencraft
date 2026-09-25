@@ -7,7 +7,7 @@ import { ModelServicesController } from "../plugins/builtin-agents/src/model-ser
 import { createModelServicesView } from "../plugins/builtin-agents/src/model-services/view";
 import { LocalAgentSettingsService, type HostProtocolRequest } from "../plugins/builtin-agents/src/local-agent-settings-service";
 
-function fixture(discovered: readonly { id: string; input?: readonly ("text" | "image")[] }[] = []) {
+function fixture(discovered: readonly { id: string; input?: readonly ("text" | "image")[]; reasoningEfforts?: false | Record<string, string> }[] = []) {
   const calls: { method: string; params: any }[] = [];
   let revision = 7, config: any = { baseURL: "https://example.invalid/v1", api: "openai-completions", apiKeyEnv: "TEST_REF", models: [{ id: "test-model", input: [] }] };
   const provider = { provider: "test", displayName: "Test", settingsNs: "llm-pi-ai", settingsPath: ["providers", "test"], active: true, configured: true, enabled: true, configuration: { modelDeclarations: true, apis: ["openai-completions"] as const, canProbe: true } };
@@ -142,6 +142,29 @@ test("fetching models fills missing image metadata without overwriting an explic
   await f.controller.setModelImageInput(f.provider, "test-model", false);
   await f.controller.fetchModels(f.provider);
   assert.deepEqual(f.service.providerConfiguration(f.provider).models[0]?.input, ["text"]);
+  f.controller.dispose(); f.service.dispose();
+});
+
+test("fetching models fills missing thinking levels without replacing a user's explicit choice", async () => {
+  const f = fixture([{ id: "test-model", reasoningEfforts: { low: "low", high: "high", max: "max" } }]);
+  await f.service.refresh();
+  await f.controller.fetchModels(f.provider);
+  assert.deepEqual(f.service.providerConfiguration(f.provider).models[0]?.reasoningEfforts, { low: "low", high: "high", max: "max" });
+  await f.controller.setModelReasoningLevel(f.provider, "test-model", "max", false);
+  await f.controller.fetchModels(f.provider);
+  assert.deepEqual(f.service.providerConfiguration(f.provider).models[0]?.reasoningEfforts, { low: "low", high: "high" });
+  f.controller.dispose(); f.service.dispose();
+});
+
+test("model settings show discovered thinking levels beside the corresponding model", async () => {
+  Object.assign(globalThis, { React });
+  const f = fixture([{ id: "test-model", reasoningEfforts: { low: "low", high: "high", max: "max" } }]);
+  await f.service.refresh(); f.controller.select("test");
+  await f.controller.fetchModels(f.provider);
+  const View = createModelServicesView(f.controller);
+  const markup = renderToStaticMarkup(createElement(View, {} as any));
+  assert.match(markup, /思考档位：低、高、最高/u);
+  assert.match(markup, /aria-label="模型操作：test-model"/u);
   f.controller.dispose(); f.service.dispose();
 });
 

@@ -95,6 +95,21 @@ test("the native resolved model capability takes precedence over stale catalog m
     assert.deepEqual(result.data.map((model: any) => model.inputModalities), [["text"], ["text"], ["text", "image"]]);
   } finally { adapter.close(); }
 });
+test("Host reasoning levels remain selectable in the Composer model catalog", async () => {
+  const adapter = fixture();
+  adapter.setModelInfoReader(async (_provider, model) => ({
+    reasoning: model === "vision" ? { efforts: [
+      { id: "low", name: "Low" }, { id: "high", name: "High" }, { id: "max", name: "Max" },
+    ] } : null,
+  }));
+  try {
+    const response = await adapter.dispatch("model/list", {}) as any;
+    const model = response.data.find((entry: any) => entry.displayName === "Vision");
+    assert.deepEqual(model?.supportedReasoningEfforts.map((effort: any) => effort.reasoningEffort), ["low", "high", "max"]);
+    const choice = projectComposerModelChoices(response.data).find(item => item.label === "Vision");
+    assert.deepEqual(choice?.efforts.map(effort => effort.value), ["low", "high", "max"]);
+  } finally { adapter.close(); }
+});
 test("an unknown native capability falls back to the explicit custom model declaration", async () => {
   const adapter = fixture(null, false, "vision");
   adapter.setModelInfoReader(async () => ({ input: null }));
