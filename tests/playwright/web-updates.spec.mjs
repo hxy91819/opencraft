@@ -127,8 +127,13 @@ test('generic release discovers runtime Codex Host and built-in settings before 
     for (let index = 0; index < 2; index++) {
       await rowAction.nth(index).click();
       await expect(page.getByRole('heading', { name: /^(Agent|Agent)$/ })).toBeVisible();
-      const services = page.getByRole('button', { name: /^(Model services|模型服务)$/ });
-      const accounts = page.getByRole('button', { name: /^(Codex accounts|Codex 账户)$/ });
+      // The Run group also exposes first-level sidebar entries with the same
+      // names, so scope to the machine page's Agent section (semantic region)
+      // instead of the whole page.
+      const agentRegion = page.getByRole('region', { name: /^Agent$/ });
+      await expect(agentRegion).toBeVisible();
+      const services = agentRegion.getByRole('button', { name: /^(Model services|模型服务)$/ });
+      const accounts = agentRegion.getByRole('button', { name: /^(Codex accounts|Codex 账户)$/ });
       await expect(services.or(accounts)).toHaveCount(1);
       const servicesOpen = (await services.count()) === 1;
       await (servicesOpen ? services : accounts).click();
