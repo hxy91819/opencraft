@@ -100,6 +100,32 @@ test("one reported Agent uses the current connection without merging logical Hos
   assert.equal(group.hosts.length, 3);
 });
 
+test("model menu agent groups place the active agent first while preserving relative order", () => {
+  const group = groupWorkInMachines([profile("local-codex"), profile("local")])[0]!;
+  assert.deepEqual(
+    workInAgentHosts(group, "local").map(host => host.hostId),
+    ["local", "local-codex"],
+  );
+  assert.deepEqual(
+    workInAgentHosts(group, "local-codex").map(host => host.hostId),
+    ["local-codex", "local"],
+  );
+
+  const multiGroup = groupWorkInMachines([
+    { ...profile("other-agent"), agent: "OtherAgent" },
+    profile("local-codex"),
+    profile("local"),
+  ])[0]!;
+  assert.deepEqual(
+    workInAgentHosts(multiGroup, "local").map(host => host.hostId),
+    ["local", "other-agent", "local-codex"],
+  );
+  assert.deepEqual(
+    workInAgentHosts(multiGroup, "local-codex").map(host => host.hostId),
+    ["local-codex", "other-agent", "local"],
+  );
+});
+
 test("machine icons distinguish desktop local, daemon servers and cloud resources", () => {
   const local = groupWorkInMachines([profile("local")])[0]!;
   assert.equal(machineRole(local, "electron"), "local");

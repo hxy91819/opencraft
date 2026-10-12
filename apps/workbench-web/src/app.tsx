@@ -14,6 +14,7 @@ import {
 } from "@opencraft/composer-appserver";
 import {
   CodexComposer,
+  type ComposerAgentModelGroup,
   type ComposerSelectionCatalog,
 } from "@opencraft/codex-composer";
 import { asHostId, findPendingInteraction } from "@opencraft/chat-core";
@@ -938,18 +939,26 @@ export function App({
       isFetching: composerCatalog.isFetching,
       modelError: composerCatalog.modelError?.message ?? null,
       onModelMenuOpen: () => { composerCatalog.onModelMenuOpen(); engineCatalog.open(); },
-      agentGroups: draft === null ? undefined : engineCatalog.groups.map(group => ({
-        id: group.hostId,
-        label: hostCatalog.profiles.find(host => host.hostId === group.hostId)?.agent ?? hostCatalog.hosts.find(host => host.hostId === group.hostId)?.label ?? group.hostId,
-        active: group.hostId === snapshot.hostId,
-        models: projectComposerModelChoices(group.hostId === snapshot.hostId ? composerCatalog.models : group.models),
-        loading: group.hostId === snapshot.hostId ? composerCatalog.isFetching : group.loading,
-        error: group.hostId === snapshot.hostId ? composerCatalog.modelError?.message : group.error,
-        retry: group.hostId === snapshot.hostId ? composerCatalog.retryModels : group.retry,
-        select: async (model) => { await hostCatalog.selectHost(group.hostId, group.hostId === snapshot.hostId ? undefined : { model: model.value, effort: model.defaultEffort }); },
-        manage: hostCatalog.extensionContributions.getSnapshot().settingsPages.some(page => page.contribution.targetHostId === group.hostId && page.contribution.id === (group.hostId === "local" ? "vela.builtin-agents.model-services" : "vela.builtin-agents.codex-accounts"))
-          ? () => hostCatalog.navigation.openSettings(group.hostId === "local" ? "vela.builtin-agents.model-services" : "vela.builtin-agents.codex-accounts") : undefined,
-      })),
+      agentGroups: draft === null ? undefined : (() => {
+        const groups: ComposerAgentModelGroup[] = engineCatalog.groups.map(group => ({
+          id: group.hostId,
+          label: hostCatalog.profiles.find(host => host.hostId === group.hostId)?.agent ?? hostCatalog.hosts.find(host => host.hostId === group.hostId)?.label ?? group.hostId,
+          active: group.hostId === snapshot.hostId,
+          models: projectComposerModelChoices(group.hostId === snapshot.hostId ? composerCatalog.models : group.models),
+          loading: group.hostId === snapshot.hostId ? composerCatalog.isFetching : group.loading,
+          error: group.hostId === snapshot.hostId ? composerCatalog.modelError?.message : group.error,
+          retry: group.hostId === snapshot.hostId ? composerCatalog.retryModels : group.retry,
+          select: async (model) => { await hostCatalog.selectHost(group.hostId, group.hostId === snapshot.hostId ? undefined : { model: model.value, effort: model.defaultEffort }); },
+          manage: hostCatalog.extensionContributions.getSnapshot().settingsPages.some(page => page.contribution.targetHostId === group.hostId && page.contribution.id === (group.hostId === "local" ? "vela.builtin-agents.model-services" : "vela.builtin-agents.codex-accounts"))
+            ? () => hostCatalog.navigation.openSettings(group.hostId === "local" ? "vela.builtin-agents.model-services" : "vela.builtin-agents.codex-accounts") : undefined,
+        }));
+        const activeIndex = groups.findIndex(group => group.active);
+        if (activeIndex > 0) {
+          const [activeGroup] = groups.splice(activeIndex, 1);
+          groups.unshift(activeGroup!);
+        }
+        return groups;
+      })(),
       retryModels: composerCatalog.retryModels,
       permissionProfileError:
         composerCatalog.permissionProfileError?.message ?? null,

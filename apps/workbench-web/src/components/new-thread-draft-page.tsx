@@ -1,5 +1,5 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { useIntl } from "@opencraft/i18n/react";
+import { FormattedMessage, useIntl } from "@opencraft/i18n/react";
 import { ThreadComposerPresentation } from "./thread-composer-presentation";
 import {
   CodexComposer,
@@ -73,7 +73,7 @@ function MachineRow({ host, selected }: { host: DraftHostOption; selected: boole
   const phase = useMachineConnectionPhase(host.hostIds);
   const subtitle = [
     host.platform === "macos" ? "macOS" : host.platform === "linux" ? "Linux" : host.platform === "windows" ? "Windows" : host.cloud ? null : intl.formatMessage({ id: "workIn.unknownSystem", defaultMessage: "Unknown system" }),
-    machineResourcePhaseLabel(host.resource),
+    machineResourcePhaseLabel(host.resource, intl),
     phase === "ready" ? null : intl.formatMessage({ id: "workIn.offline", defaultMessage: "Offline" }),
   ].filter(Boolean).join(" · ");
   return <>
@@ -344,11 +344,11 @@ function ExecutionUtilityBar({
           <button
             className="new-thread-context-trigger"
             type="button"
-            aria-label="Choose project folder"
+            aria-label={intl.formatMessage({ id: "draft.chooseProjectFolder", defaultMessage: "Choose project folder" })}
             title={workspace.cwd ?? undefined}
             disabled={executionLocked}
           >
-            <Folder size={15} /><span>{project ?? "Choose project"}</span><ChevronDown size={12} />
+            <Folder size={15} /><span>{project ?? intl.formatMessage({ id: "draft.chooseProject", defaultMessage: "Choose project" })}</span><ChevronDown size={12} />
           </button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal container={portalContainer}>
@@ -361,14 +361,14 @@ function ExecutionUtilityBar({
             onCloseAutoFocus={(event) => { event.preventDefault(); onReturnFocus(); }}
           >
             <DropdownMenu.Label className="new-thread-project-menu__heading">
-              Project
+              <FormattedMessage id="draft.project" defaultMessage="Project" />
             </DropdownMenu.Label>
             <div className="new-thread-project-menu__search">
               <Search size={14} />
               <input
                 ref={searchRef}
                 value={projectQuery}
-                placeholder="Search projects and folders"
+                placeholder={intl.formatMessage({ id: "draft.searchProjectsAndFolders", defaultMessage: "Search projects and folders" })}
                 onChange={(event) => setProjectQuery(event.currentTarget.value)}
               />
             </div>
@@ -397,11 +397,11 @@ function ExecutionUtilityBar({
               })}
               {workspaceOptionsLoading ? (
                 <div className="new-thread-project-menu__state">
-                  <LoaderCircle size={14} /> Loading projects…
+                  <LoaderCircle size={14} /> <FormattedMessage id="draft.loadingProjects" defaultMessage="Loading projects…" />
                 </div>
               ) : null}
               {!workspaceOptionsLoading && filteredWorkspaces.length === 0 ? (
-                <div className="new-thread-project-menu__state">No matching project</div>
+                <div className="new-thread-project-menu__state"><FormattedMessage id="draft.noMatchingProject" defaultMessage="No matching project" /></div>
               ) : null}
             </div>
             <DropdownMenu.Separator className="new-thread-project-menu__separator" />
@@ -418,9 +418,9 @@ function ExecutionUtilityBar({
             >
               <FolderPlus size={15} />
               <span>
-                <strong>Add project</strong>
-                <small>{connectionPhase !== "ready" ? "Connect to this node before adding a project"
-                  : nativeWorkspacePicking ? "Choose a folder on this device" : "Choose a folder from this node"}</small>
+                <strong><FormattedMessage id="draft.addProject" defaultMessage="Add project" /></strong>
+                <small>{connectionPhase !== "ready" ? intl.formatMessage({ id: "draft.connectBeforeAddProject", defaultMessage: "Connect to this node before adding a project" })
+                  : nativeWorkspacePicking ? intl.formatMessage({ id: "draft.chooseFolderOnDevice", defaultMessage: "Choose a folder on this device" }) : intl.formatMessage({ id: "draft.chooseFolderFromNode", defaultMessage: "Choose a folder from this node" })}</small>
               </span>
             </DropdownMenu.Item>
           </DropdownMenu.Content>
@@ -432,10 +432,10 @@ function ExecutionUtilityBar({
           {workspaceSelectionError}
         </span>
       )}
-      {pickingWorkspace ? <span role="status">Choosing folder…</span> : null}
+      {pickingWorkspace ? <span role="status"><FormattedMessage id="draft.choosingFolder" defaultMessage="Choosing folder…" /></span> : null}
 
       {selectedWorkspace?.branch ? (
-        <span className="new-thread-context-branch" title={`Git branch: ${selectedWorkspace.branch}`}>
+        <span className="new-thread-context-branch" title={intl.formatMessage({ id: "draft.gitBranch", defaultMessage: "Git branch: {branch}" }, { branch: selectedWorkspace.branch })}>
           <GitBranch size={14} /><span>{selectedWorkspace.branch}</span>
         </span>
       ) : null}
@@ -487,12 +487,12 @@ export function NewThreadDraftPage({
       data-new-thread-draft-id={draft.id}
       data-new-thread-draft-phase={draft.phase}
     >
-      <main className="new-thread-draft-main" aria-label="Main content">
+      <main className="new-thread-draft-main" aria-label={intl.formatMessage({ id: "draft.mainContent", defaultMessage: "Main content" })}>
         <div className="new-thread-draft-layout">
           <section className="new-thread-draft-hero" aria-labelledby="new-thread-heading">
-            <h1 id="new-thread-heading">What should we work on?</h1>
+            <h1 id="new-thread-heading"><FormattedMessage id="draft.heading" defaultMessage="What should we work on?" /></h1>
           </section>
-          <section className="new-thread-draft-composer-zone" aria-label="Start a new task">
+          <section className="new-thread-draft-composer-zone" aria-label={intl.formatMessage({ id: "draft.startNewTask", defaultMessage: "Start a new task" })}>
             <div className="thread-layout-width new-thread-draft-composer-width">
               <ThreadComposerPresentation controller={controller} scopeId={draft.scopeId} activeTabId={activeTabId} enabled={composerPresentationEnabled} timeline={null}>
               <div className="thread-composer-region" data-thread-find-composer="true">

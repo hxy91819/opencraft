@@ -2,6 +2,7 @@ export { CodexComposer, composerSchema } from "./codex-composer";
 export type {
   CodexComposerHandle,
   CodexComposerProps,
+  ComposerAgentModelGroup,
   ComposerQueuedSubmissionPresentation,
   ComposerEffectiveSelections,
   ComposerExecutionTarget,
