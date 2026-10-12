@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage } from "node:http";
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 import type { CodexAccountPoolProxy } from "./codex-proxy.js";
 
@@ -51,10 +52,13 @@ export async function startCodexAccountPoolServer(options: {
       outgoing.statusMessage = response.statusText;
       for (const [name, value] of response.headers) outgoing.setHeader(name, value);
       if (response.body === null) outgoing.end();
-      else Readable.fromWeb(response.body as unknown as import("node:stream/web").ReadableStream).pipe(outgoing);
+      else await pipeline(
+        Readable.fromWeb(response.body as unknown as import("node:stream/web").ReadableStream),
+        outgoing,
+      );
     } catch (error) {
       if (outgoing.headersSent) {
-        outgoing.destroy(error instanceof Error ? error : new Error(String(error)));
+        if (!outgoing.destroyed) outgoing.destroy(error instanceof Error ? error : new Error(String(error)));
       } else {
         const status = error instanceof RangeError ? 413 : 502;
         outgoing.writeHead(status, { "content-type": "application/json" });

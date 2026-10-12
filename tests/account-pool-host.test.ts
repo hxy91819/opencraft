@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createServer, type Server } from "node:http";
 import { mkdtemp, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -13,6 +14,57 @@ import {
   createCodexAccountPoolLaunch,
   startCodexAccountPoolServer,
 } from "../packages/account-pool-host/src/index.js";
+
+function deferred<T>(): { readonly promise: Promise<T>; resolve(value: T): void } {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(resolvePromise => { resolve = resolvePromise; });
+  return { promise, resolve };
+}
+
+async function within<T>(promise: Promise<T>, message: string): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timeout = setTimeout(() => reject(new Error(message)), 5_000);
+      }),
+    ]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
+}
+
+async function startLocalServer(server: Server): Promise<{ readonly url: string; close(): Promise<void> }> {
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", reject);
+      resolve();
+    });
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Local test server did not bind a TCP port");
+  return {
+    url: `http://127.0.0.1:${address.port}`,
+    close: () => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())),
+  };
+}
+
+function captureUnhandledProcessErrors(): { assertNone(): void; dispose(): void } {
+  const errors: unknown[] = [];
+  const onUncaught = (error: Error) => errors.push(error);
+  const onUnhandled = (reason: unknown) => errors.push(reason);
+  process.on("uncaughtException", onUncaught);
+  process.on("unhandledRejection", onUnhandled);
+  return {
+    assertNone: () => assert.equal(errors.length, 0, `unexpected process errors: ${errors.map(error => String(error)).join(", ")}`),
+    dispose: () => {
+      process.off("uncaughtException", onUncaught);
+      process.off("unhandledRejection", onUnhandled);
+    },
+  };
+}
 
 test("Codex thread affinity survives AccountPool restart while its account remains eligible", async () => {
   const root = await mkdtemp(join(tmpdir(), "opencraft-account-pool-"));
@@ -406,6 +458,115 @@ test("loopback server exposes the proxy over a bounded local HTTP endpoint", asy
     }
     pool.close();
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("a client disconnect aborts an in-flight upstream stream without crashing the account pool server", async () => {
+  const root = await mkdtemp(join(tmpdir(), "opencraft-account-pool-"));
+  const firstUpstreamChunk = deferred<void>();
+  const upstreamClosed = deferred<void>();
+  const upstream = await startLocalServer(createServer((incoming, outgoing) => {
+    if (incoming.url === "/backend-api/codex/v1/models") {
+      outgoing.writeHead(200, { "content-type": "application/json" });
+      outgoing.end(JSON.stringify({ data: [{ id: "gpt-test" }] }));
+      return;
+    }
+    outgoing.writeHead(200, { "content-type": "text/event-stream" });
+    outgoing.write("data: first\n\n");
+    firstUpstreamChunk.resolve();
+    outgoing.once("close", () => {
+      if (!outgoing.writableEnded) upstreamClosed.resolve();
+    });
+  }));
+  const processErrors = captureUnhandledProcessErrors();
+  let server: Awaited<ReturnType<typeof startCodexAccountPoolServer>> | undefined;
+  let pool: AccountPoolStore | undefined;
+  const controller = new AbortController();
+  try {
+    pool = new AccountPoolStore({ databasePath: join(root, "pool.sqlite"), secretsDirectory: join(root, "secrets") });
+    pool.addAccount({ id: "account-a", provider: "codex", label: "A", upstreamAccountId: "chatgpt-a", priority: 1, enabled: true },
+      { accessToken: "access-a", refreshToken: null, expiresAt: null });
+    const token = pool.issueHostToken("local");
+    server = await startCodexAccountPoolServer({
+      proxy: new CodexAccountPoolProxy({ store: pool, upstreamBaseUrl: `${upstream.url}/backend-api/codex` }),
+    });
+    const response = await fetch(`${server.url}/v1/responses`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-opencraft-account-pool-token": token },
+      body: JSON.stringify({ model: "gpt-test", input: [] }),
+      signal: controller.signal,
+    });
+    const reader = response.body?.getReader();
+    assert.ok(reader);
+    await firstUpstreamChunk.promise;
+    assert.equal(new TextDecoder().decode((await reader.read()).value), "data: first\n\n");
+    controller.abort();
+    await assert.rejects(reader.read());
+    await within(upstreamClosed.promise, "upstream stream was not closed after the client disconnected");
+
+    const followUp = await fetch(`${server.url}/v1/models`, { headers: { "x-opencraft-account-pool-token": token } });
+    assert.equal(followUp.status, 200);
+    assert.deepEqual(await followUp.json(), { data: [{ id: "gpt-test" }] });
+    processErrors.assertNone();
+  } finally {
+    controller.abort();
+    await server?.close();
+    await upstream.close();
+    processErrors.dispose();
+    pool?.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("an upstream stream failure interrupts the client connection without crashing the account pool server", async () => {
+  const root = await mkdtemp(join(tmpdir(), "opencraft-account-pool-"));
+  const failUpstream = deferred<void>();
+  let responseCount = 0;
+  const upstream = await startLocalServer(createServer((incoming, outgoing) => {
+    if (incoming.url === "/backend-api/codex/v1/models") {
+      outgoing.writeHead(200, { "content-type": "application/json" });
+      outgoing.end(JSON.stringify({ data: [{ id: "gpt-test" }] }));
+      return;
+    }
+    responseCount += 1;
+    outgoing.writeHead(200, { "content-type": "text/event-stream", "content-length": "100" });
+    outgoing.write("data: first\n\n");
+    void failUpstream.promise.then(() => outgoing.destroy());
+  }));
+  const processErrors = captureUnhandledProcessErrors();
+  let server: Awaited<ReturnType<typeof startCodexAccountPoolServer>> | undefined;
+  let pool: AccountPoolStore | undefined;
+  try {
+    pool = new AccountPoolStore({ databasePath: join(root, "pool.sqlite"), secretsDirectory: join(root, "secrets") });
+    pool.addAccount({ id: "account-a", provider: "codex", label: "A", upstreamAccountId: "chatgpt-a", priority: 1, enabled: true },
+      { accessToken: "access-a", refreshToken: null, expiresAt: null });
+    const token = pool.issueHostToken("local");
+    server = await startCodexAccountPoolServer({
+      proxy: new CodexAccountPoolProxy({ store: pool, upstreamBaseUrl: `${upstream.url}/backend-api/codex` }),
+    });
+    const response = await fetch(`${server.url}/v1/responses`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-opencraft-account-pool-token": token },
+      body: JSON.stringify({ model: "gpt-test", input: [] }),
+    });
+    const reader = response.body?.getReader();
+    assert.ok(reader);
+    assert.equal(new TextDecoder().decode((await reader.read()).value), "data: first\n\n");
+    failUpstream.resolve();
+    await assert.rejects(reader.read());
+
+    const followUp = await fetch(`${server.url}/v1/models`, { headers: { "x-opencraft-account-pool-token": token } });
+    assert.equal(followUp.status, 200);
+    assert.deepEqual(await followUp.json(), { data: [{ id: "gpt-test" }] });
+    assert.equal(responseCount, 1);
+    processErrors.assertNone();
+  } finally {
+    failUpstream.resolve();
+    await server?.close();
+    await upstream.close();
+    processErrors.dispose();
+    pool?.close();
     await rm(root, { recursive: true, force: true });
   }
 });
