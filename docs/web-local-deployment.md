@@ -23,7 +23,34 @@ curl --fail --silent --show-error http://127.0.0.1:10000/__opencraft_updates
 
 使用 `.nvmrc` 对应 Node 和当前 checkout 的依赖。选择本地精确包版本，设置 `OPENCRAFT_RELEASE_VERSION`；核对当前版本与公司渠道，避免未来正式版本号低于本机版本。源码未提交时保留 dirty 标记。
 
+网站静态资源在构建时写入 Host 列表与内置扩展开关，网站服务的执行代理环境变量不会替前端发现额外 Host。打包前从当前 release 的 `web/assets` 提取实际 Host 定义，按 `.local/README.md` 设置 `VITE_APPSERVER_HOSTS_JSON`、`VITE_WEB_BUILTIN_AGENTS`、`VITE_HYPERNODE_PLUGIN`；漏设会让新站缺少 Codex 等 Host。下面命令适用于当前 Vite 产物的反引号字符串格式；若提取失败或发现不同定义，先核对当前资源与构建格式，不使用默认 Host 替代。
+
 ```sh
+set -e
+: "${OPENCRAFT_WEB_STATE:?按本机记录设置当前网站状态目录}"
+: "${VITE_WEB_BUILTIN_AGENTS:?按本机记录设置内置 Agent 开关}"
+: "${VITE_HYPERNODE_PLUGIN:?按本机记录设置 HyperNode 开关}"
+export OPENCRAFT_WEB_STATE
+current_release="$(node --input-type=module -e '
+  import { readFileSync } from "node:fs";
+  import { join } from "node:path";
+  console.log(JSON.parse(readFileSync(join(process.env.OPENCRAFT_WEB_STATE, "deployment.json"), "utf8")).current.releaseRoot);
+')"
+extract_hosts() {
+  python3 - "$1" <<'PYTHON'
+import json, pathlib, re, sys
+values = set()
+for asset in pathlib.Path(sys.argv[1], "web/assets").glob("*.js"):
+    for raw in re.findall(r"VITE_APPSERVER_HOSTS_JSON:`([^`]*)`", asset.read_text()):
+        values.add(json.dumps(json.loads(raw), ensure_ascii=False, separators=(",", ":")))
+if len(values) != 1:
+    raise SystemExit("Expected one consistent Host definition; inspect the release before packaging")
+print(values.pop())
+PYTHON
+}
+VITE_APPSERVER_HOSTS_JSON="$(extract_hosts "$current_release")"
+export VITE_APPSERVER_HOSTS_JSON
+export VITE_WEB_BUILTIN_AGENTS VITE_HYPERNODE_PLUGIN
 : "${OPENCRAFT_RELEASE_VERSION:?设置本地包的精确版本}"
 export OPENCRAFT_SOURCE_REVISION="$(git rev-parse HEAD)"
 if [ -n "$(git status --porcelain)" ]; then
@@ -35,9 +62,14 @@ npm run test:web-release
 npm run test:web-updates
 npm run test:web-updates:e2e
 npm run package:web:server
+extract_hosts "$current_release" > "$OPENCRAFT_WEB_PACKAGE_OUTPUT/hosts-before.json"
+extract_hosts "$OPENCRAFT_WEB_PACKAGE_OUTPUT/package" > "$OPENCRAFT_WEB_PACKAGE_OUTPUT/hosts-package.json"
+cmp "$OPENCRAFT_WEB_PACKAGE_OUTPUT/hosts-before.json" "$OPENCRAFT_WEB_PACKAGE_OUTPUT/hosts-package.json"
 ```
 
 打包输出最后的 JSON 给出 `packageRoot`、`archive`、版本、buildId 和 integrity。记录 tgz 的 SHA256；保留旧包，不复用一个已有版本的目录覆盖文件。最终打包会再构建一次，以最终输出为准。
+
+打包后先确认新包 `web/assets` 中的 Host 定义与当前 release 完全一致（上述 `cmp` 通过），再进行替换。
 
 先用这个自包含包在独立状态目录、空闲端口启动探针，沿用原执行地址，验证 `/__opencraft_health`、`/version.json` 与包内 buildId；完成后关闭自有探针。真实组件改动需同时验证浏览器。具体 npm 发布验收见 [发布流程](web-deployment.md#内网-npm-发布流程)，本地替换复用其中相关测试，不执行上传。
 
@@ -68,3 +100,13 @@ curl --fail --silent --show-error http://127.0.0.1:10000/version.json
 替换后健康或真实页面不通过：仅停网站，恢复**本次**备份的状态指针和 unit/drop-in，daemon-reload 后启动，重试直到旧 buildId 和原执行地址就绪。保留旧资源和状态，不删除可能仍被运行/磁盘指针引用的目录。历史 `.local/` 回退脚本可能限定某个版本，不能盲目用于下一次部署。
 
 将 commit/dirty 状态、最终包版本与 buildId、实际运行路径、健康与浏览器证据、执行进程前后状态、替换步骤及本次回退方法写入 `.local/`，更新其 README。源码、构建包和实际运行网站分别交接。本页的示例服务信息不替代实时探针。
+
+## 5. 同时升级执行侧
+
+daemon、协议或启动参数变化时，需要同时升级执行侧；仅网站资源变化不需要重启执行侧。实际 unit、bundle、启动文件、状态目录与备份路径以 `.local/README.md` 为准。
+
+重启执行侧 unit 会停止它拥有的网关、Daemon、DSH 和 Codex，运行中的轮次会被标记为中断。执行侧目前没有排水或新旧版本切换机制；网站独立更新的连续性不能用于说明执行侧重启也不中断。
+
+先备份 daemon bundle、启动文件和相关 drop-in，构建并升级执行侧，按部署要求调整启动参数，再重启执行侧。等待健康通过，并用 `runtime/machine/read` 等匹配本次变更的协议探针确认后，才替换网站。记录重启前后的任务状态、进程身份和探针结果；是否允许中断由本次部署授权决定。
+
+执行侧失败时恢复 daemon bundle 和启动文件，删除本次新增的 drop-in（原有配置恢复备份），重载 service manager 并重启执行侧；等待健康通过，核对恢复后的启动命令与协议。若网站已替换且整体验收失败，同时按本次网站快照回退。保留两侧备份和失败证据，不删除用户状态。
