@@ -18,8 +18,8 @@ their upstream release servers. No private package registry or reference
 source tree is required. Do not copy `node_modules` from another computer.
 
 ```bash
-git clone git@git.woa.com:wisp/mono2.git
-cd mono2/opencraft
+git clone https://github.com/opencraft-app/opencraft.git
+cd opencraft
 npm ci
 npm run dev:web
 ```
@@ -53,6 +53,9 @@ installation, credential selection, publishing, rollback and Playwright checks.
 Source development above uses public dependencies; distributing this Web package
 uses the company registry.
 
+To build from source and replace an existing server installation directly, follow
+the [local server replacement guide](docs/web-local-deployment.md).
+
 ### Desktop with the bundled Local Agent
 
 On the target machine (macOS or Linux with a desktop session):
@@ -69,9 +72,9 @@ your provider/model credentials. Building and the startup smoke test do not
 require an API key.
 
 For a macOS QA preview that cannot overwrite an existing window or profile,
-use the isolated worktree and ad-hoc package procedure in the
-[mono2 README](../README.md#opencraft-本地工作台与预览). `dev:electron` is a developer
-loop, not proof of a packaged desktop release.
+use the isolated profile and ad-hoc package procedure in the
+[build matrix](docs/build-matrix.md). `dev:electron` is a developer loop,
+not proof of a packaged desktop release.
 
 For distribution, build on the **same OS and CPU architecture** as the target:
 
@@ -162,3 +165,7 @@ capability boundary and future marketplace model are documented in
 journal and generated-capability model are documented in
 `docs/agent-capability-fabric.md`. The package ownership and proof ladder for
 automated changes are documented in `docs/agent-iteration-guide.md`.
+
+See [SECURITY.md](SECURITY.md) for private vulnerability reporting and the
+repository's security checks. A passing build does not establish that dependencies,
+Git history or third-party licensing are ready for a public release.

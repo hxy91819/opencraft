@@ -32,6 +32,8 @@
 | mono2 Agent Console 共享实现 | [MONO2_MIGRATION](MONO2_MIGRATION.md)、`frontend/AGENTS.md`；同步边界还读 `../docs/context/project/upstream-subtrees.md` |
 | Web、Expo、Electron 构建与交付 | [build-matrix](docs/build-matrix.md) |
 | 发布内网 npm / 公司 npm、Web 更新部署 | [Web 发布与部署](docs/web-deployment.md#内网-npm-发布流程)，含发布目标、凭据复用与验收约定 |
+| 从源码打包替换服务器本地 Web | [本地替换指引](docs/web-local-deployment.md)；先核对 `.local/README.md` 中的实际部署信息 |
+| 开源提交、公开发布 | [安全与发布说明](SECURITY.md)；按 `open-source-contribution` 核对提交身份、隐私、依赖及 Git 历史 |
 
 - 根 `ref/` 是固定版本参考，只读。借鉴前核对版本和真实运行入口，说明借鉴的是交互、状态模型、组件 contract 还是视觉 token；参考代码和截图都不是产品事实。
 

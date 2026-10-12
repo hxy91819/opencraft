@@ -2,6 +2,8 @@
 
 公司 npm 包 `@tencent/opencraft-web` 包含网站、Web 服务和更新器。Node.js 22 或更新版本和 npm 是运行前提。DSH/Codex 执行服务独立部署，通过 WebSocket 地址接入；此包不创建、升级或重启执行服务。
 
+直接从源码打包并替换已有服务器网站，见[本地替换指引](web-local-deployment.md)；该流程使用本地包，不需要先发布 npm。
+
 ## 首次安装
 
 在部署用户自己的 npm 配置中设置公司源和认证；认证凭据只留在服务器，不写入网页或仓库：
@@ -15,14 +17,16 @@
 ```sh
 OPENCRAFT_APPSERVER_URL=ws://127.0.0.1:9989/rpc \
 OPENCRAFT_WEB_STATE="$PWD/opencraft-web-state" \
-npx --registry=https://mirrors.tencent.com/npm/ @tencent/opencraft-web@<版本>
+npx --registry=https://mirrors.tencent.com/npm/ \
+  "@tencent/opencraft-web@${OPENCRAFT_RELEASE_VERSION:?设置精确安装版本}"
 ```
 
 长期运行时固定安装启动包，避免每次服务启动重新解析 `latest`：
 
 ```sh
 npm install --prefix /opt/opencraft-web/bootstrap --ignore-scripts \
-  --registry=https://mirrors.tencent.com/npm/ @tencent/opencraft-web@<版本>
+  --registry=https://mirrors.tencent.com/npm/ \
+  "@tencent/opencraft-web@${OPENCRAFT_RELEASE_VERSION:?设置精确安装版本}"
 ```
 
 使用包内 `opencraft-web.service` 作为 systemd 模板，核对 Node 路径与运行用户；配置 `/etc/opencraft-web.env`：
@@ -134,7 +138,7 @@ npm run test:web-updates:e2e
 
 ```sh
 OPENCRAFT_WEB_TEST_URL=https://opencraft.example.com \
-OPENCRAFT_WEB_EXPECTED_LATEST=<精确版本或none> \
+OPENCRAFT_WEB_EXPECTED_LATEST="${OPENCRAFT_WEB_EXPECTED_LATEST:?设置精确版本或none}" \
 npm run test:web-updates:live
 ```
 
