@@ -49,7 +49,7 @@ export function chooseWorkInHost(machine: WorkInMachine, currentAgent: HostConne
   return machine.hosts.find(host => currentAgent != null && host.agent === currentAgent) ?? machine.hosts[0]!;
 }
 
-/** Multiple connection profiles may expose one reported Agent. Prefer the current path. */
+/** Multiple connection profiles may expose one reported Agent. Prefer the current path; the active Agent comes first. */
 export function workInAgentHosts(machine: WorkInMachine | undefined, activeHostId: string): readonly HostConnectionProfile[] {
   const agents = new Map<string, HostConnectionProfile>();
   for (const host of machine?.hosts ?? []) {
@@ -57,5 +57,11 @@ export function workInAgentHosts(machine: WorkInMachine | undefined, activeHostI
     const key = host.agent ?? `host:${host.hostId}`;
     if (!agents.has(key) || host.hostId === activeHostId) agents.set(key, host);
   }
-  return [...agents.values()];
+  const result = [...agents.values()];
+  const activeIndex = result.findIndex(host => host.hostId === activeHostId);
+  if (activeIndex > 0) {
+    const [active] = result.splice(activeIndex, 1);
+    result.unshift(active!);
+  }
+  return result;
 }

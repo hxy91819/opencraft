@@ -758,7 +758,7 @@ test("Composer menus live in the root overlay plane with Codex viewport constrai
     composerSource,
     /codex-composer-selection-menu__trailing[\s\S]*?<Check size=\{16\}/u,
   );
-  assert.match(composerSource, /aria-label="Permissions"/u);
+  assert.match(composerSource, /aria-label=\{intl\.formatMessage\(\{ id: "composer\.permissions", defaultMessage: "Permissions" \}\)\}/u);
   assert.doesNotMatch(composerSource, /How should OpenCraft actions be approved\?/u);
   assert.match(
     workbenchStyles,

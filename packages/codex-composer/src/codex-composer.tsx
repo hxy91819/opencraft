@@ -1784,7 +1784,7 @@ export const CodexComposer = forwardRef<
   const permissionTriggerLabel =
     selectedPermission?.label ??
     (selectedPermissionValue === null
-      ? "Permissions"
+      ? intl.formatMessage({ id: "composer.permissions", defaultMessage: "Permissions" })
       : permissionLabel(selectedPermissionValue));
   const modelPickerDisabled = disabled || (catalogModels.length === 0 && !selectionCatalog?.agentGroups?.length);
 
@@ -1795,19 +1795,19 @@ export const CodexComposer = forwardRef<
   });
   const primaryActionLabel =
     editingQueuedSubmissionId !== null
-      ? "Save queued message"
+      ? intl.formatMessage({ id: "chat.saveQueuedMessage", defaultMessage: "Save queued message" })
       : primaryAction === "stop"
-        ? "Stop response"
+        ? intl.formatMessage({ id: "chat.stopResponse", defaultMessage: "Stop response" })
         : primaryAction === "queue"
-          ? "Queue follow-up"
+          ? intl.formatMessage({ id: "chat.queueFollowUp", defaultMessage: "Queue follow-up" })
           : primaryAction === "steer"
-            ? "Steer active response"
+            ? intl.formatMessage({ id: "chat.steerActiveResponse", defaultMessage: "Steer active response" })
             : intl.formatMessage({ id: "chat.send", defaultMessage: "Send message" });
   const inverseFollowUpAction = invertComposerFollowUpAction(
     defaultFollowUpAction,
   );
   const primaryActionTitle = submissionDisabled && primaryAction !== "stop"
-    ? "Waiting for execution host"
+    ? intl.formatMessage({ id: "chat.waitingForHost", defaultMessage: "Waiting for execution host" })
     : isStreaming && primaryAction !== "stop"
       ? `${primaryActionLabel} (⌘/Ctrl+Enter to ${inverseFollowUpAction})`
       : primaryActionLabel;
@@ -2163,7 +2163,7 @@ export const CodexComposer = forwardRef<
                           {!selectionCatalog?.agentGroups && selectionCatalog?.isFetching &&
                           catalogModels.length === 0 ? (
                             <div className="codex-composer-selection-menu__status">
-                              Loading models…
+                              <FormattedMessage id="workIn.loadingModels" defaultMessage="Loading models…" />
                             </div>
                           ) : null}
                           {!selectionCatalog?.agentGroups && selectionCatalog?.modelError ? (
@@ -2177,7 +2177,7 @@ export const CodexComposer = forwardRef<
                                     selectionCatalog.retryModels?.();
                                   }}
                                 >
-                                  重试
+                                  <FormattedMessage id="workIn.retry" defaultMessage="Retry" />
                                 </DropdownMenu.Item>
                               ) : null}
                             </div>
@@ -2190,7 +2190,7 @@ export const CodexComposer = forwardRef<
                           selectedModelValue !== null &&
                           selectedModel === null ? (
                             <div className="codex-composer-selection-menu__status is-error">
-                              当前选择的模型不可用，请重新选择。
+                              <FormattedMessage id="composer.model.unavailable" defaultMessage="The selected model is unavailable. Choose another model." />
                             </div>
                           ) : null}
                         </div>
@@ -2331,7 +2331,7 @@ export const CodexComposer = forwardRef<
                   <DropdownMenu.Portal container={portalContainer}>
                     <DropdownMenu.Content
                       className="codex-composer-selection-menu codex-composer-selection-menu--permissions"
-                      aria-label="Permissions"
+                      aria-label={intl.formatMessage({ id: "composer.permissions", defaultMessage: "Permissions" })}
                       align="start"
                       sideOffset={1}
                       collisionPadding={6}
@@ -2355,7 +2355,7 @@ export const CodexComposer = forwardRef<
                             disabled={permission.disabled}
                             title={
                               permission.disabled
-                                ? "Disabled by AppServer requirements"
+                                ? intl.formatMessage({ id: "composer.permissions.disabledByHost", defaultMessage: "Disabled by AppServer requirements" })
                                 : undefined
                             }
                             onSelect={() => selectPermission(permission.value)}
@@ -2374,13 +2374,12 @@ export const CodexComposer = forwardRef<
                       {!selectionCatalog?.agentGroups && selectionCatalog?.isFetching &&
                       catalogPermissions.length === 0 ? (
                         <div className="codex-composer-selection-menu__status">
-                          Loading permission profiles…
+                          <FormattedMessage id="composer.permissions.loading" defaultMessage="Loading permission profiles…" />
                         </div>
                       ) : null}
                       {selectionCatalog?.permissionProfileError ? (
                         <div className="codex-composer-selection-menu__status is-error">
-                          Permission profiles are unavailable on this host.
-                          Current permissions remain unchanged.
+                          <FormattedMessage id="composer.permissions.unavailable" defaultMessage="Permission profiles are unavailable on this host. Current permissions remain unchanged." />
                         </div>
                       ) : null}
                     </DropdownMenu.Content>
@@ -2395,7 +2394,7 @@ export const CodexComposer = forwardRef<
               <button
                 className="codex-composer-icon-button codex-composer-icon-button--context"
                 type="button"
-                title="Mention files and context"
+                title={intl.formatMessage({ id: "composer.mentionContext", defaultMessage: "Mention files and context" })}
                 onClick={() => insertTrigger("@")}
               >
                 <AtSign size={15} />
