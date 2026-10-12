@@ -160,4 +160,19 @@ test("daemon launch consumes resolver-owned endpoint, token and runtime cwd", ()
   assert.ok(spec.args.includes("/Users/test/.local/bin/codex"));
   assert.ok(spec.args.includes("/state/OpenCraft/codex"));
   assert.ok(spec.args.includes("/Users/example/.codex"));
+  assert.equal(spec.args.includes("--machine-name"), false);
+  const named = daemonLaunchSpec({
+    endpoint: "/srv/state/daemon.sock",
+    tokenPath: "/srv/state/daemon.token",
+    runtimeDirectory: "/srv/runtime",
+    daemonEntry: "/srv/runtime/opencraft-daemon.cjs",
+    dshExecutable: "/srv/runtime/dsh/bin.js",
+    dataDirectory: "/srv/state/data",
+    codexExecutable: "/usr/local/bin/codex",
+    codexDataDirectory: "/srv/state/codex",
+    nativeCodexHomeDirectory: "/srv/home/.codex",
+    executable: "/usr/bin/node",
+    machineName: "我的服务器",
+  }, "secret");
+  assert.deepEqual(named.args.slice(-2), ["--machine-name", "我的服务器"]);
 });

@@ -32,6 +32,8 @@ export interface OpenCraftDaemonClientOptions {
   readonly codexDataDirectory: string;
   readonly nativeCodexHomeDirectory: string;
   readonly executable: string;
+  /** Deployment display name for the daemon machine; desktop keeps the OS name. */
+  readonly machineName?: string;
 }
 
 function delay(milliseconds: number): Promise<void> {
@@ -77,6 +79,7 @@ export function daemonLaunchSpec(
       "--codex-executable", options.codexExecutable,
       "--codex-data-directory", options.codexDataDirectory,
       "--native-codex-home-directory", options.nativeCodexHomeDirectory,
+      ...(options.machineName ? ["--machine-name", options.machineName] : []),
     ],
     options: {
       cwd: options.runtimeDirectory,
