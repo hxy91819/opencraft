@@ -60,10 +60,10 @@ export function createBuiltinAgentsExtension(options: BuiltinAgentsExtensionOpti
       const controller = new ModelServicesController(service);
       const codexAccounts = new CodexAccountsService(options.requestHost, "local-codex");
       api.views.register({ id: "vela.builtin-agents.model-services-view", title: "模型服务", viewType: "vela.builtin-agents.model-services", platforms: [platform] });
-      api.settings.registerPage({ id: "vela.builtin-agents.model-services", title: "模型服务", viewId: "vela.builtin-agents.model-services-view", layout: "master-detail", group: platform === "web" ? "服务器" : "本机", icon: "brain", platforms: [platform] });
+      api.settings.registerPage({ id: "vela.builtin-agents.model-services", title: "模型服务", viewId: "vela.builtin-agents.model-services-view", layout: "master-detail", targetHostId: service.hostId, icon: "brain", platforms: [platform] });
       api.internal.register("platformViewRenderer", { viewType: "vela.builtin-agents.model-services", Component: createModelServicesView(controller) });
       api.views.register({ id: "vela.builtin-agents.codex-accounts-view", title: "Codex 账户", viewType: "vela.builtin-agents.codex-accounts", platforms: [platform] });
-      api.settings.registerPage({ id: "vela.builtin-agents.codex-accounts", title: "Codex 账户", viewId: "vela.builtin-agents.codex-accounts-view", group: platform === "web" ? "服务器" : "本机", icon: "user-round-cog", platforms: [platform] });
+      api.settings.registerPage({ id: "vela.builtin-agents.codex-accounts", title: "Codex 账户", viewId: "vela.builtin-agents.codex-accounts-view", targetHostId: codexAccounts.hostId, icon: "user-round-cog", platforms: [platform] });
       api.internal.register("platformViewRenderer", { viewType: "vela.builtin-agents.codex-accounts", Component: createCodexAccountsView(codexAccounts) });
       api.subscriptions.add(() => { codexAccounts.dispose(); controller.dispose(); service.dispose(); });
       if (hostProvider === null) return;

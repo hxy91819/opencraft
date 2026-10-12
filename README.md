@@ -43,6 +43,16 @@ tasks, connect an available Host or use the desktop app's built-in Local Agent;
 configure its models through the current Settings surface. Model credentials
 are runtime configuration, not build inputs and never part of this repository.
 
+### Managed Web installation and internal npm releases
+
+The self-hosted Web package is `@tencent/opencraft-web` on the company registry
+`https://mirrors.tencent.com/npm/`. It includes the website and managed updater;
+execution services remain independently deployed. See the
+[Web deployment and internal npm release runbook](docs/web-deployment.md) for
+installation, credential selection, publishing, rollback and Playwright checks.
+Source development above uses public dependencies; distributing this Web package
+uses the company registry.
+
 ### Desktop with the bundled Local Agent
 
 On the target machine (macOS or Linux with a desktop session):

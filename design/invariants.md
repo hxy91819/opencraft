@@ -4,6 +4,7 @@
 
 | ID | 不变量 | 责任/验证 |
 |---|---|---|
+| EXT-01 | 可选内置扩展的启用意图由统一 ExtensionInstallationRepository 持久化，产品默认值只在首次发现时填充；Collaboration 默认停用，不加载实现或注册导航。用户启停驱动真实激活/资源释放，不影响平台账户与 Agent 会话；内置来源不能被 URL 安装覆盖或单独移除/更新 | ExtensionManager/catalog；启停、重启恢复、来源保护测试与真实 Web 组件验收 |
 | WSP-01 | 同一主会话只有一个可交互主 Composer；普通/工具展开分支互斥，Side Chat 不叠加父输入 | ThreadComposerPresentation；Web smoke |
 | WSP-02 | 显示位置不改变草稿/附件/提交目标；Host 相同裸 threadId 不得碰撞 | composer-core + ConversationScope；既有 composer/binding 测试及新 smoke |
 | WSP-03 | 兼容恢复旧标签时不调用关闭资源；MRU/active 有效 | panel reducer/service；workbench-workspace-presentation.test.ts |
@@ -108,3 +109,13 @@ Connector 目录浏览不套用设置行：采用限宽品牌卡片，已配置�
 - 两个 renderer 共享物理 Host 时，订阅和审批仍按逻辑客户端隔离；后台卸载与新订阅序列化，SDK 迟到退订必须重新订阅。
 - 菜单和 Settings 归档页消费唯一 Host 命令及共享 Radix/主题控件；主 Sidebar 只展示活跃会话，不持有归档入口或撤销提示。归档是可恢复目录状态，不删除 workspace。
 - 当前证据：聚焦模型/SDK 测试、真实隔离 DSH Fork/边界/落盘审计、归档重启、完整门禁及实际签名桌面菜单/恢复窗口验收通过；不代表发行或生产发布。见 [本轮账本](thread-lifecycle/progress.md)。
+
+
+### 设置中的执行端归属
+
+- 应用设置与执行端设置分别组织；已配置且启用的 Host 按独立身份呈现，同一物理地址不得合并逻辑 Host。
+- SettingsPage 的 `targetHostId` 声明固定配置 owner。导航、概览、页面身份和传给 View 的 Host context 使用同一目标，不借用当前聊天 Host。未配置/已停用 owner 不挂载配置 View。
+- Web 的 `local` 表示执行服务所在机器，不表示浏览器设备；呈现优先使用配置的 executionLocation，缺失时显示服务器端运行。状态只投影对应 Host runtime，不由页面制造连接。
+- 执行端概览与配置入口走既有应用 Router，不改变聊天 Host，不新增服务器创建/编辑流程。主从页保持自身滚动，身份头由 Settings Shell 持有。
+
+- 验证：`node scripts/smoke-execution-settings.mjs` 检查构建后的真实工作台分组、配置归属、图标、PUSH/POP/刷新、主从布局和窄屏；`tests/extension-runtime.test.ts` 验证固定 owner 与无效 owner 原子拒绝。当前桌面平台呈现尚未实机验证。

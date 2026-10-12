@@ -11,7 +11,11 @@ export interface ModuleUrlExtensionSource {
   readonly url: string;
 }
 
-export type ExtensionInstallationSource = ModuleUrlExtensionSource;
+export interface BuiltinExtensionSource {
+  readonly kind: "builtin";
+}
+
+export type ExtensionInstallationSource = ModuleUrlExtensionSource | BuiltinExtensionSource;
 
 /** Persisted desired state. It is deliberately not a runtime descriptor. */
 export interface ExtensionInstallationRecord {
@@ -68,7 +72,10 @@ export function normalizeInstallation(value: unknown): ExtensionInstallationReco
   if (input.artifactRef !== undefined && (typeof input.artifactRef !== "string" || !/^[a-f0-9]{64}$/.test(input.artifactRef))) {
     throw new TypeError("Invalid installation artifact reference");
   }
-  if (source.kind !== "module-url") throw new TypeError("Unsupported extension installation source");
+  if (source.kind !== "module-url" && source.kind !== "builtin") throw new TypeError("Unsupported extension installation source");
+  if (source.kind === "builtin" && (input.artifact !== undefined || input.artifactRef !== undefined)) {
+    throw new TypeError("Built-in extensions cannot contain downloaded artifacts");
+  }
   if (typeof input.enabled !== "boolean") throw new TypeError("Extension installation requires enabled");
   if (!Number.isFinite(input.installedAt) || !Number.isFinite(input.updatedAt)) {
     throw new TypeError("Extension installation has invalid timestamps");
@@ -81,7 +88,9 @@ export function normalizeInstallation(value: unknown): ExtensionInstallationReco
   }
   return Object.freeze({
     extensionId: input.extensionId,
-    source: Object.freeze({ kind: "module-url" as const, url: normalizeUrl(source.url) }),
+    source: source.kind === "builtin"
+      ? Object.freeze({ kind: "builtin" as const })
+      : Object.freeze({ kind: "module-url" as const, url: normalizeUrl(source.url) }),
     enabled: input.enabled,
     installedAt: input.installedAt as number,
     updatedAt: input.updatedAt as number,

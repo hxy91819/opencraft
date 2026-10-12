@@ -1296,3 +1296,20 @@ Implement a feature in this order:
 
 If a feature starts in either app with networking, timers, persistence, or
 business state embedded in a component, it has crossed the boundary too early.
+
+## Managed Web deployment
+
+The company npm release `@tencent/opencraft-web` owns the website installation,
+not the execution lifecycle. A stable HTTP/WebSocket entry process owns update
+credentials, npm metadata, the serialized update job and the durable current /
+previous release pointer. Compatible versioned Web workers own static delivery
+and the external AppServer proxy. A candidate must pass health and build identity
+checks before new requests switch; existing sockets lease their original worker
+until disconnect. DSH/Codex belong to independently managed execution services.
+
+`@opencraft/web-update-protocol` owns the status and worker compatibility boundary.
+The Settings UI reads server status, submits authenticated update intent, and never
+holds registry credentials or controls an execution process. Publishing a package,
+installing a server version and refreshing a browser are separate actions. See the
+[Web installation and update runbook](web-deployment.md) for setup, failure recovery
+and the stable entry maintenance limitation.

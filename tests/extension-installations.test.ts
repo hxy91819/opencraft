@@ -458,3 +458,112 @@ test("future API installation survives restore and is rejected without activatin
     await runtime.fiber.dispose();
   }
 });
+
+test("optional built-in stays discoverable without loading, can enable and disable, and preserves intent across restart", async () => {
+  const persistence = new MemoryExtensionInstallationPersistence();
+  let loads = 0, releases = 0;
+  const definition: TrustedExtensionDefinition = {
+    manifest: manifest("example.optional"),
+    activate(api) {
+      api.views.register({ id: "example.optional.view", title: "Optional", viewType: "example.optional" });
+      api.navigation.register({ id: "example.optional.entry", title: "Optional", surface: "sidebar-primary", target: { kind: "view", viewId: "example.optional.view" } });
+      api.subscriptions.add(() => { releases++; });
+    },
+  };
+  async function open(defaultEnabled: boolean) {
+    const runtime = await repository(persistence);
+    const supervisor = new ExtensionSupervisor({ platform: "web" });
+    const manager = new ExtensionManager({ installations: runtime.repository, supervisor, loader: loaderFor({}),
+      builtins: [{ manifest: definition.manifest, defaultEnabled, async load() { loads++; return definition; } }],
+    });
+    await manager.restore();
+    return { runtime, supervisor, manager, async close() { await manager.dispose(); await supervisor.dispose(); await runtime.fiber.dispose(); } };
+  }
+  let current = await open(false);
+  assert.equal(loads, 0);
+  assert.equal(current.manager.getSnapshot().extensions[0].status, "disabled");
+  assert.equal(current.supervisor.contributions.getSnapshot().navigation.length, 0);
+  await current.manager.setEnabled(definition.manifest.id, true);
+  assert.equal(loads, 1);
+  assert.equal(current.supervisor.contributions.getSnapshot().navigation.length, 1);
+  await current.close();
+  current = await open(false);
+  assert.equal(loads, 2);
+  assert.equal(current.supervisor.contributions.getSnapshot().navigation.length, 1);
+  await assert.rejects(current.manager.reload(definition.manifest.id), /update with the application/);
+  await assert.rejects(current.manager.remove(definition.manifest.id), /not removed/);
+  await current.manager.setEnabled(definition.manifest.id, false);
+  assert.equal(current.supervisor.contributions.getSnapshot().navigation.length, 0);
+  assert.equal(releases, 2);
+  await current.close();
+  current = await open(true);
+  assert.equal(loads, 2, "new product default must not override the user's disabled choice");
+  assert.equal(current.manager.getSnapshot().extensions[0].installation.enabled, false);
+  await current.close();
+});
+
+test("built-in load failures are isolated and bundled IDs cannot be replaced by URL installs", async () => {
+  const runtime = await repository(new MemoryExtensionInstallationPersistence());
+  const supervisor = new ExtensionSupervisor({ platform: "web" });
+  let fail = true;
+  const builtinManifest = manifest("example.optional");
+  const manager = new ExtensionManager({ installations: runtime.repository, supervisor,
+    loader: loaderFor({ "https://plugins.test/collision": { manifest: builtinManifest, activate() {} } }),
+    builtins: [{ manifest: builtinManifest, defaultEnabled: true, async load() {
+      if (fail) throw new Error("optional unavailable");
+      return { manifest: builtinManifest, activate() {} };
+    } }],
+  });
+  await manager.restore();
+  assert.equal(manager.getSnapshot().extensions[0].status, "failed");
+  assert.equal(manager.getSnapshot().extensions[0].installation.enabled, true);
+  await assert.rejects(manager.installModuleUrl("https://plugins.test/collision"), /reserved/);
+  fail = false;
+  await manager.setEnabled(builtinManifest.id, true);
+  assert.equal(manager.getSnapshot().extensions[0].status, "active");
+  await manager.dispose(); await supervisor.dispose(); await runtime.fiber.dispose();
+});
+
+test("restoring a saved built-in intent needs no writable storage and presents current bundled metadata", async () => {
+  const seed: ExtensionInstallationRecord = { extensionId: "example.optional", source: { kind: "builtin" }, enabled: false,
+    installedAt: 1, updatedAt: 1, lastResolvedManifest: manifest("example.optional", "1.0.0") };
+  let writes = 0, loads = 0;
+  class ReadOnlyPersistence extends MemoryExtensionInstallationPersistence {
+    override async put(): Promise<void> { writes++; throw new DOMException("Storage full", "QuotaExceededError"); }
+  }
+  const runtime = await repository(new ReadOnlyPersistence([seed]));
+  const supervisor = new ExtensionSupervisor({ platform: "web" });
+  const manager = new ExtensionManager({ installations: runtime.repository, supervisor, loader: loaderFor({}),
+    builtins: [{ manifest: manifest("example.optional", "2.0.0"), defaultEnabled: true, async load() { loads++; throw Error("must not load"); } }],
+  });
+  await manager.restore();
+  assert.equal(writes, 0);
+  assert.equal(loads, 0);
+  assert.equal(manager.getSnapshot().extensions[0].installation.enabled, false);
+  assert.equal(manager.getSnapshot().extensions[0].installation.lastResolvedManifest?.version, "2.0.0");
+  assert.deepEqual(manager.getSnapshot().discoveryErrors, []);
+  assert.deepEqual(runtime.repository.getSnapshot().records[0], seed, "startup must preserve durable user intent without rewriting metadata");
+  await manager.dispose(); await supervisor.dispose(); await runtime.fiber.dispose();
+});
+
+for (const failure of [new DOMException("Storage full", "QuotaExceededError"), new Error("Extension record collection changed in another client")]) {
+  test(`built-in discovery isolates ${failure.name}: ${failure.message} and restores unrelated extensions`, async () => {
+    class FailingPersistence extends MemoryExtensionInstallationPersistence {
+      override async put(): Promise<void> { throw failure; }
+    }
+    const external = installation("example.external", true);
+    const runtime = await repository(new FailingPersistence([external]));
+    const supervisor = new ExtensionSupervisor({ platform: "web" });
+    let externalLoads = 0, builtinLoads = 0;
+    const manager = new ExtensionManager({ installations: runtime.repository, supervisor,
+      loader: { async load() { externalLoads++; return { manifest: manifest(external.extensionId), activate() {} }; } },
+      builtins: [{ manifest: manifest("example.optional"), defaultEnabled: false, async load() { builtinLoads++; throw Error("must not load"); } }],
+    });
+    await manager.restore();
+    assert.equal(externalLoads, 1);
+    assert.equal(builtinLoads, 0);
+    assert.equal(manager.getSnapshot().extensions.find(row => row.installation.extensionId === external.extensionId)?.status, "active");
+    assert.deepEqual(manager.getSnapshot().discoveryErrors, [{ extensionId: "example.optional", message: failure.message }]);
+    await manager.dispose(); await supervisor.dispose(); await runtime.fiber.dispose();
+  });
+}

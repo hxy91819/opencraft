@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./runtime-entry": "./src/runtime-entry.ts"
+    "./runtime-entry": "./src/runtime-entry.ts",
+    "./manifest": "./src/manifest.ts"
   },
   "dependencies": {
     "@lightvela/vela-chat-client-core": "0.0.0",

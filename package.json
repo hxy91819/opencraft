@@ -135,7 +135,12 @@
     "test:chat": "tsx --test tests/chat-*.test.ts tests/composer-core.test.ts tests/codex-composer-codec.test.ts tests/codex-composer-attachment-focus.test.ts",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "check:boundaries": "npm run check:typography && node scripts/check-platform-boundaries.mjs",
-    "gate": "npm run check:i18n && npm run test:i18n && npm run check:boundaries && npm run typecheck && npm run test:electron-launch && npm run test:extensions && npm run test:connectors && npm run test:appserver && npm run test:projects && npm run test:thread-lifecycle && npm run test:native-speech && npm run test:dsh-bridge && npm run test:appserver:lab && npm run test:chat && npm run test:workbench:unit && npm run test:shell-space && npm run test:workspace-presentation && npm run test:environments && npm run test:desktop-login && npm run test:web-release && npm run build:web && npm run build:expo:web && npm run build:expo:ios"
+    "gate": "npm run check:i18n && npm run test:i18n && npm run check:boundaries && npm run typecheck && npm run test:electron-launch && npm run test:extensions && npm run test:connectors && npm run test:appserver && npm run test:projects && npm run test:thread-lifecycle && npm run test:native-speech && npm run test:dsh-bridge && npm run test:appserver:lab && npm run test:chat && npm run test:workbench:unit && npm run test:shell-space && npm run test:workspace-presentation && npm run test:environments && npm run test:desktop-login && npm run test:web-release && npm run build:web && npm run build:expo:web && npm run build:expo:ios",
+    "package:web:server": "npm run build:web:release && node scripts/package-web-server.mjs",
+    "test:web-updates": "node --test tests/web-deployment*.test.mjs",
+    "serve:web:managed": "node scripts/web-deployment/cli.mjs",
+    "test:web-updates:e2e": "npm run build:web:release && playwright test --config playwright.web-updates.config.mjs",
+    "test:web-updates:live": "playwright test --config playwright.web-updates.live.config.mjs"
   },
   "dependencies": {
     "react": "19.2.3",
@@ -143,9 +148,13 @@
   },
   "devDependencies": {
     "@formatjs/icu-messageformat-parser": "2.11.4",
+    "@playwright/test": "1.64.0",
     "@types/node": "^24.3.0",
     "@types/ws": "^8.18.1",
+    "esbuild": "0.28.2",
     "fake-indexeddb": "^6.2.4",
+    "semver": "7.8.5",
+    "tar": "7.5.22",
     "tsx": "^4.20.5",
     "typescript": "^5.9.3",
     "ws": "^8.21.3"

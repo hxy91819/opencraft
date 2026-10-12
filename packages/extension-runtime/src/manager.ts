@@ -1,4 +1,4 @@
-import { ExtensionCompatibilityError } from "@opencraft/extension-contract";
+import { ExtensionCompatibilityError, type ExtensionManifestV1 } from "@opencraft/extension-contract";
 import type { ExtensionArtifact } from "./artifact";
 import {
   type ExtensionInstallationRecord,
@@ -11,7 +11,7 @@ import { extensionTimeout, withExtensionDeadline } from "./deadline";
 
 export interface ExtensionModuleLoader {
   load(
-    source: ExtensionInstallationSource,
+    source: ModuleUrlExtensionSource,
     options?: { readonly fresh?: boolean; readonly artifact?: ExtensionArtifact },
   ): Promise<TrustedExtensionDefinition>;
 }
@@ -28,6 +28,7 @@ export interface ExtensionManagerSnapshot {
   readonly revision: number;
   readonly extensions: readonly ManagedExtensionDescriptor[];
   readonly installationLoadErrors: readonly { readonly index: number; readonly message: string }[];
+  readonly discoveryErrors: readonly { readonly extensionId: string; readonly message: string }[];
 }
 
 export interface ExtensionManagerOptions {
@@ -36,6 +37,14 @@ export interface ExtensionManagerOptions {
   readonly supervisor: ExtensionSupervisor;
   readonly now?: () => number;
   readonly loadTimeoutMs?: number;
+  readonly builtins?: readonly ManagedBuiltinExtension[];
+}
+
+/** Optional bundled functionality: discovered without loading its implementation. */
+export interface ManagedBuiltinExtension {
+  readonly manifest: ExtensionManifestV1;
+  readonly defaultEnabled: boolean;
+  load(): Promise<TrustedExtensionDefinition>;
 }
 
 function message(error: unknown): string {
@@ -43,7 +52,7 @@ function message(error: unknown): string {
 }
 
 /**
- * Sole lifecycle coordinator for externally installed extensions.
+ * Sole lifecycle coordinator for installed and optional built-in extensions.
  * The repository owns desired state; the supervisor owns live generations.
  */
 export class ExtensionManager {
@@ -52,8 +61,10 @@ export class ExtensionManager {
   private readonly supervisor: ExtensionSupervisor;
   private readonly now: () => number;
   private readonly loadTimeoutMs: number;
+  private readonly builtins = new Map<string, ManagedBuiltinExtension>();
   private readonly statuses = new Map<string, ManagedExtensionStatus>();
   private readonly errors = new Map<string, string>();
+  private readonly discoveryErrors = new Map<string, string>();
   private readonly managed = new Set<string>();
   private readonly activeDefinitions = new Map<string, TrustedExtensionDefinition>();
   private readonly listeners = new Set<() => void>();
@@ -64,6 +75,7 @@ export class ExtensionManager {
     revision: 0,
     extensions: [],
     installationLoadErrors: [],
+    discoveryErrors: [],
   };
   private readonly unsubscribeInstallations: () => void;
 
@@ -73,6 +85,10 @@ export class ExtensionManager {
     this.supervisor = options.supervisor;
     this.now = options.now ?? Date.now;
     this.loadTimeoutMs = extensionTimeout(options.loadTimeoutMs, 15000);
+    for (const builtin of options.builtins ?? []) {
+      if (this.builtins.has(builtin.manifest.id)) throw new Error(`Duplicate built-in extension ${builtin.manifest.id}`);
+      this.builtins.set(builtin.manifest.id, builtin);
+    }
     this.unsubscribeInstallations = this.installations.subscribe(() => this.publish());
     this.publish();
   }
@@ -87,7 +103,29 @@ export class ExtensionManager {
 
   restore(): Promise<void> {
     return this.enqueue(async () => {
+      for (const [extensionId, builtin] of this.builtins) {
+        this.discoveryErrors.delete(extensionId);
+        try {
+          const previous = this.installations.getSnapshot().records.find(item => item.extensionId === extensionId);
+          if (previous !== undefined) {
+            if (previous.source.kind !== "builtin") throw new Error(`Extension ID ${extensionId} is reserved for a built-in extension`);
+            continue;
+          }
+          await this.installations.put({
+            extensionId,
+            source: { kind: "builtin" },
+            enabled: builtin.defaultEnabled,
+            installedAt: this.now(),
+            updatedAt: this.now(),
+            lastResolvedManifest: builtin.manifest,
+          });
+        } catch (error) {
+          this.discoveryErrors.set(extensionId, message(error));
+          this.setState(extensionId, "failed", error);
+        }
+      }
       for (const installation of this.installations.getSnapshot().records) {
+        if (this.discoveryErrors.has(installation.extensionId)) continue;
         if (!installation.enabled) {
           this.setState(installation.extensionId, "disabled");
           continue;
@@ -112,7 +150,9 @@ export class ExtensionManager {
       const source = Object.freeze({ kind: "module-url" as const, url: url.trim() });
       const definition = await this.load(source, true);
       const extensionId = definition.manifest.id;
+      if (this.builtins.has(extensionId)) throw new Error(`Extension ID ${extensionId} is reserved for a built-in extension`);
       const previous = this.installations.getSnapshot().records.find((item) => item.extensionId === extensionId);
+      if (previous?.source.kind === "builtin") throw new Error(`Extension ID ${extensionId} is reserved for a built-in extension`);
       if (previous !== undefined) {
         return this.replace(previous, definition, source);
       }
@@ -188,6 +228,7 @@ export class ExtensionManager {
   reload(extensionId: string): Promise<void> {
     return this.enqueue(async () => {
       const installation = this.requireInstallation(extensionId);
+      if (installation.source.kind === "builtin") throw new Error("Built-in extensions update with the application");
       const definition = await this.loadAndCheck(installation, true);
       await this.replace(installation, definition, installation.source);
     });
@@ -243,6 +284,7 @@ export class ExtensionManager {
 
   remove(extensionId: string): Promise<void> {
     return this.enqueue(async () => {
+      if (this.requireInstallation(extensionId).source.kind === "builtin") throw new Error("Built-in extensions can be disabled but not removed");
       this.assertAvailable(extensionId);
       const installation = this.requireInstallation(extensionId);
       if (installation.enabled) {
@@ -288,7 +330,15 @@ export class ExtensionManager {
     if (!fresh && installation.artifactRef !== undefined && installation.artifact === undefined) {
       return Promise.reject(new Error("Installed extension artifact is missing; explicitly reload to repair"));
     }
-    return this.load(installation.source, fresh, fresh ? undefined : installation.artifact).then((definition) => {
+    const loading = installation.source.kind === "builtin"
+      ? withExtensionDeadline(Promise.resolve().then(() => {
+          const builtin = this.builtins.get(installation.extensionId);
+          if (builtin === undefined) throw new Error(`Built-in extension ${installation.extensionId} is unavailable in this product`);
+          this.supervisor.checkCompatibility(builtin.manifest);
+          return builtin.load();
+        }), "built-in load", this.loadTimeoutMs)
+      : this.load(installation.source, fresh, fresh ? undefined : installation.artifact);
+    return loading.then((definition) => {
       if (definition.manifest.id !== installation.extensionId) {
         throw new Error(
           `Extension source resolved ${definition.manifest.id}, expected ${installation.extensionId}`,
@@ -298,7 +348,7 @@ export class ExtensionManager {
     });
   }
 
-  private load(source: ExtensionInstallationSource, fresh: boolean, artifact?: ExtensionArtifact): Promise<TrustedExtensionDefinition> {
+  private load(source: ModuleUrlExtensionSource, fresh: boolean, artifact?: ExtensionArtifact): Promise<TrustedExtensionDefinition> {
     return withExtensionDeadline(
       Promise.resolve().then(() => this.loader.load(source, { fresh, artifact })), "module load", this.loadTimeoutMs,
     );
@@ -342,13 +392,16 @@ export class ExtensionManager {
     this.snapshot = Object.freeze({
       revision: this.revision,
       extensions: Object.freeze(installationSnapshot.records.map((installation) => Object.freeze({
-        installation,
+        installation: installation.source.kind === "builtin" && this.builtins.has(installation.extensionId)
+          ? Object.freeze({ ...installation, lastResolvedManifest: this.builtins.get(installation.extensionId)!.manifest })
+          : installation,
         status: this.statuses.get(installation.extensionId) ?? (installation.enabled ? "loading" : "disabled"),
         ...(this.errors.has(installation.extensionId)
           ? { error: this.errors.get(installation.extensionId)! }
           : {}),
       }))),
       installationLoadErrors: installationSnapshot.loadErrors,
+      discoveryErrors: Object.freeze([...this.discoveryErrors].map(([extensionId, message]) => Object.freeze({ extensionId, message }))),
     });
     if (!this.closed) for (const listener of this.listeners) listener();
   }

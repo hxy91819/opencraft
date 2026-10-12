@@ -11,6 +11,10 @@ import {
   Database,
   FlaskConical,
   MessageCircle,
+  Monitor,
+  UserRound,
+  Plug,
+  Info,
   Palette,
   Plus,
   RefreshCw,
@@ -51,6 +55,8 @@ import {
 import type { HostConnectionProfile } from "@opencraft/workbench-runtime";
 import { getAppearanceThemePreviewProperties, type AppearanceThemeDescriptor } from "../appearance-theme";
 import { useInternalDeveloperMode } from "../internal-developer-mode";
+import { WebUpdatesSettings, WebUpdatesNavigation, hasManagedWebUpdates } from "./web-updates-settings";
+import { TargetConnectionStatus } from "./target-connection-status";
 import { SqliteDebugSettings } from "./sqlite-debug-settings";
 import {
   ArchivedThreadsSettings,
@@ -135,6 +141,7 @@ export function SettingsNavigation({
   const internalDeveloperMode = useInternalDeveloperMode();
   const [managementQuery, setManagementQuery] = useState("");
   const extensionPages = useSettingsExtensionPages(extensionContributions, currentPlatform());
+  const executionProfiles = profiles.filter(profile => profile.enabled);
   const selectedPage = extensionPages.find((page) => page.id === section) ?? null;
   const managementFamilyId = selectedPage?.management?.familyId ?? null;
   const managementPages = managementFamilyId === null
@@ -223,7 +230,7 @@ export function SettingsNavigation({
           <ArrowLeft size={15} />
           <span><FormattedMessage id="settings.back" defaultMessage="Back to app" /></span>
         </button> : null}
-        <div className="settings-page__navigation-heading"><FormattedMessage id="settings.title" defaultMessage="Settings" /></div>
+        <div className="settings-page__navigation-heading">应用</div>
         <div className="settings-page__navigation-list">
           <button
             type="button"
@@ -233,6 +240,7 @@ export function SettingsNavigation({
             <Palette size={16} />
             <span><FormattedMessage id="settings.appearance" defaultMessage="Appearance" /></span>
           </button>
+          {currentPlatform() === "web" && hasManagedWebUpdates() ? <WebUpdatesNavigation selected={section === "updates"} onOpen={() => onSectionChange("updates")} /> : null}
           {showArchivedConversations ? <button
             type="button"
             aria-current={section === "archived-conversations" ? "page" : undefined}
@@ -263,7 +271,7 @@ export function SettingsNavigation({
               <span>SQLite inspector</span>
             </button>
           ) : null}
-          {extensionPages.filter((page) => page.management === undefined).map((page, index, pages) => (
+          {extensionPages.filter((page) => page.management === undefined && page.targetHostId === undefined).map((page, index, pages) => (
             <div key={page.id}>
             {page.group && pages[index - 1]?.group !== page.group ? <div className="settings-page__navigation-heading">{page.group}</div> : null}
             <button
@@ -272,19 +280,99 @@ export function SettingsNavigation({
               aria-current={section === page.id ? "page" : undefined}
               onClick={() => onSectionChange(page.id)}
             >
-              <Blocks size={16} />
+              {settingsNavigationIcon(page.icon)}
               <span>{page.title}</span>
             </button>
             </div>
           ))}
+          <div className="settings-page__navigation-heading settings-execution-heading">执行端</div>
+          {executionProfiles.map(profile => {
+            const pages = extensionPages.filter(page => page.management === undefined && page.targetHostId === profile.hostId);
+            const overview = executionOverviewSection(profile.hostId);
+            return <section key={profile.hostId} className="settings-execution-navigation" aria-label={`${profile.displayName} 执行端`}>
+              <div className="settings-execution-navigation__identity">
+                {executionHostIcon(profile)}
+                <span>{profile.displayName}</span>
+                <TargetConnectionStatus hostId={profile.hostId} />
+              </div>
+              <div className="settings-execution-navigation__location">{executionLocationLabel(profile)}</div>
+              <button type="button" aria-current={section === overview ? "page" : undefined} onClick={() => onSectionChange(overview)}>
+                <Info size={16} /><span>概览</span>
+              </button>
+              {pages.map(page => <button key={page.id} type="button" aria-current={section === page.id ? "page" : undefined} onClick={() => onSectionChange(page.id)}>
+                {settingsNavigationIcon(page.icon)}<span>{page.title}</span>
+              </button>)}
+            </section>;
+          })}
+          {executionProfiles.length === 0 ? <p className="settings-execution-empty">尚未配置执行端</p> : null}
         </div>
       </nav>
     </div>
   );
 }
 
+function executionOverviewSection(hostId: string): string {
+  return `execution-${encodeURIComponent(hostId)}`;
+}
+
+function executionLocationLabel(profile: HostConnectionProfile): string {
+  if (currentPlatform() === "web") return profile.executionLocation ?? "服务器端运行";
+  return profile.executionLocation ?? (profile.hostKind === "local" ? "本机运行" : "远端运行");
+}
+
+function executionEndpoint(profile: HostConnectionProfile): string {
+  const config = profile.providerConfig;
+  if (typeof config === "object" && config !== null && !Array.isArray(config) && "url" in config && typeof config.url === "string") {
+    try {
+      const url = new URL(config.url, window.location.href);
+      // Connection config can carry credentials. Present only the public address.
+      const protocol = url.protocol === "https:" ? "wss:" : url.protocol === "http:" ? "ws:" : url.protocol;
+      return `${protocol}//${url.host}${url.pathname}`;
+    } catch { return "连接地址不可用"; }
+  }
+  return profile.transportEndpoint ?? "由宿主提供";
+}
+
+function executionHostIcon(profile: HostConnectionProfile) {
+  const Icon = currentPlatform() === "electron" && profile.hostKind === "local" ? Monitor : Server;
+  return <Icon size={16} aria-hidden="true" />;
+}
+
+function ExecutionIdentity({ profile }: { readonly profile: HostConnectionProfile }) {
+  return <header className="settings-execution-identity" aria-label="配置所属执行端">
+    <div className="settings-execution-identity__subject">{executionHostIcon(profile)}<strong>{profile.displayName}</strong><TargetConnectionStatus hostId={profile.hostId} showLabel /></div>
+    <div className="settings-execution-identity__location">{executionLocationLabel(profile)}</div>
+  </header>;
+}
+
+function ExecutionOverview({ profile, pages, onSectionChange }: {
+  readonly profile: HostConnectionProfile;
+  readonly pages: ReturnType<typeof useSettingsExtensionPages>;
+  readonly onSectionChange: (section: SettingsSection) => void;
+}) {
+  return <>
+    <SettingsPageHeader title="执行端概览" description="此执行端承载 Agent 的会话与任务。以下信息来自已接入的配置。" />
+    <SettingsSection title="连接信息">
+      <SettingsGroup>
+        <SettingsRow label="名称"><span>{profile.displayName}</span></SettingsRow>
+        <SettingsRow label="运行位置"><span>{executionLocationLabel(profile)}</span></SettingsRow>
+        <SettingsRow label="连接地址"><span className="settings-execution-endpoint">{executionEndpoint(profile)}</span></SettingsRow>
+        <SettingsRow label="连接状态"><TargetConnectionStatus hostId={profile.hostId} showLabel /></SettingsRow>
+      </SettingsGroup>
+    </SettingsSection>
+    <SettingsSection title="执行端设置" description="这些设置作用于此执行端，不会随当前聊天切换。">
+      <SettingsGroup>{pages.map(page => <SettingsRow key={page.id} label={page.title}>
+        <SettingsButton onClick={() => onSectionChange(page.id)}>打开</SettingsButton>
+      </SettingsRow>)}</SettingsGroup>
+      {pages.length === 0 ? <p className="settings-execution-empty">此执行端暂未提供设置页面。</p> : null}
+    </SettingsSection>
+  </>;
+}
+
 function settingsNavigationIcon(icon: string | undefined) {
-  const Icon = icon === "bot" ? Bot
+  const Icon = icon === "user-round-cog" || icon === "user-round" ? UserRound
+    : icon === "plug" ? Plug
+    : icon === "bot" ? Bot
     : icon === "message-circle" ? MessageCircle
       : icon === "brain" ? Brain
         : icon === "sparkles" ? Sparkles
@@ -374,12 +462,17 @@ export function SettingsContent({
     extensionManager.getSnapshot,
     extensionManager.getSnapshot,
   );
+  const urlExtensions = extensionManagerSnapshot.extensions.filter(row => row.installation.source.kind === "module-url");
   useSyncExternalStore(
     platformViewRenderers.subscribe,
     platformViewRenderers.getSnapshot,
     platformViewRenderers.getSnapshot,
   );
   const selectedExtensionPage = extensionPages.find((page) => page.id === section) ?? null;
+  const overviewProfile = profiles.find(profile => profile.enabled && executionOverviewSection(profile.hostId) === section) ?? null;
+  const configurationHostId = selectedExtensionPage?.targetHostId ?? overviewProfile?.hostId;
+  const configurationProfile = profiles.find(profile => profile.enabled && profile.hostId === configurationHostId) ?? null;
+  const missingConfigurationHost = selectedExtensionPage?.targetHostId !== undefined && configurationProfile === null;
   const internalExtensionPage = contributionSnapshot.settingsPages.some(
     ({ contribution }) => contribution.id === section && contribution.audience === "internal",
   );
@@ -399,19 +492,22 @@ export function SettingsContent({
     : platformViewRenderers.resolve(selectedExtensionView.viewType);
   const extensionViewHost = useMemo(() => ({
     platform,
-    activeHostId,
+    activeHostId: configurationHostId ?? activeHostId,
     profiles,
     provisionHost: onProvisionHost,
     removeHost: onRemove,
     openView: onOpenView,
     pushViewResource: onPushViewResource,
     replaceViewResource: onReplaceViewResource,
-  }), [activeHostId, onOpenView, onProvisionHost, onPushViewResource, onRemove, onReplaceViewResource, platform, profiles]);
+  }), [activeHostId, configurationHostId, onOpenView, onProvisionHost, onPushViewResource, onRemove, onReplaceViewResource, platform, profiles]);
 
   return (
     <div className="settings-page__viewport" data-selection="chrome" data-layout={selectedExtensionPage?.layout ?? "document"}>
             <div className="settings-page__content">
-              {selectedExtensionView !== null ? (
+              {configurationProfile !== null ? <ExecutionIdentity profile={configurationProfile} /> : null}
+              {overviewProfile !== null ? <ExecutionOverview profile={overviewProfile} pages={extensionPages.filter(page => page.targetHostId === overviewProfile.hostId && page.management === undefined)} onSectionChange={onSectionChange} />
+              : missingConfigurationHost || (section.startsWith("execution-") && overviewProfile === null) ? <SettingsPageHeader title="执行端不可用" description="此执行端未配置或已停用。请从左侧选择已配置的执行端。" />
+              : selectedExtensionView !== null ? (
                 SelectedExtensionComponent === null ? (
                   <SettingsSection
                     title={selectedExtensionView.title}
@@ -436,6 +532,8 @@ export function SettingsContent({
                   load={archivedConversations.load}
                   restore={archivedConversations.restore}
                 />
+              ) : section === "updates" && platform === "web" && hasManagedWebUpdates() ? (
+                <WebUpdatesSettings />
               ) : section === "appearance" ? (
                 <>
                   <SettingsPageHeader title={intl.formatMessage({ id: "settings.appearance", defaultMessage: "Appearance" })} description={intl.formatMessage({ id: "settings.appearance.description", defaultMessage: "Choose how OpenCraft looks across the workbench." })} />
@@ -530,11 +628,12 @@ export function SettingsContent({
                   <SettingsPageHeader title="Plugins" description="Install and manage trusted OpenCraft extensions." />
 
                   <SettingsSection title="Installed" description="Enabled plugins activate only after their entry and manifest validate.">
-                    {extensionManagerSnapshot.extensions.length === 0 ? (
+                    {urlExtensions.length === 0 ? (
                       <div className="settings-empty-state">No URL plugins installed.</div>
                     ) : (
                       <SettingsGroup aria-label="Installed plugins">
-                        {extensionManagerSnapshot.extensions.map(({ installation, status, error: pluginError }) => {
+                        {urlExtensions.map(({ installation, status, error: pluginError }) => {
+                          if (installation.source.kind !== "module-url") return null;
                           const manifest = installation.lastResolvedManifest;
                           const busy = extensionOperation === installation.extensionId;
                           return (

@@ -146,6 +146,7 @@ import { environmentSourceAdapter } from "./environment-directory/contribution-a
 import { openClientExtensionPersistence } from "./client-extension-persistence";
 import { IndexedDbSidebarLayoutStorage } from "./indexeddb-sidebar-layout-storage";
 import { BrowserModuleUrlExtensionLoader } from "./module-url-extension-loader";
+import { LightVelaCollaborationManifest } from "@opencraft/plugin-lightvela-collaboration/manifest";
 import { connectElectronAppHost } from "./electron-app-host";
 import {
   BuiltinWebSocketHostConnectionExtension,
@@ -559,6 +560,8 @@ export interface WebWorkbenchSupervisorOptions {
   readonly hostProfileMode?: "environment" | "configured";
   readonly lightVelaRegion?: "cn" | "intl";
   readonly lightVelaApiBase?: string;
+  /** Initial product default only; persisted user extension intent takes precedence. */
+  readonly enableLightVelaCollaboration?: boolean;
 }
 
 function setLocalPreference(key: string, value: string | null): void {
@@ -1061,14 +1064,6 @@ export async function createWebWorkbenchApplicationSupervisor(
         lightVelaAccount.refreshAccountDetails(),
       ]);
     }
-    if (platform === "web") {
-      await extensions.loadOptional("lightvela.collaboration", async () => {
-        const createLightVelaCollaborationExtension = (
-          await import("@opencraft/plugin-lightvela-collaboration/runtime-entry")
-        ).default;
-        return createLightVelaCollaborationExtension({ account: lightVelaAccount });
-      });
-    }
     const botSource = new AppServerBotConversationSource(botConversations.service);
     startupRollback.push(() => botSource.dispose());
     await extensions.loadOptional("vela.bot-chat", async () => {
@@ -1095,6 +1090,16 @@ export async function createWebWorkbenchApplicationSupervisor(
       installations: cordis.extensionInstallations,
       loader: new BrowserModuleUrlExtensionLoader(),
       supervisor: extensions,
+      builtins: platform === "web" ? [{
+        manifest: LightVelaCollaborationManifest,
+        defaultEnabled: options.enableLightVelaCollaboration ?? false,
+        async load() {
+          const createLightVelaCollaborationExtension = (
+            await import("@opencraft/plugin-lightvela-collaboration/runtime-entry")
+          ).default;
+          return createLightVelaCollaborationExtension({ account: lightVelaAccount });
+        },
+      }] : [],
     });
     await extensionManager.restore();
     startupRollback.push(() => extensionManager.dispose());

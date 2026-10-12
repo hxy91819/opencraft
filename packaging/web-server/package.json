@@ -1,0 +1,10 @@
+{
+  "name": "@tencent/opencraft-web",
+  "version": "0.1.0",
+  "description": "OpenCraft self-hosted Web console with managed npm updates",
+  "type": "module",
+  "bin": { "opencraft-web": "runtime/cli.mjs" },
+  "files": ["runtime", "web", "README.md", "opencraft-web.service"],
+  "engines": { "node": ">=22" },
+  "publishConfig": { "registry": "https://mirrors.tencent.com/npm/" }
+}

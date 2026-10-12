@@ -1,3 +1,4 @@
+import { LightVelaCollaborationManifest } from "./manifest";
 import type { TrustedExtensionDefinition } from "@opencraft/extension-runtime";
 import type { MessagingPort } from "@lightvela/vela-chat-client-core";
 
@@ -42,18 +43,7 @@ export function createLightVelaCollaborationExtension(
 	computersEnabled,
   });
   return {
-    manifest: {
-      manifestVersion: 1,
-      id: "lightvela.collaboration",
-      name: "LightVela Collaboration",
-      description: "Adds Server, Channel and collaborative work surfaces to OpenCraft.",
-      version: "0.1.0",
-      apiVersion: 1,
-      trust: "trusted",
-      platforms: ["web"],
-      activationEvents: ["onStartupFinished"],
-      dependencies: ["lightvela.platform"],
-    },
+    manifest: LightVelaCollaborationManifest,
     activate(api) {
       api.subscriptions.add(async () => {
         chat.dispose();

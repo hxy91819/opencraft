@@ -200,6 +200,8 @@ export interface SidebarCatalogContribution {
 
 /** A settings navigation entry that presents a registered View. */
 export interface SettingsPageContribution {
+  /** Fixed configuration owner; independent of the selected conversation Host. */
+  readonly targetHostId?: string;
   readonly id: string;
   readonly title: string;
   readonly viewId: string;

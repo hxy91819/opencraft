@@ -15,6 +15,8 @@ export interface ExtensionCatalogItem {
   readonly updateError: string | null;
   readonly capabilities: readonly string[];
   readonly canManage: boolean;
+  readonly canReload: boolean;
+  readonly canRemove: boolean;
 }
 
 /** Derived directory only. Installation intent, live activation and contributions retain their owners. */
@@ -38,14 +40,16 @@ export function projectExtensionCatalog(
       id, name: manifest?.name ?? running?.name ?? id,
       description: manifest?.description ?? running?.description ?? null,
       version: manifest?.version ?? running?.version ?? "",
-      source: managed ? "installed" as const : "builtin" as const,
-      sourceUrl: managed?.installation.source.url ?? null,
+      source: managed?.installation.source.kind === "module-url" ? "installed" as const : "builtin" as const,
+      sourceUrl: managed?.installation.source.kind === "module-url" ? managed.installation.source.url : null,
       enabled: managed?.installation.enabled ?? status === "active",
       status,
       error: status === "active" ? null : managed?.error ?? running?.error ?? null,
       updateError: status === "active" ? managed?.error ?? null : null,
       capabilities: groups.filter(([, rows]) => rows.some(row => row.owner.extensionId === id)).map(([label]) => label),
       canManage: managed !== undefined,
+      canReload: managed?.installation.source.kind === "module-url",
+      canRemove: managed?.installation.source.kind === "module-url",
     };
   }).sort((a, b) => Number(b.enabled) - Number(a.enabled) || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }

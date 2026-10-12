@@ -2,6 +2,23 @@
 
 状态：active，Workspace/IM Chat + Members 已实现；Computer 契约与持久化已预埋，但产品能力默认关闭且 UI 不呈现。
 
+## 扩展发现与启用
+
+Collaboration 是独立的团队 IM 产品，不是本地 Agent Chat 的前置依赖。通用 Web 工作台将其作为
+**内置、默认停用、用户可管理**的扩展：在技能管理的「扩展」页显示功能说明与启用开关，停用时
+不加载实现、不注册 Applications 入口，也不连接 IM 或读取协作目录。用户启用后加载实现并注册
+Workspace 入口；停用撤销贡献并释放 IM/Workspace 资源，不注销平台账户、不结束 Agent 会话。
+
+组合根的 `enableLightVelaCollaboration` 只提供首次使用的产品默认值（省略为 `false`）。用户启停
+选择通过统一 `ExtensionInstallationRepository` 持久化，刷新/重启及产品默认值变化不覆盖已有选择。
+扩展启用、账户登录和 Server 是否存在是三个独立状态。登录由既有平台账户入口提供，启用扩展不
+自动登录；没有 Server 时显示空状态，不自动停用插件。内置扩展随应用更新，可启停但不可单独从
+URL 更新或移除。
+
+2026-09-15 的引入提交 `9eaab5d`（`feat(opencraft): integrate LightVela collaboration`）及
+`a34ee6d`（`feat(collaboration): wire deployable component`）建立了独立协作产品与服务接入，
+没有规定通用工作台必须默认激活该扩展；本节明确其产品启用策略。
+
 仓库归属：本设计及实现只写入 `git.woa.com/wisp/mono2.git`。OpenCraft 已完成一次性历史导入，
 不与旧 OpenCraft 仓库或 `mono2-clean4` 工作区建立双写/同步关系。
 

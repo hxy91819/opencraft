@@ -34,7 +34,10 @@ test("Web can activate built-in model and Codex settings without desktop Host re
       "vela.builtin-agents.model-services",
     ]);
     assert.ok(pages.every(({ platforms }) => platforms?.includes("web")));
-    assert.ok(pages.every(({ group }) => group === "服务器"));
+    assert.deepEqual(Object.fromEntries(pages.map(({ id, targetHostId }) => [id, targetHostId])), {
+      "vela.builtin-agents.model-services": "local",
+      "vela.builtin-agents.codex-accounts": "local-codex",
+    });
     assert.deepEqual(renderedViews.sort(), [
       "vela.builtin-agents.codex-accounts",
       "vela.builtin-agents.model-services",
@@ -44,7 +47,7 @@ test("Web can activate built-in model and Codex settings without desktop Host re
   }
 });
 
-test("Electron retains daemon Host registration and local settings grouping", async () => {
+test("Electron retains daemon Host registration and explicit configuration owners", async () => {
   const providerIds: string[] = [];
   const hostIds: string[] = [];
   const supervisor = new ExtensionSupervisor({
@@ -72,7 +75,11 @@ test("Electron retains daemon Host registration and local settings grouping", as
     }));
     const pages = supervisor.contributions.getSnapshot().settingsPages.map(({ contribution }) => contribution);
     assert.equal(pages.length, 2);
-    assert.ok(pages.every(({ group, platforms }) => group === "本机" && platforms?.includes("electron")));
+    assert.ok(pages.every(({ platforms }) => platforms?.includes("electron")));
+    assert.deepEqual(Object.fromEntries(pages.map(({ id, targetHostId }) => [id, targetHostId])), {
+      "vela.builtin-agents.model-services": "local",
+      "vela.builtin-agents.codex-accounts": "local-codex",
+    });
     assert.deepEqual(providerIds, ["vela.builtin-agents"]);
     assert.deepEqual(hostIds.sort(), ["local", "local-codex"]);
   } finally {

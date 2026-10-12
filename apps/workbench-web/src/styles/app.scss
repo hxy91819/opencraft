@@ -10995,3 +10995,41 @@ html[data-codex-window-type="electron"] .thread-scroll {
     animation-iteration-count: 1 !important;
   }
 }
+
+// Host identity belongs to the Settings shell; configuration views own their data.
+.settings-execution-heading { margin-top: 20px; }
+.settings-execution-navigation {
+  padding: 8px 0;
+  & + & { border-top: 1px solid var(--color-border-subtle); margin-top: 8px; }
+  > button { padding-left: 30px; }
+}
+.settings-execution-navigation__identity {
+  display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  @include typography.role(settings-label);
+  > span:first-of-type { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  > svg { flex-shrink: 0; }
+}
+.settings-execution-navigation__location {
+  padding: 4px 12px 8px 36px;
+  @include typography.role(metadata, secondary);
+  overflow-wrap: anywhere;
+}
+.settings-execution-identity {
+  flex: 0 0 auto; padding-bottom: 16px; border-bottom: 1px solid var(--color-border-subtle);
+}
+.settings-execution-identity__subject {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  @include typography.role(settings-section-title);
+  > strong { font: inherit; overflow-wrap: anywhere; }
+  .environment-connection-label { margin-left: auto; @include typography.role(metadata, secondary); }
+}
+.settings-execution-identity__location, .settings-execution-empty {
+  margin: 6px 0 0; @include typography.role(metadata, secondary);
+}
+.settings-execution-endpoint { overflow-wrap: anywhere; }
+.settings-page__viewport[data-layout="master-detail"] > .settings-page__content > .settings-execution-identity {
+  padding: 16px 24px; margin: 0;
+}
+.settings-page__viewport[data-layout="master-detail"] > .settings-page__content > :last-child {
+  flex: 1; min-height: 0;
+}

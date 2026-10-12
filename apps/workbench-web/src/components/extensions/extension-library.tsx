@@ -42,6 +42,7 @@ export function ExtensionLibrary({ supervisor, manager }: { supervisor: Pick<Ext
     finally { inFlight.current.delete(id); setPending(new Set(inFlight.current)); }
   }
   return <section className="extension-library" aria-label="扩展管理">
+    {installations.discoveryErrors.map(error => <SettingsNotice key={error.extensionId} tone="error">{error.extensionId}：{error.message}</SettingsNotice>)}
     {detail ? <>
       <Button variant="ghost" onClick={() => setSelected(null)}>返回扩展列表</Button>
       <SettingsGroup>
@@ -54,8 +55,8 @@ export function ExtensionLibrary({ supervisor, manager }: { supervisor: Pick<Ext
       </SettingsGroup>
       {detail.canManage ? <div className="extension-library__actions">
         <Button disabled={pending.has(detail.id)} onClick={() => void change(detail.id, () => manager.setEnabled(detail.id, !detail.enabled))}>{detail.enabled ? "停用" : "启用"}</Button>
-        <Button disabled={pending.has(detail.id)} onClick={() => void change(detail.id, () => manager.reload(detail.id))}>从来源更新</Button>
-        <Button disabled={pending.has(detail.id)} onClick={() => setRemove(detail.id)}>移除扩展</Button>
+        {detail.canReload ? <Button disabled={pending.has(detail.id)} onClick={() => void change(detail.id, () => manager.reload(detail.id))}>从来源更新</Button> : null}
+        {detail.canRemove ? <Button disabled={pending.has(detail.id)} onClick={() => setRemove(detail.id)}>移除扩展</Button> : null}
       </div> : <p>内建扩展随应用更新，暂不支持单独停用或移除。</p>}
       {errors[detail.id] ? <SettingsNotice tone="error">{errors[detail.id]}</SettingsNotice> : null}
     </> : <>

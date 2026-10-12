@@ -11,4 +11,5 @@ export function createWorkbenchWebServer(options?: {
   root?: string;
   appServerTarget?: string | null;
   hyperNodeUser?: string;
+  codexServerTarget?: string | null;
 }): Promise<WorkbenchWebServer>;

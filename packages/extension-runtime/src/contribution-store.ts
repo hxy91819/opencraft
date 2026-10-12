@@ -166,6 +166,7 @@ function validateSettingsPage(owner: ExtensionActivationIdentity, value: Setting
     && value.layout !== "master-detail"
     && value.layout !== "edge-to-edge"
   ) throw new RangeError("Invalid settings page layout");
+  if (value.targetHostId !== undefined) requireLabel(value.targetHostId, `Settings page ${value.id} target Host`);
   if (value.management !== undefined) {
     assertOwnedContributionId(owner.extensionId, value.management.familyId);
     if (value.management.scope !== "agent" && value.management.scope !== "host") {

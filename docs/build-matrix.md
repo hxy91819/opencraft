@@ -191,3 +191,24 @@ rtk proxy shasum -a 256 "$signed_dmg_path" "$signed_zip_path"
 - 启动包内真正的 `Contents/MacOS/OpenCraft`，清除 `ELECTRON_RUN_AS_NODE`，使用全新 user-data-dir、模型存储目录和空闲调试端口。仅隔离 user-data-dir 不会隔离默认的 `~/.opencraft` 模型配置。
 - 在该签名进程中验证首页、相关导航与本次修改。不得复用旧源码预览的结果冒充包体验证，不登录或发送付费请求来做默认烟测。
 - 输出说明分别列出：源码/dirty 状态、buildId、App/DMG 签名、公证/Gatekeeper、完整性、启动/功能验证、未通过门禁，以及是否安装或发布。一次能启动不等于完整分发资格。
+
+## Managed Web release package
+
+`OPENCRAFT_RELEASE_VERSION=<exact-version> npm run package:web:server` builds
+`web-browser` and packs `@tencent/opencraft-web` with the static site, bundled
+Node runtime, a systemd template and installation instructions. The package has
+no install lifecycle scripts or runtime npm dependencies. It does not package or
+manage DSH/Codex. Build output defaults to ignored `.local/web-packages`. This
+command never publishes; validate the tgz before publishing to the company npm
+registry. Run `npm run test:web-updates` for registry/package/worker update and
+rollback behavior, alongside `npm run test:web-release`.
+
+For requests to “发布内网 npm” or “发布公司 npm”, follow the
+[internal npm release procedure](web-deployment.md#内网-npm-发布流程),
+including explicit source revision, credential reuse, exact-archive publication,
+registry download verification and the real website Playwright check.
+
+Managed Web installs expose Settings → Website updates after the actual server
+capability is confirmed. Plain static hosting and Electron retain their own
+delivery paths. See [Web deployment](web-deployment.md) for the bootstrap,
+internal npm authentication, supported hot-update scope and browser refresh.

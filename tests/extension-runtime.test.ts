@@ -522,3 +522,17 @@ test("platform targeting is checked before extension code runs", async () => {
   assert.equal(ran, false);
   await supervisor.dispose();
 });
+
+test("settings pages preserve a fixed Host owner and reject an empty owner atomically", async () => {
+  const supervisor = new ExtensionSupervisor({ platform: "web" });
+  const register = (targetHostId: string) => definition("vela.host-settings", api => {
+    api.views.register({ id: "vela.host-settings.view", title: "Host settings", viewType: "host-settings" });
+    api.settings.registerPage({ id: "vela.host-settings.page", title: "Settings", viewId: "vela.host-settings.view", targetHostId });
+  });
+  await assert.rejects(supervisor.activate(register(" ")), /target Host/u);
+  assert.equal(supervisor.contributions.getSnapshot().settingsPages.length, 0);
+  assert.equal(supervisor.contributions.getSnapshot().views.length, 0);
+  await supervisor.activate(register("local-codex"));
+  assert.equal(supervisor.contributions.getSnapshot().settingsPages[0]?.contribution.targetHostId, "local-codex");
+  await supervisor.dispose();
+});
