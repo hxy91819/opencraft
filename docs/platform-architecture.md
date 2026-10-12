@@ -760,6 +760,16 @@ on the next service construction. Renderer snapshots never include tokens.
 The external Codex executable is resolved once by Electron from an explicit
 override, PATH or the official user installation location; it is not bundled.
 
+Servers can explicitly opt into an independent `codex-core` owner through the
+daemon's `--codex-core-endpoint`. It owns the native Unix WebSocket AppServer,
+account proxy, login, refresh and usage maintenance. The daemon remains the
+logical-client/product-protocol adapter and closes only its own native connection;
+the final page leaving or the execution service restarting does not stop Codex
+work. The account service is shared with the default desktop embedded path, not
+duplicated in remote daemons. Both owners acquire the same data-directory writer
+lock. See [Codex core operations](codex-core.md) for authentication, independent
+systemd units, migration and the interrupting CLI/proxy maintenance boundary.
+
 The transport packages are peers. Replay is not a wrapper around WebSocket and
 Memory is not a fake method surface: all three carry the same JSON-RPC text
 frames through the same `DuplexTransport` contract. `RecordingTransport` is the

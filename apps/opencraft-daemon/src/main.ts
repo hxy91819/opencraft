@@ -51,6 +51,7 @@ export async function startOpenCraftDaemon(options: {
   readonly codexExecutable: string;
   readonly codexDataDirectory: string;
   readonly nativeCodexHomeDirectory: string;
+  readonly codexCoreEndpoint?: string;
   /** Deployment display name; defaults to the OS computer name. */
   readonly machineName?: string;
 }) {
@@ -86,6 +87,8 @@ export async function startOpenCraftDaemon(options: {
           runtimeDirectory: options.runtimeDirectory,
           dataDirectory: options.codexDataDirectory,
           nativeCodexHomeDirectory: options.nativeCodexHomeDirectory,
+          coreEndpoint: options.codexCoreEndpoint,
+          coreAuthToken: options.authToken,
         });
         codexAgents.add(codexAgent);
         return codexAgent;

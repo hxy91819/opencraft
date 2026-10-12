@@ -8,20 +8,15 @@ import { LOGICAL_CLIENT_FIELD } from "@opencraft/app-host-protocol";
 import {
   OPENCRAFT_FIRST_TURN_DURABILITY_CAPABILITY,
   OPENCRAFT_THREAD_START_DURABILITY_EXTENSION,
-  type CodexAccountView,
 } from "@opencraft/appserver-protocol";
 import {
-  AccountPoolStore,
-  CodexAccountPoolProxy,
-  CodexCredentialRefreshManager,
-  CodexDeviceLoginService,
-  CodexSubscriptionService,
-  createCodexAccountPoolLaunch,
-  createCodexMaintenanceClient,
-  createManagedCodexRefresh,
-  startCodexAccountPoolServer,
+  CodexAccountService,
+  CodexCoreControlClient,
+  acquireCodexWriter,
   type CodexMaintenanceClientFactory,
 } from "@opencraft/account-pool-host";
+
+import WebSocket from "ws";
 
 type RpcRecord = Record<string, unknown>;
 
@@ -30,6 +25,8 @@ interface PendingRequest {
   readonly originalId: string | number;
   readonly method: string;
   readonly params: RpcRecord;
+  readonly subscriptionRevision?: number;
+  readonly wasSubscribed?: boolean;
 }
 
 function record(value: unknown): RpcRecord {
@@ -73,21 +70,24 @@ export class CodexEngineAdapter implements DuplexTransport {
   private readonly initializedClients = new Set<string>();
   private readonly threadClients = new Map<string, Set<string>>();
   private readonly serverRequests = new Map<string, string>();
+  private readonly disconnectedClients = new Set<string>();
+  private readonly subscriptionRevisions = new Map<string, number>();
   private statusValue: TransportStatus = { state: "idle" };
   private sequence = 0;
   private child: ChildProcessWithoutNullStreams | null = null;
   private lines: ReadLineInterface | null = null;
   private initializeResult: unknown | null = null;
   private physicalInitializePending = false;
-  private poolStore: AccountPoolStore | null = null;
-  private poolServer: Awaited<ReturnType<typeof startCodexAccountPoolServer>> | null = null;
-  private login: CodexDeviceLoginService | null = null;
-  private refresh: CodexCredentialRefreshManager | null = null;
-  private subscriptions: CodexSubscriptionService | null = null;
+  private accounts: CodexAccountService | null = null;
+  private releaseWriter: (() => void) | null = null;
+  private remote: WebSocket | null = null;
+  private control: CodexCoreControlClient | null = null;
   private stderrTail = "";
   private closeOperation: Promise<void> | null = null;
 
   constructor(private readonly options: {
+    readonly coreEndpoint?: string;
+    readonly coreAuthToken?: string;
     readonly executable: string;
     readonly runtimeDirectory: string;
     readonly dataDirectory: string;
@@ -108,83 +108,82 @@ export class CodexEngineAdapter implements DuplexTransport {
     if (this.statusValue.state === "open") return;
     if (signal?.aborted) throw signal.reason;
     this.publishStatus({ state: "connecting" });
-    const dataRoot = this.options.dataDirectory;
-    const runtimeRoot = join(dataRoot, "runtime");
-    await mkdir(runtimeRoot, { recursive: true, mode: 0o700 });
-    const store = new AccountPoolStore({
-      databasePath: join(dataRoot, "account-pool.sqlite"),
-      secretsDirectory: join(dataRoot, "secrets"),
-    });
-    this.poolStore = store;
-    const createMaintenanceClient = this.options.createMaintenanceClient
-      ?? (codexHome => createCodexMaintenanceClient({ executable: this.options.executable, codexHome }));
-    const managedRefresh = createManagedCodexRefresh({
-      refreshRoot: join(dataRoot, "refresh"),
-      createClient: createMaintenanceClient,
-    });
-    const refresh = new CodexCredentialRefreshManager({ store, refresh: managedRefresh });
-    this.refresh = refresh;
-    const subscriptions = new CodexSubscriptionService({
-      store,
-      resolveCredential: (account, secret, reason) => refresh.resolve(account, secret, reason),
-      fetch: this.options.fetch,
-    });
-    this.subscriptions = subscriptions;
-    this.login = new CodexDeviceLoginService({
-      store,
-      loginRoot: join(dataRoot, "login"),
-      createClient: createMaintenanceClient,
-    });
-    const proxy = new CodexAccountPoolProxy({
-      store,
-      upstreamBaseUrl: this.options.upstreamBaseUrl ?? "https://chatgpt.com/backend-api/codex",
-      fetch: this.options.fetch,
-      resolveCredential: (account, secret, reason) => refresh.resolve(account, secret, reason),
-    });
-    const poolServer = await startCodexAccountPoolServer({ proxy });
-    this.poolServer = poolServer;
-    subscriptions.start();
-    const hostToken = store.issueHostToken("local-codex");
-    const launch = createCodexAccountPoolLaunch({ baseUrl: poolServer.url, hostToken });
-    const childArgs = ["app-server", "--stdio", ...launch.args];
-    const childEnv: NodeJS.ProcessEnv = {
-        ...process.env,
-        ...launch.env,
-        CODEX_HOME: runtimeRoot,
-        OPENAI_API_KEY: "opencraft-account-pool",
-        CODEX_API_KEY: undefined,
-        CODEX_ACCESS_TOKEN: undefined,
-    };
-    const child = this.options.spawnAppServer?.({
-      args: childArgs,
-      cwd: this.options.runtimeDirectory,
-      env: childEnv,
-    }) ?? spawn(this.options.executable, childArgs, {
-      cwd: this.options.runtimeDirectory,
-      env: childEnv,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    this.child = child;
-    child.stderr.on("data", chunk => { this.stderrTail = `${this.stderrTail}${String(chunk)}`.slice(-4_000); });
-    this.lines = createInterface({ input: child.stdout });
-    this.lines.on("line", this.receivePhysicalLine);
-    child.once("error", this.fail);
-    child.once("close", (code, childSignal) => {
-      if (["closing", "closed"].includes(this.statusValue.state)) return;
-      this.fail(new Error(`Codex AppServer exited (${code ?? childSignal ?? "unknown"})${this.stderrTail ? `: ${this.stderrTail}` : ""}`));
-    });
-    const abort = () => { void this.close(); };
-    signal?.addEventListener("abort", abort, { once: true });
-    if (signal?.aborted) {
+    try {
+      if (this.options.coreEndpoint !== undefined) {
+        await this.connectCore(signal);
+        this.publishStatus({ state: "open" });
+        return;
+      }
+      this.releaseWriter = await acquireCodexWriter(this.options.dataDirectory);
+      const runtimeRoot = join(this.options.dataDirectory, "runtime");
+      await mkdir(runtimeRoot, { recursive: true, mode: 0o700 });
+      this.accounts = await CodexAccountService.start(this.options);
+      const launch = this.accounts.launch();
+      const childArgs = ["app-server", "--stdio", ...launch.args];
+      const childEnv: NodeJS.ProcessEnv = {
+          ...process.env,
+          ...launch.env,
+          CODEX_HOME: runtimeRoot,
+          OPENAI_API_KEY: "opencraft-account-pool",
+          CODEX_API_KEY: undefined,
+          CODEX_ACCESS_TOKEN: undefined,
+      };
+      const child = this.options.spawnAppServer?.({
+        args: childArgs,
+        cwd: this.options.runtimeDirectory,
+        env: childEnv,
+      }) ?? spawn(this.options.executable, childArgs, {
+        cwd: this.options.runtimeDirectory,
+        env: childEnv,
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+      this.child = child;
+      child.stderr.on("data", chunk => { this.stderrTail = `${this.stderrTail}${String(chunk)}`.slice(-4_000); });
+      this.lines = createInterface({ input: child.stdout });
+      this.lines.on("line", this.receivePhysicalLine);
+      child.once("error", this.fail);
+      child.once("close", (code, childSignal) => {
+        if (["closing", "closed"].includes(this.statusValue.state)) return;
+        this.fail(new Error(`Codex AppServer exited (${code ?? childSignal ?? "unknown"})${this.stderrTail ? `: ${this.stderrTail}` : ""}`));
+      });
+      const abort = () => { void this.close(); };
+      signal?.addEventListener("abort", abort, { once: true });
+      if (signal?.aborted) {
+        await this.close();
+        throw signal.reason;
+      }
+      this.publishStatus({ state: "open" });
+      signal?.removeEventListener("abort", abort);
+    } catch (error) {
       await this.close();
-      throw signal.reason;
+      this.fail(error instanceof Error ? error : new Error(String(error)));
+      throw error;
     }
-    this.publishStatus({ state: "open" });
-    signal?.removeEventListener("abort", abort);
+  }
+
+  private async connectCore(signal?: AbortSignal): Promise<void> {
+    this.control = new CodexCoreControlClient(this.options.coreEndpoint!, this.options.coreAuthToken ?? "");
+    const health = await this.control.health(signal);
+    const socket = new WebSocket(`ws+unix://${health.nativeSocket}:/`, { handshakeTimeout: 5_000 });
+    this.remote = socket;
+    socket.on("message", data => this.receivePhysicalLine(String(data)));
+    socket.on("error", error => { if (this.statusValue.state === "open") this.fail(new Error(`Codex core connection failed: ${error.message}`)); });
+    socket.on("close", () => { if (this.statusValue.state === "open") this.fail(new Error("Codex core connection closed")); });
+    await new Promise<void>((resolve, reject) => {
+      const abort = () => { socket.terminate(); reject(signal?.reason); };
+      const cleanup = () => { signal?.removeEventListener("abort", abort); socket.off("error", failed); socket.off("close", closed); };
+      const failed = (error: Error) => { cleanup(); reject(new Error(`Codex core connection failed: ${error.message}`, { cause: error })); };
+      const closed = () => failed(new Error("Connection closed during startup"));
+      socket.once("error", failed);
+      socket.once("close", closed);
+      socket.once("open", () => { cleanup(); resolve(); });
+      signal?.addEventListener("abort", abort, { once: true });
+      if (signal?.aborted) abort();
+    });
   }
 
   async send(frame: string): Promise<void> {
-    if (this.statusValue.state !== "open" || this.child === null) throw new Error("Codex Engine is not connected");
+    if (this.statusValue.state !== "open") throw new Error("Codex Engine is not connected");
     const message = record(JSON.parse(frame));
     const clientId = string(message[LOGICAL_CLIENT_FIELD]);
     if (!clientId) throw new Error("Codex Engine requires a logical client identity");
@@ -213,8 +212,23 @@ export class CodexEngineAdapter implements DuplexTransport {
     if (id !== null && typeof message.method === "string") {
       const physicalId = `opencraft:${++this.sequence}`;
       const params = record(message.params);
-      this.pending.set(physicalId, { clientId, originalId: id, method: message.method, params });
-      if (message.method === "turn/start") this.subscribeThread(string(params.threadId), clientId);
+      const threadId = string(params.threadId);
+      const clients = this.threadClients.get(threadId);
+      const wasSubscribed = clients?.has(clientId) ?? false;
+      let subscriptionRevision: number | undefined;
+      if (message.method === "thread/unsubscribe") {
+        this.removeSubscription(threadId, clientId);
+        if (!wasSubscribed || this.threadClients.has(threadId)) {
+          this.emit({ id, result: { status: wasSubscribed ? "unsubscribed" : "notSubscribed" } }, clientId);
+          return;
+        }
+        subscriptionRevision = this.subscriptionRevisions.get(JSON.stringify([threadId, clientId]));
+      } else if (message.method === "thread/resume" || message.method === "turn/start") {
+        // Reserve before native resume: pending approval/notifications can precede its response.
+        this.subscribeThread(threadId, clientId);
+        subscriptionRevision = this.subscriptionRevisions.get(JSON.stringify([threadId, clientId]));
+      }
+      this.pending.set(physicalId, { clientId, originalId: id, method: message.method, params, wasSubscribed, subscriptionRevision });
       this.writePhysical({ ...message, id: physicalId });
       return;
     }
@@ -237,28 +251,31 @@ export class CodexEngineAdapter implements DuplexTransport {
       this.child = null;
       this.lines?.close();
       this.lines = null;
-      await this.login?.dispose().catch(() => undefined);
-      this.login = null;
-      await this.subscriptions?.dispose();
-      this.subscriptions = null;
+      this.remote?.terminate();
+      this.remote = null;
+      this.control = null;
       if (child !== null && child.exitCode === null && child.signalCode === null) {
         await new Promise<void>(resolve => {
-          const timer = setTimeout(() => { child.kill("SIGKILL"); resolve(); }, 2_000);
+          const timer = setTimeout(() => { child.kill("SIGKILL"); }, 2_000);
           timer.unref();
           child.once("close", () => { clearTimeout(timer); resolve(); });
           child.stdin.end();
           child.kill("SIGTERM");
         });
       }
-      await this.poolServer?.close().catch(() => undefined);
-      this.poolServer = null;
-      this.poolStore?.close();
-      this.poolStore = null;
+      try { await this.accounts?.close(); }
+      finally {
+        this.accounts = null;
+        this.releaseWriter?.();
+        this.releaseWriter = null;
+      }
       this.pending.clear();
       this.initializeWaiters.length = 0;
       this.initializedClients.clear();
       this.threadClients.clear();
       this.serverRequests.clear();
+      this.disconnectedClients.clear();
+      this.subscriptionRevisions.clear();
       this.publishStatus({ state: "closed" });
     })();
     return this.closeOperation;
@@ -268,6 +285,7 @@ export class CodexEngineAdapter implements DuplexTransport {
     const id = responseId(message.id);
     if (id === null) throw new Error("Initialize requires an id");
     const pending: PendingRequest = { clientId, originalId: id, method: "initialize", params: record(message.params) };
+    this.disconnectedClients.delete(clientId);
     this.initializedClients.add(clientId);
     if (this.initializeResult !== null) {
       this.emit({ id, result: this.initializeResult }, clientId);
@@ -291,6 +309,7 @@ export class CodexEngineAdapter implements DuplexTransport {
       const pending = this.pending.get(String(id));
       if (pending !== undefined) {
         this.pending.delete(String(id));
+        if (pending.clientId === "") return; // Internal native unsubscribe acknowledgement.
         if (pending.method === "initialize") {
           this.physicalInitializePending = false;
           if ("result" in message) {
@@ -307,6 +326,18 @@ export class CodexEngineAdapter implements DuplexTransport {
           return;
         }
         if ("result" in message) this.commitThreadSubscription(pending, message.result);
+        else if (pending.subscriptionRevision !== undefined && !this.disconnectedClients.has(pending.clientId)) {
+          const threadId = string(pending.params.threadId);
+          if (this.subscriptionRevisions.get(JSON.stringify([threadId, pending.clientId])) === pending.subscriptionRevision) {
+            if (pending.wasSubscribed) this.subscribeThread(threadId, pending.clientId);
+            else {
+              this.removeSubscription(threadId, pending.clientId);
+              // Another client may have left while this reservation kept the native
+              // subscription alive. Rollback must release that final native claim too.
+              if (!this.threadClients.has(threadId)) this.unsubscribeNative(threadId);
+            }
+          }
+        }
         this.emit({ ...message, id: pending.originalId }, pending.clientId);
         return;
       }
@@ -325,16 +356,15 @@ export class CodexEngineAdapter implements DuplexTransport {
 
   private commitThreadSubscription(pending: PendingRequest, result: unknown): void {
     if (pending.method === "thread/start" || pending.method === "thread/fork") {
-      this.subscribeThread(string(record(record(result).thread).id), pending.clientId);
-    } else if (pending.method === "thread/resume") {
-      this.subscribeThread(string(pending.params.threadId), pending.clientId);
-    } else if (pending.method === "thread/unsubscribe") {
-      this.threadClients.get(string(pending.params.threadId))?.delete(pending.clientId);
+      const threadId = string(record(record(result).thread).id);
+      if (!this.disconnectedClients.has(pending.clientId)) this.subscribeThread(threadId, pending.clientId);
+      else if (!this.threadClients.has(threadId)) this.unsubscribeNative(threadId);
     }
   }
 
   private subscribeThread(threadId: string, clientId: string): void {
     if (!threadId) return;
+    this.subscriptionRevisions.set(JSON.stringify([threadId, clientId]), ++this.sequence);
     let clients = this.threadClients.get(threadId);
     if (clients === undefined) { clients = new Set(); this.threadClients.set(threadId, clients); }
     clients.add(clientId);
@@ -345,99 +375,51 @@ export class CodexEngineAdapter implements DuplexTransport {
   }
 
   private disconnectClient(clientId: string): void {
+    this.disconnectedClients.add(clientId);
     this.initializedClients.delete(clientId);
-    for (const clients of this.threadClients.values()) clients.delete(clientId);
+    for (const [threadId, clients] of this.threadClients) {
+      if (!clients.has(clientId)) continue;
+      this.removeSubscription(threadId, clientId);
+      if (!this.threadClients.has(threadId)) this.unsubscribeNative(threadId);
+    }
     for (const [id, owner] of this.serverRequests) if (owner === clientId) this.serverRequests.delete(id);
+  }
+
+  private removeSubscription(threadId: string, clientId: string): void {
+    this.subscriptionRevisions.set(JSON.stringify([threadId, clientId]), ++this.sequence);
+    const clients = this.threadClients.get(threadId);
+    clients?.delete(clientId);
+    if (clients?.size === 0) this.threadClients.delete(threadId);
+  }
+
+  private unsubscribeNative(threadId: string): void {
+    if (!threadId) return;
+    const id = `opencraft:${++this.sequence}`;
+    this.pending.set(id, { clientId: "", originalId: id, method: "thread/unsubscribe", params: { threadId } });
+    this.writePhysical({ id, method: "thread/unsubscribe", params: { threadId } });
   }
 
   private async handleAccountRequest(clientId: string, message: RpcRecord): Promise<void> {
     const id = responseId(message.id);
     if (id === null) return;
     try {
-      const store = this.poolStore;
-      const login = this.login;
-      const refresh = this.refresh;
-      const subscriptions = this.subscriptions;
-      if (store === null || login === null || refresh === null || subscriptions === null) throw new Error("Codex account service is unavailable");
+      const method = string(message.method);
       const params = record(message.params);
-      let result: unknown;
-      switch (message.method) {
-        case "opencraft/codex/accounts/list": result = { accounts: this.accountViews(store) }; break;
-        case "opencraft/codex/accounts/setEnabled":
-          store.setEnabled(string(params.accountId), params.enabled === true);
-          if (params.enabled === true) void subscriptions.refreshAccount(string(params.accountId)).catch(() => undefined);
-          result = { accounts: this.accountViews(store) }; break;
-        case "opencraft/codex/accounts/reorder":
-          if (!Array.isArray(params.accountIds)) throw new Error("Invalid account order");
-          store.reorder("codex", params.accountIds.map(string));
-          result = { accounts: this.accountViews(store) }; break;
-        case "opencraft/codex/accounts/remove":
-          store.removeAccount(string(params.accountId));
-          result = { accounts: this.accountViews(store) }; break;
-        case "opencraft/codex/accounts/refresh": {
-          await subscriptions.refreshAccount(string(params.accountId));
-          result = { accounts: this.accountViews(store) }; break;
-        }
-        case "opencraft/codex/accounts/import": {
-          const imported = await login.importFrom(this.options.nativeCodexHomeDirectory);
-          void subscriptions.refreshAccount(imported.id).catch(() => undefined);
-          const account = this.accountViews(store).find(candidate => candidate.id === imported.id);
-          if (account === undefined) throw new Error("Imported Codex account was not found");
-          result = { account };
-          break;
-        }
-        case "opencraft/codex/accounts/deviceLogin/start": result = await login.start(); break;
-        case "opencraft/codex/accounts/deviceLogin/poll": {
-          const polled = await login.poll(string(params.sessionId));
-          if (polled.status !== "complete") result = polled;
-          else {
-            void subscriptions.refreshAccount(polled.account.id).catch(() => undefined);
-            const account = this.accountViews(store).find(candidate => candidate.id === polled.account.id);
-            if (account === undefined) throw new Error("Codex account was not found after login");
-            result = { status: "complete", account };
-          }
-          break;
-        }
-        case "opencraft/codex/accounts/deviceLogin/cancel": result = { cancelled: await login.cancel(string(params.sessionId)) }; break;
-        default: throw new Error("Unsupported Codex account method");
-      }
+      const result = this.control !== null
+        ? await this.control.accountRequest(method, params)
+        : await this.accounts!.request(method, params);
       this.emit({ id, result }, clientId);
     } catch (error) {
       this.emit({ id, error: { code: -32020, message: errorMessage(error) } }, clientId);
     }
   }
 
-  private accountViews(store: AccountPoolStore): CodexAccountView[] {
-    const states = new Map(store.listAccountStates().map(state => [state.accountId, state]));
-    return store.listAccounts().map(account => {
-      const state = states.get(account.id);
-      if (state === undefined) throw new Error("Codex account state is unavailable");
-      return {
-        id: account.id,
-        label: account.label,
-        priority: account.priority,
-        enabled: account.enabled,
-        credentialConfigured: account.credentialConfigured,
-        email: state.email,
-        subscriptionType: state.subscriptionType,
-        rateLimitTier: state.rateLimitTier,
-        status: state.status,
-        observedAt: state.observedAt,
-        heldUntil: state.heldUntil,
-        lastUsedAt: state.lastUsedAt,
-        lastUsedHostId: state.lastUsedHostId,
-        limitWindows: state.limitWindows.map(window => ({
-          slot: window.slot,
-          windowMinutes: window.windowMinutes,
-          utilization: window.utilization,
-          resetAt: window.resetAt,
-          observedAt: window.observedAt,
-        })),
-      };
-    });
-  }
-
   private writePhysical(message: RpcRecord): void {
+    if (this.remote !== null) {
+      if (this.remote.readyState !== WebSocket.OPEN) throw new Error("Codex core connection is closed");
+      this.remote.send(JSON.stringify(message));
+      return;
+    }
     if (this.child === null || this.child.stdin.destroyed) throw new Error("Codex AppServer stdin is closed");
     this.child.stdin.write(`${JSON.stringify(message)}\n`);
   }

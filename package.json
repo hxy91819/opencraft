@@ -140,7 +140,8 @@
     "test:web-updates": "node --test tests/web-deployment*.test.mjs",
     "serve:web:managed": "node scripts/web-deployment/cli.mjs",
     "test:web-updates:e2e": "npm run build:web:release && playwright test --config playwright.web-updates.config.mjs",
-    "test:web-updates:live": "playwright test --config playwright.web-updates.live.config.mjs"
+    "test:web-updates:live": "playwright test --config playwright.web-updates.live.config.mjs",
+    "test:codex-core": "tsx --test tests/codex-core.test.ts"
   },
   "dependencies": {
     "react": "19.2.3",
