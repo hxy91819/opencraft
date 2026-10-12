@@ -307,8 +307,8 @@ uncompleted attachment processing and files belonging to another machine remain
 visible with a localized unavailable state and prevent submission until replaced.
 Attachment removal retains the original staging Host owner. Same-machine Agent
 changes preserve cwd and project selection. Machine changes keep a project only
-when its workspace directories exist on the target machine. They reuse or create
-a target Host project record and remap its ID; Hosts without the Project API keep
+when its workspace directories exist on the target machine. They reuse a matching
+target Host project ID without creating records; unmatched catalogs and Hosts without the Project API keep
 the verified folder without a fabricated project ID. Missing directories clear
 the workspace. The current Agent is retained
 when available, otherwise the target machine's first Agent is used. New intents

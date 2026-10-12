@@ -1,4 +1,4 @@
-import { groupWorkInMachines, machineName } from "./runtime/work-in-presentation";
+import { groupWorkInMachines, machineName, machineRole } from "./runtime/work-in-presentation";
 import { useWorkInEngineCatalog } from "./runtime/appserver-runtime-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useIntl, FormattedMessage } from "@opencraft/i18n/react";
@@ -319,6 +319,7 @@ export function App({
     id: machine.id,
     hostIds: machine.hosts.map(host => host.hostId),
     label: machineName(machine, extensionPlatform, intl),
+    role: machineRole(machine, extensionPlatform),
     platform: machine.identity?.platform ?? null,
     resource: machine.resource,
     cloud: machine.cloud,

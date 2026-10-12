@@ -32,10 +32,7 @@ export async function resolveWorkInWorkspace(workspace: Workspace, resources: Pi
       if (cursor !== null && cursors.has(cursor)) throw new Error("Repeated project cursor");
       if (cursor !== null) cursors.add(cursor);
     } while (cursor !== null);
-    if (!isCurrent()) return null;
-    const result = await resources.projects.create({ name: cwd.split(/[\\/]+/u).filter(Boolean).at(-1) ?? cwd,
-      roots: roots.map(path => ({ path })), idempotencyKey: `work-in:${JSON.stringify(roots)}` });
-    return isCurrent() ? { ...folder, projectId: result.project.id } : null;
+    return isCurrent() ? folder : null;
   } catch (error) {
     if (!isCurrent()) return null;
     if (unsupported(error)) return folder;

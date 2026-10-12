@@ -10,6 +10,8 @@ import { MachineIdentityTransport } from "../apps/opencraft-daemon/src/machine-t
 import { workInAgentHosts, chooseWorkInHost, groupWorkInMachines, workInMachineName, readHostMachineInfo, type HostConnectionProfile, type EnvironmentEntry } from "@opencraft/workbench-runtime";
 import { IndexedDbHostConnectionProfileStore } from "../apps/workbench-web/src/runtime/indexeddb-host-profile-store";
 
+import { machineRole } from "../apps/workbench-web/src/runtime/work-in-presentation";
+
 const machine = { machineId: "12345678-1234-4123-8123-123456789abc", name: "build-machine", platform: "macos" as const };
 export function profile(hostId: string, identity: typeof machine | null = machine): HostConnectionProfile {
   return { hostId, machineIdentity: identity, agent: hostId.includes("codex") ? "Codex" : "OpenCraft", displayName: hostId, providerId: "vela.builtin-agents", providerConfig: {}, providerConfigVersion: 1, hostKind: "local", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: null, transportEndpoint: "same.example", executionLocation: null, workspaceBrowseRoots: ["/default"], revision: 0 };
@@ -96,4 +98,14 @@ test("one reported Agent uses the current connection without merging logical Hos
   assert.equal(chooseWorkInHost(group, "OpenCraft", "local").hostId, "local");
   assert.deepEqual(workInAgentHosts(group, "local").map(host => host.hostId), ["local", "local-codex"]);
   assert.equal(group.hosts.length, 3);
+});
+
+test("machine icons distinguish desktop local, daemon servers and cloud resources", () => {
+  const local = groupWorkInMachines([profile("local")])[0]!;
+  assert.equal(machineRole(local, "electron"), "local");
+  assert.equal(machineRole(local, "web"), "server");
+  const remote = groupWorkInMachines([{ ...profile("remote"), providerId: "vela.websocket" }])[0]!;
+  assert.equal(machineRole(remote, "electron"), "server");
+  assert.equal(machineRole({ ...local, cloud: true }, "electron"), "cloud");
+  assert.equal(machineRole({ ...local, cloud: true }, "web"), "cloud");
 });

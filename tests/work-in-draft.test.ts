@@ -14,7 +14,8 @@ async function fixture(targetProject = false, targetDirectory = targetProject) {
   const profiles = ["local", "local-codex", "other", "latest"].map((hostId): HostConnectionProfile => ({ hostId, machineIdentity: hostId === "local" || hostId === "local-codex" ? identity : { ...identity, machineId: hostId === "other" ? "22345678-1234-4123-8123-123456789abc" : "32345678-1234-4123-8123-123456789abc" }, displayName: hostId, providerId: "fake", providerConfig: {}, providerConfigVersion: 1, hostKind: "local", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: null, transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: ["/default"], revision: 0 }));
   const holds = new Map<string, Promise<void>>();
   const calls = new Map<string, number>();
-  const registry = new HostRuntimeRegistry(profiles.map(profile => ({ descriptor: { hostId: profile.hostId, label: profile.displayName, kind: profile.hostKind, transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: ["/default"] }, createRuntime: () => ({ async connect() { const call = (calls.get(profile.hostId) ?? 0) + 1; calls.set(profile.hostId, call); await (holds.get(`${profile.hostId}:${call}`) ?? holds.get(profile.hostId)); }, async dispose() {}, async acquireThread() { throw new Error("unexpected Thread"); }, resources: { fileSystem: { async getMetadata() { if (!targetDirectory) throw Object.assign(new Error("missing folder"), { code: -32603 }); return { isDirectory: true }; } }, projects: { async create() { return { project: { id: "target-created" } }; }, async list() { return { data: targetProject ? [{ id: "target-project", roots: [{ path: "/project" }] }] : [], nextCursor: null }; } } } }) })));
+  let projectCreates = 0;
+  const registry = new HostRuntimeRegistry(profiles.map(profile => ({ descriptor: { hostId: profile.hostId, label: profile.displayName, kind: profile.hostKind, transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: ["/default"] }, createRuntime: () => ({ async connect() { const call = (calls.get(profile.hostId) ?? 0) + 1; calls.set(profile.hostId, call); await (holds.get(`${profile.hostId}:${call}`) ?? holds.get(profile.hostId)); }, async dispose() {}, async acquireThread() { throw new Error("unexpected Thread"); }, resources: { fileSystem: { async getMetadata() { if (!targetDirectory) throw Object.assign(new Error("missing folder"), { code: -32603 }); return { isDirectory: true }; } }, projects: { async create() { projectCreates++; throw new Error("selection must not create projects"); }, async list() { return { data: targetProject ? [{ id: "target-project", roots: [{ path: "/project" }] }] : [], nextCursor: null }; } } } }) })));
   const scopes = createConversationScopeRegistry({ initialDraft: { draftId: "initial", execution: { hostId: asHostId("local"), workspace: { cwd: "/project", runtimeWorkspaceRoots: ["/project"], projectId: "source-project" } } } });
   const location = createWorkbenchDraftLocation("local", "initial");
   const coordinator = createWorkbenchCoordinator(registry, location);
@@ -27,7 +28,7 @@ async function fixture(targetProject = false, targetDirectory = targetProject) {
   const commands = createWebWorkbenchCommands({ registry, coordinator, activation, scopes, views, navigation, queryClient: new QueryClient(), hostProfiles: { getSnapshot: () => ({ revision: 0, profiles }), subscribe: () => () => {}, put: async () => {}, remove: async () => false, close() {} }, createHostRegistration: () => { throw new Error("unexpected registration"); }, connectionProviders: {} } as any);
   const composer = () => views.get(coordinator.getSnapshot().viewId!)!.composer;
   composer().dispatch({ type: "set-document", document: { version: 1, blocks: [{ type: "paragraph", children: [{ type: "text", text: "keep my draft" }] }] } });
-  return { commands, scopes, coordinator, composer, holds, async close() { navigation.dispose(); activation.dispose(); views.dispose(); leases.dispose(); scopes.dispose(); coordinator.dispose(); bindings.dispose(); await registry.dispose(); } };
+  return { get projectCreates() { return projectCreates; }, commands, scopes, coordinator, composer, holds, async close() { navigation.dispose(); activation.dispose(); views.dispose(); leases.dispose(); scopes.dispose(); coordinator.dispose(); bindings.dispose(); await registry.dispose(); } };
 }
 
 test("switching Agent preserves text/cwd/project and applies the requested model", async () => {
@@ -37,6 +38,7 @@ test("switching Agent preserves text/cwd/project and applies the requested model
     assert.equal(composerDocumentToPlainText(f.composer().getSnapshot().draft.document), "keep my draft");
     assert.deepEqual(f.scopes.getActiveDraft()!.target.execution.workspace, { cwd: "/project", runtimeWorkspaceRoots: ["/project"], projectId: "source-project" });
     assert.equal(f.composer().getSnapshot().draft.selections.model, "codex-model");
+    assert.equal(f.projectCreates, 0);
   } finally { await f.close(); }
 });
 
@@ -47,6 +49,7 @@ for (const exists of [true, false]) test(`switching machine preserves text; proj
     assert.equal(composerDocumentToPlainText(f.composer().getSnapshot().draft.document), "keep my draft");
     assert.equal(f.scopes.getActiveDraft()!.target.execution.workspace.cwd, exists ? "/project" : null);
     assert.equal(f.scopes.getActiveDraft()!.target.execution.workspace.projectId, exists ? "target-project" : undefined);
+    assert.equal(f.projectCreates, 0);
   } finally { await f.close(); }
 });
 
@@ -109,7 +112,9 @@ for (const catalog of [true, false]) test(`target directory existence overrides 
   try {
     await f.commands.selectHost("other");
     assert.equal(f.scopes.getActiveDraft()!.target.execution.workspace.cwd, catalog ? null : "/project");
-    assert.equal(f.scopes.getActiveDraft()!.target.execution.workspace.projectId, catalog ? undefined : "target-created");
+    assert.equal(f.scopes.getActiveDraft()!.target.execution.workspace.projectId, undefined);
+    assert.deepEqual(f.scopes.getActiveDraft()!.target.execution.workspace.runtimeWorkspaceRoots, catalog ? [] : ["/project"]);
+    assert.equal(f.projectCreates, 0);
   } finally { await f.close(); }
 });
 

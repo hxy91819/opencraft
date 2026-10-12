@@ -29,7 +29,9 @@ import {
   Folder,
   FolderPlus,
   GitBranch,
-  Globe2,
+  Cloud,
+  Laptop,
+  Server,
   LoaderCircle,
   Search,
 } from "lucide-react";
@@ -56,15 +58,29 @@ export interface DraftHostOption {
   readonly platform: "macos" | "linux" | "windows" | null;
   readonly resource: MachineResourceLifecycle | null;
   readonly cloud: boolean;
+  readonly role: "local" | "server" | "cloud";
   readonly connectable: boolean;
 }
 
-function MachineStatus({ hostIds }: { hostIds: readonly string[] }) {
+function MachineIcon({ role }: { role: DraftHostOption["role"] }) {
+  const Icon = role === "local" ? Laptop : role === "cloud" ? Cloud : Server;
+  return <Icon size={15} />;
+}
+
+function MachineRow({ host, selected }: { host: DraftHostOption; selected: boolean }) {
   const intl = useIntl();
-  const phase = useMachineConnectionPhase(hostIds);
-  return <span className="environment-connection-label"><ConnectionStatus phase={phase} /><span>{intl.formatMessage({
-    id: phase === "ready" ? "workIn.online" : "workIn.offline", defaultMessage: phase === "ready" ? "Online" : "Offline",
-  })}</span></span>;
+  const phase = useMachineConnectionPhase(host.hostIds);
+  const subtitle = [
+    host.platform === "macos" ? "macOS" : host.platform === "linux" ? "Linux" : host.platform === "windows" ? "Windows" : host.cloud ? null : intl.formatMessage({ id: "workIn.unknownSystem", defaultMessage: "Unknown system" }),
+    machineResourcePhaseLabel(host.resource),
+    phase === "ready" ? null : intl.formatMessage({ id: "workIn.offline", defaultMessage: "Offline" }),
+  ].filter(Boolean).join(" · ");
+  return <>
+    <MachineIcon role={host.role} />
+    <span><strong>{host.label}</strong><small>{subtitle}</small></span>
+    <ConnectionStatus phase={phase} />
+    {selected ? <Check size={15} /> : null}
+  </>;
 }
 
 export interface NewThreadDraftPageProps {
@@ -354,7 +370,7 @@ function ExecutionUtilityBar({
             aria-label={intl.formatMessage({ id: "workIn.title", defaultMessage: "Work in" })}
             disabled={executionLocked}
           >
-            <Globe2 size={15} />
+            <MachineIcon role={displayedHost?.role ?? "server"} />
             <span>{displayedHost === null ? intl.formatMessage({ id: "workIn.unknown", defaultMessage: "Unknown machine" }) : displayedHost.label}</span>
             <ConnectionStatus phase={switchingHostId === null ? connectionPhase : "connecting"} />
             <ChevronDown size={12} />
@@ -377,7 +393,6 @@ function ExecutionUtilityBar({
               {cloud && hostOptions.some(host => host.cloud) ? <DropdownMenu.Label className="codex-composer-selection-menu__heading">{intl.formatMessage({ id: "workIn.cloud", defaultMessage: "Cloud · LightVela" })}</DropdownMenu.Label> : null}
               {hostOptions.filter(host => host.cloud === cloud).map((host) => {
                 const selected = host.hostIds.includes(activeHostId);
-                const resourceLabel = machineResourcePhaseLabel(host.resource);
                 return (
                   <DropdownMenu.Item
                     key={host.id}
@@ -394,17 +409,7 @@ function ExecutionUtilityBar({
                       }).finally(() => { if (epoch === selectionEpoch.current) setSwitchingHostId(null); });
                     }}
                   >
-                    <Globe2 size={15} />
-
-                    <span>
-                      <strong>{host.label}</strong>
-                      <small>{[
-                        host.platform === "macos" ? "macOS" : host.platform === "linux" ? "Linux" : host.platform === "windows" ? "Windows" : host.cloud ? null : intl.formatMessage({ id: "workIn.unknownSystem", defaultMessage: "Unknown system" }),
-                        resourceLabel,
-                      ].filter(Boolean).join(" · ")}</small>
-                    </span>
-                    <MachineStatus hostIds={host.hostIds} />
-                    {selected ? <Check size={15} /> : null}
+                    <MachineRow host={host} selected={selected} />
                   </DropdownMenu.Item>
                 );
               })}
