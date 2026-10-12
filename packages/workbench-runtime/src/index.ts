@@ -50,3 +50,5 @@ export * from "./host-document-persistence";
 export * from "./connectors/feedback";
 export * from "./connectors/oauth";
 export * from "./connectors/manager";
+
+export * from "./work-in";

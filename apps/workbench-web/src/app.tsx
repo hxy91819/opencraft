@@ -1,5 +1,7 @@
+import { groupWorkInMachines, machineName } from "./runtime/work-in-presentation";
+import { useWorkInEngineCatalog } from "./runtime/appserver-runtime-context";
 import { useQueryClient } from "@tanstack/react-query";
-import { FormattedMessage } from "@opencraft/i18n/react";
+import { useIntl, FormattedMessage } from "@opencraft/i18n/react";
 import {
   retargetSubmitIntentForFollowUp,
   type ComposerAttachment,
@@ -23,7 +25,7 @@ import type {
 } from "@opencraft/timeline-virtualizer";
 import { useStableEvent } from "@opencraft/react-runtime";
 import { nativeProjectPicker } from "./runtime/project-folder-picker";
-import { ThreadTitleWriter } from "@opencraft/workbench-runtime";
+import { workInAgentHosts, chooseWorkInHost, ThreadTitleWriter } from "@opencraft/workbench-runtime";
 import { readCachedThreadName, writeCachedThreadName } from "./runtime/thread-title-cache";
 import {
   type PanelAction,
@@ -178,20 +180,6 @@ function permissionProfileLabel(id: string): string {
   }
 }
 
-function hostKindDescription(kind: string): string {
-  switch (kind) {
-    case "remote-ssh":
-      return "SSH AppServer";
-    case "durable":
-      return "Durable AppServer";
-    case "remote-control":
-      return "Remote control AppServer";
-    case "wsl":
-      return "WSL AppServer";
-    default:
-      return "Local AppServer";
-  }
-}
 
 function ConversationHydration({
   detail,
@@ -324,20 +312,19 @@ export function App({
   const activeHost =
     hostCatalog.hosts.find((host) => host.hostId === snapshot.hostId) ??
     hostCatalog.hosts[0]!;
-  const composerHostOptions = useMemo(
-    () =>
-      hostCatalog.hosts.filter(host => hostCatalog.profiles.some(profile => profile.hostId === host.hostId && profile.enabled)).map((host) => ({
-        id: host.hostId,
-        label: host.label,
-        kind: host.kind,
-        transportEndpoint: host.transportEndpoint,
-        executionLocation:
-          host.executionLocation ?? hostKindDescription(host.kind),
-        workspaceBrowseRoots: host.workspaceBrowseRoots,
-        resource: environmentSnapshot.entries.find((entry) => entry.profile.hostId === host.hostId)?.resource ?? null,
-      })),
-    [environmentSnapshot.entries, hostCatalog.hosts, hostCatalog.profiles],
-  );
+  const intl = useIntl();
+  const machines = useMemo(() => groupWorkInMachines(hostCatalog.profiles, environmentSnapshot.entries), [hostCatalog.profiles, environmentSnapshot.entries]);
+  const activeMachine = machines.find(machine => machine.hosts.some(host => host.hostId === snapshot.hostId));
+  const composerHostOptions = useMemo(() => machines.map(machine => ({
+    id: machine.id,
+    hostIds: machine.hosts.map(host => host.hostId),
+    label: machineName(machine, extensionPlatform, intl),
+    platform: machine.identity?.platform ?? null,
+    resource: machine.resource,
+    cloud: machine.cloud,
+    connectable: machine.hosts.some(host => host.enabled),
+  })), [machines, extensionPlatform, intl]);
+  const engineCatalog = useWorkInEngineCatalog(workInAgentHosts(activeMachine, snapshot.hostId).map(host => host.hostId), snapshot.hostId);
   const queryClient = useQueryClient();
   const blobs = useBlobResources();
   const images = useImageProcessing();
@@ -362,12 +349,20 @@ export function App({
     async (attachment: ComposerAttachment) => {
       const ref = attachment.metadata?.attachmentRef;
       if (typeof ref !== "object" || ref === null || !("id" in ref) || typeof ref.id !== "string") return;
-      await runtime.resources.attachments.remove(ref.id);
+      const ownerHostId = typeof attachment.metadata?.attachmentHostId === "string" ? attachment.metadata.attachmentHostId : snapshot.hostId;
+      if (ownerHostId === snapshot.hostId) await runtime.resources.attachments.remove(ref.id);
+      else await hostCatalog.agentRuntimes.request(ownerHostId, "attachment/remove", { id: ref.id });
     },
-    [runtime],
+    [runtime, snapshot.hostId, hostCatalog.agentRuntimes],
   );
   const catalog = useThreadCatalog();
-  const multiHostCatalog = useMultiHostThreadCatalog();
+  const rawMultiHostCatalog = useMultiHostThreadCatalog();
+  const multiHostCatalog = { ...rawMultiHostCatalog, threads: rawMultiHostCatalog.threads.map(thread => ({ ...thread,
+    hostLabel: machines.length > 1 ? (() => {
+      const machine = machines.find(machine => machine.hosts.some(host => host.hostId === thread.hostId));
+      return machine ? machineName(machine, extensionPlatform, intl) : "";
+    })() : "",
+  })) };
   const projectCatalog = useProjectCatalog();
   const [workspacePickerOpen, setWorkspacePickerOpen] = useState(false);
   const { sidebarOpen, setSidebarOpen } = useResponsiveSidebarDock();
@@ -941,12 +936,25 @@ export function App({
       })),
       isFetching: composerCatalog.isFetching,
       modelError: composerCatalog.modelError?.message ?? null,
-      onModelMenuOpen: composerCatalog.onModelMenuOpen,
+      onModelMenuOpen: () => { composerCatalog.onModelMenuOpen(); engineCatalog.open(); },
+      agentGroups: draft === null ? undefined : engineCatalog.groups.map(group => ({
+        id: group.hostId,
+        label: hostCatalog.profiles.find(host => host.hostId === group.hostId)?.agent ?? hostCatalog.hosts.find(host => host.hostId === group.hostId)?.label ?? group.hostId,
+        active: group.hostId === snapshot.hostId,
+        models: projectComposerModelChoices(group.hostId === snapshot.hostId ? composerCatalog.models : group.models),
+        loading: group.hostId === snapshot.hostId ? composerCatalog.isFetching : group.loading,
+        error: group.hostId === snapshot.hostId ? composerCatalog.modelError?.message : group.error,
+        retry: group.hostId === snapshot.hostId ? composerCatalog.retryModels : group.retry,
+        select: async (model) => { await hostCatalog.selectHost(group.hostId, group.hostId === snapshot.hostId ? undefined : { model: model.value, effort: model.defaultEffort }); },
+        manage: hostCatalog.extensionContributions.getSnapshot().settingsPages.some(page => page.contribution.targetHostId === group.hostId && page.contribution.id === (group.hostId === "local" ? "vela.builtin-agents.model-services" : "vela.builtin-agents.codex-accounts"))
+          ? () => hostCatalog.navigation.openSettings(group.hostId === "local" ? "vela.builtin-agents.model-services" : "vela.builtin-agents.codex-accounts") : undefined,
+      })),
       retryModels: composerCatalog.retryModels,
       permissionProfileError:
         composerCatalog.permissionProfileError?.message ?? null,
     }),
     [
+      engineCatalog, draft, hostCatalog, snapshot.hostId,
       composerCatalog.isFetching,
       composerCatalog.modelError,
       composerCatalog.onModelMenuOpen,
@@ -1452,9 +1460,13 @@ export function App({
             activeHostId={snapshot.hostId}
             hostOptions={composerHostOptions}
             connectionPhase={activeHostConnectionPhase}
-            onSelectHost={async (hostId) => {
+            onSelectHost={async (machineId) => {
               setWorkspacePickerOpen(false);
-              await hostCatalog.selectHost(hostId);
+              const machine = machines.find(machine => machine.id === machineId);
+              if (!machine) return;
+              const currentAgent = hostCatalog.profiles.find(host => host.hostId === snapshot.hostId)?.agent;
+              const target = chooseWorkInHost(machine, currentAgent, snapshot.hostId);
+              await hostCatalog.selectHost(target.hostId);
             }}
             onSelectWorkspace={(workspace) => {
               selectDraftWorkspace({

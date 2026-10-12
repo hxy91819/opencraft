@@ -20,7 +20,8 @@ import {
   type NewThreadDraftSnapshot,
 } from "@opencraft/workbench-runtime";
 import { menuGeometry } from "@opencraft/design-system/tokens";
-import { ConnectionStatus, TargetConnectionStatus } from "./target-connection-status";
+import { useMachineConnectionPhase } from "../runtime/appserver-runtime-context";
+import { ConnectionStatus } from "./target-connection-status";
 import { machineResourcePhaseLabel } from "./machine-resource-presentation";
 import {
   Check,
@@ -50,12 +51,20 @@ import { useWorkbenchPresentationRoot } from "./workbench-presentation-root";
 
 export interface DraftHostOption {
   readonly id: string;
+  readonly hostIds: readonly string[];
   readonly label: string;
-  readonly kind: "local" | "remote-ssh" | "durable" | "remote-control" | "wsl";
-  readonly transportEndpoint: string | null;
-  readonly executionLocation: string | null;
-  readonly workspaceBrowseRoots: readonly string[];
+  readonly platform: "macos" | "linux" | "windows" | null;
   readonly resource: MachineResourceLifecycle | null;
+  readonly cloud: boolean;
+  readonly connectable: boolean;
+}
+
+function MachineStatus({ hostIds }: { hostIds: readonly string[] }) {
+  const intl = useIntl();
+  const phase = useMachineConnectionPhase(hostIds);
+  return <span className="environment-connection-label"><ConnectionStatus phase={phase} /><span>{intl.formatMessage({
+    id: phase === "ready" ? "workIn.online" : "workIn.offline", defaultMessage: phase === "ready" ? "Online" : "Offline",
+  })}</span></span>;
 }
 
 export interface NewThreadDraftPageProps {
@@ -97,9 +106,6 @@ function workspaceLabel(cwd: string | null): string | null {
   return `${segment.slice(0, 1).toUpperCase()}${segment.slice(1)}`;
 }
 
-function hostKindLabel(kind: DraftHostOption["kind"]): string {
-  return kind === "local" ? "Local" : kind === "wsl" ? "WSL" : "Remote";
-}
 
 interface DragState {
   pointerId: number;
@@ -210,6 +216,8 @@ function ExecutionUtilityBar({
   onBrowseWorkspace,
   onReturnFocus,
 }: ExecutionUtilityBarProps) {
+  const intl = useIntl();
+  const selectionEpoch = useRef(0);
   const searchRef = useRef<HTMLInputElement>(null);
   const [projectQuery, setProjectQuery] = useState("");
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
@@ -226,7 +234,7 @@ function ExecutionUtilityBar({
   );
   const project = selectedWorkspace?.label ?? workspaceLabel(workspace.cwd);
   const activeHost = useMemo(
-    () => hostOptions.find((host) => host.id === activeHostId) ?? null,
+    () => hostOptions.find((host) => host.hostIds.includes(activeHostId)) ?? null,
     [activeHostId, hostOptions],
   );
   const displayedHost = switchingHostId === null
@@ -256,6 +264,7 @@ function ExecutionUtilityBar({
             className="new-thread-context-trigger"
             type="button"
             aria-label="Choose project folder"
+            title={workspace.cwd ?? undefined}
             disabled={executionLocked}
           >
             <Folder size={15} /><span>{project ?? "Choose project"}</span><ChevronDown size={12} />
@@ -342,11 +351,11 @@ function ExecutionUtilityBar({
           <button
             className="new-thread-context-trigger"
             type="button"
-            aria-label="Choose execution node"
-            disabled={executionLocked || switchingHostId !== null}
+            aria-label={intl.formatMessage({ id: "workIn.title", defaultMessage: "Work in" })}
+            disabled={executionLocked}
           >
             <Globe2 size={15} />
-            <span>{displayedHost === null ? "Unavailable target" : displayedHost.label}</span>
+            <span>{displayedHost === null ? intl.formatMessage({ id: "workIn.unknown", defaultMessage: "Unknown machine" }) : displayedHost.label}</span>
             <ConnectionStatus phase={switchingHostId === null ? connectionPhase : "connecting"} />
             <ChevronDown size={12} />
           </button>
@@ -362,39 +371,44 @@ function ExecutionUtilityBar({
             collisionPadding={menuGeometry.collisionPadding}
             onCloseAutoFocus={(event) => { event.preventDefault(); onReturnFocus(); }}
           >
+            <DropdownMenu.Label className="codex-composer-selection-menu__heading">{intl.formatMessage({ id: "workIn.title", defaultMessage: "Work in" })}</DropdownMenu.Label>
             <div className="new-thread-project-menu__items">
-              {hostOptions.map((host) => {
-                const selected = host.id === activeHostId;
+              {[false, true].map(cloud => <DropdownMenu.Group key={String(cloud)}>
+              {cloud && hostOptions.some(host => host.cloud) ? <DropdownMenu.Label className="codex-composer-selection-menu__heading">{intl.formatMessage({ id: "workIn.cloud", defaultMessage: "Cloud · LightVela" })}</DropdownMenu.Label> : null}
+              {hostOptions.filter(host => host.cloud === cloud).map((host) => {
+                const selected = host.hostIds.includes(activeHostId);
                 const resourceLabel = machineResourcePhaseLabel(host.resource);
                 return (
                   <DropdownMenu.Item
                     key={host.id}
                     className="new-thread-project-menu__item"
                     data-selected={selected ? "true" : undefined}
-                    disabled={executionLocked || switchingHostId !== null}
+                    disabled={executionLocked || !host.connectable}
                     onSelect={() => {
-                      if (selected) return;
+                      if (selected && switchingHostId === null) return;
+                      const epoch = ++selectionEpoch.current;
                       setSwitchingHostId(host.id);
                       setHostSelectionError(null);
                       void Promise.resolve(onSelectHost(host.id)).catch((cause) => {
-                        setHostSelectionError(cause instanceof Error ? cause.message : String(cause));
-                      }).finally(() => setSwitchingHostId(null));
+                        if (epoch === selectionEpoch.current) setHostSelectionError(cause instanceof Error ? cause.message : String(cause));
+                      }).finally(() => { if (epoch === selectionEpoch.current) setSwitchingHostId(null); });
                     }}
                   >
                     <Globe2 size={15} />
-                    <TargetConnectionStatus hostId={host.id} />
+
                     <span>
                       <strong>{host.label}</strong>
                       <small>{[
-                        hostKindLabel(host.kind),
-                        host.executionLocation,
+                        host.platform === "macos" ? "macOS" : host.platform === "linux" ? "Linux" : host.platform === "windows" ? "Windows" : host.cloud ? null : intl.formatMessage({ id: "workIn.unknownSystem", defaultMessage: "Unknown system" }),
                         resourceLabel,
                       ].filter(Boolean).join(" · ")}</small>
                     </span>
+                    <MachineStatus hostIds={host.hostIds} />
                     {selected ? <Check size={15} /> : null}
                   </DropdownMenu.Item>
                 );
               })}
+              </DropdownMenu.Group>)}
               {hostSelectionError === null ? null : (
                 <div className="new-thread-project-menu__state is-error" role="alert">
                   {hostSelectionError}

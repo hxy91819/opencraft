@@ -44,6 +44,8 @@ export interface ConversationScopeRegistrySnapshot {
 }
 
 export interface OpenNewThreadDraftOptions {
+  /** Preparation may allocate a Host-owned draft without replacing the visible one. */
+  readonly activate?: boolean;
   readonly execution: ComposerExecutionTarget;
   readonly entrypoint?: NewThreadDraftEntrypoint;
   readonly draftId?: string;
@@ -185,7 +187,7 @@ export function createConversationScopeRegistry(
       if (options.draftId !== undefined) {
         const existing = drafts.get(options.draftId);
         if (existing !== undefined) {
-          activeDraftId = existing.id;
+          if (options.activate !== false) activeDraftId = existing.id;
           publish();
           return existing;
         }
@@ -193,7 +195,7 @@ export function createConversationScopeRegistry(
       const draft = createDraft(options);
       if (drafts.has(draft.id)) throw new Error(`Draft ${draft.id} already exists`);
       drafts.set(draft.id, draft);
-      activeDraftId = draft.id;
+      if (options.activate !== false) activeDraftId = draft.id;
       pruneDrafts();
       publish();
       return draft;

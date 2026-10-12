@@ -265,6 +265,58 @@ Host and backed by the same catalog query/invalidation owner. All menus and
 settings controls reuse the existing Radix and theme primitives. Source and acceptance are tracked in
 [the lifecycle plan](../design/thread-lifecycle/task_plan.md).
 
+### Machines, Work in and Agents
+
+A machine is a presentation group of logical Hosts, not a Host replacement.
+The daemon creates a random UUID once in `<resolved daemon dataDirectory>/machine-id`
+(desktop: the directory resolver's `dshDataDirectory`) and reports it through
+`runtime/machine/read`: `{ machine: { machineId, name, platform }, agent }`.
+`platform` is `macos | linux | windows`; `agent` is `OpenCraft | Codex` for the
+current daemon adapters. Both daemon Hosts report the same machine object.
+The extension is declared in the handwritten OpenCraft method map; upstream
+Codex-generated types remain upstream-owned. Identity-only App Host leases do
+not initialize or start an engine; native initialize remains unchanged for normal
+runtime connections. The Local Agent also exposes the identity supplied by its daemon.
+
+The client caches the latest report with its Host profile, including for
+activation-owned profiles (metadata persists, the connection recipe does not).
+Identity observations do not increment connection-recipe revisions. Missing or
+unsupported reports leave each Host in an independent unknown-machine group.
+Probes, initialization and reconnects share one observation generation; superseded
+reads cannot overwrite a newer report, and transient failures do not erase the
+last report. Only reported `machineId` establishes grouping; URLs, names and hostKind never
+establish equality. Provider-managed `MachineResourceLifecycle` entries remain
+separate cloud resources with their existing lifecycle copy. Host and
+`(hostId, threadId)` identities remain unchanged.
+
+The composer always shows **Work in**, even for one machine. Web uses the
+reported machine name; Electron's builtin daemon uses **This Mac** on macOS or
+**This computer** otherwise. Sidebar provenance uses the same name and hides it
+when only one machine is available. Agent models are grouped within the selected
+machine; multiple profiles for one reported Agent use the current connection
+when available, otherwise the first enabled profile, without merging logical
+Hosts or Threads. Inactive engine catalogs load only after the model menu is opened.
+Cloud resources remain visible but unselectable while not connectable.
+Manage models links are exposed only for the matching registered Settings owner
+(`local` Model Services / `local-codex` Codex Accounts).
+
+Changing Host creates a new Host-owned Draft/View through the application Router,
+transferring its current document, attachments, context, options and selections
+after activation. Inline images and same-machine staged files remain usable;
+uncompleted attachment processing and files belonging to another machine remain
+visible with a localized unavailable state and prevent submission until replaced.
+Attachment removal retains the original staging Host owner. Same-machine Agent
+changes preserve cwd and project selection. Machine changes keep a project only
+when its workspace directories exist on the target machine. They reuse or create
+a target Host project record and remap its ID; Hosts without the Project API keep
+the verified folder without a fabricated project ID. Missing directories clear
+the workspace. The current Agent is retained
+when available, otherwise the target machine's first Agent is used. New intents
+cancel prior preparation; project retargeting cancels an in-flight placement
+change even during its navigation preparation; late connections cannot navigate or apply a model to
+the replacement draft. This does not move existing Threads, introduce a remote
+server connection flow, or forward model credentials between machines.
+
 ### Project selection and persistence
 
 OpenCraft owns the local Project catalog and stable IDs. The local Host serves

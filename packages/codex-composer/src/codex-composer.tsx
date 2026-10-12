@@ -136,7 +136,20 @@ export function hasPermissionProfileChoices(
   return permissionProfiles.length > 0;
 }
 
+export interface ComposerAgentModelGroup {
+  readonly id: string;
+  readonly label: string;
+  readonly active: boolean;
+  readonly models: readonly ComposerModelOption[];
+  readonly loading?: boolean;
+  readonly error?: string | null;
+  readonly retry?: () => void;
+  readonly select: (model: ComposerModelOption) => void | Promise<void>;
+  readonly manage?: () => void;
+}
+
 export interface ComposerSelectionCatalog {
+  readonly agentGroups?: readonly ComposerAgentModelGroup[];
   readonly models: readonly ComposerModelOption[];
   readonly permissionProfiles: readonly ComposerPermissionOption[];
   readonly isFetching?: boolean;
@@ -831,6 +844,17 @@ export const CodexComposer = forwardRef<
     readonly error: string | null;
   } | null>(null);
   const [openPicker, setOpenPicker] = useState<SelectionPicker | null>(null);
+  const agentSelectionEpoch = useRef(0);
+  const [switchingAgentId, setSwitchingAgentId] = useState<string | null>(null);
+  const [agentSelectionError, setAgentSelectionError] = useState<{ id: string; message: string } | null>(null);
+  const selectAgentModel = async (group: ComposerAgentModelGroup, model: ComposerModelOption) => {
+    const epoch = ++agentSelectionEpoch.current;
+    setSwitchingAgentId(group.id);
+    setAgentSelectionError(null);
+    try { await group.select(model); }
+    catch (error) { if (epoch === agentSelectionEpoch.current) setAgentSelectionError({ id: group.id, message: error instanceof Error ? error.message : String(error) }); }
+    finally { if (epoch === agentSelectionEpoch.current) setSwitchingAgentId(null); }
+  };
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [editingQueuedSubmissionId, setEditingQueuedSubmissionId] = useState<
     string | null
@@ -1762,7 +1786,7 @@ export const CodexComposer = forwardRef<
     (selectedPermissionValue === null
       ? "Permissions"
       : permissionLabel(selectedPermissionValue));
-  const modelPickerDisabled = disabled || catalogModels.length === 0;
+  const modelPickerDisabled = disabled || (catalogModels.length === 0 && !selectionCatalog?.agentGroups?.length);
 
   const primaryAction = resolveComposerPrimaryAction({
     isResponseInProgress: isStreaming,
@@ -1857,7 +1881,9 @@ export const CodexComposer = forwardRef<
                   <small>
                     {Math.max(1, Math.ceil(attachment.size / 1024))} KB
                   </small>
-                  {attachment.error ? <small>{attachment.error}</small> : null}
+                  {attachment.metadata?.workInAttachmentError === "interrupted" ? <small><FormattedMessage id="workIn.attachmentInterrupted" defaultMessage="Attachment processing was interrupted. Add it again." /></small>
+                    : attachment.metadata?.workInAttachmentError === "machine-changed" ? <small><FormattedMessage id="workIn.attachmentOtherMachine" defaultMessage="This file is on the previous machine. Add it on this machine." /></small>
+                    : attachment.error ? <small>{attachment.error}</small> : null}
                 </span>
                 <button
                   type="button"
@@ -2115,35 +2141,32 @@ export const CodexComposer = forwardRef<
                           <DropdownMenu.Label className="codex-composer-selection-menu__heading">
                             <FormattedMessage id="chat.model" defaultMessage="Model" />
                           </DropdownMenu.Label>
-                          {catalogModels.map((model) => {
-                            const isSelected =
-                              model.value === selectedModelValue ||
-                              model.id === selectedModelValue;
-                            return (
-                              <DropdownMenu.Item
-                                key={model.id}
-                                className="codex-composer-selection-menu__item"
-                                data-selected={isSelected ? "true" : undefined}
-                                onSelect={(event) => {
-                                  event.preventDefault();
-                                  selectModel(model);
-                                }}
-                              >
-                                <SelectionMenuItemContent
-                                  description={null}
-                                  label={model.label}
-                                  selected={isSelected}
-                                />
-                              </DropdownMenu.Item>
-                            );
-                          })}
-                          {selectionCatalog?.isFetching &&
+                          {(selectionCatalog?.agentGroups ?? [{ id: "active", label: "", active: true, models: catalogModels, select: selectModel }]).map(group => (
+                            <DropdownMenu.Group key={group.id}>
+                              {group.label ? <DropdownMenu.Label className="codex-composer-selection-menu__heading">{group.label}</DropdownMenu.Label> : null}
+                              {group.models.map(model => (
+                                <DropdownMenu.Item key={model.id} className="codex-composer-selection-menu__item"
+                                  data-selected={group.active && (model.value === selectedModelValue || model.id === selectedModelValue) ? "true" : undefined}
+                                  onSelect={event => { event.preventDefault(); if (group.active) { if (selectionCatalog?.agentGroups) void selectAgentModel(group, model); selectModel(model); } else void selectAgentModel(group, model); }}>
+                                  <SelectionMenuItemContent description={null} label={model.label}
+                                    selected={group.active && (model.value === selectedModelValue || model.id === selectedModelValue)} />
+                                </DropdownMenu.Item>
+                              ))}
+                              {switchingAgentId === group.id ? <div className="codex-composer-selection-menu__status"><FormattedMessage id="workIn.switchingAgent" defaultMessage="Switching Agent…" /></div> : null}
+                              {agentSelectionError?.id === group.id ? <div className="codex-composer-selection-menu__status is-error" role="alert">{agentSelectionError.message}</div> : null}
+                              {group.loading ? <div className="codex-composer-selection-menu__status"><FormattedMessage id="workIn.loadingModels" defaultMessage="Loading models…" /></div> : null}
+                              {group.error ? <div className="codex-composer-selection-menu__status is-error" role="alert">
+                                {group.error}<DropdownMenu.Item className="codex-composer-selection-menu__item" onSelect={event => { event.preventDefault(); group.retry?.(); }}><FormattedMessage id="workIn.retry" defaultMessage="Retry" /></DropdownMenu.Item>
+                              </div> : null}
+                            </DropdownMenu.Group>
+                          ))}
+                          {!selectionCatalog?.agentGroups && selectionCatalog?.isFetching &&
                           catalogModels.length === 0 ? (
                             <div className="codex-composer-selection-menu__status">
                               Loading models…
                             </div>
                           ) : null}
-                          {selectionCatalog?.modelError ? (
+                          {!selectionCatalog?.agentGroups && selectionCatalog?.modelError ? (
                             <div className="codex-composer-selection-menu__status is-error">
                               {selectionCatalog.modelError}
                               {selectionCatalog.retryModels ? (
@@ -2159,6 +2182,10 @@ export const CodexComposer = forwardRef<
                               ) : null}
                             </div>
                           ) : null}
+                          {selectionCatalog?.agentGroups?.find(group => group.active)?.manage ? <>
+                            <DropdownMenu.Separator className="codex-composer-selection-menu__separator" />
+                            <DropdownMenu.Item className="codex-composer-selection-menu__item" onSelect={selectionCatalog.agentGroups.find(group => group.active)!.manage}><FormattedMessage id="workIn.manageModels" defaultMessage="Manage models…" /></DropdownMenu.Item>
+                          </> : null}
                           {!selectionCatalog?.isFetching &&
                           selectedModelValue !== null &&
                           selectedModel === null ? (
@@ -2344,7 +2371,7 @@ export const CodexComposer = forwardRef<
                           </DropdownMenu.Item>
                         );
                       })}
-                      {selectionCatalog?.isFetching &&
+                      {!selectionCatalog?.agentGroups && selectionCatalog?.isFetching &&
                       catalogPermissions.length === 0 ? (
                         <div className="codex-composer-selection-menu__status">
                           Loading permission profiles…

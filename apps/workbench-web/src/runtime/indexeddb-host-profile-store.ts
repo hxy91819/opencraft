@@ -1,3 +1,4 @@
+import type { RuntimeMachineIdentity } from "@opencraft/appserver-protocol";
 import {
   normalizeHostConnectionProfile,
   type HostConnectionProfile,
@@ -5,7 +6,7 @@ import {
   type HostConnectionProfileStore,
 } from "@opencraft/workbench-runtime";
 
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 const PROFILE_STORE = "profiles";
 
 export interface IndexedDbHostConnectionProfileStoreOptions {
@@ -36,6 +37,7 @@ export class IndexedDbHostConnectionProfileStore implements HostConnectionProfil
   private revision = 0;
   private snapshot: HostConnectionProfileSnapshot = { revision: 0, profiles: [] };
   private closed = false;
+  private readonly ephemeralIds = new Set<string>();
 
   private constructor(private readonly database: IDBDatabase) {}
 
@@ -46,6 +48,7 @@ export class IndexedDbHostConnectionProfileStore implements HostConnectionProfil
     const databaseName = options.databaseName ?? "vela-host-connections";
     const request = factory.open(databaseName, DATABASE_VERSION);
     request.addEventListener("upgradeneeded", () => {
+      if (!request.result.objectStoreNames.contains("machines")) request.result.createObjectStore("machines");
       if (!request.result.objectStoreNames.contains(PROFILE_STORE)) {
         request.result.createObjectStore(PROFILE_STORE, { keyPath: "hostId" });
       }
@@ -66,10 +69,15 @@ export class IndexedDbHostConnectionProfileStore implements HostConnectionProfil
 
   async put(profile: HostConnectionProfile): Promise<void> {
     this.ensureOpen();
-    const normalized = normalizeHostConnectionProfile(profile);
+    let normalized = normalizeHostConnectionProfile(profile);
     const current = this.snapshot.profiles.find((candidate) => candidate.hostId === normalized.hostId);
+    if (current) normalized = normalizeHostConnectionProfile({ ...normalized, machineIdentity: current.machineIdentity, agent: current.agent });
     if (current !== undefined && normalized.revision <= current.revision) {
       throw new Error(`Host profile ${normalized.hostId} revision must increase`);
+    }
+    if (this.ephemeralIds.has(normalized.hostId)) {
+      this.publish(this.snapshot.profiles.map(profile => profile.hostId === normalized.hostId ? normalized : profile));
+      return;
     }
     const transaction = this.database.transaction(PROFILE_STORE, "readwrite");
     const completion = transactionComplete(transaction);
@@ -80,14 +88,29 @@ export class IndexedDbHostConnectionProfileStore implements HostConnectionProfil
     this.publish(profiles);
   }
 
+  async recordMachineIdentity(hostId: string, identity: RuntimeMachineIdentity | null, agent: "OpenCraft" | "Codex" | null = null): Promise<void> {
+    this.ensureOpen();
+    const current = this.snapshot.profiles.find(profile => profile.hostId === hostId);
+    if (!current) return;
+    const transaction = this.database.transaction("machines", "readwrite");
+    const completion = transactionComplete(transaction);
+    await requestResult(transaction.objectStore("machines").put({ machineIdentity: identity, agent }, hostId));
+    await completion;
+    // Identity is observation metadata; it never edits the connection recipe revision.
+    this.publish(this.snapshot.profiles.map(profile => profile.hostId === hostId
+      ? normalizeHostConnectionProfile({ ...profile, machineIdentity: identity, agent }) : profile));
+  }
+
   async remove(hostId: string): Promise<boolean> {
     this.ensureOpen();
     const current = this.snapshot.profiles.find((candidate) => candidate.hostId === hostId);
     if (current === undefined) return false;
-    const transaction = this.database.transaction(PROFILE_STORE, "readwrite");
+    const transaction = this.database.transaction([PROFILE_STORE, "machines"], "readwrite");
     const completion = transactionComplete(transaction);
+    await requestResult(transaction.objectStore("machines").delete(hostId));
     await requestResult(transaction.objectStore(PROFILE_STORE).delete(hostId));
     await completion;
+    this.ephemeralIds.delete(hostId);
     this.publish(this.snapshot.profiles.filter((candidate) => candidate.hostId !== hostId));
     return true;
   }
@@ -122,9 +145,17 @@ export class IndexedDbHostConnectionProfileStore implements HostConnectionProfil
       if (byId.has(profile.hostId)) {
         throw new Error(`Ephemeral Host profile ${profile.hostId} conflicts with a stored profile`);
       }
+      this.ephemeralIds.add(profile.hostId);
       byId.set(profile.hostId, profile);
     }
-    this.publish([...byId.values()]);
+    const machines = this.database.transaction("machines", "readonly");
+    const machineCompletion = transactionComplete(machines);
+    const identities = await Promise.all([...byId.values()].map(async profile => {
+      const cached = await requestResult(machines.objectStore("machines").get(profile.hostId));
+      return normalizeHostConnectionProfile({ ...profile, ...(cached === undefined ? {} : cached) });
+    }));
+    await machineCompletion;
+    this.publish(identities);
   }
 
   private ensureOpen(): void {
