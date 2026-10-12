@@ -117,5 +117,8 @@ Connector 目录浏览不套用设置行：采用限宽品牌卡片，已配置�
 - SettingsPage 的 `targetHostId` 声明固定配置 owner。导航、概览、页面身份和传给 View 的 Host context 使用同一目标，不借用当前聊天 Host。未配置/已停用 owner 不挂载配置 View。
 - Web 的 `local` 表示执行服务所在机器，不表示浏览器设备；呈现优先使用配置的 executionLocation，缺失时显示服务器端运行。状态只投影对应 Host runtime，不由页面制造连接。
 - 执行端概览与配置入口走既有应用 Router，不改变聊天 Host，不新增服务器创建/编辑流程。主从页保持自身滚动，身份头由 Settings Shell 持有。
+- Web 启动按 Host ID 补齐部署声明但尚未保存的连接；已有连接的地址、名称、停用与可见性偏好不被部署默认值覆盖。Codex 账户只有读取成功且为空时显示无账户，读取失败原位报错并允许刷新，不引导重新绑定。
 
 - 验证：`node scripts/smoke-execution-settings.mjs` 检查构建后的真实工作台分组、配置归属、图标、PUSH/POP/刷新、主从布局和窄屏；`tests/extension-runtime.test.ts` 验证固定 owner 与无效 owner 原子拒绝。当前桌面平台呈现尚未实机验证。
+
+- 执行端名称、位置和状态灯组成一个语义 button，点击名称行打开该 Host 概览；不再增加“概览”子项。概览只高亮名称行，配置页只高亮对应子项；所有入口继续使用同一 Router 路由，保留旧概览链接与 POP 恢复。

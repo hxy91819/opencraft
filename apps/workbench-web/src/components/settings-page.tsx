@@ -14,7 +14,6 @@ import {
   Monitor,
   UserRound,
   Plug,
-  Info,
   Palette,
   Plus,
   RefreshCw,
@@ -56,6 +55,7 @@ import type { HostConnectionProfile } from "@opencraft/workbench-runtime";
 import { getAppearanceThemePreviewProperties, type AppearanceThemeDescriptor } from "../appearance-theme";
 import { useInternalDeveloperMode } from "../internal-developer-mode";
 import { WebUpdatesSettings, WebUpdatesNavigation, hasManagedWebUpdates } from "./web-updates-settings";
+import { executionEndpoint } from "./execution-endpoint";
 import { TargetConnectionStatus } from "./target-connection-status";
 import { SqliteDebugSettings } from "./sqlite-debug-settings";
 import {
@@ -290,16 +290,21 @@ export function SettingsNavigation({
             const pages = extensionPages.filter(page => page.management === undefined && page.targetHostId === profile.hostId);
             const overview = executionOverviewSection(profile.hostId);
             return <section key={profile.hostId} className="settings-execution-navigation" aria-label={`${profile.displayName} 执行端`}>
-              <div className="settings-execution-navigation__identity">
+              <button
+                type="button"
+                className="settings-execution-navigation__identity"
+                aria-label={profile.displayName}
+                aria-current={section === overview ? "page" : undefined}
+                onClick={() => onSectionChange(overview)}
+              >
                 {executionHostIcon(profile)}
-                <span>{profile.displayName}</span>
+                <span className="settings-execution-navigation__copy">
+                  <span>{profile.displayName}</span>
+                  <span className="settings-execution-navigation__location">{executionLocationLabel(profile)}</span>
+                </span>
                 <TargetConnectionStatus hostId={profile.hostId} />
-              </div>
-              <div className="settings-execution-navigation__location">{executionLocationLabel(profile)}</div>
-              <button type="button" aria-current={section === overview ? "page" : undefined} onClick={() => onSectionChange(overview)}>
-                <Info size={16} /><span>概览</span>
               </button>
-              {pages.map(page => <button key={page.id} type="button" aria-current={section === page.id ? "page" : undefined} onClick={() => onSectionChange(page.id)}>
+              {pages.map(page => <button key={page.id} type="button" className="settings-execution-navigation__page" aria-current={section === page.id ? "page" : undefined} onClick={() => onSectionChange(page.id)}>
                 {settingsNavigationIcon(page.icon)}<span>{page.title}</span>
               </button>)}
             </section>;
@@ -318,19 +323,6 @@ function executionOverviewSection(hostId: string): string {
 function executionLocationLabel(profile: HostConnectionProfile): string {
   if (currentPlatform() === "web") return profile.executionLocation ?? "服务器端运行";
   return profile.executionLocation ?? (profile.hostKind === "local" ? "本机运行" : "远端运行");
-}
-
-function executionEndpoint(profile: HostConnectionProfile): string {
-  const config = profile.providerConfig;
-  if (typeof config === "object" && config !== null && !Array.isArray(config) && "url" in config && typeof config.url === "string") {
-    try {
-      const url = new URL(config.url, window.location.href);
-      // Connection config can carry credentials. Present only the public address.
-      const protocol = url.protocol === "https:" ? "wss:" : url.protocol === "http:" ? "ws:" : url.protocol;
-      return `${protocol}//${url.host}${url.pathname}`;
-    } catch { return "连接地址不可用"; }
-  }
-  return profile.transportEndpoint ?? "由宿主提供";
 }
 
 function executionHostIcon(profile: HostConnectionProfile) {
@@ -356,7 +348,7 @@ function ExecutionOverview({ profile, pages, onSectionChange }: {
       <SettingsGroup>
         <SettingsRow label="名称"><span>{profile.displayName}</span></SettingsRow>
         <SettingsRow label="运行位置"><span>{executionLocationLabel(profile)}</span></SettingsRow>
-        <SettingsRow label="连接地址"><span className="settings-execution-endpoint">{executionEndpoint(profile)}</span></SettingsRow>
+        <SettingsRow label="连接地址"><span className="settings-execution-endpoint">{executionEndpoint(profile, window.location.href)}</span></SettingsRow>
         <SettingsRow label="连接状态"><TargetConnectionStatus hostId={profile.hostId} showLabel /></SettingsRow>
       </SettingsGroup>
     </SettingsSection>

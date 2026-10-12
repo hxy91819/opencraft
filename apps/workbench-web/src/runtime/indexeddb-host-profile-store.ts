@@ -107,17 +107,22 @@ export class IndexedDbHostConnectionProfileStore implements HostConnectionProfil
     const completion = transactionComplete(transaction);
     const stored = await requestResult<unknown[]>(transaction.objectStore(PROFILE_STORE).getAll());
     await completion;
-    let profiles = stored.map(normalizeHostConnectionProfile);
-    if (profiles.length === 0 && seed.length > 0) {
-      profiles = seed.map(normalizeHostConnectionProfile);
+    const profiles = stored.map(normalizeHostConnectionProfile);
+    const byId = new Map(profiles.map((profile) => [profile.hostId, profile]));
+    const missing: HostConnectionProfile[] = [];
+    for (const profile of seed.map(normalizeHostConnectionProfile)) {
+      if (byId.has(profile.hostId)) continue;
+      byId.set(profile.hostId, profile);
+      missing.push(profile);
+    }
+    if (missing.length > 0) {
       const write = this.database.transaction(PROFILE_STORE, "readwrite");
       const writeCompletion = transactionComplete(write);
-      for (const profile of profiles) {
+      for (const profile of missing) {
         await requestResult(write.objectStore(PROFILE_STORE).put(structuredClone(profile)));
       }
       await writeCompletion;
     }
-    const byId = new Map(profiles.map((profile) => [profile.hostId, profile]));
     for (const profile of ephemeral.map(normalizeHostConnectionProfile)) {
       if (byId.has(profile.hostId)) {
         throw new Error(`Ephemeral Host profile ${profile.hostId} conflicts with a stored profile`);

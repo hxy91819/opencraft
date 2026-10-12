@@ -57,3 +57,27 @@ test("Codex account Settings renders only redacted account state and device code
   assert.ok(calls.includes("opencraft/codex/accounts/list"));
   service.dispose();
 });
+
+test("Codex account read failure does not claim no accounts and can be retried", async () => {
+  Object.assign(globalThis, { React });
+  let fail = true;
+  const service = new CodexAccountsService((async () => {
+    if (fail) throw new Error("Host connection failed");
+    return { accounts: [] };
+  }) as HostProtocolRequest, "local-codex");
+  const View = createCodexAccountsView(service);
+  const render = () => renderToStaticMarkup(createElement(View, {} as any));
+  try {
+    await service.refresh();
+    assert.match(render(), /账户读取失败/);
+    assert.match(render(), /Host connection failed/);
+    assert.match(render(), /刷新账户/);
+    assert.doesNotMatch(render(), /还没有 Codex 账户|添加账户/);
+    fail = false;
+    await service.refresh();
+    assert.match(render(), /还没有 Codex 账户/);
+    assert.doesNotMatch(render(), /账户读取失败|Host connection failed/);
+  } finally {
+    service.dispose();
+  }
+});

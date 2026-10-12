@@ -211,7 +211,7 @@ test("HyperNode owns both its transport provider and ephemeral Host profile", as
   await providers.close();
 });
 
-test("Host profiles seed once, publish after durable writes, and enforce revision order", async () => {
+test("Host profiles add missing deployment seeds without overwriting saved preferences", async () => {
   const seed: HostConnectionProfile = {
     hostId: "host:seed",
     displayName: "Seed",
@@ -237,7 +237,7 @@ test("Host profiles seed once, publish after durable writes, and enforce revisio
   try {
     assert.deepEqual(store.getSnapshot().profiles.map((profile) => profile.hostId), ["host:seed"]);
     await assert.rejects(store.put(seed), /revision must increase/u);
-    await store.put({ ...seed, displayName: "Renamed", revision: 1 });
+    await store.put({ ...seed, displayName: "Renamed", enabled: false, revision: 1 });
     assert.equal(store.getSnapshot().profiles[0]?.displayName, "Renamed");
   } finally {
     store.close();
@@ -246,14 +246,24 @@ test("Host profiles seed once, publish after durable writes, and enforce revisio
   const reopened = await IndexedDbHostConnectionProfileStore.open({
     databaseName,
     factory: indexedDB,
-    seed: [{ ...seed, hostId: "host:ignored" }],
+    seed: [seed, { ...seed, hostId: "local-codex", displayName: "Codex" }],
   });
   try {
-    assert.deepEqual(reopened.getSnapshot().profiles.map((profile) => profile.hostId), ["host:seed"]);
-    assert.equal(await reopened.remove("host:seed"), true);
-    assert.equal(await reopened.remove("host:seed"), false);
+    assert.deepEqual(reopened.getSnapshot().profiles.map((profile) => profile.hostId), ["local-codex", "host:seed"]);
+    assert.deepEqual(reopened.getSnapshot().profiles.find(profile => profile.hostId === "host:seed"), {
+      ...seed, displayName: "Renamed", enabled: false, revision: 1,
+    });
   } finally {
     reopened.close();
+  }
+
+  const restored = await IndexedDbHostConnectionProfileStore.open({ databaseName, factory: indexedDB });
+  try {
+    assert.equal(restored.getSnapshot().profiles.filter(profile => profile.hostId === "local-codex").length, 1);
+    assert.equal(await restored.remove("host:seed"), true);
+    assert.equal(await restored.remove("host:seed"), false);
+  } finally {
+    restored.close();
   }
 });
 

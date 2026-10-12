@@ -11001,18 +11001,29 @@ html[data-codex-window-type="electron"] .thread-scroll {
 .settings-execution-navigation {
   padding: 8px 0;
   & + & { border-top: 1px solid var(--color-border-subtle); margin-top: 8px; }
-  > button { padding-left: 30px; }
+
 }
-.settings-execution-navigation__identity {
-  display: flex; align-items: center; gap: 8px; padding: 0 12px;
+.settings-page__navigation .settings-execution-navigation__identity {
+  height: auto;
+  min-height: 58px;
+  padding: 10px 12px;
+  gap: 8px;
   @include typography.role(settings-label);
-  > span:first-of-type { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-  > svg { flex-shrink: 0; }
+  > svg, > .workbench-connection-status { flex-shrink: 0; }
+}
+.settings-execution-navigation__copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  overflow-wrap: anywhere;
 }
 .settings-execution-navigation__location {
-  padding: 4px 12px 8px 36px;
   @include typography.role(metadata, secondary);
-  overflow-wrap: anywhere;
+}
+.settings-page__navigation .settings-execution-navigation__page {
+  padding-left: 30px;
 }
 .settings-execution-identity {
   flex: 0 0 auto; padding-bottom: 16px; border-bottom: 1px solid var(--color-border-subtle);

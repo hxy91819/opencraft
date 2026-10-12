@@ -310,7 +310,7 @@ export function createCodexAccountsView(service: CodexAccountsService) {
       actions={<SettingsIconButton label="刷新账户" disabled={snapshot.phase === "loading"} onClick={() => void service.refresh()}><RefreshCw size={16} /></SettingsIconButton>}
     >
       <div className="codex-accounts-page">
-        {snapshot.error ? <SettingsNotice tone="error">{snapshot.error}</SettingsNotice> : null}
+        {snapshot.error ? <SettingsNotice tone="error">{snapshot.phase === "error" ? `账户读取失败：${snapshot.error}。请点击右上角刷新重试。` : snapshot.error}</SettingsNotice> : null}
         <SettingsSection
           title="ChatGPT 账户"
           description="多个账户按顺序使用；已有会话在账户可用时保持绑定。"
@@ -318,7 +318,7 @@ export function createCodexAccountsView(service: CodexAccountsService) {
         >
           <SettingsGroup className="codex-account-list" aria-label="Codex 账户列表">
             {snapshot.phase === "loading" && snapshot.accounts.length === 0 ? <div className="codex-account-list__state" role="status"><RefreshCw size={16} />正在读取账户…</div> : null}
-            {snapshot.phase !== "loading" && snapshot.accounts.length === 0 ? <div className="codex-account-list__empty">
+            {snapshot.phase === "ready" && snapshot.accounts.length === 0 ? <div className="codex-account-list__empty">
               <span className="codex-account-list__empty-icon" aria-hidden="true"><UserRound size={18} /></span>
               <div><strong>还没有 Codex 账户</strong><p>添加 ChatGPT 账户后，Codex 会按可用额度自动选择并保持会话绑定。</p></div>
               <AddAccountMenu disabled={busy} starting={starting} importing={importing} onSignIn={start} onImport={importLocal} />
