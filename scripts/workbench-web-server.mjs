@@ -142,14 +142,33 @@ function isWorkbenchApplicationRoute(pathname) {
   return /^\/(?:local|settings|threads|views)\/[^/]+\/?$/u.test(pathname);
 }
 
-async function serveFile(request, response, path, pathname) {
+export function websiteDeploymentConfig({ appServerTarget, codexServerTarget }) {
+  const hosts = [
+    ...(appServerTarget ? [{ hostId: "local", label: "OpenCraft Server", kind: "remote-control", url: "/appserver" }] : []),
+    ...(codexServerTarget ? [{ hostId: "local-codex", label: "Codex", kind: "remote-control", url: "/codex-appserver" }] : []),
+  ];
+  // HyperNode uses the same primary proxy. Its user header is transport
+  // configuration, not permission to register a second execution Host.
+  return { hosts, builtinAgents: hosts.length > 0, hypernode: false };
+}
+
+export function injectWebsiteDeploymentConfig(html, config) {
+  // Escape '<' so a deployment value can never close the inert JSON script.
+  const json = JSON.stringify(config).replaceAll("<", "\\u003c");
+  if (!/<head(?:\s[^>]*)?>/iu.test(html)) throw new Error("Website HTML has no head element");
+  return html.replace(/<head(?:\s[^>]*)?>/iu, head => `${head}<script id="opencraft-deployment-config" type="application/json">${json}</script>`);
+}
+
+async function serveFile(request, response, path, pathname, deploymentConfig) {
   const metadata = await stat(path);
   if (!metadata.isFile()) return false;
   response.statusCode = 200;
-  response.setHeader("content-length", metadata.size);
+  const html = pathname === "/" || pathname === "/index.html"
+    ? injectWebsiteDeploymentConfig(await readFile(path, "utf8"), deploymentConfig) : null;
+  response.setHeader("content-length", html === null ? metadata.size : Buffer.byteLength(html));
   response.setHeader("content-type", contentTypes.get(extname(path).toLowerCase()) || "application/octet-stream");
   response.setHeader("x-content-type-options", "nosniff");
-  response.setHeader("etag", `W/\"${metadata.size.toString(16)}-${Math.trunc(metadata.mtimeMs).toString(16)}\"`);
+  if (html === null) response.setHeader("etag", `W/\"${metadata.size.toString(16)}-${Math.trunc(metadata.mtimeMs).toString(16)}\"`);
   if (pathname === "/" || pathname === "/index.html" || pathname === "/version.json") {
     response.setHeader("cache-control", "no-store, max-age=0");
   } else if (isContentHashedAsset(pathname)) {
@@ -161,7 +180,8 @@ async function serveFile(request, response, path, pathname) {
     response.end();
     return true;
   }
-  createReadStream(path).pipe(response);
+  if (html !== null) response.end(html);
+  else createReadStream(path).pipe(response);
   return true;
 }
 
@@ -174,6 +194,9 @@ export async function createWorkbenchWebServer({
   const staticRoot = await realpath(resolve(root || join(repositoryRoot, "apps/workbench-web/dist")));
   const normalizedTarget = appServerTarget === null ? null : normalizeTarget(appServerTarget);
   const normalizedCodexTarget = codexServerTarget === null ? null : normalizeTarget(codexServerTarget);
+  const deploymentConfig = websiteDeploymentConfig({
+    appServerTarget: normalizedTarget, codexServerTarget: normalizedCodexTarget, hyperNodeUser,
+  });
   const runtimeReports = [];
 
   const server = createServer(async (request, response) => {
@@ -219,7 +242,7 @@ export async function createWorkbenchWebServer({
         return;
       }
       try {
-        if (await serveFile(request, response, requestedPath, url.pathname)) return;
+        if (await serveFile(request, response, requestedPath, url.pathname, deploymentConfig)) return;
       } catch (error) {
         if (error?.code !== "ENOENT") throw error;
       }
@@ -229,7 +252,7 @@ export async function createWorkbenchWebServer({
         acceptsHtml &&
         (extname(url.pathname) === "" || isWorkbenchApplicationRoute(url.pathname))
       ) {
-        await serveFile(request, response, join(staticRoot, "index.html"), "/index.html");
+        await serveFile(request, response, join(staticRoot, "index.html"), "/index.html", deploymentConfig);
         return;
       }
       sendJson(response, 404, { ok: false, error: "Not found" });

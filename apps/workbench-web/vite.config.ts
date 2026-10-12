@@ -29,8 +29,7 @@ const isEmbeddedWorkbenchBuild = buildTarget === "embedded-workbench";
 const isLightVelaWeb = product === "lightvela-web";
 const includeHyperNodePlugin = !isLightVelaWeb && !isElectronRenderer
   && process.env.VITE_HYPERNODE_PLUGIN?.trim() !== "disabled";
-const includeBuiltinAgentsPlugin = isElectronRenderer
-  || (!isLightVelaWeb && process.env.VITE_WEB_BUILTIN_AGENTS?.trim() === "enabled");
+const includeBuiltinAgentsPlugin = isElectronRenderer || !isLightVelaWeb;
 const releaseMinification = process.env.OPENCRAFT_RELEASE_MINIFY === "standard";
 
 // Vite's native import.meta.env projection is honored by both the dev module

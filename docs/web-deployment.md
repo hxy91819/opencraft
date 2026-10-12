@@ -48,7 +48,9 @@ OPENCRAFT_NPM_REGISTRY=https://mirrors.tencent.com/npm/
 
 ## 网页操作
 
-公司 npm 包是通用构建，只发现同源 `/appserver`；依赖构建期 Host 配置（如额外 Codex Host）的部署，通过“更新网站”安装通用包后会失去这些 Host，这类部署应改用[本地打包替换](web-local-deployment.md)。
+公司 npm 包是通用构建。网站服务在 HTML 中注入部署配置，首屏创建 Host 前已可用：`OPENCRAFT_APPSERVER_URL` 对应 `local` / OpenCraft Server，`OPENCRAFT_CODEX_APPSERVER_URL` 对应 `local-codex` / Codex，kind 均为 `remote-control`，使用同源 `/appserver`、`/codex-appserver`。配置至少一个上述 Host 时激活内置 Agent 设置页；无需部署用的 `VITE_*` 构建变量，网站更新后仍沿用服务自己的执行配置及稳定 hostId。
+
+`OPENCRAFT_HYPERNODE_USER` 只传给执行端请求头，不决定 Host 身份。网站配置统一使用主端点 `local` 并关闭 HyperNode 插件，避免为同一地址创建第二个 Host。构建期 `VITE_APPSERVER_HOSTS_JSON` 是开发/测试的显式覆盖，优先于运行时列表；`VITE_WEB_BUILTIN_AGENTS` 和 `VITE_HYPERNODE_PLUGIN` 的 `enabled|disabled` 值可覆盖插件激活。无 HTML 配置的 Vite/static 部署保持原默认行为；注入配置损坏时启动报错并可重新加载，不静默回落。LightVela 不包含这两个插件，Electron 不消费网站配置。旧通用包的 `hypernode` 链接与浏览器历史在 Router 入口映射为 `local`，保留 threadId/draftId；旧活动会话和项目选择按缺失补入 `local`，保留旧值、不覆盖已有 `local` 偏好。这仅用于网站提供配置、没有显式 Host 覆盖且没有真实 `hypernode` profile 的 OpenCraft Web。
 
 首次启动会在状态目录生成权限为 `0600` 的 `admin-key`，终端只显示文件位置。“设置 → 网站更新”直接显示“检查更新”，访问者无需部署密钥即可查询公司 npm `latest`。部署管理员读取该文件并授权管理后，可以安装更新、回退上一版。管理登录有效期一小时；需要同源 JSON 请求。
 

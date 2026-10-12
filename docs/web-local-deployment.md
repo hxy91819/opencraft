@@ -23,34 +23,14 @@ curl --fail --silent --show-error http://127.0.0.1:10000/__opencraft_updates
 
 使用 `.nvmrc` 对应 Node 和当前 checkout 的依赖。选择本地精确包版本，设置 `OPENCRAFT_RELEASE_VERSION`；核对当前版本与公司渠道，避免未来正式版本号低于本机版本。源码未提交时保留 dirty 标记。
 
-网站静态资源在构建时写入 Host 列表与内置扩展开关，网站服务的执行代理环境变量不会替前端发现额外 Host。打包前从当前 release 的 `web/assets` 提取实际 Host 定义，按 `.local/README.md` 设置 `VITE_APPSERVER_HOSTS_JSON`、`VITE_WEB_BUILTIN_AGENTS`、`VITE_HYPERNODE_PLUGIN`；漏设会让新站缺少 Codex 等 Host。下面命令适用于当前 Vite 产物的反引号字符串格式；若提取失败或发现不同定义，先核对当前资源与构建格式，不使用默认 Host 替代。
+网站服务在每次 HTML 响应中注入 Host 列表与内置扩展开关。`OPENCRAFT_APPSERVER_URL` 提供 `local`（OpenCraft Server），`OPENCRAFT_CODEX_APPSERVER_URL` 提供 `local-codex`（Codex），两者使用同源代理路径；浏览器中已有的 Host 关联保持不变。通用包和公司 npm 包均不需要部署用的 `VITE_*` 构建变量。设置执行地址仍是网站服务的运行时配置，不在页面上填写。
+
+`OPENCRAFT_HYPERNODE_USER` 只作为代理请求头发送，不注入网页，不决定 Host 身份。网站的主端点统一使用 `local`，运行时配置关闭 HyperNode 插件以避免重复 Host。内置 Agent 设置页在存在 `local` 或 `local-codex` 时激活，不包含执行引擎。
+
+`VITE_APPSERVER_HOSTS_JSON` 保留为开发/测试的显式覆盖，优先于网站注入配置；`VITE_WEB_BUILTIN_AGENTS=enabled|disabled` 与 `VITE_HYPERNODE_PLUGIN=enabled|disabled` 也可显式覆盖激活选择。没有注入配置的 Vite/static 部署沿用原默认行为（内置 Agent 未启用，HyperNode 启用）。LightVela 构建不包含这两个插件；Electron 的 Host 来源不变。
 
 ```sh
 set -e
-: "${OPENCRAFT_WEB_STATE:?按本机记录设置当前网站状态目录}"
-: "${VITE_WEB_BUILTIN_AGENTS:?按本机记录设置内置 Agent 开关}"
-: "${VITE_HYPERNODE_PLUGIN:?按本机记录设置 HyperNode 开关}"
-export OPENCRAFT_WEB_STATE
-current_release="$(node --input-type=module -e '
-  import { readFileSync } from "node:fs";
-  import { join } from "node:path";
-  console.log(JSON.parse(readFileSync(join(process.env.OPENCRAFT_WEB_STATE, "deployment.json"), "utf8")).current.releaseRoot);
-')"
-extract_hosts() {
-  python3 - "$1" <<'PYTHON'
-import json, pathlib, re, sys
-values = set()
-for asset in pathlib.Path(sys.argv[1], "web/assets").glob("*.js"):
-    for raw in re.findall(r"VITE_APPSERVER_HOSTS_JSON:`([^`]*)`", asset.read_text()):
-        values.add(json.dumps(json.loads(raw), ensure_ascii=False, separators=(",", ":")))
-if len(values) != 1:
-    raise SystemExit("Expected one consistent Host definition; inspect the release before packaging")
-print(values.pop())
-PYTHON
-}
-VITE_APPSERVER_HOSTS_JSON="$(extract_hosts "$current_release")"
-export VITE_APPSERVER_HOSTS_JSON
-export VITE_WEB_BUILTIN_AGENTS VITE_HYPERNODE_PLUGIN
 : "${OPENCRAFT_RELEASE_VERSION:?设置本地包的精确版本}"
 export OPENCRAFT_SOURCE_REVISION="$(git rev-parse HEAD)"
 if [ -n "$(git status --porcelain)" ]; then
@@ -62,16 +42,21 @@ npm run test:web-release
 npm run test:web-updates
 npm run test:web-updates:e2e
 npm run package:web:server
-extract_hosts "$current_release" > "$OPENCRAFT_WEB_PACKAGE_OUTPUT/hosts-before.json"
-extract_hosts "$OPENCRAFT_WEB_PACKAGE_OUTPUT/package" > "$OPENCRAFT_WEB_PACKAGE_OUTPUT/hosts-package.json"
-cmp "$OPENCRAFT_WEB_PACKAGE_OUTPUT/hosts-before.json" "$OPENCRAFT_WEB_PACKAGE_OUTPUT/hosts-package.json"
 ```
 
 打包输出最后的 JSON 给出 `packageRoot`、`archive`、版本、buildId 和 integrity。记录 tgz 的 SHA256；保留旧包，不复用一个已有版本的目录覆盖文件。最终打包会再构建一次，以最终输出为准。
 
-打包后先确认新包 `web/assets` 中的 Host 定义与当前 release 完全一致（上述 `cmp` 通过），再进行替换。
+先用最终自包含包在独立状态目录、空闲端口启动探针，沿用原执行地址（下列地址为示例）：
 
-先用这个自包含包在独立状态目录、空闲端口启动探针，沿用原执行地址，验证 `/__opencraft_health`、`/version.json` 与包内 buildId；完成后关闭自有探针。真实组件改动需同时验证浏览器。具体 npm 发布验收见 [发布流程](web-deployment.md#内网-npm-发布流程)，本地替换复用其中相关测试，不执行上传。
+```sh
+probe_state="$(mktemp -d /tmp/opencraft-web-probe-XXXXXX)"
+OPENCRAFT_WEB_STATE="$probe_state" OPENCRAFT_WEB_PORT=10001 \
+OPENCRAFT_APPSERVER_URL=ws://127.0.0.1:9989/rpc \
+OPENCRAFT_CODEX_APPSERVER_URL=ws://127.0.0.1:9988/rpc/codex \
+node "$OPENCRAFT_WEB_PACKAGE_OUTPUT/package/runtime/cli.mjs"
+```
+
+验证 `/__opencraft_health`、`/version.json` 与包内 buildId，并检查 HTML 中的 `opencraft-deployment-config`。真实浏览器确认两个 Host、模型菜单两组及「模型服务」「Codex 账户」设置；不要发送任务。完成后关闭自有探针并删除临时状态。具体 npm 发布验收见 [发布流程](web-deployment.md#内网-npm-发布流程)，本地替换复用其中相关测试，不执行上传。
 
 ## 3. 仅替换网站服务
 

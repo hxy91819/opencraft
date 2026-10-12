@@ -51,7 +51,7 @@ async function createFixture(root, buildId, assetName, assetSource) {
   await mkdir(join(root, "fonts"), { recursive: true });
   await writeFile(
     join(root, "index.html"),
-    `<!doctype html><meta name="opencraft-build-id" content="${buildId}"><script type="module" src="/assets/${assetName}"></script>`,
+    `<!doctype html><html><head><meta name="opencraft-build-id" content="${buildId}"><script type="module" src="/assets/${assetName}"></script></head><body></body></html>`,
   );
   await writeFile(
     join(root, "version.json"),

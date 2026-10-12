@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { indexedDB } from "fake-indexeddb";
+import { parseWebDeploymentConfig, resolveWebDeploymentConfig, resolveLegacyWebsiteLocation, restoreLegacyWebsiteSelection } from "../apps/workbench-web/src/runtime/web-deployment-config";
 
 import { ExtensionSupervisor } from "@opencraft/extension-runtime";
 import { createHyperNodeExtension } from "@opencraft/plugin-hypernode";
@@ -296,4 +297,61 @@ test("activation-owned Host profiles are visible without becoming durable config
   const reopened = await IndexedDbHostConnectionProfileStore.open({ databaseName, factory: indexedDB });
   assert.deepEqual(reopened.getSnapshot().profiles, []);
   reopened.close();
+});
+
+const deploymentRuntime = {
+  hosts: [
+    { hostId: "local", label: "OpenCraft Server", kind: "remote-control", url: "/appserver" },
+    { hostId: "local-codex", label: "Codex", kind: "remote-control", url: "/codex-appserver" },
+  ], builtinAgents: true, hypernode: false,
+};
+test("runtime deployment preserves stable Host IDs and activates built-in settings", () => {
+  const resolved = resolveWebDeploymentConfig(parseWebDeploymentConfig(JSON.stringify(deploymentRuntime)), {});
+  assert.deepEqual(JSON.parse(resolved.hosts!), deploymentRuntime.hosts);
+  assert.equal(resolved.builtinAgents, true);
+  assert.equal(resolved.hypernode, false);
+});
+test("explicit build configuration wins without merging runtime Hosts", () => {
+  const hosts = '[{"hostId":"test"}]';
+  assert.deepEqual(resolveWebDeploymentConfig(deploymentRuntime, { hosts, builtinAgents: "disabled", hypernode: "enabled" }), {
+    hosts, builtinAgents: false, hypernode: true,
+  });
+  assert.equal(resolveWebDeploymentConfig(deploymentRuntime, { hosts: " " }).hosts, JSON.stringify(deploymentRuntime.hosts));
+});
+test("static and Vite deployments retain existing defaults and explicit flags", () => {
+  assert.equal(parseWebDeploymentConfig(null), null);
+  assert.deepEqual(resolveWebDeploymentConfig(null, {}), { hosts: undefined, builtinAgents: false, hypernode: true });
+  assert.deepEqual(resolveWebDeploymentConfig(null, { builtinAgents: "enabled", hypernode: "disabled" }), {
+    hosts: undefined, builtinAgents: true, hypernode: false,
+  });
+  assert.equal(resolveWebDeploymentConfig({ ...deploymentRuntime, hosts: [] }, {}).hosts, undefined);
+});
+test("present but malformed runtime data fails instead of silently losing Hosts", () => {
+  for (const raw of ['bad', 'null', '[]', '{}', '{"hosts":[],"builtinAgents":"true","hypernode":false}']) {
+    assert.throws(() => parseWebDeploymentConfig(raw));
+  }
+});
+
+test("legacy website selections migrate additively without overwriting local preferences", () => {
+  const values = new Map([
+    ["vela.active-host-id", "hypernode"], ["vela.active-thread-id:hypernode", "thread-old"],
+    ["vela.selected-project-id:hypernode", "project-old"], ["vela.selected-project-id:local", "project-local"],
+  ]);
+  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) } as Storage;
+  restoreLegacyWebsiteSelection(storage);
+  assert.equal(values.get("vela.active-host-id"), "local");
+  assert.equal(values.get("vela.active-thread-id:local"), "thread-old");
+  assert.equal(values.get("vela.selected-project-id:local"), "project-local");
+  assert.equal(values.get("vela.active-thread-id:hypernode"), "thread-old");
+  restoreLegacyWebsiteSelection(storage);
+  assert.equal(values.get("vela.active-thread-id:local"), "thread-old");
+});
+test("legacy thread and draft links retain resource identity on the canonical website Host", () => {
+  assert.deepEqual(resolveLegacyWebsiteLocation({ kind: "thread", key: { hostId: "hypernode", threadId: "t" } } as never), {
+    kind: "thread", key: { hostId: "local", threadId: "t" },
+  });
+  assert.deepEqual(resolveLegacyWebsiteLocation({ kind: "draft", hostId: "hypernode", draftId: "d" } as never), {
+    kind: "draft", hostId: "local", draftId: "d",
+  });
+  assert.equal(resolveLegacyWebsiteLocation(null), null);
 });

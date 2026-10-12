@@ -117,9 +117,15 @@ The `web-browser` artifact does not contain the local Host, DSH, Node APIs, or
 a native Host process. Its `/appserver` endpoint is owned by the deployment
 gateway and may route to a cloud Host. This is a packaging boundary: desktop
 ships the Agent next to the application; Web ships only the AppServer client.
-When `VITE_WEB_BUILTIN_AGENTS=enabled`, Web also bundles the built-in Agent
-settings views. The deployment must provide `local` and `local-codex` AppServer
-endpoints; this flag does not bundle an execution engine.
+Generic OpenCraft Web bundles the built-in Agent settings views and activates
+them from website runtime configuration. Managed websites inject Host definitions
+and plugin switches into HTML before startup, derived from primary/Codex proxy
+targets; the HyperNode plugin is disabled to avoid a second primary Host. No deployment `VITE_*` variables are required for
+`package:web:server`. `VITE_APPSERVER_HOSTS_JSON` remains an explicit development
+and test override; Agent/HyperNode flags can override activation. Static/Vite
+pages without injection retain their old defaults. LightVela excludes the
+built-in Agent and HyperNode plugins; Electron Host ownership is unchanged.
+These settings views do not bundle an execution engine.
 Host definitions may use root-relative WebSocket paths such as `/appserver` and
 `/codex-appserver`. The browser resolves them against its current HTTP or HTTPS
 origin, so one Web build works behind both authenticated entry points.

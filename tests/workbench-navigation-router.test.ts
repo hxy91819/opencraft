@@ -25,6 +25,8 @@ test("replacing Settings with the same conversation publishes the changed route"
   }
 });
 
+import { resolveLegacyWebsiteLocation } from "../apps/workbench-web/src/runtime/web-deployment-config";
+
 const settle = () => new Promise<void>(resolve => setImmediate(resolve));
 
 test("untagged Home POP is consumed and initial memory entries support forward/back", async () => {
@@ -121,5 +123,20 @@ test("a late conversation preparation cannot replace a newer Settings intent", a
     assert.equal(await pending, false);
     assert.equal(nav.getSnapshot().applicationRoute.kind, "settings");
     assert.equal(commits, 0); assert.equal(cancellations, 1);
+  } finally { nav.dispose(); }
+});
+
+test("legacy website locations normalize on initial entry and real POP/forward", async () => {
+  const nav = createApplicationNavigation(createWorkbenchDraftLocation("local", "new"), {
+    mode: "memory", initialEntries: ["/?hostId=hypernode&draftId=old", "/settings/appearance"],
+    resolveLocation: resolveLegacyWebsiteLocation,
+  });
+  try {
+    nav.back(); await settle();
+    assert.deepEqual(nav.getSnapshot().location, createWorkbenchDraftLocation("local", "old"));
+    nav.forward(); await settle();
+    assert.equal(nav.getSnapshot().applicationRoute.kind, "settings");
+    nav.back(); await settle();
+    assert.deepEqual(nav.getSnapshot().location, createWorkbenchDraftLocation("local", "old"));
   } finally { nav.dispose(); }
 });

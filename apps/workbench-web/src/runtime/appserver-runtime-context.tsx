@@ -2,6 +2,7 @@ import { resolveWorkInWorkspace } from "./work-in-workspace";
 import { HostMachineIdentityObserver } from "./host-machine-identity";
 import { JsonRpcAppServerClient } from "@opencraft/appserver-client";
 // @refresh reset
+import { parseWebDeploymentConfig, resolveWebDeploymentConfig, resolveLegacyWebsiteLocation, restoreLegacyWebsiteSelection } from "./web-deployment-config";
 import {
   sameWorkInMachine,
   preflightHostConnection,
@@ -1004,6 +1005,17 @@ export async function createWebWorkbenchApplicationSupervisor(
     const authenticationFlows = cordis.authenticationFlows;
     const composerActionRenderers = new ComposerActionRendererRegistry();
     const platform = currentWorkbenchPlatform();
+    const websiteConfig = platform === "web" ? parseWebDeploymentConfig(
+        document.getElementById("opencraft-deployment-config")?.textContent ?? null,
+      ) : null;
+    const deployment = resolveWebDeploymentConfig(
+      websiteConfig,
+      {
+        hosts: import.meta.env.VITE_APPSERVER_HOSTS_JSON,
+        builtinAgents: import.meta.env.VITE_WEB_BUILTIN_AGENTS,
+        hypernode: import.meta.env.VITE_HYPERNODE_PLUGIN,
+      },
+    );
     const electronAppHost = platform === "electron" ? connectElectronAppHost() : null;
     if (electronAppHost !== null) startupRollback.push(() => electronAppHost.close());
     const [lightVelaPlatform, lightVela, createLightVelaHermesExtension] = await Promise.all([
@@ -1063,7 +1075,8 @@ export async function createWebWorkbenchApplicationSupervisor(
       ).default;
       return createVoiceInputExtension();
     });
-    if (import.meta.env.VITE_INCLUDE_BUILTIN_AGENTS_PLUGIN === "true") {
+    if (import.meta.env.VITE_INCLUDE_BUILTIN_AGENTS_PLUGIN === "true"
+      && (platform === "electron" || deployment.builtinAgents)) {
       await extensions.loadOptional("vela.builtin-agents", async () => {
         const { createBuiltinAgentsExtension } = await import("@opencraft/plugin-builtin-agents");
         const requestHost: Parameters<typeof createBuiltinAgentsExtension>[0]["requestHost"] = async (hostId, method, params) => {
@@ -1088,7 +1101,7 @@ export async function createWebWorkbenchApplicationSupervisor(
     }
     // Keep this expression direct: Vite can erase the entire dynamic-import
     // edge from product builds instead of merely disabling it at runtime.
-    if (import.meta.env.VITE_INCLUDE_HYPERNODE_PLUGIN !== "false") {
+    if (import.meta.env.VITE_INCLUDE_HYPERNODE_PLUGIN !== "false" && deployment.hypernode) {
       await extensions.loadOptional("vela.hypernode", async () => {
         const { createHyperNodeExtension } = await import("@opencraft/plugin-hypernode");
         return createHyperNodeExtension({ url: appServerUrl() });
@@ -1157,9 +1170,8 @@ export async function createWebWorkbenchApplicationSupervisor(
     const queryClient = createWorkbenchQueryClient();
     startupRollback.push(() => queryClient.clear());
     const routeCheckpoints = new BoundedCheckpointMap(32);
-    const requestedBootstrapLocation = parseWorkbenchLocationUrl(new URL(window.location.href));
     const bootstrapDefinitions = parseWebHostDefinitions(
-    import.meta.env.VITE_APPSERVER_HOSTS_JSON as string | undefined,
+    platform === "web" ? deployment.hosts : import.meta.env.VITE_APPSERVER_HOSTS_JSON as string | undefined,
     appServerUrl(),
   );
   const configuredHostProfiles = await IndexedDbHostConnectionProfileStore.open({
@@ -1174,6 +1186,20 @@ export async function createWebWorkbenchApplicationSupervisor(
     ? configuredHostProfiles
     : new EnvironmentProfileStore(configuredHostProfiles, environmentDirectory);
   startupRollback.push(() => hostProfiles.close());
+  const restoreLegacyWebsite = platform === "web" && workbenchProductId === "opencraft"
+    && websiteConfig !== null && !import.meta.env.VITE_APPSERVER_HOSTS_JSON?.trim()
+    && !import.meta.env.VITE_APPSERVER_WS_URL?.trim()
+    && !deployment.hypernode
+    && configuredHostProfiles.getSnapshot().profiles.some(profile => profile.hostId === "local" && profile.enabled
+      && profile.providerId === "vela.websocket" && profile.providerConfig !== null
+      && typeof profile.providerConfig === "object" && !Array.isArray(profile.providerConfig)
+      && "url" in profile.providerConfig
+      && profile.providerConfig.url === bootstrapDefinitions.find(host => host.hostId === "local")?.url)
+    && !configuredHostProfiles.getSnapshot().profiles.some(profile => profile.hostId === "hypernode");
+  const resolveWebsiteLocation = restoreLegacyWebsite ? resolveLegacyWebsiteLocation : undefined;
+  if (restoreLegacyWebsite) try { restoreLegacyWebsiteSelection(window.localStorage); } catch { /* unavailable legacy selection storage */ }
+  const rawBootstrapLocation = parseWorkbenchLocationUrl(new URL(window.location.href));
+  const requestedBootstrapLocation = resolveWebsiteLocation?.(rawBootstrapLocation) ?? rawBootstrapLocation;
   if (!configuredHostProfiles.getSnapshot().profiles.some(profile => profile.enabled)) {
     await environmentDirectory.refresh().catch(() => undefined);
   }
@@ -1467,7 +1493,7 @@ export async function createWebWorkbenchApplicationSupervisor(
     initialLocation,
     conversationActivation,
     conversationScopes,
-    { mode: options.navigationMode },
+    { mode: options.navigationMode, resolveLocation: resolveWebsiteLocation },
   );
   startupRollback.push(() => navigation.dispose());
   // Browser startup owns only local identity construction. Physical Host

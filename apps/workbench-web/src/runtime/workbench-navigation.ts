@@ -186,6 +186,8 @@ export function createRouteScopeId(): RouteScopeId {
 }
 
 export interface ApplicationRouterOptions {
+  /** Deployment compatibility applied to URLs and remembered POP locations. */
+  readonly resolveLocation?: (location: WorkbenchLocation | null) => WorkbenchLocation | null;
   readonly mode?: "memory" | "browser";
   readonly initialEntries?: string[];
   readonly initialIndex?: number;
@@ -202,8 +204,10 @@ export function createApplicationNavigation<TLocation extends WorkbenchLocation 
   const initialUrl = browserWindow?.location.href ?? "http://opencraft.invalid/";
   const url = new URL(initialUrl);
   const legacy = isWorkbenchHistoryState(browserWindow?.history.state) ? browserWindow.history.state : null;
-  const firstLocation = initialLocation === null ? null : (parseWorkbenchLocationUrl(url)
-    ?? (legacy ? parseWorkbenchLocation(legacy.location) : null) ?? initialLocation);
+  const resolveLocation = options.resolveLocation ?? ((location: WorkbenchLocation | null) => location);
+  const parseUrlLocation = (target: URL) => resolveLocation(parseWorkbenchLocationUrl(target));
+  const firstLocation = initialLocation === null ? null : (parseUrlLocation(url)
+    ?? resolveLocation(legacy ? parseWorkbenchLocation(legacy.location) : null) ?? initialLocation);
   const firstRoute = parseApplicationRouteUrl(url);
   const bootUrl = url.pathname.replace(/\/$/, "") === "/environments" && firstRoute.kind === "settings"
     ? new URL("/settings/" + encodeURIComponent(firstRoute.slug), initialUrl) : url;
@@ -218,7 +222,7 @@ export function createApplicationNavigation<TLocation extends WorkbenchLocation 
     const target = new URL(path, initialUrl);
     return { pathname: target.pathname, search: target.search, hash: target.hash,
       key: createRouteScopeId(), state: entry((initialLocation === null ? null
-        : parseWorkbenchLocationUrl(target) ?? firstLocation) as TLocation, createRouteScopeId()) };
+        : parseUrlLocation(target) ?? firstLocation) as TLocation, createRouteScopeId()) };
   });
   const router = mode === "memory"
     ? createMemoryRouter(routes, { initialEntries: memoryEntries ?? [{
@@ -248,14 +252,14 @@ export function createApplicationNavigation<TLocation extends WorkbenchLocation 
     const routeUrl = new URL(current.pathname + current.search + current.hash, initialUrl);
     const state = current.state;
     const remembered = state?.namespace === "opencraft.application-route.v8"
-      ? parseWorkbenchLocation(state.location) : null;
+      ? resolveLocation(parseWorkbenchLocation(state.location)) : null;
     let scope = state?.namespace === "opencraft.application-route.v8" && typeof state.routeScopeId === "string"
       ? asRouteScopeId(state.routeScopeId) : scopes.get(current.key);
     if (!scope) { scope = createRouteScopeId(); scopes.set(current.key, scope); }
     return {
       url: current.pathname + current.search + current.hash,
       revision, action, historyIndex: index,
-      location: (initialLocation === null ? null : parseWorkbenchLocationUrl(routeUrl) ?? remembered ?? firstLocation) as TLocation,
+      location: (initialLocation === null ? null : parseUrlLocation(routeUrl) ?? remembered ?? firstLocation) as TLocation,
       applicationRoute: parseApplicationRouteUrl(routeUrl),
       routeScopeId: scope,
       canGoBack: index > 0, canGoForward: index < keys.length - 1,
@@ -302,6 +306,8 @@ export function createApplicationNavigation<TLocation extends WorkbenchLocation 
   const restore = (target: ApplicationNavigationSnapshot<TLocation>) =>
     navigate(target.location, target.applicationRoute, true, target.routeScopeId);
   if (mode === "browser" && (bootUrl.href !== url.href
+    || (parseWorkbenchLocationUrl(url) !== null && firstLocation !== null
+      && !equalWorkbenchLocation(parseWorkbenchLocationUrl(url)!, firstLocation))
     || router.state.location.state?.namespace !== "opencraft.application-route.v8")) restore(snapshot);
   return {
     getSnapshot: () => snapshot,

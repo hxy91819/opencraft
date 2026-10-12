@@ -1335,9 +1335,22 @@ or a second model settings service. Removing the page from view must not dispose
 Host, alter the active conversation, or rewrite model/provider configuration.
 
 Electron activates these settings with its daemon-owned `local` and
-`local-codex` Host profiles. A Web deployment can enable the same Model Services
-and Codex Accounts views with `VITE_WEB_BUILTIN_AGENTS=enabled` and explicit
-`local` and `local-codex` profiles in `VITE_APPSERVER_HOSTS_JSON`. The Web
+`local-codex` Host profiles. The generic OpenCraft Web package includes these
+settings views and activates them from website-owned HTML configuration before
+Host startup. The website derives `local` (OpenCraft Server) and `local-codex`
+(Codex), both `remote-control`, from its primary and Codex proxy targets. URLs
+remain same-origin; private execution addresses and HyperNode user headers are
+not exposed. The managed website disables the HyperNode plugin to avoid a duplicate
+primary profile; its user header remains transport configuration only. Explicit `VITE_APPSERVER_HOSTS_JSON` overrides the runtime
+list; explicit Agent/HyperNode build flags override activation. Static/Vite
+pages without configuration retain existing defaults; invalid injected data
+fails startup through the existing error boundary. Legacy generic Web HyperNode
+links and remembered history resolve to `local` at the Router boundary; missing
+local thread/project selections are copied without deleting legacy values or
+overwriting existing local intent. This compatibility applies only to the
+website-owned primary proxy without explicit Host overrides or a real saved
+HyperNode profile. LightVela excludes these
+plugins and Electron ignores website configuration. The Web
 extension registers presentation only; the deployment's WebSocket profiles own
 the Host connections, and provider credentials remain on the AppServer Host.
 

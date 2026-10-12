@@ -118,8 +118,15 @@ See [fresh-machine builds](docs/fresh-machine-builds.md) for platform boundaries
 optional remote-Mac setup, and what is intentionally not committed.
 
 The Web workbench treats every execution node as a complete Host runtime. A
-single same-origin AppServer is discovered automatically. Multiple nodes can be
-declared without changing renderer code:
+managed website injects deployment configuration into HTML before startup:
+`OPENCRAFT_APPSERVER_URL` supplies `local` (OpenCraft Server), and
+`OPENCRAFT_CODEX_APPSERVER_URL` supplies `local-codex` (Codex). Generic npm
+packages retain both Hosts and built-in Agent settings without deployment build
+variables. `OPENCRAFT_HYPERNODE_USER` remains a private proxy header; managed websites
+disable the HyperNode plugin to avoid a duplicate primary Host.
+
+For development/tests, an explicit build-time Host list takes precedence over
+the website configuration, without merging the lists:
 
 ```bash
 VITE_APPSERVER_HOSTS_JSON='[

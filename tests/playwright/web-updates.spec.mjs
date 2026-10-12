@@ -76,7 +76,8 @@ test.beforeEach(async ({ page }) => {
   const stateDirectory = await mkdtemp(join(directory, 'state-'));
   app = await createManagedWebServer({ initialRelease: fixture.releases.get('1.0.0').packageRoot,
     stateDirectory, registry: fixture.registry, userconfig: fixture.userconfig,
-    appServerTarget: `ws://127.0.0.1:${backend.address().port}/rpc` });
+    appServerTarget: `ws://127.0.0.1:${backend.address().port}/rpc`,
+    codexServerTarget: `ws://127.0.0.1:${backend.address().port}/rpc/codex` });
   base = `http://127.0.0.1:${(await app.listen({ port: 0 })).port}`;
   await page.goto(`${base}/settings/updates`);
   await expect(button(page, 'check')).toBeVisible();
@@ -89,6 +90,72 @@ test.afterEach(async () => {
   expect(pageErrors).toEqual([]);
 });
 test.afterAll(async () => { await fixture?.close(); if (directory) await rm(directory, { recursive: true, force: true }); });
+
+test('generic release discovers runtime Codex Host and built-in settings before and after update', async ({ page }) => {
+  const assertDeployment = async () => {
+    const config = await page.locator('#opencraft-deployment-config').textContent();
+    expect(JSON.parse(config)).toEqual({ hosts: [
+      { hostId: 'local', label: 'OpenCraft Server', kind: 'remote-control', url: '/appserver' },
+      { hostId: 'local-codex', label: 'Codex', kind: 'remote-control', url: '/codex-appserver' },
+    ], builtinAgents: true, hypernode: false });
+    const profiles = await page.evaluate(async () => {
+      const db = await new Promise((accept, reject) => {
+        const request = indexedDB.open('vela-host-connections');
+        request.onsuccess = () => accept(request.result); request.onerror = () => reject(request.error);
+      });
+      try { return await new Promise((accept, reject) => {
+        const request = db.transaction('profiles').objectStore('profiles').getAll();
+        request.onsuccess = () => accept(request.result.map(profile => profile.hostId).sort());
+        request.onerror = () => reject(request.error);
+      }); } finally { db.close(); }
+    });
+    expect(profiles).toEqual(['local', 'local-codex']);
+    const nav = page.getByRole('navigation', { name: 'Settings sections' });
+    await expect(nav.getByRole('button', { name: /^(Model services|模型服务)$/ })).toBeVisible();
+    await expect(nav.getByRole('button', { name: /^(Codex accounts|Codex 账户)$/ })).toBeVisible();
+  };
+  await assertDeployment();
+  await check(page); await authorize(page); await button(page, 'install').click();
+  await expect.poll(async () => (await status(page)).job?.phase).toBe('completed');
+  await page.reload(); await expect(button(page, 'check')).toBeVisible();
+  await assertDeployment();
+});
+
+test('legacy generic website restores HyperNode draft links and selections on local without a duplicate Host', async ({ browser }) => {
+  const context = await browser.newContext({ locale: 'zh-CN' });
+  const page = await context.newPage();
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  try {
+    // The pre-runtime generic website has no HTML config and activates its
+    // ephemeral HyperNode profile. Exercise that actual startup before upgrade.
+    const legacyHtml = async route => {
+      const response = await route.fetch();
+      const body = (await response.text()).replace(/<script id="opencraft-deployment-config" type="application\/json">.*?<\/script>/s, '');
+      await route.fulfill({ response, body });
+    };
+    await page.route(url => url.pathname === '/', legacyHtml);
+    await page.goto(`${base}/?hostId=hypernode&draftId=legacy-draft`);
+    await expect(page.getByRole('button', { name: '运行在', exact: true })).toContainText('HyperNode');
+    await page.evaluate(() => {
+      localStorage.setItem('vela.active-host-id', 'hypernode');
+      localStorage.setItem('vela.active-thread-id:hypernode', 'legacy-thread');
+      localStorage.setItem('vela.selected-project-id:hypernode', 'legacy-project');
+    });
+    await page.unrouteAll();
+    await page.reload();
+    await expect(page.getByRole('button', { name: '运行在', exact: true })).toContainText('OpenCraft Server');
+    await expect(page).toHaveURL(/hostId=local&draftId=legacy-draft/);
+    expect(await page.evaluate(() => [
+      localStorage.getItem('vela.active-thread-id:local'), localStorage.getItem('vela.selected-project-id:local'),
+      localStorage.getItem('vela.active-thread-id:hypernode'),
+    ])).toEqual(['legacy-thread', 'legacy-project', 'legacy-thread']);
+    await page.goto(`${base}/settings/updates`);
+    await expect(button(page, 'check')).toBeVisible();
+    await expect(page.locator('.settings-execution-navigation')).toHaveCount(2);
+    await expect(page.getByRole('button', { name: 'HyperNode', exact: true })).toHaveCount(0);
+    expect(errors).toEqual([]);
+  } finally { await context.close(); }
+});
 
 test('anonymous check finds the real npm release and preserves the administrator draft during lookup', async ({ page }) => {
   expect((await status(page)).authenticated).toBe(false);
