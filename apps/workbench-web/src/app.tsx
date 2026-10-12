@@ -1118,6 +1118,7 @@ export function App({
         onSectionChange={selectSettingsSection}
         extensionContributions={hostCatalog.extensionContributions}
         profiles={hostCatalog.profiles}
+        machines={machines}
         activeHostId={snapshot.hostId}
         showArchivedConversations={archivedConversationsAvailable}
         onBack={closeSettings}
@@ -1137,6 +1138,7 @@ export function App({
         section={settingsSection}
         onSectionChange={selectSettingsSection}
         profiles={hostCatalog.profiles}
+        machines={machines}
         activeHostId={snapshot.hostId}
         onRemove={hostCatalog.removeHost}
         onProvisionHost={hostCatalog.provisionHost}

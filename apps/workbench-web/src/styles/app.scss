@@ -11001,49 +11001,25 @@ html[data-codex-window-type="electron"] .thread-scroll {
   }
 }
 
-// Host identity belongs to the Settings shell; configuration views own their data.
-.settings-execution-heading { margin-top: 20px; }
-.settings-execution-navigation {
-  padding: 8px 0;
-  & + & { border-top: 1px solid var(--color-border-subtle); margin-top: 8px; }
-
-}
-.settings-page__navigation .settings-execution-navigation__identity {
-  height: auto;
-  min-height: 58px;
-  padding: 10px 12px;
-  gap: 8px;
-  @include typography.role(settings-label);
-  > svg, > .workbench-connection-status { flex-shrink: 0; }
-}
-.settings-execution-navigation__copy {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  flex-direction: column;
-  gap: 4px;
-  overflow-wrap: anywhere;
-}
-.settings-execution-navigation__location {
-  @include typography.role(metadata, secondary);
-}
-.settings-page__navigation .settings-execution-navigation__page {
-  padding-left: 30px;
-}
-.settings-execution-identity {
-  flex: 0 0 auto; padding-bottom: 16px; border-bottom: 1px solid var(--color-border-subtle);
-}
-.settings-execution-identity__subject {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
-  @include typography.role(settings-section-title);
-  > strong { font: inherit; overflow-wrap: anywhere; }
+// Machine identity belongs to the Settings shell; configuration views own their data.
+.settings-machines-count { margin-left: auto; @include typography.role(metadata, secondary); }
+.settings-machine-identity { flex: 0 0 auto; }
+.settings-machine-identity__subject {
+  display: flex; align-items: center; gap: 12px; margin-top: 16px;
+  h1 { margin: 0 0 4px; @include typography.role(settings-title); }
   .environment-connection-label { margin-left: auto; @include typography.role(metadata, secondary); }
 }
-.settings-execution-identity__location, .settings-execution-empty {
-  margin: 6px 0 0; @include typography.role(metadata, secondary);
+.settings-machine-identity__icon {
+  display: grid; place-items: center; flex-shrink: 0; width: 44px; height: 44px;
+  border-radius: 12px; background: var(--color-surface-secondary);
+}
+.settings-machine-metadata { @include typography.role(metadata, secondary); }
+.settings-machine-agent-actions {
+  display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px;
+  .environment-connection-label { @include typography.role(metadata, secondary); }
 }
 .settings-execution-endpoint { overflow-wrap: anywhere; }
-.settings-page__viewport[data-layout="master-detail"] > .settings-page__content > .settings-execution-identity {
+.settings-page__viewport[data-layout="master-detail"] > .settings-page__content > .settings-machine-identity {
   padding: 16px 24px; margin: 0;
 }
 .settings-page__viewport[data-layout="master-detail"] > .settings-page__content > :last-child {

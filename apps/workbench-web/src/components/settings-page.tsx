@@ -51,12 +51,12 @@ import {
   type PlatformViewRegions,
   type ProvisionHostInput,
 } from "@opencraft/extension-react";
-import type { HostConnectionProfile } from "@opencraft/workbench-runtime";
+import type { HostConnectionProfile, WorkInMachine } from "@opencraft/workbench-runtime";
 import { getAppearanceThemePreviewProperties, type AppearanceThemeDescriptor } from "../appearance-theme";
 import { useInternalDeveloperMode } from "../internal-developer-mode";
 import { WebUpdatesSettings, WebUpdatesNavigation, hasManagedWebUpdates } from "./web-updates-settings";
-import { executionEndpoint } from "./execution-endpoint";
-import { TargetConnectionStatus } from "./target-connection-status";
+import { MachineConnectionsAvailable, SettingsMachine, SettingsMachineIdentity, SettingsMachines } from "./settings-machines";
+import { replacementMachineSettingsSection, machineSettingsSection } from "../runtime/settings-machine-route";
 import { SqliteDebugSettings } from "./sqlite-debug-settings";
 import {
   ArchivedThreadsSettings,
@@ -69,6 +69,8 @@ export interface SettingsContentProps {
   readonly section: SettingsSection;
   readonly onSectionChange: (section: SettingsSection, mode?: "push" | "replace") => void;
   readonly profiles: readonly HostConnectionProfile[];
+  readonly machines: readonly WorkInMachine[];
+  readonly observeMachineConnections?: boolean;
   readonly activeHostId: string;
   readonly themes: readonly AppearanceThemeDescriptor[];
   readonly themeId: string;
@@ -93,6 +95,7 @@ export interface SettingsNavigationProps {
   readonly onSectionChange: (section: SettingsSection) => void;
   readonly extensionContributions: ExtensionContributionStore;
   readonly profiles: readonly HostConnectionProfile[];
+  readonly machines: readonly WorkInMachine[];
   readonly activeHostId: string;
   readonly onBack: () => void;
   readonly presentation?: "route" | "dialog" | "sidebar";
@@ -133,6 +136,7 @@ export function SettingsNavigation({
   onSectionChange,
   extensionContributions,
   profiles,
+  machines,
   activeHostId,
   onBack,
   presentation = "route",
@@ -141,7 +145,6 @@ export function SettingsNavigation({
   const internalDeveloperMode = useInternalDeveloperMode();
   const [managementQuery, setManagementQuery] = useState("");
   const extensionPages = useSettingsExtensionPages(extensionContributions, currentPlatform());
-  const executionProfiles = profiles.filter(profile => profile.enabled);
   const selectedPage = extensionPages.find((page) => page.id === section) ?? null;
   const managementFamilyId = selectedPage?.management?.familyId ?? null;
   const managementPages = managementFamilyId === null
@@ -285,80 +288,16 @@ export function SettingsNavigation({
             </button>
             </div>
           ))}
-          <div className="settings-page__navigation-heading settings-execution-heading">执行端</div>
-          {executionProfiles.map(profile => {
-            const pages = extensionPages.filter(page => page.management === undefined && page.targetHostId === profile.hostId);
-            const overview = executionOverviewSection(profile.hostId);
-            return <section key={profile.hostId} className="settings-execution-navigation" aria-label={`${profile.displayName} 执行端`}>
-              <button
-                type="button"
-                className="settings-execution-navigation__identity"
-                aria-label={profile.displayName}
-                aria-current={section === overview ? "page" : undefined}
-                onClick={() => onSectionChange(overview)}
-              >
-                {executionHostIcon(profile)}
-                <span className="settings-execution-navigation__copy">
-                  <span>{profile.displayName}</span>
-                  <span className="settings-execution-navigation__location">{executionLocationLabel(profile)}</span>
-                </span>
-                <TargetConnectionStatus hostId={profile.hostId} />
-              </button>
-              {pages.map(page => <button key={page.id} type="button" className="settings-execution-navigation__page" aria-current={section === page.id ? "page" : undefined} onClick={() => onSectionChange(page.id)}>
-                {settingsNavigationIcon(page.icon)}<span>{page.title}</span>
-              </button>)}
-            </section>;
-          })}
-          {executionProfiles.length === 0 ? <p className="settings-execution-empty">尚未配置执行端</p> : null}
+          <div className="settings-page__navigation-heading"><FormattedMessage id="settings.machines.run" defaultMessage="Run" /></div>
+          <button type="button" aria-current={section === "machines" || section.startsWith("machine-") || selectedPage?.targetHostId !== undefined ? "page" : undefined} onClick={() => onSectionChange("machines")}>
+            <Server size={16} />
+            <span><FormattedMessage id="settings.machines.title" defaultMessage="Machines" /></span>
+            <span className="settings-machines-count">{machines.length}</span>
+          </button>
         </div>
       </nav>
     </div>
   );
-}
-
-function executionOverviewSection(hostId: string): string {
-  return `execution-${encodeURIComponent(hostId)}`;
-}
-
-function executionLocationLabel(profile: HostConnectionProfile): string {
-  if (currentPlatform() === "web") return profile.executionLocation ?? "服务器端运行";
-  return profile.executionLocation ?? (profile.hostKind === "local" ? "本机运行" : "远端运行");
-}
-
-function executionHostIcon(profile: HostConnectionProfile) {
-  const Icon = currentPlatform() === "electron" && profile.hostKind === "local" ? Monitor : Server;
-  return <Icon size={16} aria-hidden="true" />;
-}
-
-function ExecutionIdentity({ profile }: { readonly profile: HostConnectionProfile }) {
-  return <header className="settings-execution-identity" aria-label="配置所属执行端">
-    <div className="settings-execution-identity__subject">{executionHostIcon(profile)}<strong>{profile.displayName}</strong><TargetConnectionStatus hostId={profile.hostId} showLabel /></div>
-    <div className="settings-execution-identity__location">{executionLocationLabel(profile)}</div>
-  </header>;
-}
-
-function ExecutionOverview({ profile, pages, onSectionChange }: {
-  readonly profile: HostConnectionProfile;
-  readonly pages: ReturnType<typeof useSettingsExtensionPages>;
-  readonly onSectionChange: (section: SettingsSection) => void;
-}) {
-  return <>
-    <SettingsPageHeader title="执行端概览" description="此执行端承载 Agent 的会话与任务。以下信息来自已接入的配置。" />
-    <SettingsSection title="连接信息">
-      <SettingsGroup>
-        <SettingsRow label="名称"><span>{profile.displayName}</span></SettingsRow>
-        <SettingsRow label="运行位置"><span>{executionLocationLabel(profile)}</span></SettingsRow>
-        <SettingsRow label="连接地址"><span className="settings-execution-endpoint">{executionEndpoint(profile, window.location.href)}</span></SettingsRow>
-        <SettingsRow label="连接状态"><TargetConnectionStatus hostId={profile.hostId} showLabel /></SettingsRow>
-      </SettingsGroup>
-    </SettingsSection>
-    <SettingsSection title="执行端设置" description="这些设置作用于此执行端，不会随当前聊天切换。">
-      <SettingsGroup>{pages.map(page => <SettingsRow key={page.id} label={page.title}>
-        <SettingsButton onClick={() => onSectionChange(page.id)}>打开</SettingsButton>
-      </SettingsRow>)}</SettingsGroup>
-      {pages.length === 0 ? <p className="settings-execution-empty">此执行端暂未提供设置页面。</p> : null}
-    </SettingsSection>
-  </>;
 }
 
 function settingsNavigationIcon(icon: string | undefined) {
@@ -416,9 +355,11 @@ function ManagementNavigationGroup({
  * scrolling; extensions contribute content, never application geometry.
  */
 export function SettingsContent({
+  observeMachineConnections = true,
   section,
   onSectionChange,
   profiles,
+  machines,
   activeHostId,
   themes,
   themeId,
@@ -461,13 +402,18 @@ export function SettingsContent({
     platformViewRenderers.getSnapshot,
   );
   const selectedExtensionPage = extensionPages.find((page) => page.id === section) ?? null;
-  const overviewProfile = profiles.find(profile => profile.enabled && executionOverviewSection(profile.hostId) === section) ?? null;
-  const configurationHostId = selectedExtensionPage?.targetHostId ?? overviewProfile?.hostId;
+  const selectedMachine = machines.find(machine => machineSettingsSection(machine) === section) ?? null;
+  const configurationHostId = selectedExtensionPage?.targetHostId;
   const configurationProfile = profiles.find(profile => profile.enabled && profile.hostId === configurationHostId) ?? null;
+  const configurationMachine = machines.find(machine => machine.hosts.some(host => host.hostId === configurationHostId)) ?? null;
   const missingConfigurationHost = selectedExtensionPage?.targetHostId !== undefined && configurationProfile === null;
   const internalExtensionPage = contributionSnapshot.settingsPages.some(
     ({ contribution }) => contribution.id === section && contribution.audience === "internal",
   );
+  useEffect(() => {
+    const replacement = replacementMachineSettingsSection(section, machines);
+    if (replacement !== null) onSectionChange(replacement, "replace");
+  }, [section, machines, onSectionChange]);
   useEffect(() => {
     const internalOnly = internalExtensionPage || section === "plugins" || section === "laboratory" || section === "sqlite-debug";
     if (internalOnly && (!internalDeveloperMode || (section === "sqlite-debug" && platform !== "electron"))) {
@@ -494,11 +440,13 @@ export function SettingsContent({
   }), [activeHostId, configurationHostId, onOpenView, onProvisionHost, onPushViewResource, onRemove, onReplaceViewResource, platform, profiles]);
 
   return (
-    <div className="settings-page__viewport" data-selection="chrome" data-layout={selectedExtensionPage?.layout ?? "document"}>
+    <MachineConnectionsAvailable.Provider value={observeMachineConnections}><div className="settings-page__viewport" data-selection="chrome" data-layout={selectedExtensionPage?.layout ?? "document"}>
             <div className="settings-page__content">
-              {configurationProfile !== null ? <ExecutionIdentity profile={configurationProfile} /> : null}
-              {overviewProfile !== null ? <ExecutionOverview profile={overviewProfile} pages={extensionPages.filter(page => page.targetHostId === overviewProfile.hostId && page.management === undefined)} onSectionChange={onSectionChange} />
-              : missingConfigurationHost || (section.startsWith("execution-") && overviewProfile === null) ? <SettingsPageHeader title="执行端不可用" description="此执行端未配置或已停用。请从左侧选择已配置的执行端。" />
+              {configurationMachine !== null ? <SettingsMachineIdentity machine={configurationMachine} platform={platform} onSectionChange={onSectionChange} /> : null}
+              {section === "machines" ? <SettingsMachines machines={machines} platform={platform} onSectionChange={onSectionChange} />
+              : selectedMachine !== null ? <SettingsMachine machine={selectedMachine} pages={extensionPages.filter(page => page.management === undefined)} platform={platform} onSectionChange={onSectionChange} />
+              : section.startsWith("execution-") ? null
+              : missingConfigurationHost || section.startsWith("machine-") ? <><SettingsPageHeader title={intl.formatMessage({ id: "settings.machines.unavailable", defaultMessage: "Machine unavailable" })} /><SettingsButton onClick={() => onSectionChange("machines")}>{intl.formatMessage({ id: "settings.machines.title", defaultMessage: "Machines" })}</SettingsButton></>
               : selectedExtensionView !== null ? (
                 SelectedExtensionComponent === null ? (
                   <SettingsSection
@@ -746,6 +694,6 @@ export function SettingsContent({
                 </SettingsSection>
               )}
             </div>
-    </div>
+    </div></MachineConnectionsAvailable.Provider>
   );
 }

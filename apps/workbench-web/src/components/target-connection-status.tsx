@@ -1,13 +1,28 @@
 import { useHostConnectionPhase } from "../runtime/appserver-runtime-context";
+import { useIntl } from "@opencraft/i18n/react";
 
-export function TargetConnectionStatus({ hostId, showLabel = false }: { hostId: string; showLabel?: boolean }) {
+export function TargetConnectionStatus({ hostId, showLabel }: { hostId: string; showLabel?: boolean }) {
   const phase = useHostConnectionPhase(hostId);
-  return showLabel ? <span className="environment-connection-label"><ConnectionStatus phase={phase} /><span>{phase === "ready" ? "已连接" : phase === "idle" ? "未连接" : phase === "error" ? "连接失败" : phase === "reconnecting" ? "重新连接中" : "连接中"}</span></span> : <ConnectionStatus phase={phase} />;
+  return <ConnectionLabel phase={phase} showLabel={showLabel} />;
+}
+
+export function ConnectionLabel({ phase, showLabel = false }: { phase: string; showLabel?: boolean }) {
+  const intl = useIntl();
+  const message = connectionMessage(phase);
+  return showLabel ? <span className="environment-connection-label"><ConnectionStatus phase={phase} /><span>{intl.formatMessage(message)}</span></span> : <ConnectionStatus phase={phase} />;
 }
 
 /** Pure presentation: only the runtime owns connection state. */
 export function ConnectionStatus({ phase }: { phase: string }) {
-  const label = phase === "ready" ? "Connected" : phase === "reconnecting" ? "Reconnecting"
-    : phase === "error" ? "Connection error" : phase === "idle" ? "Not connected" : phase;
+  const intl = useIntl();
+  const label = intl.formatMessage(connectionMessage(phase));
   return <span className="workbench-connection-status" data-phase={phase} role="img" aria-label={label} title={label} />;
+}
+
+function connectionMessage(phase: string) {
+  return phase === "ready" ? { id: "settings.connection.ready", defaultMessage: "Connected" }
+    : phase === "idle" ? { id: "settings.connection.idle", defaultMessage: "Not connected" }
+    : phase === "error" ? { id: "settings.connection.error", defaultMessage: "Connection failed" }
+    : phase === "reconnecting" ? { id: "settings.connection.reconnecting", defaultMessage: "Reconnecting" }
+    : { id: "settings.connection.connecting", defaultMessage: "Connecting" };
 }
