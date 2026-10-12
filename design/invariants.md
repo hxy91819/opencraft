@@ -119,7 +119,7 @@ Connector 目录浏览不套用设置行：采用限宽品牌卡片，已配置�
 - 执行端概览与配置入口走既有应用 Router，不改变聊天 Host，不新增服务器创建/编辑流程。主从页保持自身滚动，身份头由 Settings Shell 持有。
 - Web 启动按 Host ID 补齐部署声明但尚未保存的连接；已有连接的地址、名称、停用与可见性偏好不被部署默认值覆盖。Codex 账户只有读取成功且为空时显示无账户，读取失败原位报错并允许刷新，不引导重新绑定。
 
-- 验证：`node scripts/smoke-execution-settings.mjs` 检查构建后的真实工作台分组、配置归属、图标、PUSH/POP/刷新、主从布局和窄屏；`tests/extension-runtime.test.ts` 验证固定 owner 与无效 owner 原子拒绝。当前桌面平台呈现尚未实机验证。
+- 验证：`tests/settings-machines.test.tsx`、`tests/settings-machine-navigation.test.ts` 检查当前机器入口、一级插件页面、高亮、PUSH/POP 与返回；`tests/extension-runtime.test.ts` 验证固定 owner 与无效 owner 原子拒绝。2026-10-12 已验证真实 Web 直连执行端及当前源码 Linux Electron 隔离 profile；macOS 桌面尚未实机验证。
 
 - 执行端名称、位置和状态灯组成一个语义 button，点击名称行打开该 Host 概览；不再增加“概览”子项。概览只高亮名称行，配置页只高亮对应子项；所有入口继续使用同一 Router 路由，保留旧概览链接与 POP 恢复。
 
@@ -130,5 +130,5 @@ Connector 目录浏览不套用设置行：采用限宽品牌卡片，已配置�
 - 新的机器、Agent、项目选择撤销旧准备；晚到结果不得覆盖较新的意图。切换机器或 Agent 只读：目录在目标 Host 存在才保留，不创建项目记录。
 - 切换运行位置保留草稿内容；暂不可用的附件原位标注，不静默删除。
 - Web 不显示「这台…」；只有桌面端本机 daemon 所在机器显示「这台 Mac / 这台电脑」。云端资源生命周期与连接状态分开呈现。
-- 设置的「运行 › 机器」使用同一 `groupWorkInMachines` / `workInMachineName` 投影：一台机器一行，未知身份 Host 独立成行，云端独立成组。机器内按 Agent 呈现目标 Host 的设置与连接，不在侧栏重复列 Host；旧 `execution-<hostId>` 以及身份晚到前的未知机器路由由 Router REPLACE 纠正。模型服务与 Codex 账户仍归各自 Host，不提供服务端统一中转。
+- 设置的「运行 › 机器」使用同一 `groupWorkInMachines` / `workInMachineName` 投影：一台机器一行，未知身份 Host 独立成行，云端独立成组。机器内按 Agent 呈现目标 Host 的设置与连接，不在侧栏重复列 Host；旧 `execution-<hostId>` 以及身份晚到前的未知机器路由由 Router REPLACE 纠正。「运行」分组依次提供一级入口「模型服务」「Codex 账户」「机器」；前两项直达现有固定 targetHostId 的插件页，仅高亮对应入口，并以「用于」标签呈现机器归属。机器内入口与返回机器行为保留；idle 表示尚未启动，连接地址单行省略并提供完整 title。模型服务与 Codex 账户仍归各自 Host，不提供服务端统一中转或多机器选择器。
 - 验证：`tests/settings-machines.test.tsx`、`tests/settings-machine-navigation.test.ts`、`tests/work-in-*.test.ts`、`tests/opencraft-daemon.test.ts`；Web 与 Linux Electron 实测，macOS 窗口、真实多机器与 LightVela 云端链路尚未实测。

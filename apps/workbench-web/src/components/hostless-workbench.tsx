@@ -1,3 +1,4 @@
+import { useIntl } from "@opencraft/i18n/react";
 import { groupWorkInMachines } from "../runtime/work-in-presentation";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { PlatformViewHost } from "@opencraft/extension-react";
@@ -62,6 +63,7 @@ export function HostlessWorkbench({
 }: {
   readonly supervisor: HostlessWebWorkbenchApplicationSupervisor;
 }) {
+  const intl = useIntl();
   const internalDeveloperMode = useInternalDeveloperMode();
   const [accountOpen, setAccountOpen] = useState(false);
   const appearance = useAppearanceTheme();
@@ -302,7 +304,7 @@ export function HostlessWorkbench({
         navigation={{
           settingsActive: routeSettingsOpen,
           actions: [
-            { id: "shell.chat", title: "Chat", icon: "chat", active: applicationRoute.kind === "conversation", onInvoke: closeApplicationRoute },
+            { id: "shell.chat", title: intl.formatMessage({ id: "navigation.chat", defaultMessage: "Chat" }), icon: "chat", active: applicationRoute.kind === "conversation", onInvoke: closeApplicationRoute },
             ...extensionProjection.primaryActions, ...extensionProjection.footerActions,
           ],
           account: extensionProjection.account === null ? null : {

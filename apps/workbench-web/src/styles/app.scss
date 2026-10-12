@@ -11018,7 +11018,15 @@ html[data-codex-window-type="electron"] .thread-scroll {
   display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px;
   .environment-connection-label { @include typography.role(metadata, secondary); }
 }
-.settings-execution-endpoint { overflow-wrap: anywhere; }
+.settings-machine-connection {
+  display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; width: 100%;
+  .environment-connection-label { flex-shrink: 0; white-space: nowrap; @include typography.role(metadata, secondary); }
+}
+.settings-execution-endpoint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.settings-machine-usage {
+  float: right; display: inline-flex; align-items: center; gap: 6px; @include typography.role(metadata, secondary);
+}
+.settings-machine-usage__tag { padding: 2px 6px; border: 1px solid var(--color-border-default); border-radius: 4px; }
 .settings-page__viewport[data-layout="master-detail"] > .settings-page__content > .settings-machine-identity {
   padding: 16px 24px; margin: 0;
 }

@@ -1,3 +1,4 @@
+import { useIntl } from "@opencraft/i18n/react";
 import {
   DndContext,
   DragOverlay,
@@ -614,6 +615,8 @@ export function SidebarBots({ items, creation }: {
   readonly items: readonly SidebarEntity[];
   readonly creation: SidebarEntityCreationCommand | null;
 }) {
+  const intl = useIntl();
+  const botsLabel = intl.formatMessage({ id: "sidebar.bots", defaultMessage: "Bots" });
   const { activeKey, visiblePinned, snapshot, reducedMotion, attachPinGrid } = useSidebarEntityDnd();
   const [showCreate, setShowCreate] = useState(false);
   const itemsByKey = useMemo(() => new Map(items.map((item) => [item.key, item])), [items]);
@@ -630,11 +633,11 @@ export function SidebarBots({ items, creation }: {
   const showPinShell = pinnedItems.length > 0 || activeKey !== null;
   return (
     <>
-      <section className="sidebar-bots" aria-label="Bots" data-dragging={activeKey === null ? undefined : "true"}>
+      <section className="sidebar-bots" aria-label={botsLabel} data-dragging={activeKey === null ? undefined : "true"}>
           <div className="sidebar-section-heading sidebar-bots__heading">
-            <button type="button"><Bot size={13} /><span>Bots</span></button>
+            <button type="button"><Bot size={13} /><span>{botsLabel}</span></button>
             {creation === null ? null : (
-              <button type="button" aria-label="Create Bot" onClick={() => creation.open ? creation.open() : setShowCreate(true)}><Plus size={13} /></button>
+              <button type="button" aria-label={intl.formatMessage({ id: "sidebar.createBot", defaultMessage: "Create Bot" })} onClick={() => creation.open ? creation.open() : setShowCreate(true)}><Plus size={13} /></button>
             )}
           </div>
           <AnimatePresence initial={false} mode="popLayout">

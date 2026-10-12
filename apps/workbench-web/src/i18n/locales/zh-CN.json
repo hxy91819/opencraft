@@ -208,5 +208,11 @@
   "machine.resource.removing": "正在移除资源",
   "machine.resource.destroyed": "资源已移除",
   "machine.resource.failed": "资源失败",
-  "machine.resource.unknown": "未知资源状态"
+  "machine.resource.unknown": "未知资源状态",
+  "settings.connection.notStarted": "未启动",
+  "settings.machines.usedFor": "用于",
+  "navigation.pinned": "已固定",
+  "navigation.chat": "聊天",
+  "sidebar.bots": "机器人",
+  "sidebar.createBot": "创建机器人"
 }

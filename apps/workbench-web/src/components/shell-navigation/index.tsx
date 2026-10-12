@@ -35,7 +35,10 @@ import {
 
 export type { ShellNavigationConfig } from "./navigation-content";
 const surfaces = ["applications", "account"] as const;
-const labels = { applications: "Applications", account: "Account" };
+const labels = {
+  applications: { id: "navigation.applications", defaultMessage: "Applications" },
+  account: { id: "account.title", defaultMessage: "Account" },
+};
 
 /** Web storage/layout adapter; no route, Host or Thread state is owned here. */
 export function useShellNavigation(input: {
@@ -184,6 +187,7 @@ export function ShellNavigationDock({ config, controller, expandedWidth, frameWi
   config: ShellNavigationConfig; controller: ShellNavigationController;
   expandedWidth?: MotionValue<number>; frameWidth?: MotionValue<number>; transient?: boolean;
 }) {
+  const intl = useIntl();
   const compact = !transient && controller.projection.railDetent === "compact";
   const anonymousAccount = isAnonymousShellAccount(config.account);
   const content = surfaces.filter((surface) => {
@@ -192,7 +196,7 @@ export function ShellNavigationDock({ config, controller, expandedWidth, frameWi
     }
     return transient || controller.projection.docked.applications;
   }).map(surface => <section key={surface}>
-      <div className="shell-navigation__heading"><strong>{labels[surface]}</strong></div>
+      <div className="shell-navigation__heading"><strong>{intl.formatMessage(labels[surface])}</strong></div>
       <NavigationContent compact={compact} config={config} surface={surface} onInvoke={action => action()} />
     </section>);
   if (expandedWidth !== undefined && frameWidth !== undefined) {
@@ -221,7 +225,7 @@ export function ShellNavigationFooter({ config, controller, visible = true, entr
   const availableSurfaces = surfaces.filter((surface) => surface !== "account" || accountLabel !== null);
   return <div ref={root} className="shell-navigation__footer" aria-label="Application entrances">
     {availableSurfaces.map(surface => {
-      const surfaceLabel = surface === "account" ? accountLabel! : labels.applications;
+      const surfaceLabel = surface === "account" ? accountLabel! : intl.formatMessage(labels.applications);
       const directSignIn = surface === "account" && anonymousAccount;
       if (directSignIn && config.account?.signIn) return <AccountSignInMenu key={surface}
         account={config.account} signIn={config.account.signIn} id={`${entranceId}-${surface}`}
@@ -248,7 +252,7 @@ export function ShellNavigationFooter({ config, controller, visible = true, entr
           aria-pressed={surface === "applications" ? projection.docked.applications || projection.peek === "applications" : directSignIn ? false : state.pinned[surface]}
           aria-expanded={surface === "applications" ? projection.docked.applications || projection.peek === "applications" : undefined}
           data-pinned={surface === "applications" && projection.primaryNavigation ? visible : directSignIn ? false : state.pinned[surface]}
-          title={surface === "applications" && projection.primaryNavigation ? "Applications" : `${surfaceLabel}${!directSignIn && state.pinned[surface] ? " · Pinned" : ""}`}>
+          title={surface === "applications" && projection.primaryNavigation ? intl.formatMessage(labels.applications) : `${surfaceLabel}${!directSignIn && state.pinned[surface] ? ` · ${intl.formatMessage({ id: "navigation.pinned", defaultMessage: "Pinned" })}` : ""}`}>
           {surface === "applications" ? <LayoutGrid aria-hidden="true" size={18} />
             : <><AccountLeadingVisual account={config.account} /><span className="shell-navigation__name">{surfaceLabel}</span></>}
         </button>
@@ -256,7 +260,7 @@ export function ShellNavigationFooter({ config, controller, visible = true, entr
       <Dialog.Portal container={root.current}>
         <Dialog.Content className={surface === "applications" ? "shell-navigation__drawer" : "shell-navigation__peek"} aria-describedby={undefined}>
           <div className={surface === "applications" ? "shell-navigation__dock-content" : undefined}>
-          <div className="shell-navigation__heading"><Dialog.Title>{labels[surface]}</Dialog.Title></div>
+          <div className="shell-navigation__heading"><Dialog.Title>{intl.formatMessage(labels[surface])}</Dialog.Title></div>
           <NavigationContent compact={false} config={config} surface={surface} onInvoke={action => {
             dispatch({ type: "dismiss", surface }); action();
           }} />

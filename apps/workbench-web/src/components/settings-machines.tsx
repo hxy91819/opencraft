@@ -69,6 +69,7 @@ function MachinePhaseStatus({ phase }: { phase: string }) {
   const intl = useIntl();
   return <span className="environment-connection-label"><ConnectionStatus phase={phase} /><span>{intl.formatMessage(phase === "ready"
     ? { id: "workIn.online", defaultMessage: "Online" }
+    : phase === "idle" ? { id: "settings.connection.notStarted", defaultMessage: "Not started" }
     : { id: "workIn.offline", defaultMessage: "Offline" })}</span></span>;
 }
 
@@ -77,6 +78,7 @@ export function SettingsMachineIdentity({ machine, platform, onSectionChange, de
 }) {
   const intl = useIntl();
   return <header className="settings-machine-identity">
+    {!detail ? <span className="settings-machine-usage">{intl.formatMessage({ id: "settings.machines.usedFor", defaultMessage: "Used for" })}<span className="settings-machine-usage__tag">{machineName(machine, platform, intl)}</span></span> : null}
     <SettingsButton variant="quiet" onClick={() => onSectionChange(detail ? "machines" : machineSettingsSection(machine))}>
       <ArrowLeft size={14} />{detail ? intl.formatMessage({ id: "settings.machines.title", defaultMessage: "Machines" }) : machineName(machine, platform, intl)}
     </SettingsButton>
@@ -96,16 +98,16 @@ export function SettingsMachines({ machines, platform, onSectionChange }: {
     <SettingsPageHeader title={intl.formatMessage({ id: "settings.machines.title", defaultMessage: "Machines" })} />
     {[false, true].map(cloud => {
       const group = machines.filter(machine => machine.cloud === cloud);
-      return group.length ? <SettingsSection key={String(cloud)} title={cloud
-        ? intl.formatMessage({ id: "workIn.cloud", defaultMessage: "Cloud · LightVela" })
-        : intl.formatMessage({ id: "settings.machines.title", defaultMessage: "Machines" })}>
-        <SettingsGroup>{group.map(machine => <SettingsListItem key={machine.id}
+      const rows = <SettingsGroup>{group.map(machine => <SettingsListItem key={machine.id}
           icon={<MachineIcon machine={machine} platform={platform} />}
           label={machineName(machine, platform, intl)}
           description={<MachineMetadata machine={machine} platform={platform} />}
           metadata={<MachineStatus machine={machine} />}
-          actions={<SettingsButton variant="quiet" onClick={() => onSectionChange(machineSettingsSection(machine))}>{intl.formatMessage({ id: "settings.machines.open", defaultMessage: "Open" })}</SettingsButton>} />)}</SettingsGroup>
-      </SettingsSection> : null;
+          actions={<SettingsButton variant="quiet" onClick={() => onSectionChange(machineSettingsSection(machine))}>{intl.formatMessage({ id: "settings.machines.open", defaultMessage: "Open" })}</SettingsButton>} />)}</SettingsGroup>;
+      return group.length ? cloud
+        ? <SettingsSection key="cloud" title={intl.formatMessage({ id: "workIn.cloud", defaultMessage: "Cloud · LightVela" })}>{rows}</SettingsSection>
+        : <div key="machines">{rows}</div>
+        : null;
     })}
     {machines.length === 0 ? <SettingsSection title={intl.formatMessage({ id: "settings.machines.empty", defaultMessage: "No machines" })} /> : null}
   </>;
@@ -133,7 +135,7 @@ export function SettingsMachine({ machine, pages, platform, onSectionChange }: {
     })}</SettingsGroup></SettingsSection>
     <SettingsSection title={intl.formatMessage({ id: "settings.machines.connections", defaultMessage: "Connections" })}>
       <SettingsGroup>{connections.map(host => <SettingsRow key={host.hostId} label={host.agent ?? host.displayName}>
-        <div className="settings-machine-agent-actions"><span className="settings-execution-endpoint">{executionEndpoint(host, window.location.href)}</span><HostStatus hostId={host.hostId} /></div>
+        <div className="settings-machine-connection"><span className="settings-execution-endpoint" title={executionEndpoint(host, window.location.href)}>{executionEndpoint(host, window.location.href)}</span><HostStatus hostId={host.hostId} /></div>
       </SettingsRow>)}</SettingsGroup>
     </SettingsSection>
   </>;

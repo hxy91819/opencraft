@@ -21,7 +21,7 @@ export function ConnectionStatus({ phase }: { phase: string }) {
 
 function connectionMessage(phase: string) {
   return phase === "ready" ? { id: "settings.connection.ready", defaultMessage: "Connected" }
-    : phase === "idle" ? { id: "settings.connection.idle", defaultMessage: "Not connected" }
+    : phase === "idle" ? { id: "settings.connection.notStarted", defaultMessage: "Not started" }
     : phase === "error" ? { id: "settings.connection.error", defaultMessage: "Connection failed" }
     : phase === "reconnecting" ? { id: "settings.connection.reconnecting", defaultMessage: "Reconnecting" }
     : { id: "settings.connection.connecting", defaultMessage: "Connecting" };

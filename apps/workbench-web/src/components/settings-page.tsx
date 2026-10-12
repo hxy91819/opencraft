@@ -145,6 +145,10 @@ export function SettingsNavigation({
   const internalDeveloperMode = useInternalDeveloperMode();
   const [managementQuery, setManagementQuery] = useState("");
   const extensionPages = useSettingsExtensionPages(extensionContributions, currentPlatform());
+  const runPages = ["vela.builtin-agents.model-services", "vela.builtin-agents.codex-accounts"]
+    .flatMap(id => extensionPages.filter(page => page.id === id && page.targetHostId !== undefined
+      && profiles.some(profile => profile.enabled && profile.hostId === page.targetHostId)));
+  const selectedRunPage = runPages.some(page => page.id === section);
   const selectedPage = extensionPages.find((page) => page.id === section) ?? null;
   const managementFamilyId = selectedPage?.management?.familyId ?? null;
   const managementPages = managementFamilyId === null
@@ -289,7 +293,11 @@ export function SettingsNavigation({
             </div>
           ))}
           <div className="settings-page__navigation-heading"><FormattedMessage id="settings.machines.run" defaultMessage="Run" /></div>
-          <button type="button" aria-current={section === "machines" || section.startsWith("machine-") || selectedPage?.targetHostId !== undefined ? "page" : undefined} onClick={() => onSectionChange("machines")}>
+          {runPages.map(page => <button key={page.id} type="button"
+            aria-current={section === page.id ? "page" : undefined} onClick={() => onSectionChange(page.id)}>
+            {settingsNavigationIcon(page.icon)}<span>{page.title}</span>
+          </button>)}
+          <button type="button" aria-current={section === "machines" || section.startsWith("machine-") || (!selectedRunPage && selectedPage?.targetHostId !== undefined) ? "page" : undefined} onClick={() => onSectionChange("machines")}>
             <Server size={16} />
             <span><FormattedMessage id="settings.machines.title" defaultMessage="Machines" /></span>
             <span className="settings-machines-count">{machines.length}</span>

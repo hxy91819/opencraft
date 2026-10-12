@@ -1269,7 +1269,7 @@ export function App({
           navigation={!presentation.shellNavigation ? undefined : {
             settingsActive: routeSettingsOpen,
             actions: [
-              { id: "shell.chat", title: "Chat", icon: "chat", active: conversationRouteOpen,
+              { id: "shell.chat", title: intl.formatMessage({ id: "navigation.chat", defaultMessage: "Chat" }), icon: "chat", active: conversationRouteOpen,
                 onInvoke: () => { void workbenchNavigation.openChat()
                   .then(changed => { if (!changed) setThreadActionError("当前请求提交中，暂时无法切换页面。"); })
                   .catch(error => setThreadActionError(error instanceof Error ? error.message : String(error))); } },
