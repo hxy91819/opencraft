@@ -21,7 +21,7 @@
 ## acceptance / validation
 - 受影响 workspace typecheck、`npm run test:appserver`、核心测试、`npm run check:boundaries`。
 - 隔离真实 CLI + 假 Responses：32 秒流和运行中 shell 跨 daemon 重启，PID/turn 不变，恢复能看到完成；零客户端、queue/goal、账户转发、不可用错误。
-- 线上先确认空闲/旧 Codex 无活动，备份后独立 unit 切换，核验两 Host 身份、模型菜单与执行侧重启时 core/CLI PID 不变。线上不发起推理。
+- 线上先确认空闲/旧 Codex 无活动，备份后独立 unit 切换，核验两 Host 身份、模型菜单与执行侧重启时 core/CLI PID 不变。初次验收不发起推理；真实任务须单独授权。
 
 ## affected_paths
 `apps/codex-core`、daemon、账户包、daemon 启动透传、相关 tests、docs 和本设计。
@@ -44,4 +44,8 @@
 ## evidence / handoff
 本机忽略目录 `.local/codex-core/` 保存安装、实验、验收、上线和回退记录。
 已完成四 workspace typecheck、216 项 appserver 测试、核心测试与边界检查。真实 CLI 0.162.1 隔离实验通过 32 秒流/运行中 shell 跨 daemon 重启，零客户端/queue/goal/审批恢复，wrapper/native PID 不变；进程与临时状态清理完成。
-独立审查发现的订阅失败回滚和代理刷新关闭顺序均已核实修复并补回归。当前阶段：最终复审和部署准备，线上切换结果以部署记录为准；不将源码提交等同于上线。
+独立审查发现的订阅失败回滚和代理刷新关闭顺序均已核实修复并补回归；最终完整复审通过。
+
+已完成线上独立 unit 切换、两 Host 身份和模型菜单检查，以及浏览器跨执行侧重启重连；core、CLI wrapper 与 native PID 保持不变。构建产物来自本分支，主 checkout 保持原有 main；没有合并、push 或 npm 发布。回退脚本和私有备份保存在部署记录中。真实 CLI 原生 socket 是符号链接，目标权限与私有目录均已实测核对。
+
+随后收到一次真实 `sleep 60 && echo done` 验收授权。账户检查通过，但实验脚本在首轮发送前让第二连接 resume 空会话，CLI 返回 `no rollout found for thread id`，因此没有发送 `turn/start`，也没有执行这次额外重启。空会话已归档、临时浏览器和工作目录已清理；遵循未启动不重复尝试的约束，保留失败记录，真实线上任务连续性仍未验证。
