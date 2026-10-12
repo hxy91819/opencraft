@@ -29,7 +29,7 @@ function Demo(){
  onToggleSidebar={()=>setSidebar(v=>!v)} onToggleRightPanel={()=>setRight(v=>!v)} onHome={()=>setRoute('Home')}
  canGoBack={false} canGoForward={false} onBack={()=>{}} onForward={()=>{}} navigationActions={['home','sidebar-toggle','back','forward']}/>}
  floatingSidebarHeader={()=>null}
- leftPanel={route === 'Files' ? null : route === 'Settings' ? <SettingsNavigation section={settingsSection} onSectionChange={setSettingsSection} extensionContributions={contributions} profiles={[]} activeHostId="" onBack={()=>setRoute('Chat')} presentation="sidebar"/> : <div className="sidebar-panel"><h3>Conversations</h3><button>First conversation</button><button>Second conversation</button></div>}
+ leftPanel={route === 'Files' ? null : route === 'Settings' ? <SettingsNavigation section={settingsSection} onSectionChange={setSettingsSection} extensionContributions={contributions} profiles={[]} machines={[]} activeHostId="" onBack={()=>setRoute('Chat')} presentation="sidebar"/> : <div className="sidebar-panel"><h3>Conversations</h3><button>First conversation</button><button>Second conversation</button></div>}
  rightPanel={<div>Browser / Terminal</div>} rightPanelOpen={right} rightPanelFullWidth={full} sidebarOpen={sidebar} sidebarWidth={275}
  windowChrome={{kind:'browser',platform:'linux',safeArea:{left:0,right:0}}} onSidebarCollapse={()=>setSidebar(false)} onSidebarExpand={()=>setSidebar(true)} onSidebarResizeEnd={()=>{}} onRightPanelOpenChange={setRight}>
  <div style={{padding:32}}><h2>{route}</h2>{route==='Settings' ? <p>{settingsSection} content</p> : null}<input aria-label="Draft" defaultValue="Keep my draft"/><button id="outside">Outside</button></div>

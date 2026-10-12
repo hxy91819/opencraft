@@ -1,3 +1,4 @@
+import { groupWorkInMachines } from "../runtime/work-in-presentation";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { PlatformViewHost } from "@opencraft/extension-react";
 import {
@@ -93,6 +94,8 @@ export function HostlessWorkbench({
     supervisor.hostProfiles.getSnapshot,
     supervisor.hostProfiles.getSnapshot,
   );
+  const environmentSnapshot = useSyncExternalStore(supervisor.environmentDirectory.subscribe, supervisor.environmentDirectory.getSnapshot, supervisor.environmentDirectory.getSnapshot);
+  const machines = useMemo(() => groupWorkInMachines(profileSnapshot.profiles, environmentSnapshot.entries), [profileSnapshot.profiles, environmentSnapshot.entries]);
   useEffect(() => {
     if (profileSnapshot.profiles.some((profile) => profile.enabled)) window.location.reload();
   }, [profileSnapshot]);
@@ -190,6 +193,7 @@ export function HostlessWorkbench({
         onSectionChange={selectSettingsSection}
         extensionContributions={supervisor.extensions.contributions}
         profiles={profileSnapshot.profiles}
+        machines={machines}
         activeHostId=""
         onBack={closeApplicationRoute}
         presentation={managementSettingsOpen ? "dialog" : "sidebar"}
@@ -228,6 +232,7 @@ export function HostlessWorkbench({
     >
       <SettingsContent
         section={settingsSection ?? "appearance"}
+        observeMachineConnections={false}
         onSectionChange={selectSettingsSection}
         activeHostId=""
         extensionContributions={supervisor.extensions.contributions}
@@ -245,6 +250,7 @@ export function HostlessWorkbench({
         platformViewRenderers={supervisor.platformViewRenderers}
         regions={appShellPlatformViewRegions}
         profiles={profileSnapshot.profiles}
+        machines={machines}
         themeId={appearance.themeId}
         themePreference={appearance.preference}
         themes={appearance.availableThemes}
