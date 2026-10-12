@@ -492,7 +492,7 @@ test("Draft menus consume one design-system rhythm and stay out of the hero titl
   });
   assert.match(
     newThreadDraftSource,
-    /className="new-thread-project-menu new-thread-host-menu"[\s\S]*?align="end"[\s\S]*?sideOffset=\{menuGeometry\.rootSideOffset\}[\s\S]*?collisionPadding=\{menuGeometry\.collisionPadding\}/u,
+    /className="new-thread-project-menu new-thread-host-menu"[\s\S]*?align="start"[\s\S]*?sideOffset=\{menuGeometry\.rootSideOffset\}[\s\S]*?collisionPadding=\{menuGeometry\.collisionPadding\}/u,
   );
   assert.match(
     workbenchStyles,

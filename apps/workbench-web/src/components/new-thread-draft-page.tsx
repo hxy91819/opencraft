@@ -26,6 +26,7 @@ import { machineResourcePhaseLabel } from "./machine-resource-presentation";
 import {
   Check,
   ChevronDown,
+  ChevronRight,
   Folder,
   FolderPlus,
   GitBranch,
@@ -268,6 +269,70 @@ function ExecutionUtilityBar({
 
   return (
     <ComposerUtilityScrollArea>
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger asChild>
+          <button
+            className="new-thread-context-trigger"
+            type="button"
+            aria-label={intl.formatMessage({ id: "workIn.title", defaultMessage: "Work in" })}
+            disabled={executionLocked}
+          >
+            <MachineIcon role={displayedHost?.role ?? "server"} />
+            <span>{displayedHost === null ? intl.formatMessage({ id: "workIn.unknown", defaultMessage: "Unknown machine" }) : displayedHost.label}</span>
+            <ConnectionStatus phase={switchingHostId === null ? connectionPhase : "connecting"} />
+            <ChevronDown size={12} />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal container={portalContainer}>
+          {/* The Machine trigger leads the Project trigger. Start alignment
+              anchors its menu in the Draft's leading overlay corridor. */}
+          <DropdownMenu.Content
+            className="new-thread-project-menu new-thread-host-menu"
+            align="start"
+            side="top"
+            sideOffset={menuGeometry.rootSideOffset}
+            collisionPadding={menuGeometry.collisionPadding}
+            onCloseAutoFocus={(event) => { event.preventDefault(); onReturnFocus(); }}
+          >
+            <DropdownMenu.Label className="codex-composer-selection-menu__heading">{intl.formatMessage({ id: "workIn.title", defaultMessage: "Work in" })}</DropdownMenu.Label>
+            <div className="new-thread-project-menu__items">
+              {[false, true].map(cloud => <DropdownMenu.Group key={String(cloud)}>
+              {cloud && hostOptions.some(host => host.cloud) ? <DropdownMenu.Label className="codex-composer-selection-menu__heading">{intl.formatMessage({ id: "workIn.cloud", defaultMessage: "Cloud · LightVela" })}</DropdownMenu.Label> : null}
+              {hostOptions.filter(host => host.cloud === cloud).map((host) => {
+                const selected = host.hostIds.includes(activeHostId);
+                return (
+                  <DropdownMenu.Item
+                    key={host.id}
+                    className="new-thread-project-menu__item"
+                    data-selected={selected ? "true" : undefined}
+                    disabled={executionLocked || !host.connectable}
+                    onSelect={() => {
+                      if (selected && switchingHostId === null) return;
+                      const epoch = ++selectionEpoch.current;
+                      setSwitchingHostId(host.id);
+                      setHostSelectionError(null);
+                      void Promise.resolve(onSelectHost(host.id)).catch((cause) => {
+                        if (epoch === selectionEpoch.current) setHostSelectionError(cause instanceof Error ? cause.message : String(cause));
+                      }).finally(() => { if (epoch === selectionEpoch.current) setSwitchingHostId(null); });
+                    }}
+                  >
+                    <MachineRow host={host} selected={selected} />
+                  </DropdownMenu.Item>
+                );
+              })}
+              </DropdownMenu.Group>)}
+              {hostSelectionError === null ? null : (
+                <div className="new-thread-project-menu__state is-error" role="alert">
+                  {hostSelectionError}
+                </div>
+              )}
+            </div>
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+
+      <ChevronRight className="new-thread-context-separator" size={12} aria-hidden="true" focusable="false" />
+
       <DropdownMenu.Root
         open={projectMenuOpen}
         onOpenChange={(open) => {
@@ -358,68 +423,6 @@ function ExecutionUtilityBar({
                   : nativeWorkspacePicking ? "Choose a folder on this device" : "Choose a folder from this node"}</small>
               </span>
             </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
-
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild>
-          <button
-            className="new-thread-context-trigger"
-            type="button"
-            aria-label={intl.formatMessage({ id: "workIn.title", defaultMessage: "Work in" })}
-            disabled={executionLocked}
-          >
-            <MachineIcon role={displayedHost?.role ?? "server"} />
-            <span>{displayedHost === null ? intl.formatMessage({ id: "workIn.unknown", defaultMessage: "Unknown machine" }) : displayedHost.label}</span>
-            <ConnectionStatus phase={switchingHostId === null ? connectionPhase : "connecting"} />
-            <ChevronDown size={12} />
-          </button>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Portal container={portalContainer}>
-          {/* The Host trigger sits after the Project trigger. End alignment
-              keeps the menu in the Draft's leading overlay corridor. */}
-          <DropdownMenu.Content
-            className="new-thread-project-menu new-thread-host-menu"
-            align="end"
-            side="top"
-            sideOffset={menuGeometry.rootSideOffset}
-            collisionPadding={menuGeometry.collisionPadding}
-            onCloseAutoFocus={(event) => { event.preventDefault(); onReturnFocus(); }}
-          >
-            <DropdownMenu.Label className="codex-composer-selection-menu__heading">{intl.formatMessage({ id: "workIn.title", defaultMessage: "Work in" })}</DropdownMenu.Label>
-            <div className="new-thread-project-menu__items">
-              {[false, true].map(cloud => <DropdownMenu.Group key={String(cloud)}>
-              {cloud && hostOptions.some(host => host.cloud) ? <DropdownMenu.Label className="codex-composer-selection-menu__heading">{intl.formatMessage({ id: "workIn.cloud", defaultMessage: "Cloud · LightVela" })}</DropdownMenu.Label> : null}
-              {hostOptions.filter(host => host.cloud === cloud).map((host) => {
-                const selected = host.hostIds.includes(activeHostId);
-                return (
-                  <DropdownMenu.Item
-                    key={host.id}
-                    className="new-thread-project-menu__item"
-                    data-selected={selected ? "true" : undefined}
-                    disabled={executionLocked || !host.connectable}
-                    onSelect={() => {
-                      if (selected && switchingHostId === null) return;
-                      const epoch = ++selectionEpoch.current;
-                      setSwitchingHostId(host.id);
-                      setHostSelectionError(null);
-                      void Promise.resolve(onSelectHost(host.id)).catch((cause) => {
-                        if (epoch === selectionEpoch.current) setHostSelectionError(cause instanceof Error ? cause.message : String(cause));
-                      }).finally(() => { if (epoch === selectionEpoch.current) setSwitchingHostId(null); });
-                    }}
-                  >
-                    <MachineRow host={host} selected={selected} />
-                  </DropdownMenu.Item>
-                );
-              })}
-              </DropdownMenu.Group>)}
-              {hostSelectionError === null ? null : (
-                <div className="new-thread-project-menu__state is-error" role="alert">
-                  {hostSelectionError}
-                </div>
-              )}
-            </div>
           </DropdownMenu.Content>
         </DropdownMenu.Portal>
       </DropdownMenu.Root>

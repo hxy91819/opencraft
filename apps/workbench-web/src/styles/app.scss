@@ -1767,6 +1767,11 @@ html[data-codex-window-type="browser"] .main-content-top-fade {
   }
 }
 
+.new-thread-context-separator {
+  flex: 0 0 auto;
+  color: var(--color-icon-secondary);
+}
+
 .new-thread-context-branch {
   display: flex;
   min-width: 0;
