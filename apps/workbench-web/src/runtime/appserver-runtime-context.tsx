@@ -1,5 +1,9 @@
+import { resolveWorkInWorkspace } from "./work-in-workspace";
+import { HostMachineIdentityObserver } from "./host-machine-identity";
+import { JsonRpcAppServerClient } from "@opencraft/appserver-client";
 // @refresh reset
 import {
+  sameWorkInMachine,
   preflightHostConnection,
   type ConversationTerminalToolHost,
 } from "@opencraft/workbench-runtime";
@@ -134,6 +138,7 @@ import {
   type Context,
   type ReactNode,
   useContext,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -205,7 +210,7 @@ export interface AppServerHostCatalog {
    */
   readonly pendingLocation: WorkbenchLocation | null;
   readonly currentLocation: WorkbenchLocation;
-  selectHost(hostId: string): Promise<void>;
+  selectHost(hostId: string, selection?: { model: string; effort: string | null }): Promise<void>;
   navigate(location: WorkbenchLocation, mode?: WorkbenchHistoryMode): Promise<boolean>;
   promoteDraft(draftId: string, receipt: SubmissionReceipt): Promise<WorkbenchLocation>;
   navigateToHome(options: {
@@ -227,7 +232,7 @@ export interface AppServerHostCatalog {
 }
 
 export interface WebWorkbenchCommands {
-  selectHost(hostId: string): Promise<void>;
+  selectHost(hostId: string, selection?: { model: string; effort: string | null }): Promise<void>;
   navigate(location: WorkbenchLocation, mode?: WorkbenchHistoryMode): Promise<boolean>;
   navigateToHome(options: {
     readonly execution: ComposerExecutionTarget;
@@ -321,6 +326,7 @@ function hostDefinitionProfile(host: WebHostDefinition): HostConnectionProfile {
 
 function profileDescriptor(profile: HostConnectionProfile): HostRuntimeDescriptor {
   return {
+    machineIdentity: profile.machineIdentity,
     hostId: profile.hostId,
     label: profile.displayName,
     kind: profile.hostKind,
@@ -648,11 +654,13 @@ function provisionWebSocketHost(
   });
 }
 
-function createWebWorkbenchCommands(input: {
+export function createWebWorkbenchCommands(input: {
   readonly registry: HostRuntimeRegistry<AppServerWorkbenchRuntime>;
   readonly coordinator: WorkbenchCoordinator<AppServerWorkbenchRuntime>;
   readonly activation: ConversationActivationCoordinator<AppServerWorkbenchRuntime>;
   readonly scopes: ConversationScopeRegistry;
+  readonly views: ConversationViewRegistry;
+  readonly environmentDirectory?: EnvironmentDirectory;
   readonly navigation: WorkbenchNavigationTransaction<AppServerWorkbenchRuntime>;
   readonly queryClient: QueryClient;
   readonly hostProfiles: HostConnectionProfileStore;
@@ -665,35 +673,67 @@ function createWebWorkbenchCommands(input: {
   let submissionPipeline: ReturnType<typeof createWorkbenchSubmissionPipeline>;
   let hostSelectionEpoch = 0;
   commands = {
-    async selectHost(hostId) {
+    async selectHost(hostId, selection) {
       const epoch = ++hostSelectionEpoch;
       const origin = input.navigation.getSnapshot().revision;
+      input.activation.cancelPending();
       if (!input.hostProfiles.getSnapshot().profiles.some(profile => profile.hostId === hostId && profile.enabled)) throw new Error("此环境当前不可连接，请刷新环境目录。");
       const activeDraft = input.scopes.getActiveDraft();
       if (activeDraft !== null && draftSubmissionOwnsNavigation(activeDraft.phase)) {
         throw new Error("The execution node cannot change while the first turn is being submitted");
       }
-      await input.registry.ensureConnected(hostId);
+      let runtime: AppServerWorkbenchRuntime;
+      try { runtime = await input.registry.ensureConnected(hostId); }
+      catch (error) { if (epoch !== hostSelectionEpoch) return; throw error; }
+      const profiles = input.hostProfiles.getSnapshot().profiles;
+      const sameMachine = activeDraft !== null && sameWorkInMachine(
+        profiles.find(profile => profile.hostId === activeDraft.target.execution.hostId),
+        profiles.find(profile => profile.hostId === hostId), input.environmentDirectory?.getSnapshot().entries);
+      let workspace = activeDraft?.target.execution.workspace ?? { cwd: null, runtimeWorkspaceRoots: [] };
+      if (!sameMachine && workspace.cwd !== null) {
+        const resolved = await resolveWorkInWorkspace(workspace, runtime.resources, () => epoch === hostSelectionEpoch
+          && origin === input.navigation.getSnapshot().revision && input.scopes.getActiveDraft()?.target === activeDraft?.target);
+        if (resolved === null) return;
+        workspace = resolved;
+      }
       if (epoch !== hostSelectionEpoch || origin !== input.navigation.getSnapshot().revision
-        || input.scopes.getActiveDraft()?.id !== activeDraft?.id) return;
+        || input.scopes.getActiveDraft()?.id !== activeDraft?.id
+        || input.scopes.getActiveDraft()?.target !== activeDraft?.target) return;
       if (activeDraft !== null && activeDraft.target.execution.hostId !== hostId) {
         const nextDraft = input.scopes.openDraft({
+          activate: false,
           entrypoint: activeDraft.entrypoint,
           execution: {
             hostId: asHostId(hostId),
-            workspace: (() => {
-              const root = input.registry.getSnapshot().hosts
-                .find((host) => host.hostId === hostId)?.workspaceBrowseRoots[0] ?? null;
-              return { cwd: root, runtimeWorkspaceRoots: root === null ? [] : [root] };
-            })(),
+            workspace,
           },
         });
+        const previousViewId = input.coordinator.getSnapshot().viewId;
+        const previousComposer = previousViewId === null ? null : input.views.get(previousViewId)?.composer;
         try {
           const activated = await input.navigation.navigate(
             createWorkbenchDraftLocation(hostId, nextDraft.id),
             "replace",
           );
-          if (!activated) throw new Error(`Host ${hostId} Draft activation was superseded`);
+          if (!activated) { input.scopes.dismissDraft(nextDraft.id); return; }
+          const nextViewId = input.coordinator.getSnapshot().viewId;
+          const nextComposer = nextViewId === null ? null : input.views.get(nextViewId)?.composer;
+          if (nextComposer && previousComposer) {
+            const previous = previousComposer.getSnapshot().draft;
+            nextComposer.dispatch({ type: "replace-content", document: previous.document,
+              attachments: previous.attachments.map(attachment => {
+                const interrupted = attachment.lifecycle === "pending" || attachment.lifecycle === "uploading" || attachment.lifecycle === "processing";
+                const movedHostFile = !sameMachine && attachment.uri?.startsWith("file:") === true;
+                return { ...attachment,
+                  ...(interrupted || movedHostFile ? { lifecycle: "failed" as const, error: null } : {}),
+                  metadata: { ...attachment.metadata, attachmentHostId: attachment.metadata?.attachmentHostId ?? activeDraft.target.execution.hostId,
+                    ...(interrupted ? { workInAttachmentError: "interrupted" } : movedHostFile ? { workInAttachmentError: "machine-changed" } : {}) },
+                };
+              }), context: previous.context });
+            nextComposer.dispatch({ type: "set-selections", patch: { ...previous.selections, cwd: workspace.cwd ?? undefined } });
+            nextComposer.dispatch({ type: "set-options", patch: previous.options });
+            if (selection) nextComposer.dispatch({ type: "set-selections", patch: { model: selection.model, effort: selection.effort ?? undefined } });
+          }
           input.scopes.dismissDraft(activeDraft.id);
         } catch (error) {
           input.scopes.dismissDraft(nextDraft.id);
@@ -701,6 +741,11 @@ function createWebWorkbenchCommands(input: {
             && input.scopes.getDraft(activeDraft.id)) input.scopes.activateDraft(activeDraft.id);
           throw error;
         }
+      }
+      if (epoch !== hostSelectionEpoch) return;
+      if (activeDraft?.target.execution.hostId === hostId && selection) {
+        const viewId = input.coordinator.getSnapshot().viewId;
+        if (viewId !== null) input.views.get(viewId)?.composer.dispatch({ type: "set-selections", patch: { model: selection.model, effort: selection.effort ?? undefined } });
       }
       input.coordinator.setSelectedHostId(hostId);
       setLocalPreference(currentProductStorageKey("vela.active-host-id"), hostId);
@@ -747,6 +792,8 @@ function createWebWorkbenchCommands(input: {
       return location;
     },
     retargetDraft(draftId, execution) {
+      ++hostSelectionEpoch;
+      input.activation.cancelPending();
       input.activation.retargetDraft(draftId, execution);
     },
     async submit(intent) {
@@ -1281,15 +1328,29 @@ export async function createWebWorkbenchApplicationSupervisor(
         throw error;
       }
       let disposed = false;
+      let identityGeneration = -1;
+      let identityRead: Promise<void> = Promise.resolve();
+      const observeIdentity = () => {
+        if (disposed) return;
+        if (runtime.getSnapshot().phase !== "ready") { identityGeneration = -1; return; }
+        const generation = runtime.resources.host.getConnectionGeneration?.() ?? 0;
+        if (identityGeneration === generation) return;
+        identityGeneration = generation;
+        identityRead = machineIdentityObserver.read(profile, () => runtime.resources.protocol.request("runtime/machine/read", {})).catch(() => undefined);
+      };
+      const stopIdentity = runtime.subscribe(observeIdentity);
       return {
         ...runtime,
         async connect() {
           if (!hostProfiles.getSnapshot().profiles.some(current => current.hostId === profile.hostId && current.enabled)) throw new Error("此环境当前不可连接，请刷新环境目录。");
-          return runtime.connect();
+          await runtime.connect();
+          observeIdentity();
+          await identityRead;
         },
         async dispose() {
           if (disposed) return;
           disposed = true;
+          stopIdentity();
           try {
             await runtime.dispose();
           } finally {
@@ -1301,6 +1362,33 @@ export async function createWebWorkbenchApplicationSupervisor(
   });
   const registrations = profiles.map(createHostRegistration);
   const registry = new HostRuntimeRegistry(registrations);
+  const machineIdentityObserver = new HostMachineIdentityObserver(registry, hostProfiles,
+    hostId => environmentDirectory.getSnapshot().entries.some(entry => entry.profile.hostId === hostId && entry.resource !== null));
+  startupRollback.push(() => machineIdentityObserver.dispose());
+  // Identity probes deliberately skip initialize and all catalog queries.
+  const identityProbes = new Set<JsonRpcAppServerClient>();
+  let probesDisposed = false;
+  for (const profile of profiles) {
+    if (environmentDirectory.getSnapshot().entries.some(entry => entry.profile.hostId === profile.hostId && entry.resource !== null)) continue;
+    void (async () => {
+      const lease = connectionProviders.providers.acquire(profile.providerId, platform);
+      let client: JsonRpcAppServerClient | null = null;
+      try {
+        const context = { platform, hostId: profile.hostId, profileRevision: profile.revision };
+        const config = lease.provider.validate(profile.providerConfig, context);
+        const transport = lease.provider.createTransport(config, context);
+        client = new JsonRpcAppServerClient({ hostId: profile.hostId, transport, requestTimeoutMs: 3000 });
+        identityProbes.add(client);
+        if (!probesDisposed) await machineIdentityObserver.read(profile, async () => {
+          await transport.connect();
+          return client!.request("runtime/machine/read", {});
+        });
+      } catch { /* Identity discovery never blocks the normal connection path. */ }
+      finally { if (client) { identityProbes.delete(client); await client.close(); } lease.release(); }
+    })();
+  }
+  const stopIdentityProbes = async () => { probesDisposed = true; await Promise.allSettled([...identityProbes].map(client => client.close())); };
+  startupRollback.push(stopIdentityProbes);
   agentRuntimes.bindRegistry(registry);
   connectBotHost = async hostId => { await registry.ensureConnected(hostId); };
   startupRollback.push(() => registry.dispose());
@@ -1393,6 +1481,8 @@ export async function createWebWorkbenchApplicationSupervisor(
     coordinator,
     activation: conversationActivation,
     scopes: conversationScopes,
+    views: conversationViews,
+    environmentDirectory,
     navigation,
     queryClient,
     hostProfiles,
@@ -1439,6 +1529,8 @@ export async function createWebWorkbenchApplicationSupervisor(
     removeHost: commands.removeHost,
     async dispose() {
       await disposeOwnedSteps([
+        stopIdentityProbes,
+        () => machineIdentityObserver.dispose(),
         stopEnvironmentRegistry,
         () => navigation.dispose(),
         () => conversationActivation.dispose(),
@@ -2194,4 +2286,56 @@ export function useAppServerComposerCatalog(workspaceRoots: readonly string[]): 
       },
     };
   }, [queryClient, rootKey, runtime, snapshot.hostId]);
+}
+
+/** Opening the model menu is the only admission for inactive engine catalogs. */
+export function useWorkInEngineCatalog(hostIds: readonly string[], activeHostId: string) {
+  const application = useContext(ApplicationRuntimeContext);
+  if (!application) throw new Error("AppServerRuntimeProvider is missing");
+  const [requestedMachine, setRequestedMachine] = useState<string | null>(null);
+  const machineKey = JSON.stringify(hostIds);
+  const queries = useQueries({ queries: hostIds.map(hostId => ({
+    queryKey: ["appserver", hostId, "work-in-models"],
+    enabled: requestedMachine === machineKey && hostId !== activeHostId,
+    staleTime: 60_000,
+    retry: false,
+    queryFn: async ({ signal }: { signal: AbortSignal }) => {
+      const runtime = await application.registry.ensureConnected(hostId);
+      signal.throwIfAborted();
+      return composerCapabilitiesOptions(hostId, null, runtime.resources.composerCatalog).queryFn!({ signal } as never);
+    },
+  })) });
+  return {
+    open: () => setRequestedMachine(machineKey),
+    groups: hostIds.map((hostId, index) => ({ hostId, models: queries[index]?.data?.models ?? [],
+      loading: requestedMachine === machineKey && queries[index]?.isPending === true,
+      error: errorOrNull(queries[index]?.error)?.message ?? null,
+      retry: () => { void queries[index]?.refetch(); },
+    })),
+  };
+}
+
+export function useMachineConnectionPhase(hostIds: readonly string[]): string {
+  const application = useContext(ApplicationRuntimeContext);
+  if (!application) throw new Error("AppServerRuntimeProvider is missing");
+  const signature = JSON.stringify(hostIds);
+  const subscribe = useCallback((listener: () => void) => {
+    let stops: (() => void)[] = [];
+    const attach = () => {
+      stops.forEach(stop => stop());
+      stops = hostIds.flatMap(id => {
+        const runtime = application.registry.peekRuntime(id);
+        return runtime ? [runtime.subscribe(listener)] : [];
+      });
+      listener();
+    };
+    const stopRegistry = application.registry.subscribe(attach);
+    attach();
+    return () => { stopRegistry(); stops.forEach(stop => stop()); };
+  }, [application.registry, signature]);
+  const read = () => {
+    const phases = hostIds.map(id => application.registry.peekRuntime(id)?.getSnapshot().phase ?? "idle");
+    return phases.includes("ready") ? "ready" : phases.includes("connecting") ? "connecting" : phases.includes("reconnecting") ? "reconnecting" : phases.includes("error") ? "error" : "idle";
+  };
+  return useSyncExternalStore(subscribe, read, read);
 }

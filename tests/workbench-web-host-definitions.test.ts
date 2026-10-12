@@ -251,7 +251,7 @@ test("Host profiles add missing deployment seeds without overwriting saved prefe
   try {
     assert.deepEqual(reopened.getSnapshot().profiles.map((profile) => profile.hostId), ["local-codex", "host:seed"]);
     assert.deepEqual(reopened.getSnapshot().profiles.find(profile => profile.hostId === "host:seed"), {
-      ...seed, displayName: "Renamed", enabled: false, revision: 1,
+      ...seed, displayName: "Renamed", enabled: false, revision: 1, machineIdentity: null, agent: null,
     });
   } finally {
     reopened.close();

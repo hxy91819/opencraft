@@ -6,6 +6,9 @@ import { WebSocketTransport, type AppServerWebSocket } from "@opencraft/appserve
 import { startLocalAgentHost } from "@opencraft/local-agent-host";
 import WebSocket from "ws";
 
+import { readDaemonMachineIdentity } from "./machine-identity.js";
+import { MachineIdentityTransport } from "./machine-transport.js";
+
 import { CodexEngineAdapter } from "./codex-engine-adapter.js";
 import { startOpenCraftDaemonServer } from "./server.js";
 
@@ -49,6 +52,7 @@ export async function startOpenCraftDaemon(options: {
   readonly codexDataDirectory: string;
   readonly nativeCodexHomeDirectory: string;
 }) {
+  const machineIdentity = await readDaemonMachineIdentity(options.dataDirectory);
   process.chdir(options.runtimeDirectory);
   await removeStaleSocket(options.endpoint);
   let localAgent: Awaited<ReturnType<typeof startLocalAgentHost>> | null = null;
@@ -56,7 +60,9 @@ export async function startOpenCraftDaemon(options: {
   let closing: Promise<void> | null = null;
   const appHost = new AppHostServer({
     logicalClientRouting: true,
-    async createTransport(hostId) {
+    createTransport(hostId) {
+      if (hostId !== "local" && hostId !== "local-codex") throw new Error(`OpenCraft Daemon does not own Host ${hostId}`);
+      return new MachineIdentityTransport(machineIdentity, hostId === "local" ? "OpenCraft" : "Codex", async () => {
       if (hostId === "local") {
         localAgent ??= await startLocalAgentHost({
           dshExecutable: options.dshExecutable,
@@ -65,6 +71,7 @@ export async function startOpenCraftDaemon(options: {
           dataDirectory: options.dataDirectory,
           modelStorageDirectory: options.modelStorageDirectory,
           skillsDirectory: options.skillsDirectory,
+          machineIdentity,
         });
         return new WebSocketTransport({
           url: localAgent.websocketUrl,
@@ -82,6 +89,7 @@ export async function startOpenCraftDaemon(options: {
         return codexAgent;
       }
       throw new Error(`OpenCraft Daemon does not own Host ${hostId}`);
+      });
     },
   });
   let daemonServer: Awaited<ReturnType<typeof startOpenCraftDaemonServer>>;

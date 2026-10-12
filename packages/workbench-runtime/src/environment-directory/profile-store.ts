@@ -1,3 +1,4 @@
+import type { RuntimeMachineIdentity } from "@opencraft/appserver-protocol";
 import type { HostConnectionProfile, HostConnectionProfileSnapshot, HostConnectionProfileStore } from "../host-connections";
 import type { EnvironmentDirectory } from "./directory";
 
@@ -15,6 +16,7 @@ export class EnvironmentProfileStore implements HostConnectionProfileStore {
   }
   getSnapshot = () => this.snapshot;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
+  recordMachineIdentity(hostId: string, identity: RuntimeMachineIdentity | null, agent: "OpenCraft" | "Codex" | null = null) { return this.configured.recordMachineIdentity?.(hostId, identity, agent) ?? Promise.resolve(); }
   put(profile: HostConnectionProfile) { return this.configured.put(profile); }
   remove(hostId: string) { return this.configured.remove(hostId); }
   close() { this.stopConfigured(); this.stopDirectory(); this.listeners.clear(); this.configured.close(); }

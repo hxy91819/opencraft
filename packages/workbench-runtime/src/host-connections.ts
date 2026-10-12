@@ -1,3 +1,4 @@
+import { parseRuntimeMachineIdentity, type RuntimeMachineIdentity } from "@opencraft/appserver-protocol";
 import { Context, Service, type Fiber, type Plugin } from "@deepseek-ai/cordis";
 import type { DuplexTransport } from "@opencraft/appserver-client/transport";
 import type { AppServerHostKind } from "@opencraft/appserver-session";
@@ -259,6 +260,8 @@ export class HostConnectionProviderRegistry {
 }
 
 export interface HostConnectionProfile {
+  readonly machineIdentity?: RuntimeMachineIdentity | null;
+  readonly agent?: "OpenCraft" | "Codex" | null;
   readonly hostId: string;
   readonly displayName: string;
   readonly providerId: string;
@@ -306,6 +309,7 @@ export interface HostConnectionProfileStore {
   getSnapshot(): HostConnectionProfileSnapshot;
   subscribe(listener: () => void): () => void;
   put(profile: HostConnectionProfile): Promise<void>;
+  recordMachineIdentity?(hostId: string, identity: RuntimeMachineIdentity | null, agent?: "OpenCraft" | "Codex" | null): Promise<void>;
   remove(hostId: string): Promise<boolean>;
   close(): void;
 }
@@ -381,6 +385,8 @@ export function normalizeHostConnectionProfile(value: unknown): HostConnectionPr
     return root.trim();
   }))];
   return Object.freeze({
+    agent: candidate.agent === "OpenCraft" || candidate.agent === "Codex" ? candidate.agent : null,
+    machineIdentity: candidate.machineIdentity == null ? null : parseRuntimeMachineIdentity(candidate.machineIdentity),
     hostId: requiredString("hostId"),
     displayName: requiredString("displayName"),
     providerId: requiredString("providerId"),

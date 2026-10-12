@@ -1,3 +1,4 @@
+import type { RuntimeMachineReadResponse } from "./machine";
 import type { AppServerProcessMethodMap } from "./process";
 import type { AppServerAttachmentMethodMap } from "./attachments";
 import type { ThreadUnsubscribeParams, ThreadUnsubscribeResponse } from "./generated/v2";
@@ -297,6 +298,7 @@ export interface ThreadArchiveParams {
  * signature into the core client.
  */
 export interface AppServerMethodMap extends AppServerBotMethodMap, AppServerCodexAccountMethodMap, AppServerProcessMethodMap, AppServerAttachmentMethodMap, ProfileSkillsMethodMap {
+  "runtime/machine/read": { params: Record<string, never>; result: RuntimeMachineReadResponse };
   "runtime/status/read": {
     params: Record<string, never>;
     result: RuntimeStatusResponse;

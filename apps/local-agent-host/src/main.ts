@@ -1,3 +1,4 @@
+import type { RuntimeMachineIdentity } from "@opencraft/appserver-protocol";
 import { randomBytes, randomUUID } from "node:crypto";
 import { readFile, readdir, stat, lstat, writeFile, mkdtemp, rm, access } from "node:fs/promises";
 import { createServer } from "node:http";
@@ -129,6 +130,7 @@ export async function startLocalAgentHost(options: {
   /** Explicit development/package path; the Agent Host never infers Electron's cwd. */
   readonly dshCapabilityPlugin?: string;
   readonly dataDirectory?: string;
+  readonly machineIdentity?: RuntimeMachineIdentity;
   readonly modelStorageDirectory?: string;
   readonly projectStorageDirectory?: string;
   /** Test/embedding override; desktop defaults to ~/.opencraft/skills. */
@@ -478,6 +480,9 @@ export async function startLocalAgentHost(options: {
         return;
       }
       try {
+        if (request.method === "runtime/machine/read" && options.machineIdentity) {
+          send(socket, { jsonrpc: "2.0", id: request.id, result: { machine: options.machineIdentity, agent: "OpenCraft" } }); return;
+        }
         if (request.method.startsWith("storage/documents/")) {
           const result = hostDocuments.handle(request.method, request.params);
           send(socket, { jsonrpc: "2.0", id: request.id, result }); return;

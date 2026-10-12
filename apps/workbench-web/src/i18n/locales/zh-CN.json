@@ -136,5 +136,19 @@
   "webUpdates.check": "检查更新",
   "webUpdates.install": "更新网站",
   "webUpdates.rollback": "回退上一版",
-  "webUpdates.logout": "结束管理会话"
+  "webUpdates.logout": "结束管理会话",
+  "workIn.title": "运行在",
+  "workIn.thisMac": "这台 Mac",
+  "workIn.thisComputer": "这台电脑",
+  "workIn.unknown": "未知机器",
+  "workIn.online": "在线",
+  "workIn.offline": "离线",
+  "workIn.cloud": "云端 · LightVela",
+  "workIn.loadingModels": "正在加载模型…",
+  "workIn.retry": "重试",
+  "workIn.manageModels": "管理模型…",
+  "workIn.switchingAgent": "正在切换 Agent…",
+  "workIn.attachmentInterrupted": "附件处理已中断，请重新添加。",
+  "workIn.attachmentOtherMachine": "文件在原机器上，请在当前机器重新添加。",
+  "workIn.unknownSystem": "未知系统"
 }

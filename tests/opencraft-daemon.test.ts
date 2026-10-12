@@ -1,5 +1,7 @@
+import { JsonRpcAppServerClient } from "@opencraft/appserver-client";
+import { startOpenCraftDaemon } from "../apps/opencraft-daemon/src/main.js";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { connect } from "node:net";
@@ -166,4 +168,34 @@ test("Electron only spawns a daemon for an absent endpoint, never for a failed o
     assert.equal(isDaemonEndpointUnavailable(Object.assign(new Error(code), { code })), false);
   }
   assert.equal(isDaemonEndpointUnavailable(new Error("OpenCraft Daemon protocol/build mismatch")), false);
+});
+
+test("one real daemon reports the same machine for DSH and Codex without an engine executable", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "opencraft-daemon-machine-"));
+  const previousCwd = process.cwd();
+  const runtimeDirectory = join(directory, "runtime");
+  await mkdir(runtimeDirectory);
+  const endpoint = process.platform === "win32" ? `\\\\.\\pipe\\opencraft-machine-${process.pid}-${Date.now()}` : join(directory, "daemon.sock");
+  const daemon = await startOpenCraftDaemon({ endpoint, runtimeDirectory, authToken: "identity-test-token-long-enough-for-daemon-authentication", dataDirectory: join(directory, "data"), dshExecutable: "/missing-engine", codexExecutable: "/missing-engine", codexDataDirectory: join(directory, "codex"), nativeCodexHomeDirectory: join(directory, "empty-native-home") });
+  try {
+    const channel = await openDaemonChannel(endpoint, "identity-test-token-long-enough-for-daemon-authentication", "identity-renderer");
+    const listeners = new Set<(event: MessageEvent<unknown>) => void>();
+    const stop = channel.subscribeMessage(value => {
+      const message = value as DaemonServerMessage;
+      if (message.type === "app-host/message") for (const listener of listeners) listener({ data: message.payload } as MessageEvent<unknown>);
+    });
+    const appHost = new MessagePortAppHostClient({ postMessage: message => channel.send({ type: "app-host/message", payload: message }), addEventListener: (_type, listener) => { listeners.add(listener); }, removeEventListener: (_type, listener) => { listeners.delete(listener); }, start() {}, close() { stop(); channel.close(); } }, "identity-renderer");
+    await appHost.waitUntilReady();
+    const identities = [];
+    for (const hostId of ["local", "local-codex"]) {
+      const transport = appHost.createTransport(hostId);
+      const client = new JsonRpcAppServerClient({ hostId, transport });
+      await transport.connect();
+      identities.push(await client.request("runtime/machine/read", {}));
+      await client.close();
+    }
+    assert.deepEqual(identities[0]!.machine, identities[1]!.machine);
+    assert.deepEqual(identities.map(identity => identity.agent), ["OpenCraft", "Codex"]);
+    appHost.close();
+  } finally { await daemon.close(); process.chdir(previousCwd); await rm(directory, { recursive: true, force: true }); }
 });

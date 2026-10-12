@@ -77,9 +77,8 @@ export function sidebarActivityMetadata(thread: SidebarActivityThread): {
   readonly host: string | null;
 } {
   const host = thread.hostLabel.trim();
-  const isLocal = thread.hostId === "local" || host.toLocaleLowerCase() === "local";
   return {
     project: thread.project.trim() || "Workspace",
-    host: isLocal || host.length === 0 ? null : host,
+    host: host.length === 0 ? null : host,
   };
 }

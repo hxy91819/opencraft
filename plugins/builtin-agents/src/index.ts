@@ -71,7 +71,7 @@ export function createBuiltinAgentsExtension(options: BuiltinAgentsExtensionOpti
       api.internal.register(HOST_PROFILE_CONTRIBUTION_CHANNEL, {
         profile: {
           hostId: "local",
-          displayName: "Local",
+          displayName: "OpenCraft",
           providerId: hostProvider.id,
           providerConfig: config,
           providerConfigVersion: 1,
@@ -81,7 +81,7 @@ export function createBuiltinAgentsExtension(options: BuiltinAgentsExtensionOpti
           includeInSidebar: true,
           credentialRef: null,
           transportEndpoint: "OpenCraft Daemon",
-          executionLocation: "This device",
+          executionLocation: null,
           workspaceBrowseRoots: [],
           revision: 0,
         },
@@ -99,7 +99,7 @@ export function createBuiltinAgentsExtension(options: BuiltinAgentsExtensionOpti
           includeInSidebar: true,
           credentialRef: null,
           transportEndpoint: "OpenCraft Daemon",
-          executionLocation: "This device · Codex",
+          executionLocation: null,
           workspaceBrowseRoots: [],
           revision: 0,
         },

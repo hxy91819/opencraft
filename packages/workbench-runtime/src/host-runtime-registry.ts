@@ -1,3 +1,4 @@
+import type { RuntimeMachineIdentity } from "@opencraft/appserver-protocol";
 import type { AppServerHostKind } from "@opencraft/appserver-session";
 
 import type { AppServerWorkbenchRuntime } from "./appserver-runtime";
@@ -9,6 +10,7 @@ export interface HostRuntimeLifecycle {
 }
 
 export interface HostRuntimeDescriptor {
+  readonly machineIdentity?: RuntimeMachineIdentity | null;
   readonly hostId: string;
   readonly label: string;
   readonly kind: AppServerHostKind;
@@ -21,7 +23,7 @@ export interface HostRuntimeDescriptor {
 }
 
 export interface HostRuntimeRegistration<TRuntime extends HostRuntimeLifecycle> {
-  readonly descriptor: HostRuntimeDescriptor;
+  descriptor: HostRuntimeDescriptor;
   readonly createRuntime: () => TRuntime;
 }
 
@@ -31,7 +33,8 @@ export interface HostRuntimeRegistrySnapshot {
 }
 
 interface HostRuntimeRecord<TRuntime extends HostRuntimeLifecycle> {
-  readonly descriptor: HostRuntimeDescriptor;
+  readonly registrationGeneration: number;
+  descriptor: HostRuntimeDescriptor;
   readonly createRuntime: () => TRuntime;
   runtime: TRuntime | null;
   connectOperation: Promise<TRuntime> | null;
@@ -50,6 +53,7 @@ export class HostRuntimeRegistry<
   private readonly records = new Map<string, HostRuntimeRecord<TRuntime>>();
   private readonly listeners = new Set<() => void>();
   private revision = 0;
+  private registrationGeneration = 0;
   private disposed = false;
   private snapshot: HostRuntimeRegistrySnapshot;
 
@@ -77,6 +81,17 @@ export class HostRuntimeRegistry<
   register(registration: HostRuntimeRegistration<TRuntime>): void {
     this.ensureOpen();
     this.insert(registration);
+    this.publish();
+  }
+
+  getRegistrationGeneration(hostId: string): number | null {
+    return this.records.get(hostId)?.registrationGeneration ?? null;
+  }
+
+  recordMachineIdentity(hostId: string, machineIdentity: RuntimeMachineIdentity | null): void {
+    const record = this.records.get(hostId);
+    if (!record || record.removed || this.disposed) return;
+    record.descriptor = Object.freeze({ ...record.descriptor, machineIdentity });
     this.publish();
   }
 
@@ -172,6 +187,7 @@ export class HostRuntimeRegistry<
     if (hostId.length === 0) throw new RangeError("Host ID must not be empty");
     if (this.records.has(hostId)) throw new Error(`Duplicate Host runtime ${hostId}`);
     this.records.set(hostId, {
+      registrationGeneration: ++this.registrationGeneration,
       descriptor: Object.freeze({ ...registration.descriptor, hostId }),
       createRuntime: registration.createRuntime,
       runtime: null,
