@@ -6,3 +6,6 @@ export * from "./codex-usage.js";
 export * from "./oauth-refresh.js";
 export * from "./server.js";
 export * from "./store.js";
+export * from "./codex-account-service.js";
+export * from "./codex-writer-lock.js";
+export * from "./codex-core-control.js";

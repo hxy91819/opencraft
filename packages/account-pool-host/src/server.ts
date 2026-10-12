@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage } from "node:http";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
@@ -34,7 +34,8 @@ export async function startCodexAccountPoolServer(options: {
 }): Promise<{ readonly url: string; close(): Promise<void> }> {
   const host = options.host ?? "127.0.0.1";
   if (host !== "127.0.0.1" && host !== "::1") throw new TypeError("Account Pool server must bind to loopback");
-  const server = createServer(async (incoming, outgoing) => {
+  const active = new Set<Promise<void>>();
+  const handle = async (incoming: IncomingMessage, outgoing: ServerResponse): Promise<void> => {
     const abort = new AbortController();
     const onAborted = () => abort.abort(new Error("Account Pool client disconnected"));
     incoming.once("aborted", onAborted);
@@ -65,6 +66,13 @@ export async function startCodexAccountPoolServer(options: {
         outgoing.end(JSON.stringify({ error: { message: status === 413 ? "Request too large" : "Account Pool request failed" } }));
       }
     }
+  };
+  const server = createServer((incoming, outgoing) => {
+    const operation = handle(incoming, outgoing);
+    active.add(operation);
+    void operation.finally(() => active.delete(operation)).catch(error => {
+      if (!outgoing.destroyed) outgoing.destroy(error instanceof Error ? error : new Error(String(error)));
+    });
   });
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
@@ -76,8 +84,14 @@ export async function startCodexAccountPoolServer(options: {
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Account Pool server did not bind a TCP port");
   const displayHost = address.family === "IPv6" ? `[${address.address}]` : address.address;
+  let closing: Promise<void> | null = null;
   return {
     url: `http://${displayHost}:${address.port}`,
-    close: () => new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve())),
+    close: () => closing ??= (async () => {
+      await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+      // An aborted socket can close before OAuth refresh finishes. Its handler
+      // must finish persisting credentials before the owner closes storage.
+      await Promise.allSettled(active);
+    })(),
   };
 }

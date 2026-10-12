@@ -23,8 +23,10 @@ OpenCraft Daemon
 ```
 
 The Renderer owns conversation meaning. Electron Main owns windows, tray and
-presentation integration. OpenCraft Daemon is the only owner of native Agent
-processes and physical AppServer connections. There is no direct
+presentation integration. OpenCraft Daemon owns desktop native Agent
+processes and physical AppServer connections. Servers can explicitly delegate
+Codex execution and account ownership to the independent [Codex core](../codex-core.md);
+their daemon owns only its client connection. There is no direct
 Renderer-to-Agent or Electron-Main-to-Agent compatibility path.
 
 ## Ownership invariants
@@ -39,7 +41,8 @@ Renderer-to-Agent or Electron-Main-to-Agent compatibility path.
 4. OpenCraft Daemon owns every physical Host and native capability. Exactly one
    process-scoped `AppHostServer` serves all Renderer/window connections.
 5. Every logical consumer has a unique Host lease. The physical Host closes
-   only after the final lease across every connection has been released.
+   only after the final lease across every connection has been released. In
+   server Codex core mode this closes a client connection, not the execution owner.
 6. Host generations are allocated by the daemon, not by a window. A stale
    generation and a lease belonging to another connection cannot send frames.
 7. Closing a Renderer connection releases only its leases. Closing a window
