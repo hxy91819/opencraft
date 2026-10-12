@@ -22,6 +22,10 @@ const labels = {
   logout: /^(End administrator session|结束管理会话)$/,
 };
 const button = (page, name) => page.getByRole('button', { name: labels[name] });
+// Settings are organized by machine: two configured Hosts surface as two
+// machines and the reachable accessible name carries the machine count badge.
+const machinesNav = /^(Machines|机器) ?2$/;
+const machineRowAction = /^(Open|打开)$/;
 const status = async page => page.evaluate(async path => (await fetch(path, { cache: 'no-store' })).json(), api);
 async function check(page) {
   await button(page, 'check').click();
@@ -111,8 +115,31 @@ test('generic release discovers runtime Codex Host and built-in settings before 
     });
     expect(profiles).toEqual(['local', 'local-codex']);
     const nav = page.getByRole('navigation', { name: 'Settings sections' });
-    await expect(nav.getByRole('button', { name: /^(Model services|模型服务)$/ })).toBeVisible();
-    await expect(nav.getByRole('button', { name: /^(Codex accounts|Codex 账户)$/ })).toBeVisible();
+    await expect(nav.getByText(/^(Run|运行)$/)).toBeVisible();
+    const machines = nav.getByRole('button', { name: machinesNav });
+    await expect(machines).toBeVisible();
+    await machines.click();
+    const rowAction = page.getByRole('button', { name: machineRowAction });
+    await expect(rowAction).toHaveCount(2);
+    // Each machine page exposes its Agent's built-in settings in the Agent row;
+    // opening both configured machines must reach both entries.
+    const opened = [];
+    for (let index = 0; index < 2; index++) {
+      await rowAction.nth(index).click();
+      await expect(page.getByRole('heading', { name: /^(Agent|Agent)$/ })).toBeVisible();
+      const services = page.getByRole('button', { name: /^(Model services|模型服务)$/ });
+      const accounts = page.getByRole('button', { name: /^(Codex accounts|Codex 账户)$/ });
+      await expect(services.or(accounts)).toHaveCount(1);
+      const servicesOpen = (await services.count()) === 1;
+      await (servicesOpen ? services : accounts).click();
+      await expect(page.getByRole('heading', { name: servicesOpen ? '全部提供商' : 'Codex 账户' })).toBeVisible();
+      opened.push(servicesOpen ? 'model services' : 'codex accounts');
+      await machines.click();
+      await expect(rowAction).toHaveCount(2);
+    }
+    expect(opened.sort()).toEqual(['codex accounts', 'model services']);
+    await nav.getByRole('button', { name: /^(Website updates|网站更新)$/ }).click();
+    await expect(button(page, 'check')).toBeVisible();
   };
   await assertDeployment();
   await check(page); await authorize(page); await button(page, 'install').click();
@@ -151,7 +178,9 @@ test('legacy generic website restores HyperNode draft links and selections on lo
     ])).toEqual(['legacy-thread', 'legacy-project', 'legacy-thread']);
     await page.goto(`${base}/settings/updates`);
     await expect(button(page, 'check')).toBeVisible();
-    await expect(page.locator('.settings-execution-navigation')).toHaveCount(2);
+    // The two execution Hosts surface as Run › Machines with its count badge;
+    // the legacy HyperNode Host must not become a third settings entry.
+    await expect(page.getByRole('navigation', { name: 'Settings sections' }).getByRole('button', { name: machinesNav })).toBeVisible();
     await expect(page.getByRole('button', { name: 'HyperNode', exact: true })).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally { await context.close(); }
