@@ -122,3 +122,12 @@ Connector 目录浏览不套用设置行：采用限宽品牌卡片，已配置�
 - 验证：`node scripts/smoke-execution-settings.mjs` 检查构建后的真实工作台分组、配置归属、图标、PUSH/POP/刷新、主从布局和窄屏；`tests/extension-runtime.test.ts` 验证固定 owner 与无效 owner 原子拒绝。当前桌面平台呈现尚未实机验证。
 
 - 执行端名称、位置和状态灯组成一个语义 button，点击名称行打开该 Host 概览；不再增加“概览”子项。概览只高亮名称行，配置页只高亮对应子项；所有入口继续使用同一 Router 路由，保留旧概览链接与 POP 恢复。
+
+### 运行在（Work in）与机器分组
+
+- 机器分组只由 daemon 上报的 machineId 决定，不按 URL、域名、名称或 hostKind 推断；分组只影响呈现，不改变 Host 与 `(hostId, threadId)` 身份。机器显示名可由部署 `--machine-name` 设置，改名不改变 machineId。
+- 读取机器身份不初始化引擎；未连接 Agent 的模型目录只在用户打开模型菜单时加载，加载与失败在菜单内原位反馈。
+- 新的机器、Agent、项目选择撤销旧准备；晚到结果不得覆盖较新的意图。切换机器或 Agent 只读：目录在目标 Host 存在才保留，不创建项目记录。
+- 切换运行位置保留草稿内容；暂不可用的附件原位标注，不静默删除。
+- Web 不显示「这台…」；只有桌面端本机 daemon 所在机器显示「这台 Mac / 这台电脑」。云端资源生命周期与连接状态分开呈现。
+- 验证：`tests/work-in-*.test.ts`、`tests/opencraft-daemon.test.ts`；Web 与 Linux Electron 实测，macOS 窗口、真实多机器与 LightVela 云端链路尚未实测。

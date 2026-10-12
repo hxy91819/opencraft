@@ -17,6 +17,7 @@ import {
   type DaemonServerMessage,
 } from "@opencraft/daemon-ipc";
 
+import { readDaemonMachineIdentity } from "../apps/opencraft-daemon/src/machine-identity.js";
 import { startOpenCraftDaemonServer } from "../apps/opencraft-daemon/src/server.js";
 import { isDaemonEndpointUnavailable } from "../apps/workbench-electron/src/daemon-client.js";
 
@@ -168,6 +169,21 @@ test("Electron only spawns a daemon for an absent endpoint, never for a failed o
     assert.equal(isDaemonEndpointUnavailable(Object.assign(new Error(code), { code })), false);
   }
   assert.equal(isDaemonEndpointUnavailable(new Error("OpenCraft Daemon protocol/build mismatch")), false);
+});
+
+test("a deployment machine name changes only the display name", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "opencraft-daemon-machine-name-"));
+  try {
+    const detected = await readDaemonMachineIdentity(directory);
+    const named = await readDaemonMachineIdentity(directory, "  我的服务器  ");
+    assert.equal(named.name, "我的服务器");
+    assert.equal(named.machineId, detected.machineId);
+    assert.equal(named.platform, detected.platform);
+    assert.equal((await readDaemonMachineIdentity(directory, "   ")).name, detected.name);
+    for (const invalid of ["x".repeat(65), "line\nbreak"]) {
+      await assert.rejects(readDaemonMachineIdentity(directory, invalid), /--machine-name/u);
+    }
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
 test("one real daemon reports the same machine for DSH and Codex without an engine executable", async () => {

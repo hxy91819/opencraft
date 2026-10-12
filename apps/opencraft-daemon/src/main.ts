@@ -51,8 +51,10 @@ export async function startOpenCraftDaemon(options: {
   readonly codexExecutable: string;
   readonly codexDataDirectory: string;
   readonly nativeCodexHomeDirectory: string;
+  /** Deployment display name; defaults to the OS computer name. */
+  readonly machineName?: string;
 }) {
-  const machineIdentity = await readDaemonMachineIdentity(options.dataDirectory);
+  const machineIdentity = await readDaemonMachineIdentity(options.dataDirectory, options.machineName);
   process.chdir(options.runtimeDirectory);
   await removeStaleSocket(options.endpoint);
   let localAgent: Awaited<ReturnType<typeof startLocalAgentHost>> | null = null;

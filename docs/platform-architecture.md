@@ -273,6 +273,10 @@ The daemon creates a random UUID once in `<resolved daemon dataDirectory>/machin
 `runtime/machine/read`: `{ machine: { machineId, name, platform }, agent }`.
 `platform` is `macos | linux | windows`; `agent` is `OpenCraft | Codex` for the
 current daemon adapters. Both daemon Hosts report the same machine object.
+`name` defaults to the OS computer name (macOS ComputerName, otherwise hostname);
+a deployment may set it with `--machine-name <name>` (trimmed, at most 64
+characters, no control characters). The name is display-only and never changes
+`machineId`.
 The extension is declared in the handwritten OpenCraft method map; upstream
 Codex-generated types remain upstream-owned. Identity-only App Host leases do
 not initialize or start an engine; native initialize remains unchanged for normal
