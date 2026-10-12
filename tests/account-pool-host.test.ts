@@ -250,9 +250,9 @@ test("Codex proxy authenticates the Host and injects only the selected account c
       upstreamAccountId: "chatgpt-a",
       priority: 1,
       enabled: true,
-    }, { accessToken: "access-a", refreshToken: null, expiresAt: null });
+    }, { accessToken: "access-a", refreshToken: null, expiresAt: null, idToken: "id-token-must-not-be-used" });
     const hostToken = pool.issueHostToken("local");
-    const upstream: Array<{ url: string; authorization: string | null; accountId: string | null; leaked: string | null }> = [];
+    const upstream: Array<{ url: string; authorization: string | null; accountId: string | null; leaked: string | null; headers: Record<string, string> }> = [];
     const proxy = new CodexAccountPoolProxy({
       store: pool,
       upstreamBaseUrl: "https://chatgpt.example.test/backend-api/codex",
@@ -263,6 +263,7 @@ test("Codex proxy authenticates the Host and injects only the selected account c
           authorization: headers.get("authorization"),
           accountId: headers.get("chatgpt-account-id"),
           leaked: headers.get("x-untrusted-secret"),
+          headers: Object.fromEntries(headers),
         });
         return Response.json({ ok: true }, { headers: { "x-codex-primary-used-percent": "10" } });
       },
@@ -275,17 +276,41 @@ test("Codex proxy authenticates the Host and injects only the selected account c
         "x-opencraft-account-pool-token": hostToken,
         authorization: "Bearer must-not-pass-through",
         "x-untrusted-secret": "must-not-pass-through",
+        "chatgpt-account-id": "inbound-account-must-not-pass-through",
+        cookie: "inbound-cookie-must-not-pass-through",
+        originator: "opencraft",
+        "user-agent": "opencraft/1 (Codex 0.162.1)",
+        accept: "text/event-stream",
+        "openai-beta": "responses=experimental",
+        session_id: "session-1",
+        "x-codex-turn-metadata": JSON.stringify({ thread_id: "thread-1" }),
       },
       body: JSON.stringify({ model: "gpt-test", input: [] }),
     });
     const response = await proxy.handle(request);
     assert.equal(response.status, 200);
     assert.deepEqual(upstream, [{
-      url: "https://chatgpt.example.test/backend-api/codex/v1/responses",
+      url: "https://chatgpt.example.test/backend-api/codex/responses",
       authorization: "Bearer access-a",
       accountId: "chatgpt-a",
       leaked: null,
+      headers: {
+        accept: "text/event-stream",
+        authorization: "Bearer access-a",
+        "chatgpt-account-id": "chatgpt-a",
+        "content-type": "application/json",
+        "openai-beta": "responses=experimental",
+        originator: "opencraft",
+        session_id: "session-1",
+        "thread-id": "thread-1",
+        "user-agent": "opencraft/1 (Codex 0.162.1)",
+        "x-codex-turn-metadata": JSON.stringify({ thread_id: "thread-1" }),
+      },
     }]);
+    await proxy.handle(new Request("http://127.0.0.1/v1/models", {
+      headers: { "x-opencraft-account-pool-token": hostToken },
+    }));
+    assert.equal(upstream[1]?.url, "https://chatgpt.example.test/backend-api/codex/models");
     assert.equal((await proxy.handle(new Request("http://127.0.0.1/v1/models", {
       headers: { "x-opencraft-account-pool-token": "wrong" },
     }))).status, 401);
@@ -467,7 +492,7 @@ test("a client disconnect aborts an in-flight upstream stream without crashing t
   const firstUpstreamChunk = deferred<void>();
   const upstreamClosed = deferred<void>();
   const upstream = await startLocalServer(createServer((incoming, outgoing) => {
-    if (incoming.url === "/backend-api/codex/v1/models") {
+    if (incoming.url === "/backend-api/codex/models") {
       outgoing.writeHead(200, { "content-type": "application/json" });
       outgoing.end(JSON.stringify({ data: [{ id: "gpt-test" }] }));
       return;
@@ -524,7 +549,7 @@ test("an upstream stream failure interrupts the client connection without crashi
   const failUpstream = deferred<void>();
   let responseCount = 0;
   const upstream = await startLocalServer(createServer((incoming, outgoing) => {
-    if (incoming.url === "/backend-api/codex/v1/models") {
+    if (incoming.url === "/backend-api/codex/models") {
       outgoing.writeHead(200, { "content-type": "application/json" });
       outgoing.end(JSON.stringify({ data: [{ id: "gpt-test" }] }));
       return;

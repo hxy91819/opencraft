@@ -26,7 +26,8 @@ function upstreamUrl(base: string, requestUrl: string): string {
   const root = new URL(base);
   if (root.protocol !== "https:" && root.protocol !== "http:") throw new TypeError("Invalid Codex upstream URL");
   if (root.username || root.password || root.search || root.hash) throw new TypeError("Invalid Codex upstream URL");
-  const path = new URL(requestUrl).pathname;
+  // /v1 is the synthetic local provider prefix, not part of the ChatGPT Codex API.
+  const path = new URL(requestUrl).pathname.slice("/v1".length);
   root.pathname = `${root.pathname.replace(/\/+$/u, "")}${path}`;
   return root.toString();
 }
