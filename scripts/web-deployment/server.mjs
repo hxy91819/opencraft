@@ -4,6 +4,8 @@ import { createServer, request as httpRequest } from 'node:http';
 import { createConnection } from 'node:net';
 import { readFile, writeFile, mkdir, rename, rm, cp, stat, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { createLocalReleaseSource } from './local-release.mjs';
+import semver from 'semver';
 import { acquireDeploymentLock } from './lock.mjs';
 import { WEB_UPDATE_PATH } from '../../packages/web-update-protocol/src/index.mjs';
 import { createNpmReleaseSource, inspectRelease, unpackRelease, PACKAGE_NAME, isNewerVersion } from './releases.mjs';
@@ -72,7 +74,7 @@ function lease(worker) {
 }
 
 export async function createManagedWebServer({ initialRelease, stateDirectory, registry, channel, userconfig, publicOrigin,
-  appServerTarget = null, codexServerTarget = null, hyperNodeUser = '', stateWriter = atomicJson, source = createNpmReleaseSource({ registry, channel, userconfig }) }) {
+  appServerTarget = null, codexServerTarget = null, hyperNodeUser = '', execution = null, stateWriter = atomicJson, source = createNpmReleaseSource({ registry, channel, userconfig }) }) {
   const directory = resolve(stateDirectory);
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const releaseLock = await acquireDeploymentLock(directory);
@@ -123,6 +125,7 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
         })().finally(() => { recovery = null; });
       });
     }
+    if (execution) await execution.apply(current);
     active = await startWorker(current, environment); track(active);
     const cookieName = 'opencraft_web_admin';
     function authenticated(request) {
@@ -131,13 +134,15 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
       for (const [id, until] of sessions) if (until < Date.now()) sessions.delete(id);
       return token !== undefined && sessions.has(token);
     }
-    function snapshot(request) {
-      return { schemaVersion: 1, enabled: true, authenticated: authenticated(request),
+    async function snapshot(request) {
+      const executionStatus = execution ? await execution.status() : null;
+      return { schemaVersion: 1, enabled: true, localInstall: true, authenticated: authenticated(request),
         current: { version: persisted.current.version, buildId: persisted.current.buildId },
         latest: latest ? { version: latest.version, buildId: latest.buildId } : null,
         checking: checking !== null, checkedAt, checkError, checkErrorCode, packageName: PACKAGE_NAME, channel: source.channel || channel || 'latest',
         updateAvailable: latest !== null && isNewerVersion(latest.version, persisted.current.version),
         canRollback: persisted.previous !== null,
+        execution: executionStatus,
         // A terminal job is visible only after its persistence and cleanup finish.
         job: operation && persisted.job && !busy(persisted.job) ? { ...persisted.job, phase: 'starting', error: null } : persisted.job };
     }
@@ -149,6 +154,7 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
     async function activate(release, job) {
       const candidate = await startWorker(release, environment); track(candidate);
       try {
+        if (execution) await execution.apply(release);
         if (closed) throw new Error('Deployment is stopping');
         const next = { schemaVersion: 1, current: release, previous: persisted.current, job: { ...job, phase: 'completed', error: null } };
         await stateWriter(statePath, next);
@@ -158,9 +164,16 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
           throw new Error('New Web worker exited during activation');
         }
         const old = active; active = candidate; persisted = next; retire(old);
-      } catch (error) { retire(candidate); throw error; }
+      } catch (error) {
+        retire(candidate);
+        if (execution) {
+          try { await execution.apply(persisted.current); }
+          catch { throw new Error(`${error.message}; execution rollback failed; inspect the execution service`); }
+        }
+        throw error;
+      }
     }
-    async function install(selected, rollback) {
+    async function install(selected, rollback, releaseSource = source) {
       const job = { id: randomUUID(), version: selected.version, phase: rollback ? 'starting' : 'downloading', error: null };
       const original = persisted;
       const staging = join(directory, 'staging', job.id); let releaseContainer = null; let activated = false;
@@ -170,7 +183,7 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
         let release;
         if (rollback) release = await inspectRelease(selected.releaseRoot);
         else {
-          const archive = await source.download(selected, staging);
+          const archive = await releaseSource.download(selected, staging);
           job.phase = 'verifying'; persisted.job = { ...job };
           const unpacked = await unpackRelease(archive, join(staging, 'unpacked'));
           if (unpacked.version !== selected.version || unpacked.buildId !== selected.buildId) throw new Error('Downloaded release differs from the checked release');
@@ -183,6 +196,7 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
         const oldAssets = join(persisted.current.releaseRoot, 'web/assets');
         try { if ((await stat(oldAssets)).isDirectory()) await cp(oldAssets, join(release.releaseRoot, 'web/assets'), { recursive: true, force: false, errorOnExist: false }); }
         catch (error) { if (error.code !== 'ENOENT') throw error; }
+        if (execution) await execution.inspect(release);
         job.phase = 'starting'; persisted.job = { ...job };
         await activate(release, job); activated = true;
       } catch (error) {
@@ -200,7 +214,8 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
           try {
             const disk = JSON.parse(await readFile(statePath, 'utf8'));
             const root = join(releaseContainer, 'package');
-            if (disk.schemaVersion === 1 && disk.current?.releaseRoot !== root && disk.previous?.releaseRoot !== root)
+            if (disk.schemaVersion === 1 && disk.current?.releaseRoot !== root && disk.previous?.releaseRoot !== root
+              && !(execution && (await execution.referencedRoots()).includes(root)))
               await rm(releaseContainer, { recursive: true, force: true });
           } catch { /* Retain uncertain state for recovery. */ }
         }
@@ -208,7 +223,7 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
           const disk = JSON.parse(await readFile(statePath, 'utf8'));
           if (disk.schemaVersion !== 1) throw new Error('Unknown state');
           const protectedRoots = new Set([persisted.current.releaseRoot, persisted.previous?.releaseRoot,
-            disk.current?.releaseRoot, disk.previous?.releaseRoot, ...[...workers].filter(worker => worker.alive).map(worker => worker.release.releaseRoot)]);
+            disk.current?.releaseRoot, disk.previous?.releaseRoot, ...(execution ? await execution.referencedRoots() : []), ...[...workers].filter(worker => worker.alive).map(worker => worker.release.releaseRoot)]);
           for (const entry of await readdir(join(directory, 'releases'))) {
             if (!/^[a-f0-9-]{36}$/.test(entry)) continue;
             const container = join(directory, 'releases', entry);
@@ -223,7 +238,7 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
       catch { json(response, 400, { error: 'Invalid request URL' }); return; }
       if (pathname === WEB_UPDATE_PATH || pathname.startsWith(`${WEB_UPDATE_PATH}/`)) {
         try {
-          if (request.method === 'GET' && pathname === WEB_UPDATE_PATH) { json(response, 200, snapshot(request)); return; }
+          if (request.method === 'GET' && pathname === WEB_UPDATE_PATH) { json(response, 200, await snapshot(request)); return; }
           if (request.method !== 'POST') { json(response, 405, { error: 'POST required' }); return; }
           const origin = request.headers.origin;
           let allowed = false;
@@ -249,16 +264,23 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
           if (!authenticated(request)) { json(response, 401, { error: 'Deployment administrator access required' }); return; }
           if (pathname === `${WEB_UPDATE_PATH}/logout`) { sessions.clear(); response.setHeader('set-cookie', `${cookieName}=; Path=${WEB_UPDATE_PATH}; HttpOnly; SameSite=Strict; Max-Age=0`); json(response, 200, { ok: true }); return; }
           if (operation || busy(persisted.job) || checking) { json(response, 409, { error: 'Another update operation is running' }); return; }
-          let selected; let rollback = false;
+          let selected; let rollback = false; let releaseSource = source;
           if (pathname === `${WEB_UPDATE_PATH}/install`) {
             if (!latest || input?.version !== latest.version || !isNewerVersion(latest.version, persisted.current.version)) { json(response, 409, { error: 'Check updates again before installing' }); return; }
             selected = { ...latest };
+          } else if (pathname === `${WEB_UPDATE_PATH}/install-local`) {
+            if (!semver.valid(input?.version) || !isNewerVersion(input.version, persisted.current.version)
+              || typeof input.buildId !== 'string' || !/^[A-Za-z0-9._-]{1,128}$/.test(input.buildId)) {
+              json(response, 409, { error: 'Local release must have a newer exact version and valid build identity' }); return;
+            }
+            releaseSource = createLocalReleaseSource(input.archive);
+            selected = { version: input.version, buildId: input.buildId, integrity: input.integrity };
           } else if (pathname === `${WEB_UPDATE_PATH}/rollback`) {
             if (!persisted.previous) { json(response, 409, { error: 'No previous release is available' }); return; }
             selected = { ...persisted.previous }; rollback = true;
           } else { json(response, 404, { error: 'Unknown update action' }); return; }
-          operation = install(selected, rollback).catch(() => console.error('[opencraft update] Cannot persist update result; inspect the deployment state')).finally(() => { operation = null; });
-          json(response, 202, { ok: true });
+          operation = install(selected, rollback, releaseSource).catch(() => console.error('[opencraft update] Cannot persist update result; inspect the deployment state')).finally(() => { operation = null; });
+          json(response, 202, { ok: true, jobId: persisted.job.id });
         } catch { if (!response.headersSent) json(response, 400, { error: 'Invalid update request' }); }
         return;
       }

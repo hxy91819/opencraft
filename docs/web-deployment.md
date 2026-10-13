@@ -1,15 +1,15 @@
 # Web 安装与一键更新
 
-公司 npm 包 `@tencent/opencraft-web` 包含网站、Web 服务和更新器。Node.js 22 或更新版本和 npm 是运行前提。DSH/Codex 执行服务独立部署，通过 WebSocket 地址接入；此包不创建、升级或重启执行服务。
+公共 npm 包 `@opencraft-app/opencraft` 包含网站、Web 服务和更新器。Node.js 22 或更新版本和 npm 是运行前提。默认包只包含网站；执行服务独立部署，通过 WebSocket 地址接入。带执行端 payload 的服务器包可在明确配置受管执行服务后同时升级网站、执行网关、daemon 和 DSH capability adapter；DSH 引擎、Codex core 与 CLI 仍独立维护。
 
 直接从源码打包并替换已有服务器网站，见[本地替换指引](web-local-deployment.md)；该流程使用本地包，不需要先发布 npm。
 
 ## 首次安装
 
-在部署用户自己的 npm 配置中设置公司源和认证；认证凭据只留在服务器，不写入网页或仓库：
+在部署用户自己的 npm 配置中设置npm 源和认证；认证凭据只留在服务器，不写入网页或仓库：
 
 ```ini
-@tencent:registry=https://mirrors.tencent.com/npm/
+@opencraft-app:registry=https://registry.npmjs.org/
 ```
 
 首次试运行（将版本与执行地址替换为实际值）：
@@ -17,16 +17,16 @@
 ```sh
 OPENCRAFT_APPSERVER_URL=ws://127.0.0.1:9989/rpc \
 OPENCRAFT_WEB_STATE="$PWD/opencraft-web-state" \
-npx --registry=https://mirrors.tencent.com/npm/ \
-  "@tencent/opencraft-web@${OPENCRAFT_RELEASE_VERSION:?设置精确安装版本}"
+npx --registry=https://registry.npmjs.org/ \
+  "@opencraft-app/opencraft@${OPENCRAFT_RELEASE_VERSION:?设置精确安装版本}"
 ```
 
 长期运行时固定安装启动包，避免每次服务启动重新解析 `latest`：
 
 ```sh
 npm install --prefix /opt/opencraft-web/bootstrap --ignore-scripts \
-  --registry=https://mirrors.tencent.com/npm/ \
-  "@tencent/opencraft-web@${OPENCRAFT_RELEASE_VERSION:?设置精确安装版本}"
+  --registry=https://registry.npmjs.org/ \
+  "@opencraft-app/opencraft@${OPENCRAFT_RELEASE_VERSION:?设置精确安装版本}"
 ```
 
 使用包内 `opencraft-web.service` 作为 systemd 模板，核对 Node 路径与运行用户；配置 `/etc/opencraft-web.env`：
@@ -37,7 +37,7 @@ OPENCRAFT_WEB_PORT=10000
 OPENCRAFT_WEB_STATE=/var/lib/opencraft-web
 OPENCRAFT_APPSERVER_URL=ws://127.0.0.1:9989/rpc
 OPENCRAFT_PUBLIC_ORIGIN=https://opencraft.example.com
-OPENCRAFT_NPM_REGISTRY=https://mirrors.tencent.com/npm/
+OPENCRAFT_NPM_REGISTRY=https://registry.npmjs.org/
 # 可选：指定部署用户的 npm 配置文件
 # OPENCRAFT_NPM_USERCONFIG=/home/deploy/.npmrc
 # 可选：Codex 使用独立地址
@@ -46,75 +46,113 @@ OPENCRAFT_NPM_REGISTRY=https://mirrors.tencent.com/npm/
 
 反向代理将 HTTP 和 WebSocket 一起转发到网站端口，不过滤 `/__opencraft_updates`；保留已有的域名访问认证。执行服务放在另一 systemd unit/cgroup，网站 unit 不得使用会停止执行服务的 `PartOf`、`BindsTo` 或升级脚本。
 
+## 服务器执行端更新
+
+`npm run package:web:server:execution` 生成包含 `execution/` 的服务器包，版本仍使用 `OPENCRAFT_RELEASE_VERSION`。包记录执行协议、构建平台、架构和 Node ABI，附带 gateway、daemon、DSH capability adapter 与 node-pty；不包含 Codex core、CLI、DSH 引擎、模型配置或账户数据。跨平台/Node ABI 的包不能安装到受管执行端。普通 `package:web:server` 保留网站独立升级语义。
+
+首次接入需要一次部署迁移，网页旧更新器不会自动升级自己。先按 [Codex core](codex-core.md) 将服务器改为独立 core；在无活动 OpenCraft/DSH 任务的维护时段安装新的固定启动包和 `opencraft-execution.service` 模板。保留执行状态、机器身份、token、模型和 core 数据，停止旧执行侧后再启用新执行 unit，避免两个 daemon 同时写入。迁移不自动升级 core 或 CLI。
+
+执行 unit 消费 `/etc/opencraft-execution.env`，路径按实际部署填写：
+
+```ini
+OPENCRAFT_EXECUTION_CWD=/srv/opencraft
+OPENCRAFT_EXECUTION_STATE=/var/lib/opencraft
+OPENCRAFT_CODEX_CORE_ENDPOINT=/run/opencraft-codex-core/control.sock
+OPENCRAFT_DSH_EXECUTABLE=/opt/opencraft-dsh/node_modules/@deepseek-ai/dsh/lib/bin.js
+OPENCRAFT_GATEWAY_PORT=9988
+# 可选显示名
+# OPENCRAFT_MACHINE_NAME=My server
+```
+
+`OPENCRAFT_EXECUTION_STATE/daemon.token` 必须沿用 core 使用的 token 文件，保持私有权限；不要生成第二份认证身份。执行 cwd 不使用包目录，用户项目 cwd 继续由 Thread/Project 决定。DSH 引擎是当前机器的固定安装，不从其他 checkout 借用。
+
+网站 unit 消费的 `/etc/opencraft-web.env` 加入以下配置：
+
+```ini
+OPENCRAFT_EXECUTION_LINK=/var/lib/opencraft-web/execution-current
+OPENCRAFT_EXECUTION_UNIT=opencraft-execution.service
+OPENCRAFT_CODEX_CORE_UNIT=opencraft-codex-core.service
+OPENCRAFT_CODEX_CORE_ENDPOINT=/run/opencraft-codex-core/control.sock
+OPENCRAFT_DAEMON_TOKEN_FILE=/var/lib/opencraft/daemon.token
+OPENCRAFT_EXECUTION_HEALTH_URL=http://127.0.0.1:9988/health
+OPENCRAFT_APPSERVER_URL=ws://127.0.0.1:9988/rpc
+OPENCRAFT_CODEX_APPSERVER_URL=ws://127.0.0.1:9988/rpc/codex
+```
+
+link 必须与执行 unit 的 `ExecStart` 一致，父目录已存在且网站部署用户可写；执行用户必须可遍历部署目录之外的祖先目录。不同服务用户时，部署机器需要 `setfacl` 和 `id`：更新器在每个新 release 上给执行用户授予只读/遍历 ACL，并仅给私有版本容器授予遍历权限，admin-key 和部署状态保持私有。core token 的读取权限只授予对应服务用户，服务器 gateway 只读取既有 token，不修改权限或重生成身份。网站部署用户需要查询 systemd 与重启**指定执行 unit**的权限，非 root 部署由运维配置对应的 systemd/Polkit 授权。核心服务独立 cgroup，不能配置 `PartOf`、`BindsTo` 或 `StopWhenUnneeded=yes`；执行 unit 使用 `KillMode=control-group`，不声明 `PropagatesStopTo`；双方不得以 `Conflicts` 冲突。更新前还核对 core 健康 PID 与所配置 core unit 的 MainPID 一致。仍可用 `Wants`/`After` 保证启动顺序。网站 unit 不负责启停 core。
+
+启用配置后，网站启动器以 `deployment.json` 为版本权威，自动创建/恢复 execution-current 并检查执行端健康。第一次启动指向带 payload 的初始包，再启用执行 unit；启动器在等待执行端健康期间可以重启该 unit。缺少 payload、平台不符、core 不可用或 unit 不独立时，不继续切换。
+
+更新页显示实际执行网关版本和「更新网站和执行服务」。一次安装先下载并校验精确归档、启动候选网站，再切换 execution-current、重启执行 unit；新版 gateway 通过 daemon IPC/core 健康检查、版本/buildId 一致且 core/CLI PID 未变后，才提交网站版本。失败恢复原执行版本与网站；若回退也失败，页面显示失败原因和执行端实际版本/就绪状态，不冒称成功。重启启动器时按已提交版本修复中断的切换。执行指针以及持久化 pins 文件引用的包不能被历史清理删除。重启或回退结果不确定时，保留所有可能运行的执行版本，直到健康检查确认替换成功。页面版本取实际 gateway 健康响应，不用指针目标冒充正在运行的版本；无法确认时显示未知。
+
+执行更新会断开网关连接；页面重连/resume 原 Codex 任务，不重发执行命令。OpenCraft/DSH 活动任务仍可能中断，更新页直接说明这个范围。回退使用同一切换流程，core 与账户数据保持独立。
+
+验证入口：
+
+```sh
+npm run test:server-updates
+npm run build:web:release
+npm run smoke:server-updates
+# 具备 systemd 运维权限时，使用临时独立 unit 验证真实重启边界
+npm run smoke:server-updates:systemd
+```
+
+`test:server-updates` 覆盖安装/回退、执行启动失败、持久化失败、网站启动失败、进程中断恢复及 systemd 生命周期配置。smoke 使用隔离 HOME、合成账户和本地 Responses 端点，运行真实 Codex CLI、归档内 gateway/daemon、生产 SPA 和真实 npm；浏览器点安装时 shell 已在运行，断线后原 turn 完成，shell 开始/结束各一次、core/CLI/运行中子进程 PID 不变，再从页面回退。默认 smoke 的 systemd 边界由隔离进程重启替代；`:systemd` 入口在 `/run/systemd/system` 创建随机命名的临时 core/执行 unit，通过实际 `systemctl restart` 验证同一链路并在结束时删除自己的 unit。两种入口都不修改线上 unit、不使用真实账户或付费推理；生产服务器仍需核对权限与首次迁移。
+
+## 本地源码与 npm 复用更新事务
+
+`npm run update:server:local -- --version <exact-version>` 在当前 checkout 构建新的归档，然后经回环地址、既有管理密钥调用 `/install-local`。本地源只负责读取/复制归档并验证 SHA512；安装、解包、网站/执行切换、健康检查、回退与恢复均复用 npm 更新的同一事务。使用方式见 [统一源码入口](web-local-deployment.md#受管部署的统一源码升级入口)。后台任务返回唯一 jobId，命令只等待自己的任务，不把其他并发操作当成成功。
+
+`npm run smoke:server-self-upgrade` 使用真实临时 systemd unit 和 Codex CLI，在 Codex 的 shell 工具内构建并执行上述命令，再重连原 turn、验证完成并从页面回退。模型与账户仍为本地合成边界，不访问真实模型服务。
+
 ## 网页操作
 
-公司 npm 包是通用构建。网站服务在 HTML 中注入部署配置，首屏创建 Host 前已可用：`OPENCRAFT_APPSERVER_URL` 对应 `local` / OpenCraft Server，`OPENCRAFT_CODEX_APPSERVER_URL` 对应 `local-codex` / Codex，kind 均为 `remote-control`，使用同源 `/appserver`、`/codex-appserver`。配置至少一个上述 Host 时激活内置 Agent 设置页；无需部署用的 `VITE_*` 构建变量，网站更新后仍沿用服务自己的执行配置及稳定 hostId。
+公共 npm 包是通用构建。网站服务在 HTML 中注入部署配置，首屏创建 Host 前已可用：`OPENCRAFT_APPSERVER_URL` 对应 `local` / OpenCraft Server，`OPENCRAFT_CODEX_APPSERVER_URL` 对应 `local-codex` / Codex，kind 均为 `remote-control`，使用同源 `/appserver`、`/codex-appserver`。配置至少一个上述 Host 时激活内置 Agent 设置页；无需部署用的 `VITE_*` 构建变量，网站更新后仍沿用服务自己的执行配置及稳定 hostId。
 
 `OPENCRAFT_HYPERNODE_USER` 只传给执行端请求头，不决定 Host 身份。网站配置统一使用主端点 `local` 并关闭 HyperNode 插件，避免为同一地址创建第二个 Host。构建期 `VITE_APPSERVER_HOSTS_JSON` 是开发/测试的显式覆盖，优先于运行时列表；`VITE_WEB_BUILTIN_AGENTS` 和 `VITE_HYPERNODE_PLUGIN` 的 `enabled|disabled` 值可覆盖插件激活。无 HTML 配置的 Vite/static 部署保持原默认行为；注入配置损坏时启动报错并可重新加载，不静默回落。LightVela 不包含这两个插件，Electron 不消费网站配置。旧通用包的 `hypernode` 链接与浏览器历史在 Router 入口映射为 `local`，保留 threadId/draftId；旧活动会话和项目选择按缺失补入 `local`，保留旧值、不覆盖已有 `local` 偏好。这仅用于网站提供配置、没有显式 Host 覆盖且没有真实 `hypernode` profile 的 OpenCraft Web。
 
-首次启动会在状态目录生成权限为 `0600` 的 `admin-key`，终端只显示文件位置。“设置 → 网站更新”直接显示“检查更新”，访问者无需部署密钥即可查询公司 npm `latest`。部署管理员读取该文件并授权管理后，可以安装更新、回退上一版。管理登录有效期一小时；需要同源 JSON 请求。
+首次启动会在状态目录生成权限为 `0600` 的 `admin-key`，终端只显示文件位置。“设置 → 网站更新”直接显示“检查更新”，访问者无需部署密钥即可查询公共 npm `latest`。部署管理员读取该文件并授权管理后，可以安装更新、回退上一版。管理登录有效期一小时；需要同源 JSON 请求。
 
-发布者按下文[内网 npm 发布流程](#内网-npm-发布流程)验证并上传精确 tgz。发布不会自动更新用户部署；用户点击“检查更新”读取最新版本，再点击“更新网站”安装已检查的精确版本与 integrity。npm 访问失败会在页面显示，当前网站继续运行。打包命令不执行发布。
+发布者按下文[公共 npm 发布流程](#公共-npm-发布流程)验证并上传精确 tgz。发布不会自动更新用户部署；用户点击“检查更新”读取最新版本，再点击“更新网站”安装已检查的精确版本与 integrity。npm 访问失败会在页面显示，当前网站继续运行。打包命令不执行发布。
 
-## 内网 npm 发布流程
+## 可选发布前回归门禁
 
-在本项目中，用户说“发布内网 npm”或“发布公司 npm”，目标是 `@tencent/opencraft-web`，源为 `https://mirrors.tencent.com/npm/`，默认渠道为 `latest`。这授权上传已验证包并完成发布后验收；沿用该授权继续，不为同一步骤重复确认。用户指定其他包或渠道时以当前指令为准。“检查更新”和“补文档”按各自任务范围执行。
+发布网站或服务器包前，可显式选择更新连续性回归；它不自动加入 `npm run gate`，也不上传包或替换正在使用的服务：
 
-用户已确认 OpenCraft 与相邻 TokenJuice 使用同一套 npm 凭据，允许直接复用其私有配置。优先使用 `OPENCRAFT_NPM_USERCONFIG` 指定的配置；未指定且相邻 checkout 存在时使用 `../tokenjuice/.npmrc`；其他部署使用部署用户自己的 `.npmrc`。只向 npm 传文件路径，凭据留在原文件，不复制到仓库、包、网页或日志。TokenJuice 的 `publish-to-tencent.mjs` 实际只打包和本地安装，远程发布使用下面的 `npm publish`。
+```sh
+# 两种真实 systemd 场景都回归（默认）
+npm run gate:server-updates
+# 只验证浏览器安装与回退期间的 Codex 任务连续性
+npm run gate:server-updates -- --scenario install
+# 只验证 Codex 从源码构建、升级并完成原任务，随后页面回退
+npm run gate:server-updates -- --scenario self-upgrade
+```
 
-1. **确定发布对象。** 检查分支、`git status --short`、`git worktree list`；读取 `package.json`、`packaging/web-server/package.json` 和打包脚本。版本以公司源实时查询为准，包模板的版本不是已发布版本。优先发布用户已认可且通过验证的精确 tgz，核对原 SHA256/SRI，避免重新构建时混入后续并行修改。需要新版本而用户未指定时，查询 latest 和已占用版本，选择下一个未占用 patch 版本并在进度中说明。新的包版本与 buildId 一起记录。
-2. **确认公司源可用。** 通过以下配置查询身份与版本；缺少权限只阻塞远程发布，保留已准备的包和验证证据。包不存在的公司 `E400` 提示不是凭据失败。npm 输出只提取必要字段；错误摘要先脱敏，不保存或展示原始凭据及错误输出。
+门禁复用 `smoke-server-updates.ts`，先跑更新/失败恢复、core/daemon/token 聚焦测试，再构建当前生产 SPA，最后运行所选场景。要求 Linux、root 运行权限（临时 systemd unit）、当前 checkout 的依赖、可用 Codex CLI 和 Playwright Chromium，以及 `setfacl`/`runuser`；Chrome 可由 `OPENCRAFT_CHROMIUM_EXECUTABLE` 指定。测试模型标识固定 `gpt-6-luna`，Responses/账户为本地合成，不读取真实登录或调用付费模型。
 
-   ```sh
-   registry=https://mirrors.tencent.com/npm/
-   npm_userconfig="${OPENCRAFT_NPM_USERCONFIG:-$HOME/.npmrc}"
-   if [ -z "${OPENCRAFT_NPM_USERCONFIG:-}" ] && [ -f ../tokenjuice/.npmrc ]; then
-     npm_userconfig="$(realpath ../tokenjuice/.npmrc)"
-   fi
-   npm whoami --registry="$registry" --userconfig="$npm_userconfig"
-   npm view @tencent/opencraft-web dist-tags versions --json \
-     --registry="$registry" "--@tencent:registry=$registry" --userconfig="$npm_userconfig"
-   ```
+每次产生独立 `.local/server-update-gate/<run>/report.json`、阶段日志及 PID/turn/命令次数证据。`--output <目录>` 只改变报告父目录，仍新建 run 目录，不覆盖旧结果。退出码 `0` 才表示所选回归通过；测试失败、缺少依赖、源文件在运行中变化、证据缺失或中断均返回非零并记录失败原因，不用旧 proof 充当本次结果。中断时通知验收脚本清理自己的 unit/profile，随后保留报告。
 
-3. **构建与验证。** 复用已验证 tgz 时保持其内容和版本；新构建从当前 checkout 生成，显式写入来源 commit，dirty 工作区追加 `-dirty`。先选择精确版本并设置 `OPENCRAFT_RELEASE_VERSION`，然后执行：
+报告记录源码 commit、dirty 文件状态、源码指纹、Node/Codex 版本和所选场景。只选一种场景的结果不能称为完整门禁；未执行该可选门禁的发布记录标为「未运行」，而非「通过」。源码变化后需要重新回归。证据覆盖当前源码构建与隔离部署，仍需按下文核对最终发布 tgz 的身份、完整性与可分发性，不能把源码门禁替代最终归档验收。
 
-   ```sh
-   : "${OPENCRAFT_RELEASE_VERSION:?设置待发布的精确版本}"
-   export OPENCRAFT_SOURCE_REVISION="$(git rev-parse HEAD)"
-   if [ -n "$(git status --porcelain)" ]; then
-     export OPENCRAFT_SOURCE_REVISION="$OPENCRAFT_SOURCE_REVISION-dirty"
-   fi
-   export OPENCRAFT_WEB_PACKAGE_OUTPUT="$PWD/.local/web-packages/$OPENCRAFT_RELEASE_VERSION"
-   npm run typecheck --workspace @opencraft/workbench-web
-   npm run check:i18n
-   npm run test:web-release
-   npm run test:web-updates
-   npm run test:web-updates:e2e
-   npm run package:web:server
-   ```
+## 公共 npm 发布流程
 
-   浏览器首次使用先运行 `npx playwright install chromium`，也可设置 `OPENCRAFT_CHROMIUM_EXECUTABLE`。按变更范围补相关门禁和项目要求的独立审查；已验证且内容未变的包复用原证据。`test:web-updates:e2e` 会重建网站，打包也会重建；最终以打包输出的 buildId/tgz 为准。核对包名、精确版本、包 metadata、网页 `version.json` 与 HTML buildId 一致，检查归档中凭据和本机记录已排除，记录 SHA256/SRI。启动最终自包含包做健康探针并核对 buildId；浏览器检查使用隔离状态，不替换用户运行实例。
+公共包使用 `@opencraft-app/opencraft`，源为 `https://registry.npmjs.org/`。首版 0.1.10 支持 Linux x64 / Node.js 24；包含网站、更新器、执行 gateway/daemon，不包含独立 Codex core、CLI 或 DSH 引擎，不是全新服务器一键安装器。
 
-4. **发布精确归档。** 将 `tgz` 设为上一步打包输出 JSON 的 archive 路径。显式指定公司源与 scope，发布已检查的 tgz：
+正式发布 workflow 为 `.github/workflows/release.yml`，只允许从 main 手动派发已有稳定 tag（如 `v0.1.10`）。包模板版本必须与 tag 相同；tag 必须位于 main 历史中。预检安装锁定依赖、执行相关测试和浏览器回归，然后构建一个 execution tgz、核对公开包内容并生成 SHA256 manifest。发布 job 只下载并发布这份归档，不重建；npm 版本已存在时只接受字节完全一致的归档。最后核对 npm 下载/安装及 GitHub Release 的归档、manifest 和 release notes。
 
-   ```sh
-   : "${tgz:?设置已验证的 tgz 路径}"
-   npm publish "$tgz" --tag=latest --ignore-scripts --provenance=false --json \
-     --registry="$registry" "--@tencent:registry=$registry" --userconfig="$npm_userconfig"
-   ```
+Trusted Publisher 的配置：GitHub Actions；组织 `opencraft-app`；仓库 `opencraft`；workflow filename `release.yml`；Environment `npm-release`。该 Environment 只允许 main。workflow 使用 OIDC，不存放长期 npm token。当前 GitHub 仓库为 private，发布显式关闭 provenance；不改变仓库可见性或宣称提供公共来源证明。首次真实发布需先以 npm 账号有效凭据上传本机验证过的归档，包存在后才能在 npm Settings 添加 Trusted Publisher；配置后按 npm 当前有效期要求及时通过 Actions 成功发布。
 
-   npm 上传响应不确定时先查询该精确版本和 integrity：远端已存在且一致则继续验收；已存在但内容不同则保留现场并说明版本冲突，另选新版本。记录上传与 latest 渠道状态。发布包与安装更新是两个操作；仅发布时保持运行服务和执行进程不变。
-5. **验证可分发和可发现。** 用 `createNpmReleaseSource`（`scripts/web-deployment/releases.mjs`）查询公司 latest、下载刚发布的精确版本、校验 SRI/SHA256，并用 `unpackRelease` 校验版本和 buildId。已有部署时在真实页面运行：
+```sh
+gh workflow run release.yml --repo opencraft-app/opencraft --ref main -f tag=v0.1.10
+```
 
-   ```sh
-   OPENCRAFT_WEB_TEST_URL=https://opencraft.example.com \
-   OPENCRAFT_WEB_EXPECTED_LATEST="$OPENCRAFT_RELEASE_VERSION" \
-   npm run test:web-updates:live
-   ```
+首次发布前选择未占用版本，在当前 checkout 使用 Node 24 构建。按任务范围完成 `npm run gate:server-updates`、typecheck、i18n、Web 更新 Playwright、独立审查。用 `OPENCRAFT_RELEASE_VERSION`、`OPENCRAFT_SOURCE_REVISION`、`OPENCRAFT_WEB_PACKAGE_OUTPUT` 记录版本、来源和独立输出，运行 `npm run package:web:server:execution`；再用 `node scripts/inspect-public-release.mjs /absolute/package.tgz` 验证归档。首次 CLI 发布显式指定 `--access public --tag latest --ignore-scripts --registry=https://registry.npmjs.org/`，发布精确 tgz。发布后必须查询精确版本/latest、下载校验并验证包内 buildId。上传响应不确定时先核对远端，不能直接重复发布或覆盖版本。
 
-   URL 使用实际部署地址；预览认证参数见下文。该测试只检查，不安装。部署已运行同版本时 `updateAvailable=false` 正常；旧版部署应发现新版本。没有可访问的真实部署时，交接明确仅完成源查询/下载，页面尚未验收，不用模拟结果替代真实页面。
+### 已有部署切换
 
-完成交接包含包名/版本/渠道、构建来源与 dirty 状态、buildId、SRI/SHA256、远端查询与下载结果、真实页面验收、是否安装或重启。机器路径、实际部署信息和日志记在 Git 忽略的 `.local/`；发布方法留在本文件。Git 提交/推送与 npm 发布分别记录，避免把本机未提交文档当成其他 checkout 已具备的入口。
+旧启动器需要一次维护替换，网站热更新不会升级稳定入口自己。安装新的公共 npm 固定启动包、更新 unit 的启动路径和 registry。新包只识别公共包名，不读取旧包的 release 状态；使用新的状态目录启动，并保留原状态目录供人工恢复。沿用服务器已有执行配置、core token、机器身份、模型和账户数据。完成新部署健康验证后再切换代理；首次公共包启动不是旧部署的原位热升级。公开包查询/下载不需要发布凭据。
+
+发布和安装是独立操作。发布不自动升级或重启已有部署；检查更新使用 latest，更新器安装已检查的精确版本和 integrity。自托管配置保持在服务器，不写入包或仓库。
 
 ## 连续性与回退
 
@@ -122,11 +160,11 @@ OPENCRAFT_NPM_REGISTRY=https://mirrors.tencent.com/npm/
 
 初始网站会复制到可写状态目录；固定启动包可保持只读。安装失败保留原版；切换记录原子写入状态目录。服务重启读取上次已安装版本，未完成任务标记失败，不重发聊天或更新。回退同样先启动、检查上一版再切换。如持续磁盘错误导致状态恢复失败，页面明确提示，可能被状态引用的版本目录会保留；修复存储后重试更新或按 deployment.json 中 previous 恢复。保留状态目录和固定启动包可恢复部署；切勿删除正在运行的版本目录。
 
-更新范围是包内网站 worker 与 Web 代理。稳定入口/更新器本身不在此次热更新范围；新包必须使用 worker protocol 1，不兼容版本拒绝安装。入口维护升级需要单独安排服务重启；执行进程仍独立，但入口连接会重连。执行服务升级仍需自己的排水/切换方案，不能由网站更新承诺不中断。
+默认更新范围是包内网站 worker 与 Web 代理；显式受管服务器模式还包含上文执行端 payload。稳定入口/更新器本身不在此次热更新范围；新包必须使用 worker protocol 1，不兼容版本拒绝安装。入口维护升级需要单独安排服务重启；执行进程仍独立，但入口连接会重连。执行端的 Codex 连续性依赖独立 core，不能扩展成 DSH 引擎或 core/CLI 自身升级不中断的承诺。
 
 ## 检查结果与浏览器回归
 
-公司源在包不存在时返回 `E400` 和明确的包不存在提示，标准 npm 源通常返回 `E404`。更新器将这些结果显示为“暂无发布版本”，不会误报为凭据故障，也不会允许安装。认证失败、网络故障、npm 缺失和其他源错误分别显示原因；服务器的原始 npm 输出及凭据不会发送到页面。检查失败时显示“检查失败”，不会继续显示“尚未检查”。
+公共 npm 源在包不存在时返回 `E404`。更新器将这些结果显示为“暂无发布版本”，不会误报为凭据故障，也不会允许安装。认证失败、网络故障、npm 缺失和其他源错误分别显示原因；服务器的原始 npm 输出及凭据不会发送到页面。检查失败时显示“检查失败”，不会继续显示“尚未检查”。
 
 安装测试依赖和浏览器后运行完整生产网站的 Playwright 回归：
 
@@ -136,7 +174,7 @@ npx playwright install chromium
 npm run test:web-updates:e2e
 ```
 
-也可设置 `OPENCRAFT_CHROMIUM_EXECUTABLE` 使用已安装的 Chrome。该命令先构建生产网站，再测试匿名检查、公司源包不存在、认证/网络/源错误及重试、检查时密钥草稿和布局保持、管理员安装/回退、已有执行 WebSocket 连续性、失败保留原版，以及新页面实际加载的构建。测试使用独立状态目录、本地 npm 源和执行端点，运行真实 npm CLI 与包内 worker，不发布包、不启动模型推理。HTML 报告与失败 trace 放在 Git 忽略的 `.local/playwright/web-updates/`。WebSocket 回显证明代理连接保持，不能替代真实 DSH/Codex 执行连续性验证。
+也可设置 `OPENCRAFT_CHROMIUM_EXECUTABLE` 使用已安装的 Chrome。该命令先构建生产网站，再测试匿名检查、npm 源包不存在、认证/网络/源错误及重试、检查时密钥草稿和布局保持、管理员安装/回退、已有执行 WebSocket 连续性、失败保留原版，以及新页面实际加载的构建。测试使用独立状态目录、本地 npm 源和执行端点，运行真实 npm CLI 与包内 worker，不发布包、不启动模型推理。HTML 报告与失败 trace 放在 Git 忽略的 `.local/playwright/web-updates/`。WebSocket 回显证明代理连接保持，不能替代真实 DSH/Codex 执行连续性验证。
 
 真实部署另有只读检查，必须显式指定预期发布结果：
 

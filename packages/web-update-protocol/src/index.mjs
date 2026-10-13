@@ -6,21 +6,24 @@ const identity = value => object(value) && typeof value.version === 'string' && 
 const nullableString = value => value === null || typeof value === 'string';
 export function parseWebUpdateStatus(value) {
   if (!object(value) || value.schemaVersion !== 1 || value.enabled !== true
+    || !(value.localInstall === undefined || typeof value.localInstall === 'boolean')
     || typeof value.authenticated !== 'boolean' || !identity(value.current)
     || !(value.latest === null || identity(value.latest)) || typeof value.checking !== 'boolean'
     || !nullableString(value.checkedAt) || !nullableString(value.checkError)
     || !(value.checkErrorCode == null || ['authentication', 'network', 'unavailable', 'registry'].includes(value.checkErrorCode))
     || typeof value.canRollback !== 'boolean' || typeof value.updateAvailable !== 'boolean'
+    || !(value.execution == null || (object(value.execution) && value.execution.enabled === true && nullableString(value.execution.version) && nullableString(value.execution.buildId) && typeof value.execution.ready === 'boolean'))
     || typeof value.packageName !== 'string' || typeof value.channel !== 'string'
     || !(value.job === null || (object(value.job) && typeof value.job.id === 'string'
       && typeof value.job.version === 'string' && ['downloading', 'verifying', 'starting', 'completed', 'failed'].includes(value.job.phase)
       && nullableString(value.job.error)))) throw new Error('Invalid Web update response');
   return {
-    schemaVersion: 1, enabled: true, authenticated: value.authenticated,
+    schemaVersion: 1, enabled: true, localInstall: value.localInstall ?? false, authenticated: value.authenticated,
     current: { version: value.current.version, buildId: value.current.buildId },
     latest: value.latest === null ? null : { version: value.latest.version, buildId: value.latest.buildId },
     checking: value.checking, checkedAt: value.checkedAt, checkError: value.checkError, checkErrorCode: value.checkErrorCode ?? null,
     canRollback: value.canRollback, updateAvailable: value.updateAvailable,
+    execution: value.execution == null ? null : { enabled: true, version: value.execution.version, buildId: value.execution.buildId, ready: value.execution.ready },
     packageName: value.packageName, channel: value.channel,
     job: value.job === null ? null : { id: value.job.id, version: value.job.version, phase: value.job.phase, error: value.job.error },
   };

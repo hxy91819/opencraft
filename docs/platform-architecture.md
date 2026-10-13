@@ -1378,7 +1378,7 @@ business state embedded in a component, it has crossed the boundary too early.
 
 ## Managed Web deployment
 
-The company npm release `@tencent/opencraft-web` owns the website installation,
+The public npm release `@opencraft-app/opencraft` owns the website installation,
 not the execution lifecycle. A stable HTTP/WebSocket entry process owns update
 credentials, npm metadata, the serialized update job and the durable current /
 previous release pointer. Compatible versioned Web workers own static delivery
@@ -1392,3 +1392,7 @@ holds registry credentials or controls an execution process. Publishing a packag
 installing a server version and refreshing a browser are separate actions. See the
 [Web installation and update runbook](web-deployment.md) for setup, failure recovery
 and the stable entry maintenance limitation.
+
+## Managed server updates
+
+The Web bootstrap owns the durable release pointer and update authorization. In explicitly configured server deployments, its execution adapter switches the same release's gateway/daemon through a dedicated systemd unit and checks daemon IPC readiness, release identity and unchanged external core PIDs before committing. A failed activation restores the prior execution release. Startup reconciles interrupted execution pointers against committed deployment state; cleanup retains every execution-referenced release. Runtime cwd, machine identity, credentials and DSH installation remain deployment-owned. Codex core/CLI are never replaced by this adapter. See [deployment contract](web-deployment.md#服务器执行端更新).

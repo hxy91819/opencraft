@@ -10,6 +10,7 @@ export interface WebUpdateJob {
 export interface WebUpdateStatus {
   readonly schemaVersion: 1;
   readonly enabled: true;
+  readonly localInstall: boolean;
   readonly authenticated: boolean;
   readonly current: WebReleaseIdentity;
   readonly latest: WebReleaseIdentity | null;
@@ -19,6 +20,7 @@ export interface WebUpdateStatus {
   readonly checkErrorCode: 'authentication' | 'network' | 'unavailable' | 'registry' | null;
   readonly canRollback: boolean;
   readonly updateAvailable: boolean;
+  readonly execution: { readonly enabled: true; readonly version: string | null; readonly buildId: string | null; readonly ready: boolean } | null;
   readonly packageName: string;
   readonly channel: string;
   readonly job: WebUpdateJob | null;

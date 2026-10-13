@@ -132,3 +132,10 @@ Connector 目录浏览不套用设置行：采用限宽品牌卡片，已配置�
 - Web 不显示「这台…」；只有桌面端本机 daemon 所在机器显示「这台 Mac / 这台电脑」。云端资源生命周期与连接状态分开呈现。
 - 设置的「运行 › 机器」使用同一 `groupWorkInMachines` / `workInMachineName` 投影：一台机器一行，未知身份 Host 独立成行，云端独立成组。机器内按 Agent 呈现目标 Host 的设置与连接，不在侧栏重复列 Host；旧 `execution-<hostId>` 以及身份晚到前的未知机器路由由 Router REPLACE 纠正。「运行」分组依次提供一级入口「模型服务」「Codex 账户」「机器」；前两项直达现有固定 targetHostId 的插件页，仅高亮对应入口，并以「用于」标签呈现机器归属。机器内入口与返回机器行为保留；idle 表示尚未启动，连接地址单行省略并提供完整 title。模型服务与 Codex 账户仍归各自 Host，不提供服务端统一中转或多机器选择器。
 - 验证：`tests/settings-machines.test.tsx`、`tests/settings-machine-navigation.test.ts`、`tests/work-in-*.test.ts`、`tests/opencraft-daemon.test.ts`；Web 与 Linux Electron 实测，macOS 窗口、真实多机器与 LightVela 云端链路尚未实测。
+
+### 服务器更新范围与任务连续性
+
+- 更新页消费部署状态声明；仅显式配置并接通受管执行端时呈现「更新网站和执行服务」，普通网站保持原更新范围。本地源码与 npm 只在归档获取上不同，共用一个安装事务和持久化版本权威。执行版本来自实际网关健康响应，目标版本由执行指针持有，不能用网站目标版本冒充执行结果。
+- 下载/启动失败不提交新网站；执行切换失败恢复旧执行版本，回退失败原位呈现真实状态。异步更新不强制刷新页面，操作不修改其他设置 draft。
+- 执行升级仅覆盖网关、daemon 与 capability adapter。Codex core/CLI 和 DSH 引擎独立维护；Codex 原 turn 经重连恢复，OpenCraft 活动任务可能中断，界面明确说明。
+- 验证入口：`test:server-updates`、`smoke:server-updates`、`smoke:server-updates:systemd` 和既有 `test:web-updates:e2e`。隔离真实 CLI/打包 gateway/生产 SPA 验证不等于线上迁移或发布完成。

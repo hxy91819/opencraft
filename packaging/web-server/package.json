@@ -1,10 +1,29 @@
 {
-  "name": "@tencent/opencraft-web",
-  "version": "0.1.0",
-  "description": "OpenCraft self-hosted Web console with managed npm updates",
+  "name": "@opencraft-app/opencraft",
+  "version": "0.1.10",
+  "description": "OpenCraft self-hosted website and managed execution gateway updates",
   "type": "module",
-  "bin": { "opencraft-web": "runtime/cli.mjs" },
-  "files": ["runtime", "web", "README.md", "opencraft-web.service"],
-  "engines": { "node": ">=22" },
-  "publishConfig": { "registry": "https://mirrors.tencent.com/npm/" }
+  "bin": {
+    "opencraft": "runtime/cli.mjs",
+    "opencraft-web": "runtime/cli.mjs"
+  },
+  "files": [
+    "runtime",
+    "web",
+    "README.md",
+    "opencraft-web.service",
+    "execution",
+    "opencraft-execution.service"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opencraft-app/opencraft.git"
+  }
 }

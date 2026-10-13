@@ -6,9 +6,9 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createNpmReleaseSource, PACKAGE_NAME } from '../scripts/web-deployment/releases.mjs';
 
-test('npm lookup distinguishes company missing packages from access and registry failures without leaking details', async t => {
+test('npm lookup distinguishes missing packages from access and registry failures without leaking details', async t => {
   const directory = await mkdtemp(join(tmpdir(), 'web-npm-errors-'));
-  let status = 400; let message = `npm包[${PACKAGE_NAME}]不存在\nnpm FAQ：https://example.test/faq`;
+  let status = 404; let message = `npm包[${PACKAGE_NAME}]不存在\nnpm FAQ：https://example.test/faq`;
   const registry = createServer((request, response) => {
     response.writeHead(status, { 'content-type': 'application/json' });
     response.end(JSON.stringify({ error: message }));
@@ -18,7 +18,7 @@ test('npm lookup distinguishes company missing packages from access and registry
   await writeFile(userconfig, `cache=${join(directory, 'cache')}\nfetch-retries=0\nfetch-timeout=1000\n`);
   const source = createNpmReleaseSource({ registry: `http://127.0.0.1:${registry.address().port}/`, userconfig });
   try {
-    await t.test('company E400 for this missing package is an empty release feed', async () => {
+    await t.test('npm E404 for this missing package is an empty release feed', async () => {
       assert.equal(await source.latest(), null);
     });
     await t.test('standard npm E404 is an empty release feed', async () => {

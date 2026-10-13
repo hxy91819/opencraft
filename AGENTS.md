@@ -31,7 +31,7 @@
 | OpenCraft 架构、交互、布局、平台适配或预览 | [opencraft-maintenance](.agents/skills/opencraft-maintenance/SKILL.md)，按任务读取其验证清单 |
 | mono2 Agent Console 共享实现 | [MONO2_MIGRATION](MONO2_MIGRATION.md)、`frontend/AGENTS.md`；同步边界还读 `../docs/context/project/upstream-subtrees.md` |
 | Web、Expo、Electron 构建与交付 | [build-matrix](docs/build-matrix.md) |
-| 发布内网 npm / 公司 npm、Web 更新部署 | [Web 发布与部署](docs/web-deployment.md#内网-npm-发布流程)，含发布目标、凭据复用与验收约定 |
+| 公共 npm 发布、Web 更新部署 | [Web 发布与部署](docs/web-deployment.md#公共-npm-发布流程)，含包名、Trusted Publisher、精确归档与验收约定 |
 | 从源码打包替换服务器本地 Web | [本地替换指引](docs/web-local-deployment.md)；先核对 `.local/README.md` 中的实际部署信息 |
 | 开源提交、公开发布 | [安全与发布说明](SECURITY.md)；按 `open-source-contribution` 核对提交身份、隐私、依赖及 Git 历史 |
 

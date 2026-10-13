@@ -9,29 +9,26 @@ import { parseNpmPackResult } from './npm-pack-result.mjs';
 import { parseWebReleaseMetadata } from '../../packages/web-update-protocol/src/index.mjs';
 
 const exec = promisify(execFile);
-export const PACKAGE_NAME = '@tencent/opencraft-web';
-export const DEFAULT_REGISTRY = 'https://mirrors.tencent.com/npm/';
+export const PACKAGE_NAME = '@opencraft-app/opencraft';
+export const DEFAULT_REGISTRY = 'https://registry.npmjs.org/';
 // Only fixed codes/messages cross into the public update API. npm output can
 // contain credentials and private URLs, so it is used for classification only.
 const npmMessages = {
-  authentication: 'Company npm authentication failed; configure the deployment user npm credentials',
-  network: 'Company npm registry is unreachable; retry after checking server network access',
+  authentication: 'npm authentication failed; configure the deployment user npm credentials',
+  network: 'npm registry is unreachable; retry after checking server network access',
   unavailable: 'npm is unavailable in the website service PATH',
-  registry: 'Company npm rejected the request; check the server registry configuration',
+  registry: 'npm rejected the request; check the server registry configuration',
 };
 function npmFailure(error) {
   let detail;
   try { detail = JSON.parse(error.stdout).error; } catch {}
   const code = detail?.code || error.code;
-  // The company registry returns E400 (rather than npm's usual E404) for
-  // missing packages. Do not reinterpret unrelated bad requests as absence.
-  const missing = code === 'E404' || (code === 'E400' && typeof detail?.summary === 'string'
-    && detail.summary.includes(`npm包[${PACKAGE_NAME}]不存在`));
+  const missing = code === 'E404';
   const kind = missing ? 'not-published'
     : ['E401', 'E403', 'ENEEDAUTH', 'EAUTH'].includes(code) ? 'authentication'
     : ['E500', 'E502', 'E503', 'E504', 'ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'EAI_AGAIN', 'ENOTFOUND', 'FETCH_ERROR'].includes(code)
       || error.killed ? 'network' : code === 'ENOENT' ? 'unavailable' : 'registry';
-  return Object.assign(new Error(npmMessages[kind] || 'No Web release has been published to the company npm registry'), { code: kind });
+  return Object.assign(new Error(npmMessages[kind] || 'No Web release has been published to the npm registry'), { code: kind });
 }
 export async function inspectRelease(root) {
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
@@ -47,7 +44,7 @@ export function createNpmReleaseSource({ registry = DEFAULT_REGISTRY, channel = 
   const registryUrl = new URL(registry);
   if (!['https:', 'http:'].includes(registryUrl.protocol) || registryUrl.username || registryUrl.password) throw new Error('Invalid npm registry');
   if (!/^[a-z][a-z0-9-]{0,63}$/.test(channel)) throw new Error('Invalid update channel');
-  const flags = ['--registry', registry, `--@tencent:registry=${registry}`, '--ignore-scripts', '--no-audit', '--no-fund', ...(userconfig ? ['--userconfig', resolve(userconfig)] : [])];
+  const flags = ['--registry', registry, `--@opencraft-app:registry=${registry}`, '--ignore-scripts', '--no-audit', '--no-fund', ...(userconfig ? ['--userconfig', resolve(userconfig)] : [])];
   async function npm(args, cwd) {
     // npm stderr may contain credential-bearing registry URLs: never expose it to the browser/logs.
     try {

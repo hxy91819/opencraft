@@ -21,6 +21,8 @@ export interface OpenCraftDaemonAppHostConnection {
 export interface OpenCraftDaemonClientOptions {
   readonly endpoint: string;
   readonly tokenPath: string;
+  /** Server deployments supply an existing shared token; never change its permissions or identity. */
+  readonly tokenMode?: "existing";
   readonly runtimeDirectory: string;
   readonly daemonEntry: string;
   readonly dshExecutable: string;
@@ -111,12 +113,17 @@ export class OpenCraftDaemonClientManager {
 
   constructor(private readonly options: OpenCraftDaemonClientOptions) {
     this.endpoint = options.endpoint;
-    this.authToken = loadOrCreateToken(options.tokenPath);
+    if (options.tokenMode === "existing") {
+      const token = readFileSync(options.tokenPath, "utf8").trim();
+      if (token.length < 32) throw new Error("Invalid existing daemon token");
+      this.authToken = token;
+    } else this.authToken = loadOrCreateToken(options.tokenPath);
   }
 
   async connectAppHost(connectionId: string): Promise<OpenCraftDaemonAppHostConnection> {
     if (this.shuttingDown) throw new Error("OpenCraft Daemon is shutting down");
     await this.ensureRunning();
+    if (this.shuttingDown) throw new Error("OpenCraft Daemon is shutting down");
     const connected = await this.open("app-host", connectionId);
     const messageListeners = new Set<(payload: unknown) => void>();
     const closeListeners = new Set<(error: Error | null) => void>();
@@ -157,6 +164,7 @@ export class OpenCraftDaemonClientManager {
   async shutdown(): Promise<void> {
     if (this.shuttingDown) return;
     this.shuttingDown = true;
+    await this.ensureOperation?.catch(() => undefined);
     try {
       const connected = await this.open("control", `shutdown:${process.pid}`);
       await new Promise<void>((resolve) => {
@@ -199,10 +207,12 @@ export class OpenCraftDaemonClientManager {
         );
       }
     }
+    if (this.shuttingDown) throw new Error("OpenCraft Daemon is shutting down");
     this.spawnDaemon();
     const deadline = Date.now() + 12_000;
     let lastError: unknown = null;
     while (Date.now() < deadline) {
+      if (this.shuttingDown) throw new Error("OpenCraft Daemon is shutting down");
       try {
         const connected = await this.open("control", `probe:${process.pid}`);
         connected.close();

@@ -5,7 +5,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { packageWebServer } from '../scripts/package-web-server.mjs';
 import { PACKAGE_NAME, createNpmReleaseSource } from '../scripts/web-deployment/releases.mjs';
-export async function releaseFixture(directory, { realWebRoot, realWebRoots } = {}) {
+export async function releaseFixture(directory, { realWebRoot, realWebRoots, execution = false } = {}) {
   const releases = new Map(); let selected = '1.1.0'; let failDownload = false; let holdDownload = null;
   let lookupError = null; let holdLookup = null;
   const server = createServer(async (request, response) => {
@@ -40,7 +40,7 @@ export async function releaseFixture(directory, { realWebRoot, realWebRoots } = 
         await writeFile(join(webRoot, `assets/lazy-${version.replaceAll('.', '')}abcdef.js`), `export const version = '${version}';`);
       }
       const output = join(directory, version);
-      let packed = await packageWebServer({ version, webRoot, output });
+      let packed = await packageWebServer({ version, webRoot, output, execution });
       if (version === '1.0.0' || version === '1.2.0' || version === '1.3.0') {
         const workerPath = join(packed.packageRoot, 'runtime/worker.mjs');
         await writeFile(workerPath, version === '1.2.0' ? 'process.exit(1);\n' : (await readFile(workerPath, 'utf8')) + (version === '1.3.0' ? '\nsetTimeout(() => process.exit(1), 200);\n' : `

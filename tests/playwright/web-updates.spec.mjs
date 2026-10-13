@@ -212,11 +212,11 @@ test('anonymous check finds the real npm release and preserves the administrator
   await expect(input).toHaveValue('edited-while-checking');
 });
 
-for (const code of [400, 404]) test(`missing release (${code}) is not reported as a credentials failure`, async ({ page }) => {
-  fixture.lookupError({ status: code, message: 'npm包[@tencent/opencraft-web]不存在' });
+for (const code of [404]) test(`missing release (${code}) is not reported as a credentials failure`, async ({ page }) => {
+  fixture.lookupError({ status: code, message: 'npm包[@opencraft-app/opencraft]不存在' });
   await check(page);
   await expect(page.getByText(/^(No published release|暂无发布版本)$/)).toBeVisible();
-  await expect(page.getByText(/Company npm request failed|npm 认证失败/)).toHaveCount(0);
+  await expect(page.getByText(/npm request failed|npm 认证失败/)).toHaveCount(0);
   const result = await status(page);
   expect(result.checkError).toBeNull(); expect(result.latest).toBeNull(); expect(result.updateAvailable).toBe(false);
   await assertCurrent(page, '1.0.0');
@@ -224,9 +224,9 @@ for (const code of [400, 404]) test(`missing release (${code}) is not reported a
 });
 
 for (const [code, kind, text] of [
-  [401, 'authentication', /Company npm authentication failed|公司 npm 认证失败/],
-  [503, 'network', /Cannot reach the company npm registry|无法连接公司 npm 源/],
-  [400, 'registry', /The company npm registry rejected|公司 npm 源拒绝/],
+  [401, 'authentication', /npm authentication failed|npm 认证失败/],
+  [503, 'network', /Cannot reach the npm registry|无法连接npm 源/],
+  [400, 'registry', /The npm registry rejected|npm 源拒绝/],
 ]) test(`lookup failure ${code} is actionable and a retry recovers`, async ({ page }) => {
   fixture.lookupError({ status: code, message: 'private-registry-detail-do-not-expose' });
   await check(page); await expect(page.getByText(text)).toBeVisible();

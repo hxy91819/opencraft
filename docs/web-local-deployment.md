@@ -4,6 +4,28 @@
 
 当前模式由稳定入口启动版本化网站 worker，`deployment.json` 的 `current.releaseRoot` 决定实际网站。替换时应更新这个指针及固定启动包；`apps/workbench-web/dist` 是构建输出，不是当前服务的运行目录。首次安装及 npm 更新另见 [Web 部署](web-deployment.md)。
 
+## 受管部署的统一源码升级入口
+
+已升级到当前受管启动器的部署优先使用同一入口，开发者和具有部署权限的 Codex 均可调用：
+
+```sh
+OPENCRAFT_WEB_STATE=/var/lib/opencraft-web \
+OPENCRAFT_WEB_UPDATE_URL=http://127.0.0.1:10000 \
+npm run update:server:local -- --version 0.1.10
+```
+
+版本只是示例，必须选择比当前版本新的精确版本。该命令在当前 checkout 构建到新的 `.local/server-releases/` 目录，保留旧版本；记录来源 commit/dirty，依据服务器声明决定是否打包 execution payload。可用 `OPENCRAFT_WEB_PACKAGE_OUTPUT` 指定独立输出位置。需要复用已验证归档时，传 `--archive /absolute/release.tgz --build-id exact-build-id`，并保留 `--version`。
+
+命令从指定网站状态目录读取既有 admin-key，经回环 HTTP 授权后，把本机归档路径、精确身份和 SHA512 交给 `/install-local`。设置了公开 Origin 的部署同时传入原 `OPENCRAFT_PUBLIC_ORIGIN`；归档必须对网站部署用户可读。命令不上传 npm。它与 npm 更新共用下载后的验证、切换、健康检查、持久化、失败回退和中断恢复；不能并发改写部署状态。更新仍由稳定入口完成，shell/页面断开不触发任务重发。
+
+配置受管 execution unit 时，仅切换网站、gateway、daemon 与 capability adapter；独立 core/CLI、账户数据和 DSH 引擎保持运行。网关连接会断开并由页面重连；任务连续性限于独立 core 中的 Codex。没有接入受管执行端的部署只更新网站。命令输出已安装版本、buildId、执行健康状态与归档位置，失败返回非零；超时不自动重发安装。
+
+首次接入仍需按 [服务器执行更新](web-deployment.md#服务器执行端更新) 迁移固定启动器和 unit。旧启动器没有 `/install-local`，不能用源码热升级命令升级启动器自己；下面手工替换步骤只用于首次迁移/入口维护，常规更新不要另行写 `deployment.json`。
+
+`npm run smoke:server-self-upgrade` 在临时 systemd unit、隔离账户与本地合成模型下运行真实 Codex CLI：其 `exec_command` 调用同一源码构建/升级命令，包内 gateway/daemon 重启后原 turn 完成、shell 执行一次、core/CLI PID 不变，再由页面回退。测试结束清理自己的 unit/profile；不代表目标服务器已经迁移或 Electron 可跨 App 重启保持任务。
+
+发布前可用 `npm run gate:server-updates` 统一回归，也可用 `--scenario self-upgrade` 只选源码自升级。该入口复用上述验收脚本并生成每次独立的报告；环境要求和退出码见 [可选发布前门禁](web-deployment.md#可选发布前回归门禁)。
+
 ## 1. 核对当前部署
 
 在当前 checkout 中检查分支、未提交内容、已有进程。下面服务名和端口是该本地部署模式的示例，以 `.local/README.md` 和实时服务为准：
@@ -21,9 +43,9 @@ curl --fail --silent --show-error http://127.0.0.1:10000/__opencraft_updates
 
 ## 2. 构建本地包
 
-使用 `.nvmrc` 对应 Node 和当前 checkout 的依赖。选择本地精确包版本，设置 `OPENCRAFT_RELEASE_VERSION`；核对当前版本与公司渠道，避免未来正式版本号低于本机版本。源码未提交时保留 dirty 标记。
+使用 `.nvmrc` 对应 Node 和当前 checkout 的依赖。选择本地精确包版本，设置 `OPENCRAFT_RELEASE_VERSION`；核对当前版本与公共渠道，避免未来正式版本号低于本机版本。源码未提交时保留 dirty 标记。
 
-网站服务在每次 HTML 响应中注入 Host 列表与内置扩展开关。`OPENCRAFT_APPSERVER_URL` 提供 `local`（OpenCraft Server），`OPENCRAFT_CODEX_APPSERVER_URL` 提供 `local-codex`（Codex），两者使用同源代理路径；浏览器中已有的 Host 关联保持不变。通用包和公司 npm 包均不需要部署用的 `VITE_*` 构建变量。设置执行地址仍是网站服务的运行时配置，不在页面上填写。
+网站服务在每次 HTML 响应中注入 Host 列表与内置扩展开关。`OPENCRAFT_APPSERVER_URL` 提供 `local`（OpenCraft Server），`OPENCRAFT_CODEX_APPSERVER_URL` 提供 `local-codex`（Codex），两者使用同源代理路径；浏览器中已有的 Host 关联保持不变。通用包和公共 npm 包均不需要部署用的 `VITE_*` 构建变量。设置执行地址仍是网站服务的运行时配置，不在页面上填写。
 
 `OPENCRAFT_HYPERNODE_USER` 只作为代理请求头发送，不注入网页，不决定 Host 身份。网站的主端点统一使用 `local`，运行时配置关闭 HyperNode 插件以避免重复 Host。内置 Agent 设置页在存在 `local` 或 `local-codex` 时激活，不包含执行引擎。
 
@@ -56,7 +78,7 @@ OPENCRAFT_CODEX_APPSERVER_URL=ws://127.0.0.1:9988/rpc/codex \
 node "$OPENCRAFT_WEB_PACKAGE_OUTPUT/package/runtime/cli.mjs"
 ```
 
-验证 `/__opencraft_health`、`/version.json` 与包内 buildId，并检查 HTML 中的 `opencraft-deployment-config`。真实浏览器确认两个 Host、模型菜单两组及「模型服务」「Codex 账户」设置；不要发送任务。完成后关闭自有探针并删除临时状态。具体 npm 发布验收见 [发布流程](web-deployment.md#内网-npm-发布流程)，本地替换复用其中相关测试，不执行上传。
+验证 `/__opencraft_health`、`/version.json` 与包内 buildId，并检查 HTML 中的 `opencraft-deployment-config`。真实浏览器确认两个 Host、模型菜单两组及「模型服务」「Codex 账户」设置；不要发送任务。完成后关闭自有探针并删除临时状态。具体 npm 发布验收见 [发布流程](web-deployment.md#公共-npm-发布流程)，本地替换复用其中相关测试，不执行上传。
 
 ## 3. 仅替换网站服务
 
@@ -80,7 +102,7 @@ curl --retry 15 --retry-connrefused --retry-delay 1 --max-time 3 \
 curl --fail --silent --show-error http://127.0.0.1:10000/version.json
 ```
 
-查询成功后仍需比较期望 buildId。已有“检查更新”页面可运行 `npm run test:web-updates:live`；`OPENCRAFT_WEB_EXPECTED_LATEST` 应设为公司渠道的实际版本，它不一定等于刚安装的本地版本。页面测试的环境参数见 [浏览器回归](web-deployment.md#检查结果与浏览器回归)。
+查询成功后仍需比较期望 buildId。已有“检查更新”页面可运行 `npm run test:web-updates:live`；`OPENCRAFT_WEB_EXPECTED_LATEST` 应设为公共渠道的实际版本，它不一定等于刚安装的本地版本。页面测试的环境参数见 [浏览器回归](web-deployment.md#检查结果与浏览器回归)。
 
 替换后健康或真实页面不通过：仅停网站，恢复**本次**备份的状态指针和 unit/drop-in，daemon-reload 后启动，重试直到旧 buildId 和原执行地址就绪。保留旧资源和状态，不删除可能仍被运行/磁盘指针引用的目录。历史 `.local/` 回退脚本可能限定某个版本，不能盲目用于下一次部署。
 
@@ -90,7 +112,7 @@ curl --fail --silent --show-error http://127.0.0.1:10000/version.json
 
 daemon、协议或启动参数变化时，需要同时升级执行侧；仅网站资源变化不需要重启执行侧。实际 unit、bundle、启动文件、状态目录与备份路径以 `.local/README.md` 为准。
 
-重启执行侧 unit 会停止它拥有的网关、Daemon、DSH 和 Codex，运行中的轮次会被标记为中断。执行侧目前没有排水或新旧版本切换机制；网站独立更新的连续性不能用于说明执行侧重启也不中断。
+执行侧仍内嵌 Codex 的旧部署中，重启 unit 会停止网关、Daemon、DSH 和 Codex，活动任务可能中断。采用独立 [Codex core](codex-core.md) 后，执行 unit 重启不停止 core/CLI，Codex 原 turn 可重连恢复；OpenCraft/DSH 活动任务仍可能中断。已接入受管执行端时，使用上面的统一源码升级命令，不再手工覆盖正在运行的 bundle。升级 core/CLI 自身仍属于独立维护操作。
 
 先备份 daemon bundle、启动文件和相关 drop-in，构建并升级执行侧，按部署要求调整启动参数，再重启执行侧。等待健康通过，并用 `runtime/machine/read` 等匹配本次变更的协议探针确认后，才替换网站。记录重启前后的任务状态、进程身份和探针结果；是否允许中断由本次部署授权决定。
 

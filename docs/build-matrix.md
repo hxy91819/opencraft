@@ -201,20 +201,20 @@ rtk proxy shasum -a 256 "$signed_dmg_path" "$signed_zip_path"
 ## Managed Web release package
 
 `OPENCRAFT_RELEASE_VERSION=<exact-version> npm run package:web:server` builds
-`web-browser` and packs `@tencent/opencraft-web` with the static site, bundled
+`web-browser` and packs `@opencraft-app/opencraft` with the static site, bundled
 Node runtime, a systemd template and installation instructions. The package has
 no install lifecycle scripts or runtime npm dependencies. It does not package or
 manage DSH/Codex. Build output defaults to ignored `.local/web-packages`. This
-command never publishes; validate the tgz before publishing to the company npm
+command never publishes; validate the tgz before publishing to the public npm
 registry. Run `npm run test:web-updates` for registry/package/worker update and
 rollback behavior, alongside `npm run test:web-release`.
 
-For requests to “发布内网 npm” or “发布公司 npm”, follow the
-[internal npm release procedure](web-deployment.md#内网-npm-发布流程),
+For requests to “发布 npm”, follow the
+[public npm release procedure](web-deployment.md#公共-npm-发布流程),
 including explicit source revision, credential reuse, exact-archive publication,
 registry download verification and the real website Playwright check.
 
 Managed Web installs expose Settings → Website updates after the actual server
 capability is confirmed. Plain static hosting and Electron retain their own
 delivery paths. See [Web deployment](web-deployment.md) for the bootstrap,
-internal npm authentication, supported hot-update scope and browser refresh.
+public npm access, supported hot-update scope and browser refresh.
