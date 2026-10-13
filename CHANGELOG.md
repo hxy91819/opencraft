@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.11
+
+- Validate GitHub Actions npm Trusted Publishing with the configured `npm-release` environment.
+- Server runtime behavior is unchanged from v0.1.10.
+
 ## v0.1.10
 
 - First public npm release as `@opencraft-app/opencraft`.
