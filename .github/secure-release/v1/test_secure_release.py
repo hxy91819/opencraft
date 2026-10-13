@@ -22,7 +22,10 @@ import json
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
+from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 
@@ -59,6 +62,70 @@ class SecureReleaseTest(unittest.TestCase):
             stderr=subprocess.PIPE,
             check=False,
         )
+
+    @contextmanager
+    def version_api(self, replies):
+        requests = []
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                requests.append(self.path)
+                status, payload = replies[min(len(requests) - 1, len(replies) - 1)]
+                self.send_response(status)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('CF-Cache-Status', 'DYNAMIC')
+                self.end_headers()
+                self.wfile.write(payload if isinstance(payload, bytes) else json.dumps(payload).encode())
+
+            def log_message(self, *args):
+                pass
+
+        server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            yield f'http://127.0.0.1:{server.server_port}/', requests
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
+
+    def api_smoke_npm(self, *, install_errors=(), installed=None):
+        calls = self.root / 'smoke-calls.json'
+        calls.write_text('[]')
+        fake_npm = self.root / 'api-smoke-npm'
+        fake_npm.write_text(f'''#!{sys.executable}
+import json,sys
+from pathlib import Path
+log = Path({str(calls)!r})
+calls = json.loads(log.read_text())
+calls.append(sys.argv[1:])
+log.write_text(json.dumps(calls))
+command = sys.argv[1]
+if command == 'view':
+    print('npm error code E404', file=sys.stderr)
+    sys.exit(1)
+if command == 'init':
+    Path('package.json').write_text('{{}}')
+elif command == 'install':
+    errors = {list(install_errors)!r}
+    attempt = sum(call[0] == 'install' for call in calls) - 1
+    if attempt < len(errors):
+        print(errors[attempt], file=sys.stderr)
+        sys.exit(1)
+    output = Path('node_modules/@fixture/app/package.json')
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(json.dumps({installed or {'name': '@fixture/app', 'version': '1.2.3'}!r}))
+else:
+    sys.exit(2)
+''')
+        fake_npm.chmod(0o755)
+        return fake_npm, calls
+
+    def api_smoke(self, registry, npm, retries=2):
+        return self.cli('npm-smoke', '--package', '@fixture/app', '--version', '1.2.3',
+                        '--registry', registry, '--npm', str(npm), '--metadata-source', 'version-api',
+                        '--metadata-retries', str(retries), '--metadata-retry-delay', '0')
 
     def test_source_accepts_exact_reachable_tag_and_rejects_version_drift(self) -> None:
         result = self.cli(
@@ -396,6 +463,60 @@ class SecureReleaseTest(unittest.TestCase):
             str(fake_npm),
         )
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_version_api_bypasses_stale_lookup_and_still_installs_named_version(self):
+        npm, calls = self.api_smoke_npm()
+        with self.version_api([(404, {}), (404, {}), (200, {'name': '@fixture/app', 'version': '1.2.3'})]) as (registry, requests):
+            result = self.api_smoke(registry, npm)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(requests, ['/@fixture%2Fapp/1.2.3'] * 3)
+        commands = json.loads(calls.read_text())
+        self.assertEqual([call[0] for call in commands], ['init', 'install'])
+        self.assertIn('@fixture/app@1.2.3', commands[-1])
+        self.assertIn('cache=DYNAMIC', result.stdout)
+
+    def test_version_api_rejects_errors_identity_drift_and_unbounded_absence(self):
+        for status, metadata, attempts in (
+            (404, {}, 3),
+            (401, {}, 1),
+            (500, {}, 1),
+            (200, b'not JSON', 1),
+            (200, {'name': '@other/app', 'version': '1.2.3'}, 1),
+            (200, {'name': '@fixture/app', 'version': '1.2.4'}, 1),
+        ):
+            with self.subTest(status=status, metadata=metadata):
+                npm, calls = self.api_smoke_npm()
+                with self.version_api([(status, metadata)]) as (registry, requests):
+                    result = self.api_smoke(registry, npm)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(len(requests), attempts)
+                self.assertEqual(json.loads(calls.read_text()), [])
+
+    def test_version_api_retries_only_the_requested_install_version_with_a_bound(self):
+        missing = 'npm error code ETARGET\nnpm error notarget No matching version found for @fixture/app@1.2.3.'
+        for errors, succeeds, installs in (
+            ([missing, missing], True, 3),
+            ([missing] * 3, False, 3),
+            (['npm error code ETARGET\nnpm error notarget No matching version found for another@1.0.0.'], False, 1),
+            (['npm error code E401'], False, 1),
+            (['npm error code ETIMEDOUT'], False, 1),
+            (['npm error code E404'], False, 1),
+        ):
+            with self.subTest(errors=errors):
+                npm, calls = self.api_smoke_npm(install_errors=errors)
+                with self.version_api([(200, {'name': '@fixture/app', 'version': '1.2.3'})]) as (registry, requests):
+                    result = self.api_smoke(registry, npm)
+                self.assertEqual(result.returncode == 0, succeeds, result.stderr)
+                self.assertEqual(sum(call[0] == 'install' for call in json.loads(calls.read_text())), installs)
+
+    def test_version_api_rejects_a_different_installed_identity(self):
+        for identity in ({'name': '@other/app', 'version': '1.2.3'}, {'name': '@fixture/app', 'version': '1.2.4'}):
+            with self.subTest(identity=identity):
+                npm, calls = self.api_smoke_npm(installed=identity)
+                with self.version_api([(200, {'name': '@fixture/app', 'version': '1.2.3'})]) as (registry, requests):
+                    result = self.api_smoke(registry, npm)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('does not match', result.stderr)
 
 
 if __name__ == "__main__":

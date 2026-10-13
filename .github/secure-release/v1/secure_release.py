@@ -32,6 +32,9 @@ import subprocess
 import sys
 import tempfile
 import time
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import Request, urlopen
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -334,35 +337,81 @@ def npm_publish(args: argparse.Namespace) -> None:
     print(f"npm publish completed: artifact={args.artifact} registry={args.registry}")
 
 
+def npm_version_metadata(args: argparse.Namespace) -> str | None:
+    """Read a public registry's exact-version API without its cached packument.
+
+    This opt-in path sends no npm credentials. The default npm CLI lookup
+    remains available for authenticated or nonstandard registries.
+    """
+    url = f"{args.registry.rstrip('/')}/{quote(args.package, safe='@')}/{quote(args.version, safe='')}"
+    request = Request(url, headers={"Accept": "application/json", "Cache-Control": "no-cache"})
+    try:
+        with urlopen(request, timeout=15) as response:
+            print(f"npm version API: status={response.status} cache={response.headers.get('CF-Cache-Status', 'unspecified')} age={response.headers.get('Age', 'unspecified')}", flush=True)
+            metadata = json.load(response)
+    except HTTPError as exc:
+        status = exc.code
+        exc.close()
+        print(f"npm version API: status={status}", flush=True)
+        if status == 404:
+            return None
+        raise ReleaseError(f"npm version API lookup failed: HTTP {status}") from exc
+    except (URLError, OSError, ValueError) as exc:
+        raise ReleaseError(f"npm version API lookup failed: {exc}") from exc
+    if not isinstance(metadata, dict) or metadata.get('name') != args.package or metadata.get('version') != args.version:
+        raise ReleaseError("npm version API returned a different package or version")
+    return metadata['version']
+
+
 def npm_smoke(args: argparse.Namespace) -> None:
     exact = f"{args.package}@{args.version}"
     if args.metadata_retries < 0 or not math.isfinite(args.metadata_retry_delay) or args.metadata_retry_delay < 0:
         raise ReleaseError("metadata retry settings must be finite and nonnegative")
+    started = time.monotonic()
     for attempt in range(args.metadata_retries + 1):
-        result = run((args.npm, "view", exact, "version", "--registry", args.registry,
-                      "--prefer-online", "--fetch-retries=0", "--fetch-timeout=15000"))
-        if result.returncode == 0:
-            observed = result.stdout.strip()
+        if args.metadata_source == 'version-api':
+            observed = npm_version_metadata(args)
+            detail = "npm version API returned HTTP 404"
+        else:
+            result = run((args.npm, "view", exact, "version", "--registry", args.registry,
+                          "--prefer-online", "--fetch-retries=0", "--fetch-timeout=15000"))
+            observed = result.stdout.strip() if result.returncode == 0 else None
+            detail = result.stderr.strip() or result.stdout.strip()
+            if result.returncode and re.search(r"^npm (?:ERR!|error) code E404\s*$", detail, re.MULTILINE) is None:
+                raise ReleaseError(f"npm metadata lookup failed for {exact}: {detail}")
+        if observed is not None:
             break
-        detail = result.stderr.strip() or result.stdout.strip()
         # Registry writes can precede public metadata propagation. Retry only
         # recognized absence; credentials, network and malformed replies fail.
-        missing = re.search(r"^npm (?:ERR!|error) code E404\s*$", detail, re.MULTILINE)
-        if not missing or attempt == args.metadata_retries:
+        if attempt == args.metadata_retries:
             raise ReleaseError(f"npm metadata lookup failed for {exact}: {detail}")
         print(f"npm metadata not visible yet: {exact}; retry {attempt + 1}/{args.metadata_retries}", flush=True)
         time.sleep(args.metadata_retry_delay)
     if observed.strip().strip('"') != args.version:
         raise ReleaseError(f"registry returned version {observed!r}, expected {args.version}")
+    print(f"npm metadata verified: {exact} elapsed={time.monotonic() - started:.1f}s", flush=True)
+    started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix="secure-release-smoke-") as temporary:
         consumer = Path(temporary)
         checked((args.npm, "init", "--yes"), cwd=consumer)
-        checked((args.npm, "install", "--ignore-scripts", "--no-audit", "--no-fund", exact, "--registry", args.registry), cwd=consumer)
+        for attempt in range(args.metadata_retries + 1):
+            result = run((args.npm, "install", "--ignore-scripts", "--no-audit", "--no-fund", "--prefer-online", exact, "--registry", args.registry), cwd=consumer)
+            if result.returncode == 0:
+                break
+            detail = result.stderr.strip() or result.stdout.strip()
+            # The install CLI performs its own metadata lookup. Only an
+            # absent *requested* version may be retried after API confirmation.
+            missing = (re.search(r"^npm (?:ERR!|error) code ETARGET\s*$", detail, re.MULTILINE)
+                       and f"No matching version found for {exact}." in detail)
+            if args.metadata_source != 'version-api' or not missing or attempt == args.metadata_retries:
+                raise ReleaseError(f"npm clean install failed for {exact}: {detail}")
+            print(f"npm install metadata not visible yet: {exact}; retry {attempt + 1}/{args.metadata_retries}", flush=True)
+            time.sleep(args.metadata_retry_delay)
         package_json = consumer / "node_modules" / Path(*args.package.split("/")) / "package.json"
-        _, installed = read_package(package_json.parent)
-        if installed != args.version:
-            raise ReleaseError(f"installed version {installed} does not match {args.version}")
-    print(f"npm smoke ok: installed={exact}")
+        name, installed = read_package(package_json.parent)
+        if name != args.package or installed != args.version:
+            raise ReleaseError(f"installed package {name}@{installed} does not match {exact}")
+    print(f"npm smoke ok: installed={exact} elapsed={time.monotonic() - started:.1f}s")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -425,6 +474,8 @@ def parser() -> argparse.ArgumentParser:
         command.add_argument("--registry", default="https://registry.npmjs.org/")
         command.add_argument("--npm", default="npm")
         if handler is npm_smoke:
+            command.add_argument("--metadata-source", choices=("npm", "version-api"), default="npm",
+                                 help="version-api uses the public exact-version HTTP API without npm credentials")
             command.add_argument("--metadata-retries", type=int, default=30)
             command.add_argument("--metadata-retry-delay", type=float, default=10)
         command.set_defaults(handler=handler)

@@ -138,7 +138,11 @@ npm run gate:server-updates -- --scenario self-upgrade
 
 公共包使用 `@opencraft-app/opencraft`，源为 `https://registry.npmjs.org/`。首版 0.1.10 支持 Linux x64 / Node.js 24；包含网站、更新器、执行 gateway/daemon，不包含独立 Codex core、CLI 或 DSH 引擎，不是全新服务器一键安装器。
 
-正式发布 workflow 为 `.github/workflows/release.yml`，只允许从 main 手动派发已有稳定 tag（如 `v0.1.10`）。包模板版本必须与 tag 相同；tag 必须位于 main 历史中。预检安装锁定依赖、执行相关测试和浏览器回归，然后构建一个 execution tgz、核对公开包内容并生成 SHA256 manifest。发布 job 只下载并发布这份归档，不重建；npm 版本已存在时只接受字节完全一致的归档。最后核对 npm 下载/安装及 GitHub Release 的归档、manifest 和 release notes。 npm 上传返回成功后，公开 metadata 可能延迟出现；安装烟测仅对明确的 E404 重试，默认最多 30 次、间隔 10 秒，认证、网络、版本不符和安装错误立即失败。已上传后若最终校验失败，使用 `gh run rerun <run-id> --failed` 复用原归档，核对远端字节后继续，不重建或重复上传。
+正式发布 workflow 为 `.github/workflows/release.yml`，只允许从 main 手动派发已有稳定 tag（如 `v0.1.10`）。包模板版本必须与 tag 相同；tag 必须位于 main 历史中。预检安装锁定依赖、执行相关测试和浏览器回归，然后构建一个 execution tgz、核对公开包内容并生成 SHA256 manifest。发布 job 只下载并发布这份归档，不重建；npm 版本已存在时只接受字节完全一致的归档。最后核对 npm 下载/安装及 GitHub Release 的归档、manifest 和 release notes。已上传后若最终校验失败，使用 `gh run rerun <run-id> --failed` 复用原归档，核对远端字节后继续，不重建或重复上传。
+
+预检按 `package-lock.json` 缓存 npm 下载内容，仍执行 `npm ci`；按操作系统、架构与锁定的 Playwright 版本缓存浏览器，每次仍安装所需系统依赖。依赖安装、类型检查、翻译检查、各组测试、浏览器安装、打包、上传和发布后验证分别记录 Actions step 时间。浏览器回归使用 2 个 worker，各自拥有独立 registry、状态目录和动态端口。依赖审计由 security workflow 执行，不重复放在 release 的依赖安装中。
+
+npm 上传返回成功后，公开 metadata 可能延迟出现。整包 metadata 可能受 CDN 缓存影响；发布烟测显式使用 `--metadata-source version-api` 查询公共精确版本接口 `/包名/版本`，验证返回的包名和版本，并记录缓存状态、等待及安装耗时。该模式不发送 npm 凭据；需要认证或没有此接口的 registry 继续使用默认 npm CLI 查询。精确接口的 HTTP 404 最多重试 30 次、间隔 10 秒，然后仍在独立临时目录运行 `npm install 包名@版本 --prefer-online`。安装 CLI 自身仍可能读取受缓存影响的整包 metadata；仅对明确的 `ETARGET` 且错误指向本次精确版本进行同样的有界重试，认证、网络、其他包缺失、错误版本和其他安装错误立即失败。用新 workflow 复核旧 tag 时，若 tag 内的 kit 尚未提供此参数，则使用原 npm CLI 查询。已存在版本的烟测不能证明新版本上传后的同步耗时，需在下一次真实发布中观察。
 
 Trusted Publisher 的配置：GitHub Actions；组织 `opencraft-app`；仓库 `opencraft`；workflow filename `release.yml`；Environment `npm-release`。该 Environment 只允许 main。workflow 使用 OIDC，不存放长期 npm token。当前 GitHub 仓库为 private，发布显式关闭 provenance；不改变仓库可见性或宣称提供公共来源证明。首次真实发布需先以 npm 账号有效凭据上传本机验证过的归档，包存在后才能在 npm Settings 添加 Trusted Publisher；配置后按 npm 当前有效期要求及时通过 Actions 成功发布。
 

@@ -2,7 +2,8 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/playwright', testMatch: 'web-updates.spec.mjs',
-  fullyParallel: false, workers: 1, timeout: 60_000,
+  // Each worker owns its temporary registry, state directories and ports.
+  fullyParallel: true, workers: 2, timeout: 60_000,
   expect: { timeout: 20_000 },
   outputDir: '.local/playwright/web-updates/results',
   reporter: [['list'], ['html', { outputFolder: '.local/playwright/web-updates/report', open: 'never' }]],
