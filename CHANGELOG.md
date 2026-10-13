@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.1.12
+
+- Unify workbench icons and align navigation controls across the website.
+- Select PR checks by changed areas and remove duplicate CI runs and automatic DMG builds.
+- Fix npm 12 archive path resolution and wait for public registry metadata propagation after publishing.
+
 ## v0.1.11
 
 - Validate GitHub Actions npm Trusted Publishing with the configured `npm-release` environment.
