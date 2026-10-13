@@ -24,12 +24,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
 import shutil
 import stat
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -334,7 +336,22 @@ def npm_publish(args: argparse.Namespace) -> None:
 
 def npm_smoke(args: argparse.Namespace) -> None:
     exact = f"{args.package}@{args.version}"
-    observed = checked((args.npm, "view", exact, "version", "--registry", args.registry))
+    if args.metadata_retries < 0 or not math.isfinite(args.metadata_retry_delay) or args.metadata_retry_delay < 0:
+        raise ReleaseError("metadata retry settings must be finite and nonnegative")
+    for attempt in range(args.metadata_retries + 1):
+        result = run((args.npm, "view", exact, "version", "--registry", args.registry,
+                      "--prefer-online", "--fetch-retries=0", "--fetch-timeout=15000"))
+        if result.returncode == 0:
+            observed = result.stdout.strip()
+            break
+        detail = result.stderr.strip() or result.stdout.strip()
+        # Registry writes can precede public metadata propagation. Retry only
+        # recognized absence; credentials, network and malformed replies fail.
+        missing = re.search(r"^npm (?:ERR!|error) code E404\s*$", detail, re.MULTILINE)
+        if not missing or attempt == args.metadata_retries:
+            raise ReleaseError(f"npm metadata lookup failed for {exact}: {detail}")
+        print(f"npm metadata not visible yet: {exact}; retry {attempt + 1}/{args.metadata_retries}", flush=True)
+        time.sleep(args.metadata_retry_delay)
     if observed.strip().strip('"') != args.version:
         raise ReleaseError(f"registry returned version {observed!r}, expected {args.version}")
     with tempfile.TemporaryDirectory(prefix="secure-release-smoke-") as temporary:
@@ -407,6 +424,9 @@ def parser() -> argparse.ArgumentParser:
         command.add_argument("--version", required=True)
         command.add_argument("--registry", default="https://registry.npmjs.org/")
         command.add_argument("--npm", default="npm")
+        if handler is npm_smoke:
+            command.add_argument("--metadata-retries", type=int, default=30)
+            command.add_argument("--metadata-retry-delay", type=float, default=10)
         command.set_defaults(handler=handler)
 
     command = commands.add_parser(

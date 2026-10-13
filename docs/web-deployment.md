@@ -138,7 +138,7 @@ npm run gate:server-updates -- --scenario self-upgrade
 
 公共包使用 `@opencraft-app/opencraft`，源为 `https://registry.npmjs.org/`。首版 0.1.10 支持 Linux x64 / Node.js 24；包含网站、更新器、执行 gateway/daemon，不包含独立 Codex core、CLI 或 DSH 引擎，不是全新服务器一键安装器。
 
-正式发布 workflow 为 `.github/workflows/release.yml`，只允许从 main 手动派发已有稳定 tag（如 `v0.1.10`）。包模板版本必须与 tag 相同；tag 必须位于 main 历史中。预检安装锁定依赖、执行相关测试和浏览器回归，然后构建一个 execution tgz、核对公开包内容并生成 SHA256 manifest。发布 job 只下载并发布这份归档，不重建；npm 版本已存在时只接受字节完全一致的归档。最后核对 npm 下载/安装及 GitHub Release 的归档、manifest 和 release notes。
+正式发布 workflow 为 `.github/workflows/release.yml`，只允许从 main 手动派发已有稳定 tag（如 `v0.1.10`）。包模板版本必须与 tag 相同；tag 必须位于 main 历史中。预检安装锁定依赖、执行相关测试和浏览器回归，然后构建一个 execution tgz、核对公开包内容并生成 SHA256 manifest。发布 job 只下载并发布这份归档，不重建；npm 版本已存在时只接受字节完全一致的归档。最后核对 npm 下载/安装及 GitHub Release 的归档、manifest 和 release notes。 npm 上传返回成功后，公开 metadata 可能延迟出现；安装烟测仅对明确的 E404 重试，默认最多 30 次、间隔 10 秒，认证、网络、版本不符和安装错误立即失败。已上传后若最终校验失败，使用 `gh run rerun <run-id> --failed` 复用原归档，核对远端字节后继续，不重建或重复上传。
 
 Trusted Publisher 的配置：GitHub Actions；组织 `opencraft-app`；仓库 `opencraft`；workflow filename `release.yml`；Environment `npm-release`。该 Environment 只允许 main。workflow 使用 OIDC，不存放长期 npm token。当前 GitHub 仓库为 private，发布显式关闭 provenance；不改变仓库可见性或宣称提供公共来源证明。首次真实发布需先以 npm 账号有效凭据上传本机验证过的归档，包存在后才能在 npm Settings 添加 Trusted Publisher；配置后按 npm 当前有效期要求及时通过 Actions 成功发布。
 

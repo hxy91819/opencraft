@@ -342,6 +342,32 @@ class SecureReleaseTest(unittest.TestCase):
         self.assertNotIn("--provenance", observed)
         self.assertEqual(observed[1], str(artifact))
 
+    def test_npm_smoke_retries_only_missing_metadata_with_a_bound(self) -> None:
+        for error, misses, retries, expected_calls, succeeds in (
+            ("E404", 2, 2, 3, True),
+            ("E404", 5, 2, 3, False),
+            ("E401", 2, 2, 1, False),
+            ("ETIMEDOUT", 2, 2, 1, False),
+        ):
+            with self.subTest(error=error, misses=misses):
+                counter = self.root / "lookup-count"
+                counter.write_text("0")
+                fake_npm = self.root / "npm-eventual"
+                fake_npm.write_text(
+                    "#!/bin/sh\nset -eu\ncase \"$1\" in\n"
+                    f"view) n=$(cat '{counter}'); n=$((n+1)); echo $n > '{counter}'; "
+                    f"if [ $n -le {misses} ]; then echo 'npm error code {error}' >&2; exit 1; fi; echo 1.2.3 ;;\n"
+                    "init) echo '{}' > package.json ;;\n"
+                    "install) mkdir -p node_modules/fixture-package; "
+                    "printf '{\"name\":\"fixture-package\",\"version\":\"1.2.3\"}' > node_modules/fixture-package/package.json ;;\n"
+                    "*) exit 2 ;;\nesac\n"
+                )
+                fake_npm.chmod(0o755)
+                result = self.cli("npm-smoke", "--package", "fixture-package", "--version", "1.2.3", "--npm", str(fake_npm),
+                                  "--metadata-retries", str(retries), "--metadata-retry-delay", "0")
+                self.assertEqual(result.returncode == 0, succeeds, result.stderr)
+                self.assertEqual(int(counter.read_text()), expected_calls)
+
     def test_npm_smoke_resolves_and_installs_exact_version(self) -> None:
         fake_npm = self.root / "npm-smoke"
         fake_npm.write_text(
