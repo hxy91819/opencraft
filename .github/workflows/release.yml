@@ -169,7 +169,7 @@ jobs:
           PACKAGE="$(node -p "require('./packaging/web-server/package.json').name")"
           mapfile -t TARBALLS < <(find release -maxdepth 1 -type f -name '*.tgz' -print)
           test "${#TARBALLS[@]}" -eq 1
-          TARBALL="${TARBALLS[0]}"
+          TARBALL="$(realpath -- "${TARBALLS[0]}")"
           python3 "$KIT" manifest-verify --manifest release/manifest.json --directory release --tag "$RELEASE_TAG" --version "$VERSION"
           if python3 "$KIT" npm-absent --package "$PACKAGE" --version "$VERSION" --registry "$NPM_REGISTRY"; then
             python3 "$KIT" npm-publish --artifact "$TARBALL" --registry "$NPM_REGISTRY" --provenance false
