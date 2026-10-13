@@ -12,8 +12,11 @@ should be upgraded or assessed against the current code before reporting.
 
 ## Repository checks
 
-- The `security` workflow scans the checked-out source with Gitleaks, audits all
-  three npm lockfiles, and runs managed Web regression tests and Playwright.
+- The `security` workflow scans every PR and main push with Gitleaks. PR dependency
+  audits select changed npm installation roots; main pushes, weekly and manual
+  runs audit all three roots. Managed Web regression/Playwright runs when update
+  or deployment inputs change. The selection policy and stable aggregate checks
+  are documented in [Build Matrix](docs/build-matrix.md#pull-request-ci-selection).
 - Dependabot covers the root workspace, isolated DSH runtime, `hemesclient` and
   GitHub Actions. Credentials belong to a deployment user's private configuration.
 - The CodeQL workflow analyzes JavaScript/TypeScript when the repository is public.
@@ -26,6 +29,19 @@ For local inspection, scan a clean export of the intended commit with Gitleaks
 8.30.1 or newer, using this repository's configuration. Run `npm audit` in the root,
 `runtime/dsh` and `hemesclient`; retain the findings and verify each lockfile is
 unchanged. A failed audit is a finding, not a completed remediation.
+
+### Outstanding dependency findings (2026-10-13)
+
+Compatible dependency updates clear the isolated DSH runtime audit. The root
+workspace audit still reports high-severity findings from `braces@3.0.3`
+([GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)) and
+`node-forge@1.4.0`
+([GHSA-86w9-cpqp-85rv](https://github.com/advisories/GHSA-86w9-cpqp-85rv)),
+including their dependent packages. Neither package has a patched release at
+the time of this check. npm's suggested Expo major downgrade is not a compatible
+fix for the current Expo/React Native stack. Lower-severity findings also remain;
+rerun `npm audit` for the current inventory. These findings are not exempted:
+the root audit and aggregate security check remain failing until remediated.
 
 ## Publication boundaries
 
