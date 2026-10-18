@@ -11,69 +11,80 @@ export interface TurnHistoryBackfillPort {
   readonly onError?: (error: unknown) => void;
 }
 
-interface ActiveBackfill {
-  readonly generation: number;
-  readonly promise: Promise<void>;
+interface FillRequest {
+  readonly epoch: number;
+  readonly completion: Promise<void>;
+  readonly resolve: () => void;
+  readonly reject: (error: unknown) => void;
 }
 
 /**
- * Coordinates the recovered Codex history-fill transaction independently of
- * DOM or React Native. It owns the single-flight lock and generation boundary;
- * the host owns measurement and the post-load layout barrier.
+ * Serial request scheduler. A running page keeps its slot until its layout
+ * barrier ends. Requests from newer owners wait for that slot; obsolete
+ * waiting requests share the latest owner's fill operation.
  */
 export class TurnHistoryBackfillCoordinator {
-  private active: ActiveBackfill | null = null;
-  private generation = 0;
+  private epoch = 0;
+  private running: FillRequest | null = null;
+  private waiting: FillRequest[] = [];
 
   constructor(private readonly port: TurnHistoryBackfillPort) {}
 
-  /** Invalidates an observer/layout owner without allowing two page loads at once. */
   invalidate(): void {
-    this.generation += 1;
+    this.epoch += 1;
   }
 
   request = (): Promise<void> => {
-    const generation = this.generation;
-    const active = this.active;
-    if (active !== null) {
-      if (active.generation === generation) return active.promise;
-      return active.promise.then(this.request, this.request);
-    }
+    const existing = this.running?.epoch === this.epoch ? this.running
+      : this.waiting.find(request => request.epoch === this.epoch);
+    if (existing) return existing.completion;
 
-    const promise = this.drain(generation).finally(() => {
-      if (this.active?.promise === promise) this.active = null;
-    });
-    this.active = { generation, promise };
-    return promise;
+    let resolve!: () => void;
+    let reject!: (error: unknown) => void;
+    const completion = new Promise<void>((done, fail) => { resolve = done; reject = fail; });
+    this.waiting.push({ epoch: this.epoch, completion, resolve, reject });
+    this.startWaiting();
+    return completion;
   };
 
-  private async drain(generation: number): Promise<void> {
-    if (!this.isCurrent(generation)) return;
+  private startWaiting(): void {
+    if (this.running || this.waiting.length === 0) return;
+    const batch = this.waiting;
+    this.waiting = [];
+    const owner = batch.at(-1)!;
+    // Publish ownership before invoking user code, including synchronous loaders.
+    this.running = { ...owner, epoch: this.epoch };
+    const epoch = this.running.epoch;
+    const finish = (error?: { readonly value: unknown }) => {
+      this.running = null;
+      for (const request of batch) {
+        if (error) request.reject(error.value);
+        else request.resolve();
+      }
+      this.startWaiting();
+    };
+    void this.fill(epoch).then(() => finish(), error => finish({ value: error }));
+  }
+
+  private async fill(epoch: number): Promise<void> {
     try {
-      for (;;) {
-        const before = this.port.readMetrics();
-        if (
-          before === null
-          || !shouldLoadOlderHistory({
-            contentHeightPx: before.scrollHeightPx,
-            distanceFromBottomPx: before.distanceFromBottomPx,
-            viewportHeightPx: before.viewportHeightPx,
-          })
-        ) return;
-
-        const result = await this.port.loadPage();
+      let previousHeight: number | undefined;
+      while (epoch === this.epoch && this.port.isEnabled()) {
+        const metrics = this.port.readMetrics();
+        if (!metrics || metrics.scrollHeightPx === previousHeight) break;
+        const needsPage = shouldLoadOlderHistory({
+          contentHeightPx: metrics.scrollHeightPx,
+          distanceFromBottomPx: metrics.distanceFromBottomPx,
+          viewportHeightPx: metrics.viewportHeightPx,
+        });
+        if (!needsPage) break;
+        previousHeight = metrics.scrollHeightPx;
+        const outcome = await this.port.loadPage();
         await this.port.afterLayout();
-        if (!this.isCurrent(generation) || result === "stop") return;
-
-        const after = this.port.readMetrics();
-        if (after === null || after.scrollHeightPx === before.scrollHeightPx) return;
+        if (outcome === "stop") break;
       }
     } catch (error) {
       this.port.onError?.(error);
     }
-  }
-
-  private isCurrent(generation: number): boolean {
-    return generation === this.generation && this.port.isEnabled();
   }
 }

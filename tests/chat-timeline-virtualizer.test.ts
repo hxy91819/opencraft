@@ -171,6 +171,48 @@ test("history backfill contains recoverable page failures", async () => {
   assert.deepEqual(failures, [expected]);
 });
 
+test("a synchronous page loader can request backfill without opening a second transaction", async () => {
+  let loads = 0;
+  let nested: Promise<void> | undefined;
+  const coordinator = new TurnHistoryBackfillCoordinator({
+    isEnabled: () => true,
+    readMetrics: () => ({ distanceFromBottomPx: 0, viewportHeightPx: 600, scrollHeightPx: 300 }),
+    loadPage: () => {
+      loads += 1;
+      if (loads === 1) nested = coordinator.request();
+      return "stop";
+    },
+    afterLayout: async () => undefined,
+  });
+  const completion = coordinator.request();
+  assert.equal(nested, completion);
+  await completion;
+  assert.equal(loads, 1);
+});
+
+test("obsolete queued history owners share one fill after the active layout barrier", async () => {
+  let release!: () => void;
+  let loads = 0;
+  let barriers = 0;
+  const page = new Promise<void>(done => { release = done; });
+  const coordinator = new TurnHistoryBackfillCoordinator({
+    isEnabled: () => true,
+    readMetrics: () => ({ distanceFromBottomPx: 0, viewportHeightPx: 600, scrollHeightPx: 300 }),
+    loadPage: async () => { loads += 1; if (loads === 1) await page; return "stop"; },
+    afterLayout: async () => { barriers += 1; },
+  });
+  const first = coordinator.request();
+  coordinator.invalidate();
+  const second = coordinator.request();
+  coordinator.invalidate();
+  const third = coordinator.request();
+  assert.equal(loads, 1);
+  release();
+  await Promise.all([first, second, third]);
+  assert.equal(loads, 2);
+  assert.equal(barriers, 2);
+});
+
 const turns = (count: number, height = 100): readonly VirtualizedTurnEntry[] =>
   Array.from({ length: count }, (_, index) => ({
     turnKey: `turn-${index}`,

@@ -1,7 +1,8 @@
 /**
- * Renderer-neutral restoration of the latest-Turn follow state machine owned
- * by Codex Desktop's LocalConversationThread. Platform adapters execute the
- * resulting scroll decisions; they do not maintain a second follow policy.
+ * Stable latest-Turn follow contract, originally modeled from Codex Desktop.
+ * The current reducer uses OpenCraft's signal/transition matrix; separate
+ * geometry helpers below retain their recorded historical review scope.
+ * Platforms execute decisions without maintaining a second follow policy.
  */
 
 export const CODEX_FOLLOW_DISTANCE_THRESHOLD_PX = 24;
@@ -94,71 +95,49 @@ export function createInitialTurnFollowState({
   return createTurnFollowState(restoredFollowMode === "response_watch" ? "static" : restoredFollowMode ?? "static");
 }
 
-/** Exact typed form of the recovered Codex OD reducer. */
-export function reduceTurnFollowState(
-  state: TurnFollowState,
-  event: TurnFollowEvent,
-): TurnFollowState {
-  switch (event.type) {
-    case "latest_turn_follow_content_changed":
-      if (state.followMode === "response_watch"
-        && event.latestTurnPhase !== "idle"
-        && event.followContentOverflowPx > 0) {
-        return withFollowMode(
-          state,
-          event.latestTurnPhase === "prework" ? "prework_follow" : "user_follow",
-        );
-      }
-      return event.latestTurnPhase === "prework"
-        && state.followMode === "prework_watch"
-        && event.followContentOverflowPx > 0
-        ? withFollowMode(state, "prework_follow")
-        : state;
+type FollowSignal = "none" | "prework-overflow" | "answer-overflow" | "begin-prework"
+  | "begin-answer" | "finish" | "detach-prework" | "detach-answer";
 
-    case "latest_turn_phase_changed": {
-      let next = state;
-      if (event.previousLatestTurnPhase !== "prework" && event.latestTurnPhase === "prework") {
-        if (next.followMode === "static") next = withFollowMode(next, "prework_watch");
-        if (next.followMode === "user_follow") next = withFollowMode(next, "prework_follow");
-      }
-      if (event.previousLatestTurnPhase === "prework" && event.latestTurnPhase === "final_answer") {
-        next = withFollowMode(next,
-          next.followMode === "prework_follow" ? "user_follow"
-            : next.followMode === "response_watch" ? "response_watch" : "static");
-      }
-      if (
-        event.previousLatestTurnPhase !== "idle"
-        && event.latestTurnPhase === "idle"
-        && next.followMode !== "user_follow"
-      ) {
-        next = withFollowMode(next, "static");
-      }
-      return next;
-    }
+// The matrix describes only changes; all omitted cells retain their owner.
+// Public mode names remain compatible with saved conversation checkpoints.
+const followTransitions: Readonly<Record<FollowSignal, Partial<Record<TurnFollowMode, TurnFollowMode>>>> = {
+  none: {},
+  "prework-overflow": { response_watch: "prework_follow", prework_watch: "prework_follow" },
+  "answer-overflow": { response_watch: "user_follow" },
+  "begin-prework": { static: "prework_watch", user_follow: "prework_follow" },
+  "begin-answer": { static: "static", prework_watch: "static", prework_follow: "user_follow",
+    user_follow: "static" },
+  finish: { response_watch: "static", prework_watch: "static", prework_follow: "static" },
+  "detach-prework": { response_watch: "static", prework_follow: "prework_watch", user_follow: "prework_watch" },
+  "detach-answer": { response_watch: "static", prework_follow: "prework_watch", user_follow: "static" },
+};
 
-    case "latest_turn_placed":
-      return withFollowMode(state, event.watchForOverflow ? "response_watch" : "static");
-    case "latest_turn_removed":
-      return withFollowMode(state, "static");
-
-    case "scroll_distance_changed":
-      if (event.distanceFromBottomPx <= CODEX_FOLLOW_DISTANCE_THRESHOLD_PX) return state;
-      if (state.followMode === "response_watch") return withFollowMode(state, "static");
-      if (state.followMode === "prework_follow") return withFollowMode(state, "prework_watch");
-      if (state.followMode === "user_follow") {
-        return withFollowMode(
-          state,
-          event.latestTurnPhase === "prework" ? "prework_watch" : "static",
-        );
-      }
-      return state;
-
-    case "scroll_to_bottom":
-      return withFollowMode(
-        state,
-        event.latestTurnPhase === "prework" ? "prework_follow" : "user_follow",
-      );
+/** Classify geometry and lifecycle facts separately from the ownership matrix. */
+function followSignal(event: TurnFollowEvent): FollowSignal {
+  if (event.type === "latest_turn_follow_content_changed") {
+    if (!(event.followContentOverflowPx > 0) || event.latestTurnPhase === "idle") return "none";
+    return event.latestTurnPhase === "prework" ? "prework-overflow" : "answer-overflow";
   }
+  if (event.type === "scroll_distance_changed") {
+    if (!(event.distanceFromBottomPx > CODEX_FOLLOW_DISTANCE_THRESHOLD_PX)) return "none";
+    return event.latestTurnPhase === "prework" ? "detach-prework" : "detach-answer";
+  }
+  if (event.type !== "latest_turn_phase_changed" || event.previousLatestTurnPhase === event.latestTurnPhase)
+    return "none";
+  if (event.latestTurnPhase === "prework") return "begin-prework";
+  if (event.previousLatestTurnPhase === "prework" && event.latestTurnPhase === "final_answer") return "begin-answer";
+  return event.latestTurnPhase === "idle" ? "finish" : "none";
+}
+
+/** Pure OpenCraft policy projection over the stable checkpoint mode contract. */
+export function reduceTurnFollowState(state: TurnFollowState, event: TurnFollowEvent): TurnFollowState {
+  let next: TurnFollowMode | undefined;
+  if (event.type === "latest_turn_removed") next = "static";
+  else if (event.type === "latest_turn_placed") next = event.watchForOverflow ? "response_watch" : "static";
+  else if (event.type === "scroll_to_bottom")
+    next = event.latestTurnPhase === "prework" ? "prework_follow" : "user_follow";
+  else next = followTransitions[followSignal(event)][state.followMode];
+  return next === undefined ? state : withFollowMode(state, next);
 }
 
 /** Preserve the reading viewport until the response actually reaches its edge. */

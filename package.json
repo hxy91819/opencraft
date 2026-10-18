@@ -224,7 +224,8 @@
     "test:identity-storage": "tsx --test tests/account-model-defaults.test.ts tests/unified-thread-identity.test.ts tests/codex-message-senders.test.ts",
     "test:mcp-apps": "tsx --test tests/mcp-app-host.test.ts tests/mcp-app-builder.test.ts",
     "smoke:mcp-apps": "tsx scripts/smoke-mcp-app-host.ts",
-    "test:react-runtime": "tsx --test tests/react-runtime.test.tsx tests/react-runtime-notices.test.mjs"
+    "test:react-runtime": "tsx --test tests/react-runtime.test.tsx tests/react-runtime-notices.test.mjs",
+    "smoke:history-fill": "tsx scripts/smoke-history-fill.ts"
   },
   "dependencies": {
     "react": "19.2.3",

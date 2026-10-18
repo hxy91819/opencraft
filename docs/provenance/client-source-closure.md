@@ -27,3 +27,11 @@ New findings must be recorded even when absent from the older inventory. A
 bounded replacement cannot clear its containing file, unrelated regions or
 historical Git objects. No change to repository visibility, release tag, npm or
 downstream Join pin follows from this checkpoint.
+
+
+The next bounded checkpoint replaces the identified history-loading scheduler
+and imperative follow reducer; [timeline disposition](timeline-closure.md)
+records method and remaining scope. The related cross-platform suite passes150
+cases, the accepted public API comparison covers255 finite transitions, and
+canonical synchronous reentrancy now performs one load instead of two. This
+progress does not resolve the entire timeline model or adapter groups.

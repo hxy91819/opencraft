@@ -1,0 +1,61 @@
+{
+  "baseCommit": "34bfc0d4f7f56b3b00c197569483cf861fc86711",
+  "purpose": "Bound established timeline regions before independent replacement; no whole-package clearance from interface retention or passing tests.",
+  "targets": [
+    {
+      "path": "packages/timeline-virtualizer/src/follow.ts",
+      "sha256": "ae0646da9193e00fe3a4d99f663863072806956e4c4e476a7b3e39abde37e472"
+    },
+    {
+      "path": "packages/timeline-virtualizer/src/history-backfill.ts",
+      "sha256": "5819a01f20431c320b5b07b54537ad39320fbda6de42176e03068a5a29fd5ead"
+    },
+    {
+      "path": "packages/timeline-virtualizer/src/measurement.ts",
+      "sha256": "604701370aea7d30124ae030f4b3b6e5bf38845b4794514056eb328a9525b7a3"
+    },
+    {
+      "path": "packages/timeline-virtualizer/src/scroll-controller.ts",
+      "sha256": "5219ed3c67b90e1631035ee8db0158d5e0cfece29051d7d7be205a3284d6e930"
+    },
+    {
+      "path": "packages/timeline-virtualizer/src/scroll.ts",
+      "sha256": "ad462ec0c5be5881c6ee43ced6e703b9373271bcd549bdb2147f4da3e8dfb204"
+    },
+    {
+      "path": "packages/timeline-virtualizer/src/virtualizer.ts",
+      "sha256": "eb48140fe26906a50bbfff0c668627a8d0daf10ff7842bcd8536eae9f8df4f91"
+    },
+    {
+      "path": "packages/timeline-virtualizer/src/restoration.ts",
+      "sha256": "7ca4f810db36c3d1601c91dae8083dda06a254c9c941ada8f84e090beca4b03a"
+    },
+    {
+      "path": "packages/timeline-virtualizer/src/response-positioning.ts",
+      "sha256": "94b7fab1a3850f3a544d21bdf48e95196c20d4fc3fddeda482deab09fa1b8175"
+    }
+  ],
+  "references": [
+    {
+      "reference": "reference://codex/.runtime/source-tree-build-r1316-owner-adoption-abi/lazy/app-initial/local-conversation-thread-CShhuS2f.js",
+      "sha256": "ac78dd0893918b53326b1774ae29d2ded29bf872f475c5593eb82ceeaaa4ce24",
+      "locator": "8896-8933: OD follow reducer"
+    },
+    {
+      "reference": "reference://codex/.runtime/source-tree-build-r1973-initializer-state-control-closure/lazy/app-initial/thread-scroll-layout-xQ2_L08y.js",
+      "sha256": "080d3ac976f7583dfac4e60ec70930787ccfebfa3108fbcf177060bc78257f48",
+      "locator": "145-182: loader and layout generation"
+    }
+  ],
+  "currentBoundedTreatment": [
+    {
+      "target": "history-backfill.ts: TurnHistoryBackfillCoordinator",
+      "method": "Serialized fill-request scheduler with prepublished ownership, latest-owner batch coalescing and host layout barrier. Other mechanisms are not cleared."
+    },
+    {
+      "target": "follow.ts: reduceTurnFollowState",
+      "oldRegionSha256": "539ec59b2cb6daf6c596eb5616ed65e9350beabe2964b507b92d98e65dd65d54",
+      "method": "Lifecycle/geometry signal classification and declarative transition matrix over the stable public checkpoint modes. Geometry helpers remain separately unresolved."
+    }
+  ]
+}

@@ -48,3 +48,15 @@ every platform.
   with this package's cross-platform contract.
 - Both platform adapters consume the same Turn follow reducer. A local
   `isAtBottom`/`followOutput` boolean is a second policy and is not allowed.
+
+
+## Current bounded replacements
+
+The history coordinator and follow reducer described above record their former
+source lineage. Their current implementations have been replaced within the
+[consolidated timeline boundary](../../docs/provenance/timeline-closure.md):
+queued fill requests own history loading, and classified signals feed an
+OpenCraft follow transition matrix. Stable public ports/modes are retained.
+Other geometry, scrolling and measurement regions remain unresolved; this is
+not whole-package or historical clearance. Exact old target and reference hashes
+are preserved in the linked source bindings.

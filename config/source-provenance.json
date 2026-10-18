@@ -70,9 +70,13 @@
         "packages/timeline-virtualizer/**"
       ],
       "evidence": [
-        "packages/timeline-virtualizer/PROVENANCE.md"
+        "packages/timeline-virtualizer/PROVENANCE.md",
+        "docs/provenance/timeline-closure-sources.json",
+        "docs/provenance/timeline-closure.md",
+        "tests/chat-timeline-virtualizer.test.ts",
+        "scripts/smoke-history-fill.ts"
       ],
-      "reason": "Package explicitly records restored reducers, layout and scrolling mechanisms from recovered desktop modules.",
+      "reason": "The package records restored reducers, layout and scrolling mechanisms from recovered desktop modules. The identified history scheduler and follow reducer are replaced in the consolidated candidate; geometry, measurement, scroll controller and other retained expression remain under review.",
       "resolution": "Establish rights or independently replace the implementation against documented OpenCraft requirements and tests."
     },
     {

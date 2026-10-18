@@ -165,7 +165,7 @@ test("history backfill uses the updated committed loader without replacing its o
     const history = useTurnHistoryBackfill({
       historyKey: "same-conversation",
       loadPage: async () => { loads.push(version); return "stop"; },
-      readMetrics: () => ({ viewportHeight: 500, contentHeight: 100, scrollTop: 0 }),
+      readMetrics: () => ({ viewportHeightPx: 500, scrollHeightPx: 100, distanceFromBottomPx: 0 }),
       afterLayout: async () => {},
     });
     useLayoutEffect(() => { commands.push(history.request); });
