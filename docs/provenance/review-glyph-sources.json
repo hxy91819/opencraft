@@ -1,0 +1,21 @@
+{
+  "baseCommit": "b8401fad3db985000eb26068d05928ff974273aa",
+  "oldRegionSha256": "bdc9f8c5114cddac29466ec5d5d800aaad88222e6c45182e416a8cf482786dca",
+  "reference": "reference://codex/.runtime/source-tree-build-r1973-initializer-state-control-closure/lazy/app-initial/subagent-activity-chip-group-CC185tmV.js",
+  "referenceSha256": "edc4e0410ec53ac031e5383dd15cc57cea34d4f0c6c8d0f169fc3ae6157fcfe6",
+  "finding": "Exact distinctive SVG path prefix M7.35645 8.36286 occurs in the fixed reference. Original path body removed; no reference SVG copied into this record.",
+  "replacement": {
+    "package": "lucide-react",
+    "version": "1.35.0",
+    "export": "ShieldCheck",
+    "licenseFile": "node_modules/lucide-react/LICENSE",
+    "licenseSha256": "b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57",
+    "license": "ISC (ShieldCheck belongs to Lucide; the package also retains Feather MIT notices)",
+    "distributionEvidence": [
+      "docs/provenance/connector-artwork.md",
+      "apps/workbench-web/vite.config.ts"
+    ]
+  },
+  "scope": "Replacement of the identified inline review glyph only; no whole-renderer or historical clearance.",
+  "target": "apps/workbench-web/src/components/conversation-renderers/activity/command-and-review-renderers.tsx"
+}

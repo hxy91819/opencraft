@@ -1,0 +1,17 @@
+{
+  "baseCommit": "b8401fad3db985000eb26068d05928ff974273aa",
+  "oldTargetSha256": "20ac918d01bc3591909d963a12ce6c7e25943c495bc2e11cd19945ed4027bc30",
+  "candidateOrigin": "Existing unintegrated mono2 theme-projection candidate, re-evaluated only after exact current/reference expression review; not integrated under former blanket authorization.",
+  "originalCandidateContractCommit": "722758c7d",
+  "methodLimit": "This author has inspected the old and recovered source. No clean-room claim. Palette and API data retained, not newly authored.",
+  "references": [
+    {
+      "path": "reference://codex/.runtime/partition-r822-shared-owner-semantic-locals/lazy/app-initial/build-theme-css-for-mode.js",
+      "sha256": "fd6381d645f58d0d5ca17b581c1ecb75518134093b029f67885721ad304eb1bb"
+    },
+    {
+      "path": "reference://codex/.runtime/partition-r822-shared-owner-semantic-locals/lazy/app-initial/build-theme-css-properties.js",
+      "sha256": "e71114a1c19fbe3c1de59f7d916709ce3cefb84873c28e28bd2ec8542f818c90"
+    }
+  ]
+}

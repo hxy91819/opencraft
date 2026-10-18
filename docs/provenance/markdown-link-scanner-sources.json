@@ -1,0 +1,10 @@
+{
+  "baseCommit": "b8401fad3db985000eb26068d05928ff974273aa",
+  "target": "packages/chat-document/src/compiler.ts",
+  "oldTargetSha256": "247fef819e170f5a06f5aa35661dd417a3219243ca851f7f3da52900d270c524",
+  "oldRegionSha256": "2056bc77c33b4a2f92a7f6fe6aadd91230a3a4d93be6d35b326b320c5e6269ad",
+  "finding": "The previous target explicitly marked this scanner Source-identical. This boundary was absent from the earlier inventory.",
+  "exactReferenceVersionLocated": false,
+  "replacementMethod": "A fresh single-pass lexical punctuation stream, keeping the existing MarkdownLinkMatch input/output and composer dialect requirements. No reference body is copied. The author has inspected the old implementation; no clean-room claim.",
+  "limits": "Current scanner disposition only. Other compiler regions and former history are not cleared by this replacement."
+}

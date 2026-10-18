@@ -412,63 +412,42 @@ export interface MarkdownLinkMatch {
   readonly path: string;
 }
 
-/** Source-identical scanner used by Codex's composerLink tokenizer. */
+/** A single lexical pass over link punctuation; payload slices retain escapes. */
 export function findMarkdownLink(text: string, startIndex: number): MarkdownLinkMatch | null {
-  let cursor = startIndex;
-  scanLinks: while (cursor < text.length) {
-    const open = text.indexOf("[", cursor);
-    if (open === -1) return null;
-    let close = open + 1;
-    while (close < text.length) {
-      const character = text[close];
-      const next = text[close + 1];
-      if (character === "\n" || character === "\r") {
-        cursor = close + 1;
-        continue scanLinks;
-      }
-      if (character === "\\" && (next === "\\" || (next === "]" && text[close + 2] !== "("))) {
-        close += 2;
-        continue;
-      }
-      if (character === "]") break;
-      close += 1;
-    }
-    if (close >= text.length) return null;
-    if (close === open + 1 || text[close + 1] !== "(") {
-      cursor = close + 1;
+  const punctuation = /\\[^\r\n]|\\$|[\r\n]|\]\(|[\[\]\)]/gu;
+  punctuation.lastIndex = Math.max(0, startIndex);
+  let opening: number | null = null;
+  let separator: number | null = null;
+  for (let token = punctuation.exec(text); token !== null; token = punctuation.exec(text)) {
+    const value = token[0], position = token.index;
+    if (value === "\r" || value === "\n") {
+      opening = separator = null;
       continue;
     }
-    let end = close + 2;
-    while (end < text.length) {
-      const character = text[end];
-      const next = text[end + 1];
-      if (character === "\n" || character === "\r") {
-        cursor = end + 1;
-        continue scanLinks;
+    if (value.startsWith("\\")) {
+      if (opening === null && value === "\\[") opening = position + 1;
+      // The composer dialect permits a literal trailing slash in a label.
+      if (opening !== null && separator === null && value === "\\]" && text[punctuation.lastIndex] === "(") {
+        separator = position + 1;
+        punctuation.lastIndex++;
       }
-      if (character === "\\" && (next === "\n" || next === "\r")) {
-        cursor = end + 2;
-        continue scanLinks;
-      }
-      if (character === "\\" && next !== undefined) {
-        end += 2;
-        continue;
-      }
-      if (character === ")") {
-        if (end === close + 2) {
-          cursor = end + 1;
-          continue scanLinks;
-        }
-        return {
-          start: open,
-          end: end + 1,
-          label: text.slice(open + 1, close),
-          path: text.slice(close + 2, end),
-        };
-      }
-      end += 1;
+      continue;
     }
-    return null;
+    if (opening === null) {
+      if (value === "[") opening = position;
+      continue;
+    }
+    if (separator !== null) {
+      if (value !== ")") continue;
+      if (position > separator + 2) return {
+        start: opening, end: position + 1,
+        label: text.slice(opening + 1, separator), path: text.slice(separator + 2, position),
+      };
+      opening = separator = null;
+    } else if (value === "](") {
+      if (position > opening + 1) separator = position;
+      else opening = null;
+    } else if (value === "]") opening = null;
   }
   return null;
 }

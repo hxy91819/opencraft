@@ -533,6 +533,12 @@ states; optional isolated Electron execution requires an explicit executable.
 
 ### Theme surfaces and native appearance
 
+The Design System separates palette inputs, pure color math and semantic role
+projection; [theme projection](architecture/theme-projection.md) owns the
+complete CSS map. The bounded replacement disposition is recorded separately
+from the remaining renderer source review.
+
+
 `ZenCode` (`vela.core.zencode`) is an optional built-in Web/Electron palette
 inspired by ZCode's layered grays: opaque chrome, light gray/white surfaces in
 light mode and charcoal layers in dark mode. It does not change default theme,

@@ -19,7 +19,7 @@ function Fixture() {
  const [state, setState] = useState("both");
  const [count,setCount] = useState(1);
  Object.assign(window, { setRailState: setState, setRailCount: setCount });
- return <main style={{ minHeight: "100dvh", padding: 12, background: "var(--color-background-primary)", color: "var(--color-text)" }}>
+ return <main style={{ minHeight: "100dvh", padding: 12, background: "var(--color-background-surface)", color: "var(--color-text)" }}>
    <div style={{ maxWidth: 760, margin: "80px auto 0", position: "relative" }}>
     <div style={{ position: "absolute", inset: 0, color: "red" }} aria-hidden>正文正文正文正文正文正文正文正文正文正文正文正文</div>
     <CodexComposer controller={controller} isStreaming queuedSubmissions={state === "both" || state === "queue" ? Array.from({length:count},(_,i)=>({...submission,id:`queue-${i}`})) : []}

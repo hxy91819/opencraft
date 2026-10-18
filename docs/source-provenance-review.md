@@ -28,7 +28,7 @@ evidence, rather than treating this generated file list as a rights opinion.
 | `codex-timeline-virtualizer` | `packages/timeline-virtualizer/PROVENANCE.md` | Unverified | Establish rights or independently implement against OpenCraft's requirements; verify scrolling, history prepend, measurement and restoration |
 | `codex-timeline-adapters` | `packages/timeline-react/PROVENANCE.md` and `packages/timeline-host-web/PROVENANCE.md` | Unverified; these were missing from the initial machine inventory | Review the React ownership and Web measurement/reflow adapters individually; separate behavioral references, retained expression and original browser additions |
 | `codex-tool-presentation-labels` | Historical exact bindings and [bounded disposition](provenance/thread-tool-presentation.md) | Identified native table replaced by protocol-derived operation titles and explicit states | Keep navigation/results and verify failure/interruption; this is not whole-module or historical clearance |
-| `codex-tool-surface-fallbacks` | [Exact source/target bindings and bounded replacement](provenance/tool-surface-disposition.md) | Known fallback catalogs and handoff inference replaced; wider annotated regions remain unverified | Review web-search compaction, command summaries, content interpretation and specialized presenters individually |
+| `codex-tool-surface-fallbacks` | [Exact source/target bindings and bounded replacement](provenance/tool-surface-disposition.md) | Known fallback catalogs, handoff inference, web-query compaction and command narrative regions replaced in the candidate; remaining regions unverified | Review content interpretation, identifier formatting and specialized presenter lineage individually |
 | `product-and-brand-assets` | Retained exact-source hashes and [artwork disposition](provenance/connector-artwork.md) | Current image files excluded; private product artwork downstream; historical rights unverified | Verify no image files/imports remain in source and distributable assets; retain source notices and full connector operations |
 
 ## Recording a resolution
@@ -207,3 +207,34 @@ handoff-step behavior outside that table. The new unresolved
 still require review** despite the native table replacement. The previous
 table-specific finding was not a complete review of the tool presentation file.
 Historical commits and public redistribution remain unresolved.
+
+## Consolidated client source closure candidate
+
+The source-closure branch starts at accepted main
+`b8401fad3db985000eb26068d05928ff974273aa` and keeps all five unresolved
+groups in one effort. Its bounded theme implementation is documented in
+[theme provenance](../packages/design-system/THEME_PROVENANCE.md). Exact preset
+inputs and CSS property names remain; that does not clear their data lineage or
+the other mapped renderer files.
+
+[Additional tool bindings](provenance/tool-context-sources.json) identify retained
+web-query compaction and command/date/background narrative branches. These
+regions are replaced with literal query context and generic execution-phase
+captions: every query/operator remains visible; command failures explicitly say
+Failed; collapsed captions retain command text, expanded captions rely on their
+existing shell body. Elapsed and background context remain separate display
+facts. This preserves existing disclosure, execution payloads and results rather
+than adopting source-specific prose/inference.
+
+The author has inspected the reference; no clean-room assertion is made. The
+new tests record the intended behavior and fail on the unchanged tool regions.
+Current candidate validation and hosted acceptance are separate events; these
+changes alone do not resolve the five broader groups or public-history rights.
+
+
+The consolidated review also found an explicitly source-identical composer link
+scanner and automatic-review SVG outside the former inventory. Their bounded
+[current dispositions](provenance/document-and-review-disposition.md) retain
+old-region hashes and exact-source findings. The scanner uses a fresh lexical
+implementation; the glyph delegates to licensed Lucide artwork. These additional
+findings do not clear their entire containing files or the five wider groups.

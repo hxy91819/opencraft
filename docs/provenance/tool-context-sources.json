@@ -1,0 +1,22 @@
+{
+  "baseCommit": "b8401fad3db985000eb26068d05928ff974273aa",
+  "oldTargetSha256": "0e6389ba93616cc1722e2975cd6009ac3bc4fda5e814bb4d59f5382a21d47f20",
+  "reference": {
+    "path": "reference://codex/.runtime/source-tree-build-r1973-initializer-state-control-closure/lazy/app-initial/subagent-activity-chip-group-CC185tmV.js",
+    "sha256": "edc4e0410ec53ac031e5383dd15cc57cea34d4f0c6c8d0f169fc3ae6157fcfe6"
+  },
+  "boundedRegions": [
+    {
+      "target": "WEB_SEARCH_SITE_OPERATOR through extractWebSearchDetail",
+      "targetRegionSha256": "278be729a54e0fcc888baff5ea0685b24db1db3e47d7fa919d588a257753752a",
+      "referenceLines": "11667\u201311703; regular expressions at15939",
+      "finding": "Same hostname/site extraction, OR removal, first-query ellipsis and page-find sentence construction."
+    },
+    {
+      "target": "isCurrentDateCommand through formatCommandActivitySummary",
+      "targetRegionSha256": "96f938c5d1df27049d7da3aebd58d181b7c2d2b7bd193866dbbe6e49afe4c2bb",
+      "referenceLines": "command label function cC begins6614; date/background label family6630\u20136713",
+      "finding": "Same distinctive date/background narrative sentence family and context branches. Not a finding that the entire tool module is copied."
+    }
+  ]
+}

@@ -12,13 +12,21 @@
         "apps/workbench-web/src/components/right-panel.tsx",
         "apps/workbench-web/src/styles/app.scss",
         "packages/codex-composer/src/codex-composer.tsx",
-        "packages/design-system/src/theme-engine.ts"
+        "packages/design-system/src/theme-engine.ts",
+        "packages/design-system/src/theme-model.ts",
+        "packages/design-system/src/theme-color.ts",
+        "packages/design-system/src/theme-presets.ts",
+        "packages/design-system/src/theme-projection.ts",
+        "packages/design-system/THEME_PROVENANCE.md"
       ],
       "evidence": [
         "vendor/codex/IMPORT_MAP.json",
-        "docs/codex-frame-spec.md"
+        "docs/codex-frame-spec.md",
+        "packages/design-system/THEME_PROVENANCE.md",
+        "docs/provenance/theme-projection-sources.json",
+        "docs/architecture/theme-projection.md"
       ],
-      "reason": "Existing import map records recovery/adaptation from Codex Desktop renderer; redistribution authorization has not been established.",
+      "reason": "Existing import map records recovery/adaptation from Codex Desktop renderer; redistribution authorization has not been established. The specifically reviewed dynamic theme projection is replaced in the current candidate; retained palette inputs and the other mapped renderer regions remain separately unresolved.",
       "resolution": "Establish source rights or independently replace the affected implementation; retain this provenance history."
     },
     {
@@ -110,10 +118,12 @@
         "docs/provenance/thread-tool-presentation.md",
         "docs/provenance/tool-surface-disposition.md",
         "docs/provenance/tool-surface-sources.json",
-        "tests/chat-tool-surface-state.test.ts"
+        "tests/chat-tool-surface-state.test.ts",
+        "docs/provenance/tool-context-sources.json",
+        "tests/chat-tool-context-labels.test.ts"
       ],
-      "reason": "The identified MCP/computer/dynamic fallback catalogs and recovered handoff summary/step regions are replaced within the documented boundary. Other source-referencing regions in tool-activity.ts (web-search compaction, command summaries, content interpretation and specialized presenters) still require expression/lineage review; replacing the known catalogs does not clear those regions.",
-      "resolution": "Retain exact source/target hashes and the bounded replacement record. Review the remaining annotated regions individually; keep original/licensed implementations and replace only identified uncleared expression. Keep this group unverified until that review is complete."
+      "reason": "The identified MCP/computer/dynamic catalogs, handoff inference, web-query compaction and command narrative regions are replaced within documented boundaries. Remaining content interpretation, identifier formatting and specialized presenter lineage still require individual review; these changes do not clear the entire module or historical objects.",
+      "resolution": "Retain exact source/target hashes and replacement method/behavior evidence. Review the remaining regions in the consolidated source-closure effort; keep original/licensed code and replace only established uncleared expression. Keep this group unverified until the full review is complete."
     },
     {
       "id": "product-and-brand-assets",
@@ -135,6 +145,37 @@
         }
       ],
       "conclusion": "No connector brand image remains in the current public core source. This is exclusion of the identified image files, not a claim of brand authorization or a license determination for historical commits. Full clients, service catalog/recipes and runtime capabilities remain. See the retained exact-source list and current disposition."
+    },
+    {
+      "id": "codex-document-link-scanner",
+      "status": "independently-reimplemented",
+      "paths": [
+        "packages/chat-document/src/compiler.ts"
+      ],
+      "evidence": [
+        "docs/provenance/markdown-link-scanner-sources.json",
+        "docs/provenance/document-and-review-disposition.md",
+        "tests/chat-document.test.ts"
+      ],
+      "reason": "Additional review found an explicitly source-identical composer link scanner outside the prior inventory. Its character-loop implementation is removed.",
+      "resolution": "Preserve the baseline file and region hashes, lexical replacement method and compatibility tests. Review of other compiler regions and historical objects remains separate.",
+      "conclusion": "The identified findMarkdownLink region is independently implemented as a lexical punctuation stream against the existing public MarkdownLinkMatch contract and composer dialect. This is a bounded disposition of the current replacement, not a clean-room assertion or classification of the entire compiler."
+    },
+    {
+      "id": "codex-review-glyph",
+      "status": "third-party-licensed",
+      "paths": [
+        "apps/workbench-web/src/components/conversation-renderers/activity/command-and-review-renderers.tsx"
+      ],
+      "evidence": [
+        "docs/provenance/review-glyph-sources.json",
+        "docs/provenance/document-and-review-disposition.md",
+        "docs/provenance/connector-artwork.md",
+        "package-lock.json"
+      ],
+      "reason": "The explicitly source-identical review SVG matches the pinned recovered reference. That inline artwork is removed and replaced with the existing licensed Lucide ShieldCheck export.",
+      "resolution": "Retain Lucide ISC and bundled Feather MIT notices in source dependency and Web/Electron dependency license output. Preserve the removed glyph source binding; this does not clear the rest of the renderer or old Git commits.",
+      "conclusion": "Current automatic-review artwork delegates to lucide-react 1.35.0 ShieldCheck under ISC, with exact installed license hash and dependency pin recorded. The former unverified inline SVG is absent from the candidate. Scope is the identified artwork only."
     }
   ]
 }

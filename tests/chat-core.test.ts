@@ -1702,10 +1702,10 @@ test("command failure follows exit code even when transport status completed", (
   // Codex keeps the completed action wording and communicates failure through
   // row status plus the shell footer's exit code.
   assert.equal(presentToolActivity(block).summary, "Ran command");
-  assert.equal(formatCommandActivitySummary(block, "failed", { expanded: false, elapsedLabel: null }), "Ran false");
+  assert.equal(formatCommandActivitySummary(block, "failed", { expanded: false, elapsedLabel: null }), "Command · Failed · false");
 });
 
-test("command labels reproduce Codex disclosure, elapsed, date, and background terminal states", () => {
+test("command labels separate execution phase, disclosure, elapsed and background context", () => {
   const projected = projectTimeline(source([{
     id: "turn-command-labels",
     status: "complete",
@@ -1719,11 +1719,11 @@ test("command labels reproduce Codex disclosure, elapsed, date, and background t
   const blocks = projected.frames.flatMap((frame) => frame.blocks).filter((block): block is Extract<TimelineBlock, { type: "command-execution" }> => block.type === "command-execution");
   assert.equal(formatCodexToolDuration(999), null);
   assert.equal(formatCodexToolDuration(62_000), "1m 2s");
-  assert.equal(formatCommandActivitySummary(blocks[0]!, "completed", { expanded: false, elapsedLabel: "1m 2s" }), "Ran npm test in 1m 2s");
-  assert.equal(formatCommandActivitySummary(blocks[0]!, "completed", { expanded: true, elapsedLabel: "1m 2s" }), "Ran command in 1m 2s");
-  assert.equal(formatCommandActivitySummary(blocks[1]!, "running", { expanded: true, elapsedLabel: "9s" }), "Started background terminal with npm run dev");
-  assert.equal(formatCommandActivitySummary(blocks[2]!, "completed", { expanded: false, elapsedLabel: "9s" }), "Ran npm run build");
-  assert.equal(formatCommandActivitySummary(blocks[3]!, "completed", { expanded: false, elapsedLabel: "1s" }), "Checked the current date and time in 1s");
+  assert.equal(formatCommandActivitySummary(blocks[0]!, "completed", { expanded: false, elapsedLabel: "1m 2s" }), "Command · Completed · 1m 2s · npm test");
+  assert.equal(formatCommandActivitySummary(blocks[0]!, "completed", { expanded: true, elapsedLabel: "1m 2s" }), "Command · Completed · 1m 2s");
+  assert.equal(formatCommandActivitySummary(blocks[1]!, "running", { expanded: true, elapsedLabel: "9s" }), "Background terminal · Running · 9s");
+  assert.equal(formatCommandActivitySummary(blocks[2]!, "completed", { expanded: false, elapsedLabel: "9s" }), "Background terminal · Completed · 9s · npm run build");
+  assert.equal(formatCommandActivitySummary(blocks[3]!, "completed", { expanded: false, elapsedLabel: "1s" }), "Command · Completed · 1s · /bin/date -u");
 });
 
 test("Codex command actions and patch diffs survive projection for semantic Activity rows", () => {
@@ -2173,7 +2173,7 @@ test("Agent Activity reproduces active labels and deterministic completed summar
   }
 });
 
-test("Web Search action details match Codex search, open-page, and find-in-page labels", () => {
+test("Web Search action details retain literal queries and page context", () => {
   const blocks = projectTimeline(source([{
     id: "turn-web-actions",
     status: "complete",
@@ -2189,10 +2189,10 @@ test("Web Search action details match Codex search, open-page, and find-in-page 
     "browser", "browser", "browser", "browser",
   ]);
   assert.deepEqual(details, [
-    "for replica | openai.com · github.com",
-    "for first query ...",
+    "for replica site:openai.com OR site:github.com",
+    "for first query · second query",
     "for https://openai.com/codex",
-    "for 'resume' in https://openai.com/codex",
+    "for resume · https://openai.com/codex",
   ]);
 });
 

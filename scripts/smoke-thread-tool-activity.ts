@@ -37,6 +37,8 @@ try {
     const collapsed = page.locator('.thread-agent-activity__group button[aria-expanded="false"]');
     for (let index = 0; index < 20 && await collapsed.count() > 0; index++) await collapsed.first().click();
     assert.equal(await collapsed.count(), 0, "all native activity groups opened");
+    await page.getByText("design notes", { exact: true }).waitFor();
+    assert.equal(await page.locator(".lucide-shield-check").count(), 1, "licensed automatic-review glyph rendered");
     await nativeSummary.filter({ hasText: "Fork thread · Worktree · Running" }).waitFor();
     await page.getByText("Get handoff status · Failed", { exact: true }).waitFor();
     await page.getByRole("button", { name: "Open chat", exact: true }).filter({ hasText: "Read thread" }).click();
@@ -57,17 +59,20 @@ try {
     for (const title of ["Browser click · Chrome", "Scroll · Notes · down", "Inspect workspace"]) {
       await surfaceSummary.filter({ hasText: `${title} · Running` }).waitFor();
     }
+    await surfaceSummary.filter({ hasText: "Command · Running" }).waitFor();
+    await page.getByText("for release site:example.com OR site:docs.example.com · migration notes", { exact: true }).waitFor();
     for (const [phase, label] of [["completed", "Completed"], ["failed", "Failed"], ["interrupted", "Stopped"]]) {
       await page.evaluate(phase => (window as any).changeThreadToolPhase(phase), phase);
       await nativeSummary.filter({ hasText: `Fork thread · Worktree · ${label}` }).waitFor();
       for (const title of ["Browser click · Chrome", "Scroll · Notes · down", "Inspect workspace"]) {
         await surfaceSummary.filter({ hasText: `${title} · ${label}` }).waitFor();
       }
+      await surfaceSummary.filter({ hasText: `Command · ${label}` }).waitFor();
     }
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: join(output, `${width}-${theme}.png`) });
     assert.deepEqual(errors, []);
-    results.push({ width, theme, navigationAndCreatedCard: true, transferSteps: true, failedPollVisible: true, reportedStepStates: true, allSurfacePhases: true, allPhases: true });
+    results.push({ width, theme, navigationAndCreatedCard: true, transferSteps: true, failedPollVisible: true, reportedStepStates: true, allSurfacePhases: true, allPhases: true, literalQueries: true, commandPhases: true, composerLink: true, licensedReviewGlyph: true });
     console.log(JSON.stringify({ width, theme, passed: true }));
     await page.close();
   }

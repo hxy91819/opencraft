@@ -385,62 +385,27 @@ function contentAnnotations(value: unknown): ToolCallContentAnnotations | undefi
     : { audience, priority, lastModified };
 }
 
-const WEB_SEARCH_SITE_OPERATOR = /\bsite:([^\s]+)/giu;
-const WEB_SEARCH_OR_OPERATOR = /\bOR\b/gu;
-
-function searchHostname(value: string): string | null {
-  try {
-    return new URL(`https://${value}`).hostname.replace(/^www\./u, "");
-  } catch {
-    return null;
-  }
-}
-
-/** Mirrors Codex's compact query label, including its extracted `site:` facets. */
-function formatWebSearchQuery(value: string): string {
-  const hostnames: string[] = [];
-  const text = value.replace(WEB_SEARCH_SITE_OPERATOR, (match, candidate: string) => {
-    const hostname = searchHostname(candidate);
-    if (hostname === null) return match;
-    if (!hostnames.includes(hostname)) hostnames.push(hostname);
-    return "";
-  });
-  if (hostnames.length === 0) return value;
-  const compact = text.replace(WEB_SEARCH_OR_OPERATOR, " ").replace(/\s+/gu, " ").trim();
-  return compact.length === 0 ? value : `${compact} | ${hostnames.join(" · ")}`;
-}
-
-function firstWebSearchQuery(action: Readonly<Record<string, unknown>>): string | null {
-  const query = nonEmptyString(action.query);
-  if (query !== null) return formatWebSearchQuery(query.trim());
-  const queries = Array.isArray(action.queries)
-    ? action.queries.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
-    : [];
-  const first = queries[0]?.trim();
-  if (first === undefined) return null;
-  const detail = formatWebSearchQuery(first);
-  return queries.length > 1 ? `${detail} ...` : detail;
-}
-
-/** Extracts the exact compact detail used by Codex for every WebSearchAction. */
+/** Keep the actual search requests readable; never strip query operators. */
 export function extractWebSearchDetail(value: unknown): string | null {
   if (typeof value === "string") return nonEmptyString(value);
-  const source = object(value);
-  if (source === null) return null;
-  const action = object(source.action) ?? source;
-  const fallback = nonEmptyString(source.query);
-  const type = nonEmptyString(action.type);
-  if (type === "search") return firstWebSearchQuery(action) ?? fallback;
-  if (type === "openPage" || type === "open_page") return nonEmptyString(action.url) ?? fallback;
-  if (type === "findInPage" || type === "find_in_page") {
-    const pattern = nonEmptyString(action.pattern);
-    const url = nonEmptyString(action.url);
-    if (pattern !== null && url !== null) return `'${pattern}' in ${url}`;
-    if (pattern !== null) return `'${pattern}'`;
-    return url ?? fallback;
+  const envelope = object(value);
+  if (envelope === null) return null;
+  const action = object(envelope.action) ?? envelope;
+  const fallback = nonEmptyString(envelope.query);
+  const destination = nonEmptyString(action.url);
+  switch (action.type) {
+    case "openPage":
+    case "open_page": return destination ?? fallback;
+    case "findInPage":
+    case "find_in_page": {
+      const context = [nonEmptyString(action.pattern), destination].filter((part): part is string => part !== null);
+      return context.length ? context.join(" · ") : fallback;
+    }
   }
-  if (type === "other") return fallback;
-  return firstWebSearchQuery(action) ?? fallback ?? nonEmptyString(action.pattern) ?? nonEmptyString(action.url);
+  const requests = [action.query, ...(Array.isArray(action.queries) ? action.queries : [])]
+    .flatMap(query => typeof query === "string" && query.trim() ? [query.trim()] : []);
+  if (requests.length) return [...new Set(requests)].join(" · ");
+  return fallback ?? nonEmptyString(action.pattern) ?? destination;
 }
 
 function contentParts(value: unknown, role: ToolCallContentRole): readonly ToolCallContentPart[] {
@@ -615,57 +580,22 @@ export function formatCodexToolDuration(durationMs: number, locale = "en"): stri
   return formatCodexDuration(durationMs, { locale });
 }
 
-function isCurrentDateCommand(command: string): boolean {
-  const tokens = command.trim().split(/\s+/gu);
-  const executable = tokens.shift()?.split("/").at(-1);
-  return executable === "date" && tokens.every((token) => token.startsWith("+")
-    || token === "-u" || token === "--utc" || token === "--universal"
-    || token === "-R" || token === "--rfc-email" || token === "-I"
-    || token.startsWith("-I=") || token.startsWith("--iso-8601") || token.startsWith("--rfc-3339"));
-}
-
 export interface CommandActivitySummaryOptions {
   readonly expanded: boolean;
   readonly elapsedLabel: string | null;
 }
 
-/**
- * Codex command labels depend on disclosure and owning-Turn state, not just the
- * Item status. Keep this renderer-neutral so Web and Native cannot drift.
- */
+/** Command context and execution phase are independent display facts. */
 export function formatCommandActivitySummary(
   block: CommandExecutionTimelineBlock,
   state: ToolActivityState,
   options: CommandActivitySummaryOptions,
 ): string {
-  const elapsed = options.elapsedLabel;
-  const command = block.command.trim();
-  const withElapsed = (plain: string, connector: "for" | "in" | "after") => elapsed === null ? plain : `${plain} ${connector} ${elapsed}`;
-  if (isCurrentDateCommand(command)) {
-    if (state === "running") return withElapsed("Checking the current date and time", "for");
-    if (state === "interrupted") return withElapsed("Stopped checking the current date and time", "after");
-    return withElapsed("Checked the current date and time", "in");
-  }
-
-  const backgroundRunning = state === "running" && !block.turnInProgress;
-  const backgroundFinished = state !== "running" && !block.turnInProgress && block.processId !== null;
-  if (backgroundRunning) return command.length > 0
-    ? `Started background terminal with ${command}`
-    : "Started background terminal";
-  if (backgroundFinished) {
-    if (state === "interrupted") return command.length > 0
-      ? `Background terminal stopped with ${command}`
-      : "Background terminal stopped";
-    return command.length > 0 ? `Ran ${command}` : "Background terminal finished";
-  }
-
-  if (state === "running") return withElapsed("Running command", "for");
-  const showSpecificCommand = !options.expanded && command.length > 0;
-  if (state === "interrupted") return withElapsed(
-    showSpecificCommand ? `Stopped ${command}` : "Stopped command",
-    "after",
-  );
-  return withElapsed(showSpecificCommand ? `Ran ${command}` : "Ran command", "in");
+  const background = !block.turnInProgress && (state === "running" || block.processId !== null);
+  const parts = [background ? "Background terminal" : "Command", activityPhaseLabel(state)];
+  if (options.elapsedLabel) parts.push(options.elapsedLabel);
+  if (!options.expanded && block.command.trim()) parts.push(block.command.trim());
+  return parts.join(" · ");
 }
 
 /**

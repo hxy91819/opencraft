@@ -401,7 +401,7 @@ test("Codex user-message dialect preserves Composer link semantics", () => {
   assert.ok(nodes.some((node) => node.kind === "text" && node.text === "!"));
 });
 
-test("Codex markdown-link scanner rejects empty, multiline, and incomplete targets", () => {
+test("composer markdown-link scanner rejects empty, multiline, and incomplete targets", () => {
   assert.deepEqual(findMarkdownLink("x [label](file:///vela/a.ts) y", 0), {
     start: 2,
     end: 28,
@@ -411,6 +411,25 @@ test("Codex markdown-link scanner rejects empty, multiline, and incomplete targe
   assert.equal(findMarkdownLink("[label]()", 0), null);
   assert.equal(findMarkdownLink("[label](file:///vela/a.ts", 0), null);
   assert.equal(findMarkdownLink("[label\n](file:///vela/a.ts)", 0), null);
+});
+
+test("composer link punctuation retains escaped labels, paths and later valid candidates", () => {
+  for (const [source, label, path] of [
+    [String.raw`[a\]b](file:///a\)b.ts)`, String.raw`a\]b`, String.raw`file:///a\)b.ts`],
+    [String.raw`[directory\](folder/path)`, "directory\\", "folder/path"],
+    ["[empty]() then [file](folder with spaces/a.ts)", "file", "folder with spaces/a.ts"],
+    ["[bad\nlabel](bad) then [good](next.ts)", "good", "next.ts"],
+  ]) {
+    const match = findMarkdownLink(source!, 0);
+    assert.ok(match, source);
+    assert.equal(match.label, label);
+    assert.equal(match.path, path);
+    assert.equal(source!.slice(match.start, match.end), `[${label}](${path})`);
+    assert.equal(findMarkdownLink(source!, match.end), null);
+  }
+  assert.equal(findMarkdownLink("[skip](old.ts) [keep](new.ts)", 14)?.path, "new.ts");
+  const repeated = "[".repeat(50_000) + "file](target.ts)";
+  assert.equal(findMarkdownLink(repeated, 0)?.path, "target.ts");
 });
 
 test("Codex user-message block preprocessing separates list kinds and protects fences", () => {
