@@ -246,3 +246,10 @@ scanner and automatic-review SVG outside the former inventory. Their bounded
 old-region hashes and exact-source findings. The scanner uses a fresh lexical
 implementation; the glyph delegates to licensed Lucide artwork. These additional
 findings do not clear their entire containing files or the five wider groups.
+
+The consolidated browser replacement removes the specifically identified copied
+JS classes/helpers and adapted toolbar. Historical manifest/target hashes remain
+in `docs/provenance/browser-presentation-sources.json`; current scope, method and
+verification are in `docs/provenance/browser-presentation.md`. The licensed syntax
+theme replacement is separately recorded in `docs/provenance/syntax-themes.json`.
+The expanded machine inventory remains authoritative for current unresolved groups.

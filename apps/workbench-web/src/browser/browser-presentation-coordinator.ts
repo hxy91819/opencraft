@@ -39,8 +39,8 @@ const presentationIdFor = (input: PresentBrowserPageInput) =>
 const codexSurface = (surface: BrowserPresentationSurface) =>
   surface === "background" ? "hidden-browser-use" : surface === "fullscreen" ? "right-panel" : surface;
 
-/** Layout adapter only. The imported Codex manager owns mounts, backing hosts
- * and the complete handoff state machine; no second timer/paint-owner loop. */
+/** Layout adapter. The application presentation manager owns mounts and hosts;
+ * the cancellable panel switch owns physical replacement timing. */
 export class BrowserPresentationCoordinator {
   private readonly records = new Map<string, PresentationRecord>();
   private readonly pageSubscriptions = new Map<BrowserPageId, () => void>();
@@ -188,7 +188,7 @@ export class BrowserPresentationCoordinator {
     this.records.delete(record.snapshot.id);
     this.manager.releaseMountGeneration(record.owner, record.snapshot.pageId, record.snapshot.id, record.snapshot.generation);
     // React releases the old effect before mounting the new panel in a commit.
-    // Defer only the physical detach so the source handoff can retain outgoing.
+    // Defer only the physical detach so the panel replacement can retain its outgoing surface.
     queueMicrotask(() => {
       if (record.host.getMountGeneration() !== record.snapshot.generation
         || this.manager.hasOtherMountGenerationClaim(record.owner, record.snapshot.pageId,

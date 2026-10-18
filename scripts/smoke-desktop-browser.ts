@@ -16,6 +16,7 @@ const server = createServer((req, res) => {
 await new Promise<void>(r => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${(server.address() as {port: number}).port}`;
 let app: any;
+let inspectedPage: any;
 try {
   const env = { ...process.env, OPENCRAFT_MODEL_STORAGE_DIRECTORY: join(root, "models") };
   delete env.ELECTRON_RUN_AS_NODE;
@@ -24,12 +25,13 @@ try {
   const launchArgs = [...(process.env.OPENCRAFT_PACKAGED_SMOKE === "1" ? [] : [resolve("apps/workbench-electron")]), `--user-data-dir=${join(root, "profile")}`];
   app = await _electron.launch({ executablePath, args: launchArgs, env });
   const page = await app.firstWindow();
+  inspectedPage = page;
   await page.locator(".codex-composer-editor").first().waitFor({ timeout: 30000 }).catch(async (error: unknown) => {
     console.log("startup", page.url(), (await page.locator("body").innerText()).slice(0, 1500));
     throw error;
   });
   const browserButton = page.getByRole("button", { name: "New browser tab", exact: true }).filter({ visible: true }).first();
-  if (!await browserButton.isVisible()) await page.getByRole("button", { name: "Show task details", exact: true }).click();
+  if (!await browserButton.isVisible()) await page.getByRole("button", { name: "Open preview panel", exact: true }).click();
   await browserButton.click();
   const address = page.getByRole("textbox", { name: "Web address", exact: true });
   await address.fill(base + "/one"); await address.press("Enter");
@@ -40,9 +42,9 @@ try {
   const before = await guest.evaluate((g: any) => ({ id: g.getWebContentsId(), partition: g.getAttribute("partition") }));
   await guest.evaluate((g: any) => g.executeJavaScript('document.querySelector("#draft").value="kept"; window.fixtureIdentity'));
   const identity = await guest.evaluate((g: any) => g.executeJavaScript("window.fixtureIdentity"));
-  await page.getByRole("button", { name: "Hide task details", exact: true }).click();
+  await page.getByRole("button", { name: "Close preview panel", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("webview")?.getAttribute("data-browser-surface-visible") === "false");
-  await page.getByRole("button", { name: "Show task details", exact: true }).click();
+  await page.getByRole("button", { name: "Open preview panel", exact: true }).click();
   await page.waitForFunction(() => document.querySelector("webview")?.getAttribute("data-browser-surface-visible") === "true");
   assert.equal(await guest.evaluate((g: any) => g.executeJavaScript("window.fixtureIdentity")), identity);
   assert.equal(await guest.evaluate((g: any) => g.executeJavaScript('document.querySelector("#draft").value')), "kept");
@@ -134,7 +136,7 @@ try {
     if(await appearance.count())await appearance.first().click();
     await page.getByRole("radio",{name:theme==="dark"?"Dark":"Light",exact:true}).click();
     await page.getByRole("button",{name:"Chat",exact:true}).filter({visible:true}).first().click();
-    const show=page.getByRole("button",{name:"Show task details",exact:true});
+    const show=page.getByRole("button",{name:"Open preview panel",exact:true});
     if(await show.isVisible())await show.click();
   };
   await setTheme("dark");
@@ -214,6 +216,13 @@ try {
   assert.ok(cookies.some((cookie: any) => cookie.name === "fixture" && cookie.value === "kept"));
   console.log(JSON.stringify({ passed: true, nativeWebview: true, denyFramingPageLoaded: true, navigation: true,
     isolation: true, bridge: true, restartStorage: true, managedPopup:true,backgroundReadCapture:true,heldResize:true,crashRecovery:true,permissionRevokeAndClear:true,evidence: root }));
+} catch (error) {
+  if (inspectedPage && !inspectedPage.isClosed()) {
+    await inspectedPage.screenshot({ path: join(root, "failure.png") });
+    console.error("Desktop browser fixture evidence:", root);
+    console.error(await inspectedPage.getByRole("button").filter({ visible: true }).evaluateAll((nodes: Element[]) => nodes.map(node => node.getAttribute("aria-label") ?? node.getAttribute("title") ?? node.textContent)));
+  }
+  throw error;
 } finally {
   await app?.close();
   await new Promise<void>(r => server.close(() => r()));

@@ -1,0 +1,65 @@
+{
+  "baseCommit": "00947cf7e4d86451392532bac874a5830d7b10bb",
+  "historicalTargets": [
+    {
+      "path": "apps/workbench-web/src/browser/codex/viewport-resize.js",
+      "sha256": "d9e4aea663e289d88730e2650a10eb950b7338e95cdf285122784bd43a9bf4f3"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/presentation-transition.js",
+      "sha256": "4dc91020726f730bc96721ce8861e9b70bdfcc6871b29d83e17c2bd90c642ec1"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/browser-manager.d.ts",
+      "sha256": "649a4c5b18834ed71b0a28f6c85111ef85575080ca13821d713608bfb2a76c38"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/presentation-transition.d.ts",
+      "sha256": "649a4c5b18834ed71b0a28f6c85111ef85575080ca13821d713608bfb2a76c38"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/viewport-presets.d.ts",
+      "sha256": "45f0ad4dfc2d06b5729c33f788b9b58eb9a8db7ad6d211b153308ddbf9246cc6"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/source-manifest.json",
+      "sha256": "57e56eed3ab10878a78a1211ab3bd1cee641b660fe689b9da6d61d6ad92716a9"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/viewport-presets.js",
+      "sha256": "c3d7e88cabc0fe0b68f45f67c6bb09e1223896361505e9e5c6afe73d51df62e0"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/viewport-resize.d.ts",
+      "sha256": "c4818c8a269a6a53957804eacbda508adfe58f3fdb9afdd0abbcd90fc7e235d1"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/browser-manager.js",
+      "sha256": "10b07a4b867fe29025b918f1005aade59e374c54f789799081a9b34e9e781c46"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/browser-device-toolbar.tsx",
+      "sha256": "1dccc26b8a4563c8ce0bfd9f8686870f3622f546641d8ee25d6d36c50f2a0093"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex-browser-manager.ts",
+      "sha256": "07bc92a0161b4c9318bca855af6ed38067315fb28f33de28ac965fdcb3d4cc7a"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/browser-presentation-coordinator.ts",
+      "sha256": "4cab639117e4dc81b5b6ecdf9e9cb47704bfed0f775aecf794a9bdc9d5d91375"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex-presentation-host.ts",
+      "sha256": "5bb5656398e598dad4c2d47253b95ed4c53c0a627b4f09dcd8742af5fb1dc828"
+    }
+  ],
+  "reportedSourceBindings": "browser-source-manifest.json",
+  "finding": "Copied manager/panel-switch class bodies and viewport helpers are confirmed by their explicit source-copy headers. Device toolbar records adapted source expression. Reported reference hashes in the old manifest are not represented as newly verified rights or exact source objects.",
+  "method": "Independent implementation against the current OpenCraft coordinator/host contract and browser requirements after source review. No clean-room claim. One application host registry, per-page storage/mount records and per-panel cancellable replacement transactions replace the copied classes and dependency-injection shim.",
+  "retainedOriginalAdapters": [
+    "apps/workbench-web/src/browser/codex-presentation-host.ts",
+    "apps/workbench-web/src/browser/browser-presentation-coordinator.ts"
+  ],
+  "scope": "The original DOM/guest port and layout coordinator are retained; only their historical comments are updated. No unrelated browser engine or navigation changes. No clearance of historical source objects."
+}

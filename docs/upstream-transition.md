@@ -173,8 +173,9 @@ full clients. Blanket independent-replacement work remains paused while source-s
 and lineage are reviewed; the 2026-10-18 scoped authorization permits bounded
 source treatment. The stable callback now delegates to a pinned public MIT
 implementation, with full notices. Connector mark image files are excluded
-from current core as recorded below; five other inventory groups and former
-Git history remain unresolved. Unverified provenance does not establish a need for
+from current core as recorded below; the remaining inventory groups and former
+Git history remain unresolved. Current bounded dispositions and inventory corrections
+are recorded in [client source closure](provenance/client-source-closure.md). Unverified provenance does not establish a need for
 replacement. A Headless-only first release is not selected.
 
 ```sh

@@ -1,9 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync } from "node:fs";
-import { createHash } from "node:crypto";
-import ts from "typescript";
-import { createImplementation } from "../apps/workbench-web/src/browser/codex/presentation-transition.js";
+import { BrowserPresentationSwitch } from "../apps/workbench-web/src/browser/browser-presentation-switch";
 import { createCodexBrowserManager } from "../apps/workbench-web/src/browser/codex-browser-manager";
 import { CodexPresentationHost } from "../apps/workbench-web/src/browser/codex-presentation-host";
 
@@ -37,22 +34,6 @@ test("local host fences old refs and does not focus staged/blocked guest", () =>
   } finally { env.close(); }
 });
 
-test("vendored manager and transition class bodies match the source lock", () => {
-  const directory = new URL("../apps/workbench-web/src/browser/codex/", import.meta.url);
-  const manifest = JSON.parse(readFileSync(new URL("source-manifest.json", directory), "utf8"));
-  for (const name of ["browser-manager", "presentation-transition"]) {
-    const text = readFileSync(new URL(name + ".js", directory), "utf8");
-    const tree = ts.createSourceFile(name, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
-    let body = "";
-    const walk = (node: ts.Node) => {
-      if (ts.isClassExpression(node)) body = node.getText(tree);
-      ts.forEachChild(node, walk);
-    };
-    walk(tree);
-    assert.ok(body);
-    assert.equal(createHash("sha256").update(body).digest("hex"), manifest[name].classSha256);
-  }
-});
 
 function environment() {
   const oldWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
@@ -94,11 +75,10 @@ class Host {
 }
 const state = { mountGeneration: 1, isVisible: true, shouldPaint: true, bounds: { x: 0, y: 0, width: 500, height: 500 }, scale: 1 };
 
-test("original Codex transition keeps outgoing until ack, prewarm, and next-frame release", () => {
+test("panel replacement keeps outgoing until ack, prewarm, and next-frame release", () => {
   const env = environment();
   try {
-    const Transition = createImplementation({ logger__Kp_mubr: { info() {} } });
-    const transition = new Transition(), a = new Host("a"), b = new Host("b");
+    const transition = new BrowserPresentationSwitch(), a = new Host("a"), b = new Host("b");
     transition.sync(a, state, {}, "right-panel");
     transition.sync(b, state, {}, "right-panel");
     assert.equal(a.painted, true); assert.equal(a.blocked, true);
@@ -119,8 +99,7 @@ test("original Codex transition keeps outgoing until ack, prewarm, and next-fram
 test("A to B to C fences a late B prewarm callback and preserves the correct outgoing host", () => {
   const env = environment();
   try {
-    const Transition = createImplementation({ logger__Kp_mubr: { info() {} } });
-    const transition = new Transition(), a = new Host("a"), b = new Host("b"), c = new Host("c");
+    const transition = new BrowserPresentationSwitch(), a = new Host("a"), b = new Host("b"), c = new Host("c");
     transition.sync(a, state, {}, "right-panel");
     transition.sync(b, state, {}, "right-panel");
     transition.acknowledgeAttachment(b, 1, 1);
@@ -136,7 +115,7 @@ test("A to B to C fences a late B prewarm callback and preserves the correct out
   } finally { env.close(); }
 });
 
-test("original Codex manager owns storage modes and mount claims", () => {
+test("presentation manager owns storage modes and mount claims", () => {
   const env = environment();
   try {
     const manager = createCodexBrowserManager(Host as any);
@@ -156,5 +135,82 @@ test("original Codex manager owns storage modes and mount claims", () => {
     manager.releaseMountGeneration("owner", "tab", "a", first);
     assert.equal(manager.hasOtherMountGenerationClaim("owner", "tab", "other", next), true);
     manager.disposeAll();
+  } finally { env.close(); }
+});
+
+test("disposing a panel replacement cancels scheduled frames and timeout and fences callbacks", () => {
+  const env = environment();
+  try {
+    const transition = new BrowserPresentationSwitch(), a = new Host("a"), b = new Host("b");
+    transition.sync(a, state, {}, "right-panel");
+    transition.sync(b, state, {}, "right-panel");
+    transition.acknowledgeAttachment(b, 1, 1);
+    const late = [...env.frames.values()][0]!;
+    transition.disposeAll();
+    assert.equal(env.frames.size, 0); assert.equal(env.timers.size, 0);
+    late();
+    assert.equal(a.painted, false); assert.equal(b.painted, false);
+    assert.equal(b.events.includes("finish"), false);
+  } finally { env.close(); }
+});
+
+test("remounting a staged host requires the new generation's acknowledgement", () => {
+  const env = environment();
+  try {
+    const transition = new BrowserPresentationSwitch(), a = new Host("a"), b = new Host("b");
+    transition.sync(a, state, {}, "right-panel");
+    transition.sync(b, state, {}, "right-panel");
+    transition.sync(b, { ...state, mountGeneration: 2 }, {}, "right-panel");
+    transition.acknowledgeAttachment(b, 1, 2);
+    assert.equal(env.frames.size, 0);
+    transition.acknowledgeAttachment(b, 2, 2);
+    env.tick(); env.tick(); env.tick();
+    assert.equal(b.painted, true); assert.equal(b.generation, 2); assert.equal(a.painted, false);
+    transition.disposeAll();
+  } finally { env.close(); }
+});
+
+test("readiness fallback completes a switch and hidden incoming cancels it", () => {
+  const env = environment();
+  try {
+    const transition = new BrowserPresentationSwitch(), a = new Host("a"), b = new Host("b");
+    transition.sync(a, state, {}, "right-panel");
+    transition.sync(b, state, {}, "right-panel");
+    const timeouts = [...env.timers.values()]; env.timers.clear(); timeouts.forEach(run => run());
+    env.tick(); env.tick(); env.tick();
+    assert.equal(a.painted, false); assert.equal(b.blocked, false);
+    transition.sync(a, state, {}, "right-panel");
+    transition.sync(a, { ...state, isVisible: false }, {}, "right-panel");
+    assert.equal(env.frames.size, 0); assert.equal(env.timers.size, 0);
+    assert.equal(a.painted, false); assert.equal(b.painted, false);
+    transition.disposeAll();
+  } finally { env.close(); }
+});
+
+test("readiness registration cannot resurrect a disposed host and failed readiness is retired", async () => {
+  const env = environment();
+  let ready!: () => void, fail!: (error: Error) => void;
+  let preparation = new Promise<void>(resolve => { ready = resolve; });
+  class PreparedHost extends Host {
+    disposed = false;
+    constructor(options: any) { super(options.browserTabId); }
+    whenReady() { return preparation; }
+    markRegistered() { this.registered = true; return true; }
+    setBrowserUseActive() {} setBrowserUseViewportSize() {} releaseBrowserUse() {}
+    setHostKind() {} setPagePersistence() { return false; }
+    resync() {} dispose() { this.disposed = true; }
+  }
+  try {
+    const manager = createCodexBrowserManager(PreparedHost as any);
+    const first = manager.getWebview("owner", "a", "") as unknown as PreparedHost;
+    manager.disposeWebviewHost("owner", "a", "owner\0a", "closed");
+    ready(); await Promise.resolve(); await Promise.resolve();
+    assert.equal(first.disposed, true); assert.equal(first.registered, false);
+    preparation = new Promise<void>((_resolve, reject) => { fail = reject; });
+    const second = manager.getWebview("owner", "b", "") as unknown as PreparedHost;
+    fail(new Error("surface unavailable")); await Promise.resolve(); await Promise.resolve();
+    assert.equal(second.disposed, true); assert.equal(manager.webviews.size, 0);
+    manager.disposeAll();
+    assert.throws(() => manager.claimMountGeneration("owner", "c"), /disposed/);
   } finally { env.close(); }
 });

@@ -186,17 +186,26 @@
     },
     {
       "id": "codex-browser-recovery",
-      "status": "unverified",
+      "status": "independently-reimplemented",
       "paths": [
-        "apps/workbench-web/src/browser/codex/**",
-        "apps/workbench-web/src/browser/browser-device-toolbar.tsx"
+        "apps/workbench-web/src/browser/browser-presentation-manager.ts",
+        "apps/workbench-web/src/browser/browser-presentation-switch.ts",
+        "apps/workbench-web/src/browser/browser-viewport-controls.ts",
+        "apps/workbench-web/src/browser/browser-device-toolbar.tsx",
+        "apps/workbench-web/src/browser/codex-browser-manager.ts"
       ],
       "evidence": [
-        "apps/workbench-web/src/browser/codex/source-manifest.json",
-        "docs/provenance/expanded-client-findings.json"
+        "docs/provenance/browser-source-manifest.json",
+        "docs/provenance/expanded-client-findings.json",
+        "docs/provenance/browser-presentation-sources.json",
+        "docs/provenance/browser-presentation.md",
+        "tests/codex-browser-manager.test.ts",
+        "tests/browser-device-toolbar.test.ts",
+        "scripts/smoke-browser-presentation-closure.ts"
       ],
-      "reason": "Executable JavaScript explicitly records copied browser manager/presentation class bodies and source-identical viewport helpers. The former inventory omitted JS extensions. Owning UI adapters and declarations are review scope, not automatically whole-file copying findings.",
-      "resolution": "Independently replace the identified copied implementation or establish redistribution rights; preserve browser functionality, exact source records and public contracts. Keep this group unresolved until reviewed and verified."
+      "reason": "The identified copied JavaScript class/helper bodies and adapted toolbar component are removed. A new application host registry, cancellable panel replacement and viewport/control implementation consume the existing original coordinator and host port.",
+      "resolution": "Retain exact historical source bindings and bounded disposition; verify storage/mount identity, registration/disposal fencing, replacement timing, viewport interaction and actual Web/Electron behavior.",
+      "conclusion": "Independent replacement after source review of the specifically identified manager/transition/viewport helper and toolbar regions, against current OpenCraft product requirements and host contracts. No clean-room assertion, no historical clearance, and no claim that unrelated browser or renderer code was copied or rewritten. See browser-presentation.md for exact scope, evidence and limits."
     },
     {
       "id": "codex-syntax-theme-tables",

@@ -65,3 +65,15 @@ shared React plus Expo type checks passed. Four actual Conversation browser
 cases (390/1100px, light/dark) preserve the complete code text and at least three
 syntax colors, plus prior tool/link/review behaviors. Device execution is not
 claimed. The wider source inventory remains unresolved.
+
+## Browser presentation replacement
+
+The copied manager/transition classes, viewport helpers and adapted toolbar
+component are replaced within the [documented browser scope](browser-presentation.md).
+The original source manifest survives as historical evidence outside executable
+packages. Existing Page/Workbench/native guest/navigation owners remain. The new
+registry fences readiness by host instance and lifetime; panel replacement uses
+cancellable transactions; viewport controls preserve current UI and capture ports.
+27 related tests and four actual iframe browser cases pass; separate desktop
+renderer/build execution evidence must be read with its stated limits. This
+resolves the identified browser group, leaving five wider groups unresolved.

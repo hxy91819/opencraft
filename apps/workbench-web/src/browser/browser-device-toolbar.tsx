@@ -1,58 +1,78 @@
 import { useEffect, useRef, useState, type RefObject, type PointerEvent } from "react";
 import { RotateCcw, X } from "lucide-react";
 import { computeBrowserViewportLayout, type BrowserViewportMode } from "@opencraft/browser-core";
-import { DEVICE_PRESETS, initializeBrowserViewportPresets, clampPanelWidth__rBr_2f54e, getDefaultPanelWidth } from "./codex/viewport-presets.js";
-import { computeDragResizeDimensions } from "./codex/viewport-resize.js";
-initializeBrowserViewportPresets();
+import { DEVICE_PRESETS, viewportDimension, computeDragResizeDimensions } from "./browser-viewport-controls";
 
 type DeviceMode = Exclude<BrowserViewportMode, {type:"responsive"}>;
-const labels: Record<string,string> = {
-  responsive:"Responsive", "4k":"4K", "laptop-l":"Laptop L", laptop:"Laptop",
-  "surface-pro-7":"Surface Pro 7","ipad-air":"iPad Air","ipad-mini":"iPad Mini","surface-duo":"Surface Duo",
-  "iphone-15-pro-max":"iPhone 15 Pro Max","pixel-8":"Pixel 8","iphone-15-pro":"iPhone 15 Pro",
-  "samsung-galaxy-s24-ultra":"Galaxy S24 Ultra","iphone-se":"iPhone SE",
-};
-/** Source behavior: renderBrowserDeviceToolbarInput and DeviceToolbar in
- * ref/codex/lazy/app-initial/render-browser-sidebar-comment-overlay.js.
- * React compiler caches/i18n wrappers removed; product tokens/icons substituted.
- */
-export function BrowserDeviceToolbar({mode,onChange,onClose,zoom,onZoom}:{
-  mode:DeviceMode;onChange(mode:DeviceMode):void;onClose():void;zoom:number;onZoom?: (percent:number)=>void;
-}) {
-  const custom = (patch:Partial<DeviceMode>) => onChange({...mode,...patch,type:"device",presetId:"responsive"});
-  const presetId = mode.type==="device" && DEVICE_PRESETS.some(p=>p.id===mode.presetId) ? mode.presetId : "responsive";
-  return <div className="browser-device-toolbar" role="toolbar" aria-label="Device toolbar">
-    <label className="browser-device-toolbar__label" htmlFor="browser-device-preset">Dimensions:</label>
-    <select id="browser-device-preset" aria-label="Device preset" value={presetId} onChange={event=>{
-      const preset=DEVICE_PRESETS.find(p=>p.id===event.currentTarget.value)!;
-      onChange({type:"device",presetId:preset.id,width:preset.id==="responsive"?mode.width:preset.width,height:preset.id==="responsive"?mode.height:preset.height});
-      onZoom?.(100);event.currentTarget.blur();
-    }}>
-      {DEVICE_PRESETS.map(p=><option key={p.id} value={p.id}>{labels[p.id]??p.id}</option>)}
+interface ToolbarProps {
+  readonly mode: DeviceMode;
+  readonly zoom: number;
+  onChange(mode: DeviceMode): void;
+  onClose(): void;
+  onZoom?(percent: number): void;
+}
+
+export function BrowserDeviceToolbar(props: ToolbarProps) {
+  const { mode, zoom, onChange, onClose, onZoom } = props;
+  const selected = mode.type === "device" && DEVICE_PRESETS.find(preset => preset.id === mode.presetId);
+  const choose = (id: string) => {
+    const preset = DEVICE_PRESETS.find(candidate => candidate.id === id);
+    if (!preset) return;
+    const size = id === "responsive" ? mode : preset;
+    onChange({ type: "device", presetId: id, width: size.width, height: size.height });
+    onZoom?.(100);
+  };
+  const edit = (axis: "width" | "height", value: number) =>
+    onChange({ ...mode, type: "device", presetId: "responsive", [axis]: value });
+  const zoomLevels = Array.from(new Set([zoom, 50, 75, 100, 125, 150, 200])).sort((a, b) => a - b);
+  return <div role="toolbar" aria-label="Device toolbar" className="browser-device-toolbar">
+    <label htmlFor="browser-device-preset" className="browser-device-toolbar__label">Dimensions:</label>
+    <select aria-label="Device preset" id="browser-device-preset" value={selected ? selected.id : "responsive"}
+      onChange={event => { choose(event.currentTarget.value); event.currentTarget.blur(); }}>
+      {DEVICE_PRESETS.map(({ id, label }) => <option value={id} key={id}>{label}</option>)}
     </select>
     <div className="browser-device-toolbar__dimensions">
-      <DimensionInput label="Viewport width" value={mode.width} min={240} onChange={width=>custom({width})}/>
-      <span aria-hidden="true">×</span>
-      <DimensionInput label="Viewport height" value={mode.height} min={160} onChange={height=>custom({height})}/>
+      {(["width", "height"] as const).map((axis, index) => <span key={axis} style={{ display: "contents" }}>
+        {index > 0 && <span aria-hidden="true">×</span>}
+        <ViewportField axis={axis} value={mode[axis]} commit={value => edit(axis, value)} />
+      </span>)}
     </div>
-    <button type="button" aria-label="Rotate viewport" title="Rotate viewport" onClick={()=>onChange({...mode,width:mode.height,height:mode.width})}><RotateCcw size={16}/></button>
-    {onZoom?<select className="browser-device-toolbar__zoom" aria-label="Browser zoom" value={zoom} onChange={event=>{onZoom(Number(event.currentTarget.value));event.currentTarget.blur();}}>
-      {[...new Set([50,75,100,125,150,200,zoom])].sort((a,b)=>a-b).map(value=><option key={value} value={value}>{value}%</option>)}
-    </select>:null}
-    <button type="button" className="browser-device-toolbar__close" aria-label="Close device toolbar" title="Close device toolbar" onClick={onClose}><X size={14}/></button>
+    <button aria-label="Rotate viewport" title="Rotate viewport" type="button"
+      onClick={() => onChange({ ...mode, width: mode.height, height: mode.width })}><RotateCcw size={16} /></button>
+    {onZoom && <select aria-label="Browser zoom" className="browser-device-toolbar__zoom" value={zoom}
+      onChange={event => { onZoom(Number(event.currentTarget.value)); event.currentTarget.blur(); }}>
+      {zoomLevels.map(percent => <option key={percent} value={percent}>{percent}%</option>)}
+    </select>}
+    <button type="button" aria-label="Close device toolbar" title="Close device toolbar"
+      className="browser-device-toolbar__close" onClick={onClose}><X size={14} /></button>
   </div>;
 }
-function DimensionInput({label,value,min,onChange}:{label:string;value:number;min:number;onChange(value:number):void}) {
-  const [draft,setDraft]=useState<string|null>(null);
-  return <input className="browser-device-toolbar__input" aria-label={label} type="number" min={min} max={4096}
-    value={draft??String(value)} onFocus={()=>setDraft(String(value))}
-    onChange={event=>{
-      setDraft(event.currentTarget.value);
-      const number=event.currentTarget.valueAsNumber;
-      if(Number.isFinite(number)&&number>=min&&number<=4096)onChange(Math.round(number));
-    }}
-    onBlur={event=>{setDraft(null);const n=event.currentTarget.valueAsNumber;if(Number.isFinite(n))onChange(Math.min(4096,Math.max(min,Math.round(n))));}}
-    onKeyDown={event=>{if(event.key==="Enter"){event.preventDefault();event.currentTarget.blur();}if(event.key==="Escape"){setDraft(null);event.currentTarget.blur();}}}/>;
+
+function ViewportField({ axis, value, commit }: {
+  readonly axis: "width" | "height";
+  readonly value: number;
+  commit(value: number): void;
+}) {
+  const [editing, setEditing] = useState<string | null>(null);
+  const cancelled = useRef(false);
+  const minimum = axis === "width" ? 240 : 160;
+  const publish = (text: string, finish: boolean) => {
+    if (!text.trim()) return;
+    const number = Number(text);
+    if (!Number.isFinite(number)) return;
+    if (finish || number >= minimum && number <= 4096) commit(viewportDimension(number, axis));
+  };
+  return <input type="number" aria-label={`Viewport ${axis}`} className="browser-device-toolbar__input"
+    min={minimum} max={4096} value={editing ?? value}
+    onFocus={() => { cancelled.current = false; setEditing(String(value)); }}
+    onChange={event => { const text = event.currentTarget.value; setEditing(text); publish(text, false); }}
+    onBlur={event => { if (!cancelled.current) publish(event.currentTarget.value, true); setEditing(null); }}
+    onKeyDown={event => {
+      if (event.key !== "Escape" && event.key !== "Enter") return;
+      event.preventDefault();
+      cancelled.current = event.key === "Escape";
+      event.currentTarget.blur();
+    }} />;
 }
 type Edge="left"|"right"|"bottom"|"bottom-left"|"bottom-right";
 export function BrowserDeviceHandles({mode,slot,onChange}:{mode:DeviceMode;slot:RefObject<HTMLDivElement|null>;onChange(mode:DeviceMode):void}) {
@@ -100,8 +120,8 @@ export function BrowserDeviceHandles({mode,slot,onChange}:{mode:DeviceMode;slot:
         event.preventDefault();
         const horizontal=edge!=="bottom",vertical=edge!=="left"&&edge!=="right";
         onChange({type:"device",presetId:"responsive",
-          width:clampPanelWidth__rBr_2f54e(mode.width+(horizontal?(event.key==="ArrowRight"?amount:event.key==="ArrowLeft"?-amount:0):0)),
-          height:getDefaultPanelWidth(mode.height+(vertical?(event.key==="ArrowDown"?amount:event.key==="ArrowUp"?-amount:0):0))});
+          width:viewportDimension(mode.width+(horizontal?(event.key==="ArrowRight"?amount:event.key==="ArrowLeft"?-amount:0):0), "width"),
+          height:viewportDimension(mode.height+(vertical?(event.key==="ArrowDown"?amount:event.key==="ArrowUp"?-amount:0):0), "height")});
       }}/>)}
   </div>;
 }

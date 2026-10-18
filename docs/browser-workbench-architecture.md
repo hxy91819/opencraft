@@ -53,11 +53,13 @@ Iterator helpers（如 `Map.values().map()`）。需要映射时先用标准数�
 空状态也必须可恢复，既有有效页面保留、孤立页面清理规则保持。
 兼容回归通过移除迭代器辅助方法验证此能力边界，不能冒称对应 iPad 实机验收。桌面 Scope 绑定、
 标签、页面及 storage ID 元数据通过主进程存储，不能依赖启动时变化的 localhost origin。
-空白 backing 交由源管理器 prewarm 所有权管理；首次加载前已设置分区与 sandbox。
+空白 backing 交由应用级 BrowserPresentationManager 管理；首次加载前已设置分区与 sandbox。
 崩溃恢复通过标准 guest reload 重建 renderer，保持 logical page 和 partition。
-设备预设与拖动计算直接来自 Codex，尺寸变化消费源 manager toolbar 投影，持久化到标签偏好。
+设备预设与拖动计算由 browser-viewport-controls 处理，尺寸变化经应用回调持久化到标签偏好。
+2026-10-18 来源处理已用独立的 Host registry 与可取消 panel replacement 替换旧复制管理器；
+旧来源记录、替换边界及验证见 [Browser source disposition](provenance/browser-presentation.md)。
 
-设备工具栏呈现（2026-09-14）：按源 DeviceToolbar/数字输入的布局和编辑语义迁移，
+设备工具栏呈现（2026-09-14 产品契约保留，2026-10-18 实现独立替换）：
 地址栏只保留设备模式开关；设备模式显示 34px 单行工具栏（预设、宽 × 高、旋转、
 缩放、关闭）。数字输入 72×24、浅主题背景/透明边框，焦点态可见；小于600px隐藏
 缩放，小于460px隐藏 Dimensions 标签。宽高输入保留编辑草稿，合法数值即时应用，

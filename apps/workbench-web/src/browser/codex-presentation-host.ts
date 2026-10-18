@@ -11,7 +11,7 @@ export interface PresentationHostPort {
   cover(layout: BrowserViewportLayout): void;
 }
 
-/** Standard DOM/guest port for the unmodified Codex transition state machine. */
+/** Standard DOM/guest adapter for application-owned panel presentations. */
 export class CodexPresentationHost {
   private state: Value = { isVisible: false, mountGeneration: 0 };
   private reference: any = null;
