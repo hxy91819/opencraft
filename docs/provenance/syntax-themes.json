@@ -1,0 +1,18 @@
+{
+  "baseCommit": "9ad7514631d171bba6174a95c0f5c88351ec0258",
+  "historicalFinding": "expanded-client-findings.json",
+  "replacement": {
+    "package": "@shikijs/themes",
+    "version": "4.4.3",
+    "themes": [
+      "vitesse-light",
+      "vitesse-dark"
+    ],
+    "license": "MIT",
+    "licenseSha256": "7a9d8d01038aeacf9e5bcdabbddf2a7815200dce9fc1118468cc553e00ae3eee",
+    "archive": "https://registry.npmjs.org/@shikijs/themes/-/themes-4.4.3.tgz",
+    "integrity": "sha512-w8UHjeUnIR965KMWJHUPXOc2mNJUnK3vpVLYLvw5IYU2mnTTJ89E24OrJDBNiJDQ0qzb0tc4l7mrIXx5cFeIyw==",
+    "notice": "packages/chat-render-react/SYNTAX_THEME_NOTICE.json"
+  },
+  "scope": "The two identified token tables are removed; adapter preserves existing export/theme IDs. No historical or whole-client clearance."
+}

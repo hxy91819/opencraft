@@ -31,7 +31,37 @@ downstream Join pin follows from this checkpoint.
 
 The next bounded checkpoint replaces the identified history-loading scheduler
 and imperative follow reducer; [timeline disposition](timeline-closure.md)
-records method and remaining scope. The related cross-platform suite passes150
-cases, the accepted public API comparison covers255 finite transitions, and
+records method and remaining scope. The related cross-platform suite passes 150
+cases, the accepted public API comparison covers 255 finite transitions, and
 canonical synchronous reentrancy now performs one load instead of two. This
 progress does not resolve the entire timeline model or adapter groups.
+
+
+## Expanded inventory correction
+
+The former five-group inventory omitted executable browser JavaScript and two
+syntax token tables. [Exact current findings](expanded-client-findings.json)
+record the missing scopes and old hashes. Browser class/helper headers explicitly
+state copied source; the dark syntax table exactly matches 245 recovered rules,
+and the light table retains their non-color structure. These scopes are now
+inventoried individually. The annotation checker includes JS/CSS/JSON and explicit
+source-copy annotations; its tests reproduce the former omission. Old five-group
+counts above are checkpoint history, not a complete current clearance statement.
+
+## Licensed syntax theme replacement
+
+The two identified 245-rule arrays are removed. The shared highlighter now consumes
+Vitesse light/dark from pinned `@shikijs/themes` 4.4.3 (MIT), with complete permission
+text in `packages/chat-render-react/SYNTAX_THEME_NOTICE.json`, also embedded in Expo
+public metadata; Web/Electron build license output retains the dependency notice.
+[Exact license/integrity binding](syntax-themes.json) records the current dependency.
+Legacy public theme IDs and exports remain compatible. Syntax colors intentionally
+change; grammars, language aliases, text preservation and cancellation stay intact.
+This is a licensed dependency replacement, not an independently authored palette
+or a clearance of historical commits.
+
+Syntax checkpoint validation: 35 focused rendering/provenance/notice tests and
+shared React plus Expo type checks passed. Four actual Conversation browser
+cases (390/1100px, light/dark) preserve the complete code text and at least three
+syntax colors, plus prior tool/link/review behaviors. Device execution is not
+claimed. The wider source inventory remains unresolved.

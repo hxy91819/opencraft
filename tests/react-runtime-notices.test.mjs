@@ -7,6 +7,7 @@ import { join } from 'node:path';
 
 const require = createRequire(import.meta.url);
 const notice = require('../packages/react-runtime/NOTICE.json');
+const syntaxNotice = require('../packages/chat-render-react/SYNTAX_THEME_NOTICE.json');
 const pkg = require('react-use-event-hook/package.json');
 
 test('the retained notice matches the exact installed public dependency and complete license', () => {
@@ -27,7 +28,7 @@ test('Expo config retains the full notice without losing unrelated public metada
   const config = configure({ config: { name: 'Fixture', extra: { existing: true } } });
   assert.equal(config.name, 'Fixture');
   assert.equal(config.extra.existing, true);
-  assert.deepEqual(config.extra.openSourceNotices, [notice]);
+  assert.deepEqual(config.extra.openSourceNotices, [notice, syntaxNotice]);
 });
 
 test('an explicit native product keeps its own notices as well as the shared dependency notice', t => {
@@ -42,9 +43,17 @@ test('an explicit native product keeps its own notices as well as the shared dep
     const config = configure({ config: { name: 'Core' } });
     assert.equal(config.name, 'Product');
     assert.equal(config.extra.product, true);
-    assert.deepEqual(config.extra.openSourceNotices, [{ name: 'product-dependency' }, notice]);
+    assert.deepEqual(config.extra.openSourceNotices, [{ name: 'product-dependency' }, notice, syntaxNotice]);
   } finally {
     if (original === undefined) delete process.env.OPENCRAFT_EXPO_PRODUCT_CONFIG;
     else process.env.OPENCRAFT_EXPO_PRODUCT_CONFIG = original;
   }
+});
+
+test('syntax theme distribution retains the installed package permission text and exact pin', () => {
+  const license = readFileSync(new URL('../node_modules/@shikijs/themes/LICENSE', import.meta.url), 'utf8');
+  assert.equal(syntaxNotice.text, license);
+  const lock = require('../package-lock.json');
+  assert.equal(lock.packages['node_modules/@shikijs/themes'].version, syntaxNotice.version);
+  assert.equal(lock.packages['packages/chat-render-react'].dependencies['@shikijs/themes'], syntaxNotice.version);
 });

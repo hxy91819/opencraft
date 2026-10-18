@@ -1,7 +1,6 @@
 import type { ThemeRegistration } from "@shikijs/core";
-
-import codexDarkTokens from "./codex-dark-tokens.json";
-import codexLightTokens from "./codex-light-tokens.json";
+import vitesseDark from "@shikijs/themes/vitesse-dark";
+import vitesseLight from "@shikijs/themes/vitesse-light";
 
 interface CodexSyntaxPalette {
   readonly foreground: string;
@@ -15,47 +14,33 @@ interface CodexSyntaxPalette {
   readonly function: string;
 }
 
-export const CODEX_LIGHT_SYNTAX: CodexSyntaxPalette = {
-  foreground: "#0d0d0d",
-  comment: "#666666",
-  string: "#008809",
-  number: "#0071EA",
-  regexp: "#001BCB",
-  keyword: "#D53538",
-  variable: "#BD5800",
-  parameter: "#666666",
-  function: "#751ED9",
-};
-
-export const CODEX_DARK_SYNTAX: CodexSyntaxPalette = {
-  foreground: "#fcfcfc",
-  comment: "#999999",
-  string: "#85df7b",
-  number: "#6DCBF4",
-  regexp: "#3D8DFF",
-  keyword: "#F67576",
-  variable: "#FA994C",
-  parameter: "#999999",
-  function: "#B06DFF",
-};
-
-function createCodexTheme(
-  name: "codex-light" | "codex-dark",
-  type: "light" | "dark",
-  palette: CodexSyntaxPalette,
-): ThemeRegistration {
+// Legacy export names remain API-compatible; colors and rules come from the
+// licensed Shiki Vitesse themes. See SYNTAX_THEME_NOTICE.json.
+function palette(theme: ThemeRegistration): CodexSyntaxPalette {
+  const foreground = theme.colors?.["editor.foreground"] ?? theme.fg ?? "inherit";
+  const color = (scope: string): string => {
+    for (const rule of theme.tokenColors ?? theme.settings ?? []) {
+      const scopes = typeof rule.scope === "string" ? rule.scope.split(",") : rule.scope ?? [];
+      if (scopes.some(value => value.trim() === scope) && rule.settings.foreground) {
+        return rule.settings.foreground;
+      }
+    }
+    return foreground;
+  };
   return {
-    name,
-    type,
-    colors: {
-      "editor.background": type === "light" ? "#ffffff" : "#111111",
-      "editor.foreground": palette.foreground,
-    },
-    fg: palette.foreground,
-    bg: type === "light" ? "#ffffff" : "#111111",
-    settings: type === "light" ? codexLightTokens : codexDarkTokens,
+    foreground,
+    comment: color("comment"),
+    string: color("string"),
+    number: color("constant.numeric"),
+    regexp: color("string.regexp"),
+    keyword: color("keyword"),
+    variable: color("variable"),
+    parameter: color("variable.parameter.function"),
+    function: color("entity.name.function"),
   };
 }
 
-export const codexLightTheme = createCodexTheme("codex-light", "light", CODEX_LIGHT_SYNTAX);
-export const codexDarkTheme = createCodexTheme("codex-dark", "dark", CODEX_DARK_SYNTAX);
+export const CODEX_LIGHT_SYNTAX = palette(vitesseLight);
+export const CODEX_DARK_SYNTAX = palette(vitesseDark);
+export const codexLightTheme: ThemeRegistration = { ...vitesseLight, name: "codex-light" };
+export const codexDarkTheme: ThemeRegistration = { ...vitesseDark, name: "codex-dark" };

@@ -1,0 +1,84 @@
+{
+  "baseCommit": "9ad7514631d171bba6174a95c0f5c88351ec0258",
+  "findings": [
+    {
+      "id": "browser-js",
+      "finding": "Browser manager and presentation transition explicitly state their class bodies are copied. Viewport helpers explicitly state source-identical/source function bodies. These executable JS files were omitted by the former annotation extension filter.",
+      "evidence": "apps/workbench-web/src/browser/codex/source-manifest.json",
+      "limits": "The manifest source hashes are retained reported bindings; they do not establish source rights or make the entire owning adapter copied."
+    },
+    {
+      "id": "syntax-theme-tables",
+      "finding": "All245 dark token rules are structurally identical to the pinned recovered JSON asset. The245 light rules have the same non-color structure as dark.",
+      "darkEntries": 245,
+      "darkExactEquality": true,
+      "lightSameNonColorStructure": true,
+      "reference": "reference://codex/.runtime/partition-r822-shared-owner-semantic-locals/__mia-data-assets/json/c6c92a4904eedc328132.json",
+      "sha256": "c6c92a4904eedc328132811ae68e06e28ec508a61976b672b7d8b42394af42cb"
+    },
+    {
+      "id": "review-presentation",
+      "finding": "Distinctive ChatGPT-specific review fallback prose matches the pinned recovered localized status data.",
+      "reference": "reference://codex/.runtime/source-tree-build-r1973-initializer-state-control-closure/lazy/app-initial/assets/format-auto-review-status-title-data.js",
+      "sha256": "3fc3d1a4696ebf3a0001c19e1f6e803fb6cdb653e1db42c03c3bf8b47d80c824"
+    }
+  ],
+  "targets": [
+    {
+      "path": "apps/workbench-web/src/browser/codex/viewport-resize.js",
+      "sha256": "d9e4aea663e289d88730e2650a10eb950b7338e95cdf285122784bd43a9bf4f3"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/presentation-transition.js",
+      "sha256": "4dc91020726f730bc96721ce8861e9b70bdfcc6871b29d83e17c2bd90c642ec1"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/browser-manager.d.ts",
+      "sha256": "649a4c5b18834ed71b0a28f6c85111ef85575080ca13821d713608bfb2a76c38"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/presentation-transition.d.ts",
+      "sha256": "649a4c5b18834ed71b0a28f6c85111ef85575080ca13821d713608bfb2a76c38"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/viewport-presets.d.ts",
+      "sha256": "45f0ad4dfc2d06b5729c33f788b9b58eb9a8db7ad6d211b153308ddbf9246cc6"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/source-manifest.json",
+      "sha256": "57e56eed3ab10878a78a1211ab3bd1cee641b660fe689b9da6d61d6ad92716a9"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/viewport-presets.js",
+      "sha256": "c3d7e88cabc0fe0b68f45f67c6bb09e1223896361505e9e5c6afe73d51df62e0"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/viewport-resize.d.ts",
+      "sha256": "c4818c8a269a6a53957804eacbda508adfe58f3fdb9afdd0abbcd90fc7e235d1"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/codex/browser-manager.js",
+      "sha256": "10b07a4b867fe29025b918f1005aade59e374c54f789799081a9b34e9e781c46"
+    },
+    {
+      "path": "apps/workbench-web/src/browser/browser-device-toolbar.tsx",
+      "sha256": "1dccc26b8a4563c8ce0bfd9f8686870f3622f546641d8ee25d6d36c50f2a0093"
+    },
+    {
+      "path": "apps/workbench-web/src/components/floating-composer-state.ts",
+      "sha256": "82500b063cf8add9f4dfc2f3eaa0f9a502d79fb6abe4cd1b94caaa89ffa963b0"
+    },
+    {
+      "path": "packages/chat-render-react/src/codex-dark-tokens.json",
+      "sha256": "e4f6b081e45d7fc734d90ed24907dc678401bedfac5619c6a71c50ae1c095d9a"
+    },
+    {
+      "path": "packages/chat-render-react/src/codex-light-tokens.json",
+      "sha256": "8b1d373756acfd4f71fa3ca92c8c3dec355fe00a1f33b10dddd07d14768c215a"
+    },
+    {
+      "path": "packages/chat-core/src/automatic-approval-review.ts",
+      "sha256": "1267f1548b83c31381bf9a47aaa1d7eeb5c6db4e01cf236fd05639e3b2631dde"
+    }
+  ]
+}

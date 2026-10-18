@@ -47,6 +47,21 @@ test('ordinary behavior descriptions are not automatically classified as recover
   await writeFile(join(root, 'packages/independent.ts'), '// Codex-style scrolling is a behavior reference, not source provenance.\n');
   assert.deepEqual((await inspectProvenance(root)).errors, []);
 });
+test('JavaScript copies and JSON source manifests cannot escape annotation inventory', async t => {
+  const root = await fixture(t);
+  await mkdir(join(root, 'apps/browser'), { recursive: true });
+  await writeFile(join(root, 'apps/browser/manager.js'), '// Source class body copied from ref/codex/browser/manager.ts\n');
+  await writeFile(join(root, 'apps/browser/source-manifest.json'), JSON.stringify({ source: 'ref/codex/browser/manager.ts' }));
+  assert.deepEqual((await inspectProvenance(root)).errors, [
+    'Untracked source provenance annotation: apps/browser/manager.js',
+    'Untracked source provenance annotation: apps/browser/source-manifest.json',
+  ]);
+});
+test('source-identical annotations remain visible in JavaScript helpers', async t => {
+  const root = await fixture(t);
+  await writeFile(join(root, 'packages/viewport.mjs'), '// Source-identical viewport helper\n');
+  assert.match((await inspectProvenance(root)).errors.join('\n'), /Untracked.*viewport\.mjs/u);
+});
 test('resolved requires a conclusion; excluded requires actual removal', async t => {
   const missing = await inspectProvenance(await fixture(t, 'original'));
   assert.equal(missing.releaseReady, false);

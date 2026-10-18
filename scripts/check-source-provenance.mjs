@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const statuses = new Set(['unverified', 'original', 'third-party-licensed', 'independently-reimplemented', 'excluded']);
-const markers = /restored (?:and typed )?from Codex|recovered (?:from )?Codex|behavior follows Codex Desktop|Codex r822|reference:\/\/codex|recovered\/assets/iu;
+const markers = /restored (?:and typed )?from Codex|recovered (?:from )?Codex|behavior follows Codex Desktop|Codex r822|reference:\/\/codex|ref\/codex\/|source-identical|recovered\/assets/iu;
 const ignored = new Set(['node_modules', '.git', '.local', 'dist', 'build', '.expo']);
 
 async function files(directory, prefix = '') {
@@ -54,7 +54,7 @@ export async function inspectProvenance(directory = root) {
   // Documentation outside executable packages remains evidence, not a claim
   // that all behavioral references are copied or require the same treatment.
   for (const path of allFiles) {
-    if (!/^(apps|packages)\//u.test(path) || !/\.(tsx?|scss|md)$/u.test(path)) continue;
+    if (!/^(apps|packages)\//u.test(path) || !/\.(?:[cm]?[jt]sx?|scss|css|json|md)$/u.test(path)) continue;
     if (markers.test(await readFile(resolve(directory, path), 'utf8'))
       && !manifest.entries.some(entry => entry.paths.some(pattern => matches(path, pattern)))) errors.push(`Untracked source provenance annotation: ${path}`);
   }

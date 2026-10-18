@@ -12,6 +12,8 @@ rights that the OpenCraft contributors do not hold. Do not represent this
 mixed migration tree as a cleared Apache-2.0 release.
 
 Existing third-party notices:
+- packages/chat-render-react/SYNTAX_THEME_NOTICE.json (@shikijs/themes 4.4.3, MIT;
+  includes the complete copyright and permission notice)
 - packages/connector-core/NOTICE.md
 - docs/provenance/connector-artwork.md (excluded artwork; historical attribution)
 - packages/react-runtime/NOTICE.json (react-use-event-hook 0.9.6, MIT;

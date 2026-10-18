@@ -29,6 +29,7 @@ function Demo() {
   probe.changeThreadToolPhase = setPhase;
   const items: TimelineSourceItem[] = [
     { id: "user-link", type: "userMessage", payload: { content: [{ type: "text", text: "Inspect [design notes](https://example.test/design-notes) before changing the theme." }] } },
+    { id: "syntax-preview", type: "agentMessage", payload: { text: "```typescript\n// greeting\nconst answer = 42;\nconsole.log(\"hello\", answer);\n```" } },
     tool("fork", "fork_thread", { environment: { type: "worktree" } }, phase),
     tool("read", "read_thread", { threadId: "read-target" }),
     tool("create", "create_thread", { target: { type: "project" } }, "completed", { threadId: "created-target", hostId: "local" }),

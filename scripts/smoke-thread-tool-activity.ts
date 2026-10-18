@@ -30,6 +30,11 @@ try {
     page.on("pageerror", error => errors.push(error.message));
     await page.addInitScript("window.__name=value=>value");
     await page.goto(`http://127.0.0.1:${(vite.httpServer!.address() as { port: number }).port}/?theme=${theme}`);
+    const syntax = page.locator(".chat-code-block").filter({ hasText: "const answer" });
+    await syntax.locator(".line span[style]").first().waitFor();
+    const syntaxColors = await syntax.locator(".line span[style]").evaluateAll(nodes => [...new Set(nodes.map(node => getComputedStyle(node).color))]);
+    assert.ok(syntaxColors.length >= 3, "actual code surface preserves distinct syntax colors");
+    assert.ok((await syntax.innerText()).includes('console.log("hello", answer)'));
     const nativeSummary = page.locator(".thread-codex-app-tool-row .thread-activity-item__summary");
     // Group headers repeat the last activity title; inspect the actual status-bearing rows.
     const surfaceSummary = page.locator(".thread-activity-item[data-status] > .thread-activity-item__header .thread-activity-item__summary");
@@ -72,7 +77,7 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: join(output, `${width}-${theme}.png`) });
     assert.deepEqual(errors, []);
-    results.push({ width, theme, navigationAndCreatedCard: true, transferSteps: true, failedPollVisible: true, reportedStepStates: true, allSurfacePhases: true, allPhases: true, literalQueries: true, commandPhases: true, composerLink: true, licensedReviewGlyph: true });
+    results.push({ width, theme, navigationAndCreatedCard: true, transferSteps: true, failedPollVisible: true, reportedStepStates: true, allSurfacePhases: true, allPhases: true, literalQueries: true, commandPhases: true, composerLink: true, licensedReviewGlyph: true, syntaxHighlighting: true });
     console.log(JSON.stringify({ width, theme, passed: true }));
     await page.close();
   }

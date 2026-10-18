@@ -7,6 +7,14 @@ third-party code, artwork or trademarks. References to behavior alone do not
 establish that a whole file is copied either. Review actual expression and
 lineage before reaching a conclusion.
 
+The expanded client review found that the earlier five-group list was incomplete:
+it omitted executable JavaScript browser copies and the syntax token arrays.
+The current inventory includes those scopes; older counts below describe their
+historical checkpoints, not the current release boundary. The annotation check
+now includes JavaScript, CSS and JSON source manifests and records explicit
+`ref/codex/` / source-identical annotations. It still does not prove that every
+unannotated file is original.
+
 The machine-readable inventory is
 [`config/source-provenance.json`](../config/source-provenance.json). Generate
 the exact file list and SHA256s for the candidate being reviewed:

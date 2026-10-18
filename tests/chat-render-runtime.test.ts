@@ -29,10 +29,6 @@ import {
   unwrapHighlightedCodeHtml,
 } from "../packages/chat-render-web/src/extensions/shiki/highlighted-code-html";
 import {
-  CODEX_DARK_SYNTAX,
-  CODEX_LIGHT_SYNTAX,
-} from "@opencraft/chat-render-react/code-highlight-themes";
-import {
   createMermaidRenderKey,
   createMermaidRenderState,
   isMermaidRenderRevealed,
@@ -436,21 +432,6 @@ test("code surface owns default and preview geometry", () => {
   );
 });
 
-test("Shiki uses Codex syntax palettes instead of GitHub themes", () => {
-  assert.deepEqual(CODEX_LIGHT_SYNTAX, {
-    foreground: "#0d0d0d",
-    comment: "#666666",
-    string: "#008809",
-    number: "#0071EA",
-    regexp: "#001BCB",
-    keyword: "#D53538",
-    variable: "#BD5800",
-    parameter: "#666666",
-    function: "#751ED9",
-  });
-  assert.equal(CODEX_DARK_SYNTAX.function, "#B06DFF");
-  assert.doesNotMatch(shikiAdapterSource, /github-(?:dark|light)/u);
-});
 
 test("Mermaid rendering keeps the last committed geometry across render keys", () => {
   const lightKey = createMermaidRenderKey("light", "graph TD; A-->B");

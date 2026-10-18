@@ -37,7 +37,8 @@
         "apps/workbench-web/src/components/sidebar.tsx",
         "apps/workbench-web/src/components/use-panel-animation.ts",
         "apps/workbench-web/src/sidebar-dock-model.ts",
-        "packages/appserver-protocol/src/resume-history.ts"
+        "packages/appserver-protocol/src/resume-history.ts",
+        "apps/workbench-web/src/components/floating-composer-state.ts"
       ],
       "evidence": [
         "apps/workbench-web/src/sidebar-dock-model.ts",
@@ -114,7 +115,8 @@
       "status": "unverified",
       "paths": [
         "packages/chat-core/src/tool-activity.ts",
-        "packages/chat-core/src/codex-app-tools.ts"
+        "packages/chat-core/src/codex-app-tools.ts",
+        "packages/chat-core/src/automatic-approval-review.ts"
       ],
       "evidence": [
         "packages/chat-core/src/tool-activity.ts",
@@ -124,9 +126,10 @@
         "docs/provenance/tool-surface-sources.json",
         "tests/chat-tool-surface-state.test.ts",
         "docs/provenance/tool-context-sources.json",
-        "tests/chat-tool-context-labels.test.ts"
+        "tests/chat-tool-context-labels.test.ts",
+        "docs/provenance/expanded-client-findings.json"
       ],
-      "reason": "The identified MCP/computer/dynamic catalogs, handoff inference, web-query compaction and command narrative regions are replaced within documented boundaries. Remaining content interpretation, identifier formatting and specialized presenter lineage still require individual review; these changes do not clear the entire module or historical objects.",
+      "reason": "The identified MCP/computer/dynamic catalogs, handoff inference, web-query compaction and command narrative regions are replaced within documented boundaries. Remaining content interpretation, identifier formatting and specialized presenter lineage still require individual review; these changes do not clear the entire module or historical objects. Expanded review also identifies the review-presentation fallback prose outside the former target list.",
       "resolution": "Retain exact source/target hashes and replacement method/behavior evidence. Review the remaining regions in the consolidated source-closure effort; keep original/licensed code and replace only established uncleared expression. Keep this group unverified until the full review is complete."
     },
     {
@@ -180,6 +183,37 @@
       "reason": "The explicitly source-identical review SVG matches the pinned recovered reference. That inline artwork is removed and replaced with the existing licensed Lucide ShieldCheck export.",
       "resolution": "Retain Lucide ISC and bundled Feather MIT notices in source dependency and Web/Electron dependency license output. Preserve the removed glyph source binding; this does not clear the rest of the renderer or old Git commits.",
       "conclusion": "Current automatic-review artwork delegates to lucide-react 1.35.0 ShieldCheck under ISC, with exact installed license hash and dependency pin recorded. The former unverified inline SVG is absent from the candidate. Scope is the identified artwork only."
+    },
+    {
+      "id": "codex-browser-recovery",
+      "status": "unverified",
+      "paths": [
+        "apps/workbench-web/src/browser/codex/**",
+        "apps/workbench-web/src/browser/browser-device-toolbar.tsx"
+      ],
+      "evidence": [
+        "apps/workbench-web/src/browser/codex/source-manifest.json",
+        "docs/provenance/expanded-client-findings.json"
+      ],
+      "reason": "Executable JavaScript explicitly records copied browser manager/presentation class bodies and source-identical viewport helpers. The former inventory omitted JS extensions. Owning UI adapters and declarations are review scope, not automatically whole-file copying findings.",
+      "resolution": "Independently replace the identified copied implementation or establish redistribution rights; preserve browser functionality, exact source records and public contracts. Keep this group unresolved until reviewed and verified."
+    },
+    {
+      "id": "codex-syntax-theme-tables",
+      "status": "third-party-licensed",
+      "paths": [
+        "packages/chat-render-react/src/code-highlight-themes.ts"
+      ],
+      "evidence": [
+        "docs/provenance/expanded-client-findings.json",
+        "docs/provenance/syntax-themes.json",
+        "packages/chat-render-react/SYNTAX_THEME_NOTICE.json",
+        "tests/chat-code-highlight.test.ts",
+        "tests/react-runtime-notices.test.mjs"
+      ],
+      "reason": "The identified 245-rule arrays have been removed. Current syntax rules use unmodified public Vitesse light/dark theme exports from pinned @shikijs/themes 4.4.3.",
+      "resolution": "Retain complete MIT notice, exact package integrity and Web/Electron dependency notices plus Expo manifest notice.",
+      "conclusion": "Current theme data are third-party MIT-licensed @shikijs/themes 4.4.3. OpenCraft adapter retains legacy public export names/theme IDs without retaining the recovered token arrays. This disposition does not clear historical objects or any other renderer implementation."
     }
   ]
 }
