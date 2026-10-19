@@ -1,6 +1,6 @@
 @use "sass:list";
 @use "sass:map";
-@use "./typography/generated.web" as generated;
+@use "./typography/roles.web" as generated;
 
 $text-tones: (
   primary: var(--color-text),

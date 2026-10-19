@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "..");
 const registryPath = resolve(root, "packages/design-system/src/typography/typography.tokens.json");
 const outputPath = resolve(root, "packages/design-system/src/typography/_generated.web.scss");
+const rolesPath = resolve(root, "packages/design-system/src/typography/_roles.web.scss");
 const registry = JSON.parse(await readFile(registryPath, "utf8"));
 const kebab = (value) => value.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 const weight = (name) => registry.weights[name];
@@ -58,13 +59,17 @@ lines.push(
 );
 
 const generated = `${lines.join("\n")}\n`;
-if (process.argv.includes("--check")) {
-  const existing = await readFile(outputPath, "utf8").catch(() => "");
-  if (existing !== generated) {
-    console.error("Typography Web adapter is stale. Run npm run generate:typography.");
-    process.exit(1);
+// Compile-time role validation must not emit the global :root token projection.
+const roleMetadata = `${lines.slice(0, 2).join("\n")}\n`;
+for (const [path, content] of [[outputPath, generated], [rolesPath, roleMetadata]]) {
+  if (process.argv.includes("--check")) {
+    const existing = await readFile(path, "utf8").catch(() => "");
+    if (existing !== content) {
+      console.error("Typography Web adapter is stale. Run npm run generate:typography.");
+      process.exit(1);
+    }
+  } else {
+    await writeFile(path, content);
+    console.log(`Generated ${path}`);
   }
-} else {
-  await writeFile(outputPath, generated);
-  console.log(`Generated ${outputPath}`);
 }

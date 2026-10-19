@@ -135,3 +135,8 @@ its owned plugins and Native renderers, not a redesign of independent downstream
 
 These commits illustrate the failure mode, not contributor intent. Existing token
 ownership was useful; enforcement coverage and role guidance were incomplete.
+
+Component Sass role mixins import only generated CSS-free role metadata
+(`_roles.web.scss`). The generator owns that file alongside `_generated.web.scss`;
+`tokens.web.scss` owns the latter's global CSS output. This preserves semantic
+role validation without duplicating every global token in each feature chunk.

@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import test from "node:test";
+import { compileString } from "sass";
+import { fileURLToPath } from "node:url";
 
 
 import {
@@ -82,4 +84,16 @@ test("shared filter controls retain their authored dimensions", () => {
   assert.match(tokens, /--width-filter-control: 160px/u);
   assert.match(sharedTokens, /filterHeight: 36/u);
   assert.match(sharedTokens, /filterWidth: 160/u);
+});
+
+
+test("component typography mixins do not emit global token declarations", () => {
+  const loadPaths = [fileURLToPath(new URL("../packages/design-system/src", import.meta.url))];
+  const options = { loadPaths, style: "compressed" as const };
+  const component = compileString('@use "typography.web" as typography; .fixture { @include typography.role(body); }', options).css;
+  assert.match(component, /\.fixture\{[^}]*font-family:var\(--typography-body-family\)/);
+  assert.doesNotMatch(component, /:root|--font-family-ui:/);
+  const global = compileString('@use "tokens.web";', options).css;
+  assert.match(global, /:root\{--font-family-ui:/);
+  assert.match(global, /--typography-navigation-action-size:\s*14px/);
 });

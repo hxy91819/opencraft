@@ -56,3 +56,11 @@ program covering Web and plugin sources with uniform ESNext and DOM declarations
 ESNext describes APIs for the checker; existing browser/ECMAScript policy still
 rejects unsupported APIs and is not raised. The actual runtime graph continues
 to select linted files, including lazy plugins supplied by a trusted factory.
+
+### Typography stylesheet ownership
+
+`tokens.web.scss` owns the generated global typography variables. Component role
+mixins consume the generated, CSS-free role metadata, so importing the mixin does
+not re-emit the global `:root` projection into each component chunk. Both generated
+outputs derive from the same typography registry and share the freshness check;
+font values, utilities and startup budgets are unchanged.
