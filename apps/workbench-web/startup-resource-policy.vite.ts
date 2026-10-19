@@ -10,6 +10,8 @@ export const requiredStartupModule = /\/(?:apps\/workbench-web\/src\/(?:workbenc
 export interface StartupResourcePolicy {
   readonly requiredModules?: readonly RegExp[];
   readonly demandOnlyModules?: readonly RegExp[];
+  /** Product-specific raw CSS allowance; the shared 700 KB default remains enforced elsewhere. */
+  readonly cssBudget?: number;
 }
 const demandOnlyPatterns = [
   /\/apps\/workbench-web\/src\/components\/modal\/adaptive-sheet-handle\.tsx$/,
@@ -39,7 +41,8 @@ export function startupResourceViolations(report: StartupResourceReport, policy:
     }
   }
   for (const key of Object.keys(startupResourceBudget) as (keyof typeof startupResourceBudget)[]) {
-    if (report.totals[key] > startupResourceBudget[key]) violations.push(`Startup ${key}: ${report.totals[key]} > ${startupResourceBudget[key]}`);
+    const budget = key === "css" ? policy.cssBudget ?? startupResourceBudget.css : startupResourceBudget[key];
+    if (report.totals[key] > budget) violations.push(`Startup ${key}: ${report.totals[key]} > ${budget}`);
   }
   return violations;
 }

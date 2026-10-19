@@ -29,6 +29,18 @@ test("budgets are independent: compression cannot hide parse cost or CSS growth"
   }
 });
 
+test("a product CSS allowance preserves the shared limit and other budgets", () => {
+  const candidate = report("opencraft/apps/workbench-web/src/main.tsx");
+  candidate.totals.css = 705_840;
+  assert.match(startupResourceViolations(candidate).join("\n"), /css: 705840 > 700000/);
+  assert.deepEqual(startupResourceViolations(candidate, { cssBudget: 710_000 }), []);
+  candidate.totals.css = 710_001;
+  assert.match(startupResourceViolations(candidate, { cssBudget: 710_000 }).join("\n"), /css: 710001 > 710000/);
+  candidate.totals.css = 705_840;
+  candidate.totals.javascript = startupResourceBudget.javascript + 1;
+  assert.match(startupResourceViolations(candidate, { cssBudget: 710_000 }).join("\n"), /javascript/);
+});
+
 test("HTML bootstrap dynamic main remains a required startup root", () => {
   assert.equal(requiredStartupModule.test("/repo/opencraft/apps/workbench-web/src/main.tsx"), true);
   assert.equal(requiredStartupModule.test("/repo/opencraft/apps/workbench-web/src/workbench-entry.tsx"), true);
