@@ -56,3 +56,12 @@ program covering Web and plugin sources with uniform ESNext and DOM declarations
 ESNext describes APIs for the checker; existing browser/ECMAScript policy still
 rejects unsupported APIs and is not raised. The actual runtime graph continues
 to select linted files, including lazy plugins supplied by a trusted factory.
+
+Keyboard shortcut help is a demand-loaded modal. The Shell keeps shortcut handling
+and the open state, and loads the dialog with its stylesheet only when requested;
+a local Suspense boundary preserves the mounted workspace while it loads. The
+startup graph forbids the dialog module, including through embedded entrypoints.
+
+Conversation search keeps its keyboard listener mounted in the Shell while
+loading the search dialog and styles only when opened. Repeating the shortcut
+continues to preserve the mounted search draft and other modals keep ownership.

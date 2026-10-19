@@ -2,7 +2,6 @@ import type { ConversationPresentationProvider } from "./runtime/conversation-pr
 import { useConversationHistoryRefresh } from "./components/conversation-history-refresh";
 import { createMcpAppOwner } from "./mcp-apps/owner";
 import { canHandleWorkbenchShortcut, matchesWorkbenchShortcut, shortcutLabel } from "./workbench-shortcuts";
-import { WorkbenchShortcutHelp } from "./components/workbench-shortcut-help";
 import { WorkbenchPresentationActivityProvider } from "./components/workbench-presentation-activity";
 import { ConversationSearch, type ConversationSearchTarget } from "./components/conversation-search";
 import { ConversationOverview, useConversationOverview } from "./features/conversation-overview";
@@ -183,6 +182,11 @@ import {
   FULL_WORKBENCH_PRESENTATION,
   type WorkbenchPresentationPolicy,
 } from "./workbench-presentation-policy";
+
+const WorkbenchShortcutHelp = lazy(async () => {
+  const module = await import("./components/workbench-shortcut-help");
+  return { default: module.WorkbenchShortcutHelp };
+});
 
 const SettingsContent = lazy(async () => {
   const module = await import("./components/settings-page");
@@ -2175,7 +2179,7 @@ export function App({
             </section>
           ) : null}
         </div>
-        {shortcutHelpOpen ? <WorkbenchShortcutHelp onClose={() => setShortcutHelpOpen(false)} /> : null}
+        {shortcutHelpOpen ? <Suspense fallback={null}><WorkbenchShortcutHelp onClose={() => setShortcutHelpOpen(false)} /></Suspense> : null}
         <ConversationOverview open={presentation.shellNavigation && conversationOverview.open} onClose={conversationOverview.close}
           threads={multiHostCatalog.threads} sources={multiHostCatalog.overviewSources} catalogs={multiHostCatalog.catalogs}
           loading={multiHostCatalog.discovery === "loading" || multiHostCatalog.catalogs.some(catalog => catalog.phase === "loading")}
