@@ -1,9 +1,9 @@
-@use "@opencraft/design-system/menu.web" as menu;
+@use "@opencraft/design-system/material.web" as material;
 
 // One utility-menu surface for provider, conversation and future workbench menus.
 @mixin surface {
   z-index: var(--layer-confirmation-modal); min-width: 150px; padding: 4px;
-  @include menu.material;
+  @include material.surface(menu);
   color: var(--color-text);
   border: 1px solid var(--color-border-subtle); border-radius: var(--radius-control);
   [role="menuitem"], [role="menuitemradio"] { padding: 7px 10px; font: var(--typography-control-compact-font); border-radius: var(--radius-control); cursor: pointer; letter-spacing: var(--typography-control-compact-tracking); }
