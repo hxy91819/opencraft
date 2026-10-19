@@ -2684,6 +2684,7 @@ export const CodexComposer = forwardRef<
           </div>
         </div>
       </div>
+      <div className="codex-composer-bottom-contour" aria-hidden="true" />
       {waitingForHostWithContent ? (
         <p className="codex-composer-connection-hint" role="status">
           {intl.formatMessage({ id: "chat.waitingForHostToSend", defaultMessage: "Connecting. You can send once connected." })}

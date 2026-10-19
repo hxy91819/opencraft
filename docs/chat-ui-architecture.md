@@ -2008,6 +2008,11 @@ The shared shell paints ordinary/Newera glass in a pointer-transparent backgroun
 pseudo-element. Backdrop filters must not wrap the ProseMirror editing subtree;
 layout, keyboard viewport projection and the browser's native selection remain
 separate owners. Material variables consume theme tokens and opaque fallbacks.
+Within the sticky conversation footer, a noninteractive sibling completes the
+gutter's exterior occlusion in both lower shell corner cutouts. Its height and
+negative margin cancel using the same shell radius; placement immediately after
+the shell preserves alignment before an optional connection hint. Shell glass,
+shadow, scroll ownership and editor/menu subtrees remain independent.
 Scroll/viewport regressions verify selection and adjacent-character geometry without
 writing a second caret or resetting focus. Chromium checks do not establish iOS
 native caret painting correctness; device-only failures require device verification.

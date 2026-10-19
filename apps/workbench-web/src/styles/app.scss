@@ -8857,6 +8857,26 @@ html[data-codex-window-type="electron"] .thread-scroll {
   letter-spacing: var(--typography-metadata-tracking);
 }
 
+// The sticky footer covers the gutter below the shell. These two complementary
+// corners complete that exterior cover up to the shell's rounded lower edge.
+// A sibling keeps the shell's own shadow above the cover and its glass intact.
+.codex-composer-bottom-contour {
+  display: none;
+}
+
+.thread-scroll-footer .codex-composer-bottom-contour {
+  position: relative;
+  z-index: 0;
+  display: block;
+  flex: 0 0 auto;
+  height: var(--radius-composer-shell);
+  margin-top: calc(-1 * var(--radius-composer-shell));
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 100% 0, transparent var(--radius-composer-shell), var(--color-surface) var(--radius-composer-shell)) left bottom / var(--radius-composer-shell) 100% no-repeat,
+    radial-gradient(circle at 0 0, transparent var(--radius-composer-shell), var(--color-surface) var(--radius-composer-shell)) right bottom / var(--radius-composer-shell) 100% no-repeat;
+}
+
 .codex-composer-shell {
   --composer-surface-filter: none;
   position: relative;

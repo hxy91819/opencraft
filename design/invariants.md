@@ -1187,6 +1187,12 @@ The footer must not put an opaque gradient between rails and scrolling content.
 The safe-area gutter below the Composer uses the main surface color so timeline
 rows never remain visible beneath the input; this cover does not extend behind
 the translucent Composer or its attached surfaces.
+That exterior includes the two lower rounded-corner cutouts above the rectangular
+bottom edge. A pointer-transparent sibling contour follows the shell radius and
+bottom edge before any connection hint, below its shadow, without adding height
+or painting inside its glass. `scripts/smoke-composer-bottom-corners.ts` compares
+actual corner pixels against changing transcript paint in both themes and layouts;
+gutter CSS declarations alone cannot prove that the corners are covered.
 
 Entry defaults are runtime fallbacks, never startup writes. Existing valid choices
 win; reset/invalid-record fallback use that entry default. Explicitly choosing the
