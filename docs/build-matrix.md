@@ -257,7 +257,10 @@ than a single-host matrix command. `.github/workflows/macos-universal-release.ym
 assembles arm64 on `macos-15` and x64 on `macos-15-intel`, merges only after both
 native packages pass, then enters the `macos-release` Environment for signing,
 notarization and final packaging. Manual runs are accepted only from `main`;
-version tags matching `v*` additionally publish a GitHub Release.
+version tags matching `v*` additionally publish a GitHub Release. A lightweight
+credential check in the same Environment runs before either native build, so
+missing Secrets fail without consuming macOS build time. Configure the Environment
+to allow only the `main` branch and `v*` tags.
 
 The standalone core must not resolve downstream-parent `file:` dependencies. The the downstream product
 snapshots of `lightvela-agent-core`, `vela-chat-client-core` and Collaboration now
@@ -315,7 +318,22 @@ committed or printed:
 The release job imports the Developer ID into an ephemeral keychain, deletes it
 in an `always()` cleanup step, verifies the Universal slices,
 Developer ID signature, stapled notarization ticket, Gatekeeper assessment,
-DMG signature/image and ZIP integrity, then emits SHA-256 checksums.
+DMG signature/image and ZIP integrity, then emits SHA-256 checksums. The final
+signed DMG is separately submitted to Apple; only an `Accepted` result permits
+stapling. Its ticket and Gatekeeper assessment must pass before checksums and
+artifact upload. Only the final DMG, app ZIP and their checksums are delivered;
+intermediate update metadata/blockmaps are not published by this workflow.
+
+To provision the Environment, use GitHub **Settings → Environments →
+macos-release → Environment secrets**, or `gh secret set --repo
+opencraft-app/opencraft --env macos-release NAME` with the value on standard
+input. The certificate must be a Developer ID Application identity exported with
+its private key as password-protected PKCS#12. Apple Development certificates
+cannot substitute for it. `APPLE_APP_SPECIFIC_PASSWORD` is an app-specific
+password for the Apple ID authorized to notarize for `APPLE_TEAM_ID`; it is not
+the account login password. Store credential files outside the repository and
+never pass their contents as shell literals or include them in logs. Missing
+credentials leave the release blocked; do not fall back to ad-hoc signing.
 
 The Electron host never loads the application with `file://`, but its loopback
 server is only a static asset owner. Renderer App Host frames cross a transferred
