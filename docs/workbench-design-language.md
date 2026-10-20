@@ -138,6 +138,11 @@ measured rail; the rail's trailing inset already provides separation, so the
 desktop context inset is not added a second time. Action hit targets and the
 native drag region remain unchanged.
 
+Window chrome projects resolved platform and window-kind attributes onto the
+document root only when their values change. Resize, native fullscreen, and
+window-controls overlay updates must converge through the same observer without
+feeding same-value attribute writes back into its microtask queue.
+
 Desktop Web conversation titles and user-message navigation ticks share the
 main pane’s leading axis (`--thread-navigation-web-inset`, 36px). The rail keeps
 its 36px target; prose clearance derives from that inset plus the target width

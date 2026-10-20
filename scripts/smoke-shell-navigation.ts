@@ -7,6 +7,7 @@ const source = `
 import React, {useState} from 'react';
 import {createIntlTestRoot as createRoot} from '/tests/fixtures/intl-root.tsx';
 import {AppShell} from '/apps/workbench-web/src/components/app-shell.tsx';
+import {useWindowChrome} from '/apps/workbench-web/src/window-chrome.ts';
 import {AppShellHeader} from '/apps/workbench-web/src/components/app-shell-header.tsx';
 import {SettingsNavigation} from '/apps/workbench-web/src/components/settings-page.tsx';
 import {ModalSurface} from '/apps/workbench-web/src/components/modal/modal-surface.tsx';
@@ -16,11 +17,12 @@ initializeAppearanceTheme();
 const contributionSnapshot={settingsPages:[]};
 const contributions={subscribe:()=>()=>{},getSnapshot:()=>contributionSnapshot};
 function Demo(){
+ const windowChrome=useWindowChrome();
  const [sidebar,setSidebar]=useState(true),[right,setRight]=useState(false),[full,setFull]=useState(false),[route,setRoute]=useState('Chat');
  const [accountOpen,setAccountOpen]=useState(false),[crowded,setCrowded]=useState(false);
  const [layout,setLayout]=useState('default');
  const [settingsSection,setSettingsSection]=useState('connections');
- window.fixture={setSidebar,setRight,setFull,setRoute,setThemePreference,setCrowded,setLayout};
+ window.fixture={windowChrome,setSidebar,setRight,setFull,setRoute,setThemePreference,setCrowded,setLayout};
  const config={settingsActive:route==='Settings',actions:[{id:'chat',title:'Chat',icon:'chat',onInvoke:()=>setRoute('Chat')},{id:'files',title:'Files',icon:'folder',onInvoke:()=>setRoute('Files')},
  ...(crowded ? Array.from({length:40},(_,i)=>({id:'extra-'+i,title:'Extra application '+(i+1),icon:'folder',onInvoke:()=>{}})) : [])],
  account:{snapshot:{name:'OpenCraft Workspace',phase:'ready',avatarUrl:null,planLabel:'Launch',usageRemainingPercent:69},onOpen:()=>setAccountOpen(true),onRefresh:async()=>{},onSignOut:async()=>{throw Error('test failure')}},onOpenSettings:()=>setRoute('Settings')};
@@ -31,7 +33,7 @@ function Demo(){
  floatingSidebarHeader={()=>null}
  leftPanel={route === 'Files' ? null : route === 'Settings' ? <SettingsNavigation section={settingsSection} onSectionChange={setSettingsSection} extensionContributions={contributions} profiles={[]} machines={[]} activeHostId="" onBack={()=>setRoute('Chat')} presentation="sidebar"/> : <div className="sidebar-panel"><h3>Conversations</h3><button>First conversation</button><button>Second conversation</button></div>}
  rightPanel={<div>Browser / Terminal</div>} rightPanelOpen={right} rightPanelFullWidth={full} sidebarOpen={sidebar} sidebarWidth={275}
- windowChrome={{kind:'browser',platform:'linux',safeArea:{left:0,right:0}}} onSidebarCollapse={()=>setSidebar(false)} onSidebarExpand={()=>setSidebar(true)} onSidebarResizeEnd={()=>{}} onRightPanelOpenChange={setRight}>
+ windowChrome={windowChrome} onSidebarCollapse={()=>setSidebar(false)} onSidebarExpand={()=>setSidebar(true)} onSidebarResizeEnd={()=>{}} onRightPanelOpenChange={setRight}>
  <div style={{padding:32}}><h2>{route}</h2>{route==='Settings' ? <p>{settingsSection} content</p> : null}<input aria-label="Draft" defaultValue="Keep my draft"/><button id="outside">Outside</button></div>
  </AppShell>{accountOpen ? <ModalSurface id="test-account" label="Account Settings" onDismiss={()=>setAccountOpen(false)}><input aria-label="Account name" defaultValue="gm"/></ModalSurface> : null}</>;
 }
@@ -59,6 +61,42 @@ try {
   const errors: string[] = [];
   page.on("pageerror", (error: Error) => errors.push(error.message));
   await page.goto(`http://127.0.0.1:${(vite.httpServer!.address() as { port: number }).port}`);
+  await page.getByRole("textbox", { name: "Draft", exact: true }).waitFor();
+  // A root-observer cycle leaves composited scrolling alive while starving JS.
+  const settleChrome = async (change: () => Promise<unknown>) => {
+    await Promise.race([
+      (async () => {
+        await change();
+        await page.evaluate(() => new Promise<void>(resolve =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      })(),
+      new Promise<never>((_, reject) => {
+        const deadline = setTimeout(() => reject(new Error("Window chrome mutations must settle after resize or host updates")), 3000);
+        deadline.unref();
+      }),
+    ]);
+  };
+  for (const width of [1200, 1440]) {
+    await settleChrome(() => page.setViewportSize({ width, height: 900 }));
+    assert.equal(await page.evaluate(() => innerWidth), width);
+    assert.equal(await page.getByRole("textbox", { name: "Draft", exact: true }).inputValue(), "Keep my draft");
+  }
+  await settleChrome(() => page.evaluate(() => {
+    document.documentElement.dataset.opencraftWindowType = "electron";
+    document.documentElement.dataset.opencraftOs = "darwin";
+  }));
+  assert.equal(await page.evaluate(() => (window as any).fixture.windowChrome.safeArea.left), 78);
+  await settleChrome(() => page.evaluate(() => { document.documentElement.dataset.opencraftWindowFullscreen = "true"; }));
+  assert.equal(await page.evaluate(() => (window as any).fixture.windowChrome.safeArea.left), 0);
+  await settleChrome(() => page.evaluate(() => {
+    document.documentElement.dataset.opencraftWindowType = "browser";
+    document.documentElement.dataset.opencraftOs = "linux";
+    delete document.documentElement.dataset.opencraftWindowFullscreen;
+  }));
+  assert.equal(await page.evaluate(() => (window as any).fixture.windowChrome.safeArea.left), 0);
+  console.log("Window chrome resize and host attribute updates converge without losing the draft");
+  assert.deepEqual(errors, []);
+  if (!process.argv.includes("--window-chrome")) {
   await page.waitForSelector("#shell-entrance-applications");
   const home = page.getByRole("button", { name: "Home", exact: true });
   assert.equal(await home.textContent(), "OpenCraft");
@@ -581,6 +619,7 @@ try {
   await page.waitForFunction(() => document.querySelector(".main-content-frame")?.getAttribute("data-app-shell-thread-edge-divider") === "false");
   assert.deepEqual(errors, []);
   console.log(`Shell navigation passed: ${probe.frames} fixed-anchor frames, rapid application toggles, Settings slot replacement, compact drawer, independent account menu, focus/Escape/outside press, route/draft retention, footer material/fill, resizing, persistence, dark mode and reduced motion.`);
+  }
 } finally { await browser?.close(); await vite.close(); }
 
 async function appsOwner(page: any) {

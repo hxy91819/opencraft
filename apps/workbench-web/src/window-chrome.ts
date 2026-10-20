@@ -137,8 +137,13 @@ export function applyWindowChromeDocumentAttributes(
   root: WindowChromeDocumentRoot,
   snapshot: Pick<WindowChromeSnapshot, "kind" | "platform">,
 ): void {
-  root.dataset.opencraftWindowType = snapshot.kind;
-  root.dataset.codexOs = snapshot.platform;
+  // Reads also project these attributes; same-value writes notify the observer.
+  if (root.dataset.opencraftWindowType !== snapshot.kind) {
+    root.dataset.opencraftWindowType = snapshot.kind;
+  }
+  if (root.dataset.codexOs !== snapshot.platform) {
+    root.dataset.codexOs = snapshot.platform;
+  }
 }
 
 export function getWindowChromePolicy(
