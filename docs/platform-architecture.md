@@ -3307,7 +3307,10 @@ ReplicaClient storage is a disposable paint cache, separate from source authorit
 A configurable five-second storage deadline switches that client instance to
 source data without further cache writes and exposes cacheError. Accepted writes
 retain their physical serial lane; timeout does not cancel them. A late cache
-completion cannot publish or reenable writes. clear still rejects when completion
+completion cannot publish or reenable writes. A settled load or commit rejection,
+including invalid cached state, takes the same nonfatal source-authority path and
+queues one best-effort removal of that client row for a later instance; timed-out
+I/O is never raced by repair. clear still rejects when cache health or completion
 cannot be established. Source protocol and authority-storage errors remain errors;
 this policy never skips an authority transaction or replays a mutation.
 
