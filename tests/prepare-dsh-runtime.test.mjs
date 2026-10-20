@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, writeFile, rm, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -109,12 +110,29 @@ test("installer failure never creates a success stamp", async t => {
   await assert.rejects(access(join(f.runtime, ".opencraft-dsh-install.json")), /ENOENT/);
 });
 
-test("desktop packaging refuses foreign native modules", async () => {
+test("desktop packaging refuses foreign native modules", async t => {
+  const appDir = await mkdtemp(join(tmpdir(), "opencraft-package-target-"));
+  t.after(() => rm(appDir, { recursive: true, force: true }));
+  await mkdir(join(appDir, "dist-host"));
+  const main = "// desktop main fixture";
+  const production = { displayName: "OpenCraft", applicationId: "dev.opencraft.workbench" };
+  const preview = { displayName: "OpenCraft Preview", applicationId: "dev.opencraft.workbench.preview" };
+  await writeFile(join(appDir, "dist-host/main.cjs"), main);
+  await writeFile(join(appDir, "dist-host/desktop-identity.json"), JSON.stringify({
+    production, preview, mainSha256: createHash("sha256").update(main).digest("hex"),
+  }));
+  const packager = { info: { appDir }, appInfo: { productName: production.displayName, id: production.applicationId } };
   const arches = { ia32: 0, x64: 1, armv7l: 2, arm64: 3 };
   const arch = arches[process.arch];
-  if (arch !== undefined) await checkDesktopTarget({ electronPlatformName: process.platform, arch });
-  await assert.rejects(checkDesktopTarget({ electronPlatformName: "not-this-os", arch: 1 }), /requires a native/);
-  await assert.rejects(checkDesktopTarget({ electronPlatformName: process.platform, arch: 4 }), /requires a native/);
+  const context = { packager, electronPlatformName: process.platform, arch };
+  if (arch !== undefined) await checkDesktopTarget(context);
+  await assert.rejects(checkDesktopTarget({ ...context, electronPlatformName: "not-this-os", arch: 1 }), /requires a native/);
+  await assert.rejects(checkDesktopTarget({ ...context, arch: 4 }), /requires a native/);
+  await assert.rejects(checkDesktopTarget({
+    ...context, packager: { ...packager, appInfo: { ...packager.appInfo, id: "wrong.application" } },
+  }), /identity mismatch/);
+  await writeFile(join(appDir, "dist-host/main.cjs"), "// changed after build");
+  await assert.rejects(checkDesktopTarget(context), /Main bundle differs/);
 });
 
 test("Mac ZIP matrix artifacts match electron-builder naming", async () => {

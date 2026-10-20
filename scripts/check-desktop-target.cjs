@@ -4,8 +4,9 @@ module.exports = async function beforePack(context) {
   const { readFileSync } = require("node:fs");
   const { join } = require("node:path");
   const { createHash } = require("node:crypto");
-  const identities = JSON.parse(readFileSync(join(context.appDir, "dist-host/desktop-identity.json"), "utf8"));
-  const mainSha256 = createHash("sha256").update(readFileSync(join(context.appDir, "dist-host/main.cjs"))).digest("hex");
+  const appDir = context.packager.info.appDir;
+  const identities = JSON.parse(readFileSync(join(appDir, "dist-host/desktop-identity.json"), "utf8"));
+  const mainSha256 = createHash("sha256").update(readFileSync(join(appDir, "dist-host/main.cjs"))).digest("hex");
   if (mainSha256 !== identities.mainSha256) throw new Error("Desktop package Main bundle differs from its identity record");
   const productName = context.packager.appInfo.productName;
   const selected = productName === identities.preview.displayName ? identities.preview : identities.production;

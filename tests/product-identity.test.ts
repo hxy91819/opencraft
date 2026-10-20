@@ -57,7 +57,10 @@ test("three public hosts agree on OpenCraft branding and identity", () => {
   const expo = json("apps/workbench-expo/app.json").expo;
   assert.equal(electron.build.productName, desktopProduct.displayName);
   assert.equal(electron.build.appId, desktopProduct.applicationId);
-  assert.equal(electron.devDependencies.electron, "44.1.0");
+  assert.equal(
+    electron.devDependencies.electron,
+    json("package-lock.json").packages["node_modules/electron"].version,
+  );
   assert.equal(expo.name, desktopProduct.displayName);
   assert.equal(expo.scheme, "opencraft");
   assert.equal(expo.ios.bundleIdentifier, "dev.opencraft.workbench");
