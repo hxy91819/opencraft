@@ -167,7 +167,13 @@ Manual `build-matrix` dispatch defaults to `validation: web`, exercising Web and
 Linux server regressions. Choose `validation: full` to validate all five portable
 targets, macOS native code and the Linux server archive. The `package_macos`
 checkbox also selects full validation and uploads a macOS DMG; that packaging
-job covers the separate native compile. Signed/notarized release workflows and
+job covers the separate native compile. CI DMGs use an explicit ad-hoc signature;
+the job verifies the final image and the app copied from it, then launches that
+app with isolated profile/model storage and checks its real renderer over CDP.
+Logs and a screenshot are retained as `electron-macos-smoke`. These are test
+packages, without Developer ID signing or Apple notarization; macOS may still
+require an explicit Privacy & Security exception for a downloaded test app.
+Signed/notarized release workflows and
 their tag/manual triggers are unchanged. Manual CI DMGs and server archives are
 retained for three days; release artifact retention is separate.
 

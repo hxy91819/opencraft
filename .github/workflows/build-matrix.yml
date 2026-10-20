@@ -107,6 +107,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.package_macos
     runs-on: macos-15
     timeout-minutes: 30
+    env:
+      OPENCRAFT_BUILD_ID: github-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+      OPENCRAFT_SOURCE_REVISION: ${{ github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -118,7 +121,20 @@ jobs:
       - run: npm run prepare:dsh-runtime
       - run: npm run smoke:local-agent
       - run: npm run build:electron:release
-      - run: npm exec --workspace @opencraft/workbench-electron -- electron-builder --mac dmg
+      - name: Package an ad-hoc signed CI DMG
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm exec --workspace @opencraft/workbench-electron -- electron-builder --mac dmg --config.mac.identity=- --config.forceCodeSigning=true
+      - name: Verify and launch the app from the final DMG
+        env:
+          OPENCRAFT_SMOKE_OUTPUT: ${{ runner.temp }}/opencraft-macos-smoke
+        run: node scripts/smoke-macos-dmg.mjs apps/workbench-electron/release/OpenCraft-*.dmg
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: electron-macos-smoke
+          path: ${{ runner.temp }}/opencraft-macos-smoke
+          retention-days: 3
       - uses: actions/upload-artifact@v7
         with:
           name: electron-macos-native

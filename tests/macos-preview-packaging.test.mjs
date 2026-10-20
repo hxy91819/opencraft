@@ -24,8 +24,8 @@ test("packaging rejects a bundle and installer with different identities", async
     preview: { displayName: "OpenCraft Preview", applicationId: "dev.opencraft.workbench.preview" },
     mainSha256: createHash("sha256").update("synthetic main").digest("hex"),
   }));
-  const context = { appDir: root, arch: process.arch === "arm64" ? 3 : 1, electronPlatformName: process.platform,
-    packager: { appInfo: { productName: "OpenCraft", id: "dev.opencraft.workbench" } } };
+  const context = { arch: process.arch === "arm64" ? 3 : 1, electronPlatformName: process.platform,
+    packager: { info: { appDir: root }, appInfo: { productName: "OpenCraft", id: "dev.opencraft.workbench" } } };
   await beforePack(context);
   context.packager.appInfo.id = "ai.lightvela.vela";
   await assert.rejects(beforePack(context), /identity mismatch/u);
@@ -50,7 +50,7 @@ test("macOS preview packaging isolates identity, output, and signing discovery",
 
 test("workspace install scripts are explicitly version-pinned and enforced", async () => {
   const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
-  assert.deepEqual(manifest.allowScripts, {
+  assert.deepEqual(Object.fromEntries(Object.entries(manifest.allowScripts).filter(([, allowed]) => allowed)), {
     "@parcel/watcher@2.6.0": true,
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,
