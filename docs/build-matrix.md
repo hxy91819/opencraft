@@ -333,6 +333,12 @@ profile, checks its real renderer and retains logs/a screenshot as
 app ZIP and their checksums are delivered;
 intermediate update metadata/blockmaps are not published by this workflow.
 
+The standalone signing process queues file opens before loading the signer, so
+its concurrent resource inspection cannot exhaust macOS file descriptors.
+After Apple accepts an app or DMG, transient ticket-delivery failures retry
+with bounded backoff without resubmitting the artifact. Rejected submissions,
+exhausted retries and failed ticket validation still fail the release.
+
 To provision the Environment, use GitHub **Settings → Environments →
 macos-release → Environment secrets**, or `gh secret set --repo
 opencraft-app/opencraft --env macos-release NAME` with the value on standard

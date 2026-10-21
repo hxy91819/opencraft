@@ -5,15 +5,17 @@ import { access } from "node:fs/promises";
 import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import { stapleAndValidateMacos } from "./staple-macos.mjs";
 
 const execFileAsync = promisify(execFile);
 
-async function runXcrun(args) {
+export async function runXcrun(args, execute = execFileAsync) {
   try {
-    return await execFileAsync("xcrun", args, { timeout: 45 * 60 * 1000 });
-  } catch {
+    return await execute("xcrun", args, { timeout: 45 * 60 * 1000 });
+  } catch (error) {
     // execFile's error includes argv, which can contain the Apple password.
-    throw new Error(`xcrun ${args[0]} ${args[1]} failed`);
+    // Preserve only the exit code so stapling can retry without exposing argv.
+    throw Object.assign(new Error(`xcrun ${args[0]} ${args[1]} failed`), { code: error.code });
   }
 }
 
@@ -35,8 +37,7 @@ export async function notarizeMacosDmg(dmgPath, environment = process.env, run =
   if (result.status !== "Accepted") {
     throw new Error(`DMG notarization was not accepted (status: ${result.status}, request: ${result.id})`);
   }
-  await run(["stapler", "staple", dmg]);
-  await run(["stapler", "validate", dmg]);
+  await stapleAndValidateMacos(dmg, { run });
   return dmg;
 }
 

@@ -259,6 +259,7 @@
     "eslint-plugin-es-x": "9.7.0",
     "expo": "57.0.18",
     "fake-indexeddb": "^6.2.4",
+    "graceful-fs": "4.2.11",
     "jsdom": "^28.1.0",
     "postcss": "^8.5.30",
     "postcss-scss": "^4.0.9",
