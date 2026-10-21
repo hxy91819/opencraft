@@ -131,7 +131,7 @@ destroy 是五个不同事件。任何 Adapter 都不得通过组件卸载暗中
 
 ### 2.4 跨平台共享行为，不共享桌面布局
 
-`right | bottom`、320px、磁力压缩、full-width 和 Codex header slot 都是 Vite/Electron
+`right | bottom`、320px、磁力压缩、full-width 和 Workbench header slot 都是 Vite/Electron
 布局策略。Expo Native 共享 Resource/Session/Command 契约，但使用 split view、stack、
 sheet、safe area 和 native gesture。
 
@@ -1214,12 +1214,9 @@ navigation initiated inside an inaccessible cross-origin guest.
 
 ### Viewport drag geometry replacement (2026-10-20)
 
-The small `viewport-resize.js` pure helper now uses independently authored axis
-geometry after frozen requirements and observed contracts; its former explicit
-source-body attribution is retained in the provenance baseline. This supersedes
-only the earlier statement that drag calculation itself directly uses the
-reference implementation. Device preset facts, source manager, toolbar and
-transition ownership are unchanged and are not cleared by this replacement.
+The `viewport-resize.js` pure helper owns axis geometry. Device preset facts,
+source manager, toolbar and transition ownership remain with their current
+owners.
 Horizontal handles resize around a fixed center, bottom handles alter height,
 and the captured scale maps pointer movement into bounded viewport dimensions.
 Pointer capture, cancellation, keyboard and persistence remain in their current

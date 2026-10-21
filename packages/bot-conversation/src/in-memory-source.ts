@@ -76,13 +76,13 @@ const USER: BotParticipantSnapshot = Object.freeze({
   }),
 });
 
-const GROK_BOT: BotParticipantSnapshot = Object.freeze({
-  participantId: "bot:vela",
+const OPENCRAFT_BOT: BotParticipantSnapshot = Object.freeze({
+  participantId: "bot:opencraft",
   kind: "bot",
   displayName: "OpenCraft",
   avatar: Object.freeze({
     kind: "monogram",
-    text: "V",
+    text: "O",
     background: "#17191c",
     foreground: "#ffffff",
   }),
@@ -185,7 +185,7 @@ function createDescriptor(
     topology: seed?.topology ?? "direct",
     title: seed?.title ?? "OpenCraft",
     rosterRevision: 1,
-    participants: Object.freeze([...(seed?.participants ?? [USER, GROK_BOT])]),
+    participants: Object.freeze([...(seed?.participants ?? [USER, OPENCRAFT_BOT])]),
   });
 }
 
@@ -374,7 +374,7 @@ export function createInMemoryBotConversationSource(
       ) ?? USER;
       const bot = conversation.snapshot.descriptor.participants.find(
         (participant) => participant.kind === "bot",
-      ) ?? GROK_BOT;
+      ) ?? OPENCRAFT_BOT;
       const content: BotMessageContentPart[] = prompt.length === 0
         ? []
         : [{ type: "text", text: prompt }];

@@ -2,7 +2,7 @@
 
 // The media adapter owns scale/input; this primitive only fits the aperture
 // and projects confirmed ownership. Desktop appearance is independent from
-// application accent. Reference purple submit colors form a foreground pair;
+// application accent. Purple submit colors form a foreground pair;
 // an eventual identity owner may override both locally, not the app theme.
 .ui-desktop-view {
   --desktop-control-background: #8952ee;

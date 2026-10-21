@@ -129,7 +129,7 @@ export function calculateSoftwareKeyboardInset({
   return Math.max(0, layoutHeight - visualHeight - visualTop);
 }
 
-/** Recovered side-panel invariant: shift mode moves content by half the panel. */
+/** Shift mode moves content by half the panel. */
 export function timelineWideContentOffset({
   displayMode,
   panelWidthPx,

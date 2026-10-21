@@ -310,7 +310,7 @@ function attachGuardianApprovalReviews(
       continue;
     }
     // Approved reviews are deliberately invisible; terminal failures without
-    // a target remain standalone activity rows in the original renderer.
+    // a target remain standalone activity rows.
     if (review.status === "approved") continue;
     items.push({
       id: `automatic-approval-review:${review.reviewId}`,

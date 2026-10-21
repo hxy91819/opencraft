@@ -10,7 +10,7 @@
 
 品牌标识是纯呈现层：`model-services/brand-mark.tsx` 为提供商列表、标题与模型行提供固定尺寸槽位。提供商按精确 ID/显式别名匹配，模型独立按家族匹配，不把网关品牌当作模型品牌；未知项使用 Lucide 通用图标。映射不得参与默认选择、配置、凭据或路由。品牌资源使用 MIT 标识的 `@lobehub/icons-static-svg@1.95.0`（[Lobe Icons](https://github.com/lobehub/lobe-icons)），随应用本地打包、按需加载，不引入其 UI 框架；单色 SVG mask 继承主题文字颜色。品牌商标仍属于各自权利人。
 
-两版旧模型设置 UI 已移除且不恢复。用户确认的 LobeChat 风格页面由 `model-services/controller.ts` 与 `model-services/view.tsx` 实现：提供商分组/搜索，同页配置与模型列表；不使用 WB 弹窗和旧连接页面。当前注册“模型服务”，默认模型接口保留但旧默认模型设置页不恢复。
+两版旧模型设置 UI 已移除且不恢复。模型服务页面由 `model-services/controller.ts` 与 `model-services/view.tsx` 实现：提供商分组/搜索，同页配置与模型列表；不恢复旧弹窗和连接页面。当前注册“模型服务”，默认模型接口保留但旧默认模型设置页不恢复。
 
 DSH 运行时、配置/凭据协议及其测试继续保留。实际模型配置、凭据和用户数据没有删除。LocalAgentSettingsService 是无界面的 Host-scoped 配置客户端，并固定绑定 `local` Host：Electron 指向本机 Daemon，明确启用内建 Agent 页的 Web 部署指向已配置的服务器 Host；配置与凭据由 Host 持有，浏览器不另存副本。ModelServicesController 持有选择、搜索和内存草稿。连接表单采用明确的“保存并收起”，取消放弃未提交输入并取消待保存计时器；原始 revision 的 CAS 不变。界面检查通过 runtime/models/check 读取后端已保存的连接和密钥，脏草稿必须先保存，不隐式提交。离开提供商后清空已保存草稿中的明文输入，存储密钥不会返回给页面。
 

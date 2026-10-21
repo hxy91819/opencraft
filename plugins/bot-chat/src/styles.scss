@@ -714,8 +714,8 @@
 }
 
 /*
- * Grok's current invariant is source/mirror, not a viewport-positioned actor:
- * one hidden animated SVG source per participant, mirrored into every local
+ * Bot avatars share one hidden animated SVG source per participant,
+ * mirrored into every local
  * mark. The message row therefore owns Avatar geometry during all shell resize.
  */
 .bot-chat-mark-sources {

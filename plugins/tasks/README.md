@@ -2,7 +2,7 @@
 
 Built-in Web/Electron extension, opened from **任务** in the primary sidebar.
 Tasks are business records; Board and List display the same rows. Six fixed
-statuses follow the agreed BB Tasks abstraction. Drag a handle or choose a
+statuses are shared by both views. Drag a handle or choose a
 status to move a task. The shared `SegmentedControl` switches views and selects
 one status column when the container is 600px or narrower. The detail workspace
 fills narrow containers and retains its draft across conversation navigation.

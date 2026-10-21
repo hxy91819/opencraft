@@ -113,14 +113,23 @@ the intact legacy profile. Explicit `--user-data-dir` profiles skip migration.
 Migration occurs only when a rebuilt application is installed and launched;
 building source alone never moves a machine's profile.
 
-Existing `vela.*` plugin/View/host IDs, `vela-bot:` resource URIs, IndexedDB names,
-local-storage keys and serialized projection fields remain canonical identities.
-There is only one schema and one reader, not a compatibility fork. Default-product
-storage remains unprefixed, while the downstream product partition is unchanged.
-These compatibility IDs do not authorize new the downstream product-named filesystem paths,
-directories, sockets, tokens, databases or logs. The same rule covers the
-published `ioa_*` table identities: they are retained as storage contracts and
-are not renamed by source de-sensitization.
+Existing `vela.*` plugin/View/host IDs and `vela-bot:` resource URIs remain
+opaque compatibility identities. Database identities and product storage
+partitions remain with their storage owners; source naming changes do not
+implicitly migrate or clear their data.
+
+Appearance preferences write the current `opencraft.appearance-theme` and
+`opencraft.appearance-theme-id` keys. The six built-in theme IDs use
+`opencraft.core.*`; their exact old IDs and preference keys are read only for
+compatibility, with current values taking precedence. Extension-owned theme
+identities remain opaque. Client projection metadata writes `__opencraft*`
+fields; exact old `__vela*` fields are compatibility reads, not the current
+write format. Unknown metadata remains intact.
+
+These compatibility identities do not authorize new downstream product-named
+filesystem paths, directories, sockets, tokens, databases or logs. Published
+`ioa_*` table identities remain storage contracts and are not renamed by source
+cleanup. There is one schema and one reader rather than a compatibility fork.
 
 AppServer capability strings (`vela/agents`, `vela/bot-conversations`,
 `vela/browser-use`) and published browser tool names stay stable. The source

@@ -288,7 +288,7 @@ test("request timeout is a stable typed client error", async () => {
   await client.close();
 });
 
-test("request load is bounded and exposes recovered-style lifecycle events", async () => {
+test("request load is bounded and exposes lifecycle events", async () => {
   const transport = new MemoryTransport(createTestServer());
   const client = new JsonRpcAppServerClient({
     hostId: "bounded",

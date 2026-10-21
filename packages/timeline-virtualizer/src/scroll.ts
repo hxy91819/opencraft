@@ -26,7 +26,7 @@ export function clampScrollDistance(distanceFromBottomPx: number): number {
   return Number.isFinite(distanceFromBottomPx) ? Math.max(0, distanceFromBottomPx) : 0;
 }
 
-/** Recovered initialOffset behavior: near-bottom snapshots resume at exact bottom. */
+/** Near-bottom snapshots resume at exact bottom. */
 export function normalizeInitialScrollDistance(distanceFromBottomPx: number | null | undefined): number {
   const distance = clampScrollDistance(distanceFromBottomPx ?? 0);
   return distance > OPENCRAFT_SCROLL_NEAR_BOTTOM_PX ? distance : 0;
@@ -44,7 +44,7 @@ export function distanceExcludingBottomPadding(
   return Math.max(0, clampScrollDistance(distanceFromBottomPx) - clampScrollDistance(bottomPaddingPx));
 }
 
-/** Recovered Ge rule: with bottom padding, only literal zero counts as bottom. */
+/** With bottom padding, only literal zero counts as bottom. */
 export function isAtVirtualizedBottom(
   distanceFromBottomPx: number,
   bottomPaddingPx: number,

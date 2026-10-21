@@ -16,7 +16,7 @@ export interface RequestJournalEntry {
   errorPreview: unknown;
 }
 
-/** A bounded diagnostic projection inspired by the latest recovered recorder. */
+/** A bounded diagnostic projection of request lifecycle events. */
 export class RequestJournal {
   private entries: RequestJournalEntry[] = [];
 

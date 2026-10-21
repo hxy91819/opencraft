@@ -102,23 +102,18 @@ does not pretend an arbitrary Replica mutation can be translated back into a
 Codex command. A V4-native server uses `replica/mutate` and may project the same
 domain commands internally.
 
-## Paseo evidence and adopted invariants
+## Replica synchronization invariants
 
-Paseo is used as behavioral evidence, not copied source:
+- Complete paged gap recovery, atomic replacement for a true gap/epoch/rewind,
+  and cached paint without synchronization authority.
+- Classify stale, adjacent and gap sequences; reject non-adjacent older pages.
+- Storage requires compound identity, atomic multi-row apply, host deletion
+  and schema migration behavior.
+- Keep late cache reads, live persistence and independently demanded replicas
+  within their respective synchronization and storage owners.
 
-- `/data/paseo/docs/timeline-sync.md` requires complete paged gap recovery,
-  atomic replacement for a true gap/epoch/rewind, and cached paint without
-  synchronization authority.
-- `/data/paseo/packages/app/src/timeline/session-stream-reducers.ts` classifies
-  stale, adjacent and gap sequences and rejects non-adjacent older pages.
-- `/data/paseo/packages/app/src/runtime/replica-cache/row-store.contract.ts`
-  requires compound identity, atomic multi-row apply, host deletion and schema
-  migration behavior.
-- `/data/paseo/packages/app/src/timeline/replica.test.ts` covers late cache
-  reads, live persistence and independently demanded replicas.
-
-OpenCraft generalizes those timeline rules into a domain-neutral entity log and
-adds a durable authority journal, expected-cursor writes and command receipts.
+These constraints apply to the domain-neutral entity log together with the
+durable authority journal, expected-cursor writes and command receipts.
 
 ## Package boundaries
 

@@ -20,7 +20,7 @@ The installer is an explicit user action, never an effect of opening settings.
 `scripts/export-hermes-connector-catalog.mjs` exports public browsing metadata from Overmind's
 marketplace; icons are copied from the same snapshot. This build-time projection contains no
 credentials or live authorization state. Installed instances and status always come from the VM.
-The 173-entry upstream snapshot is filtered by the plugin's WorkBuddy account-dependency
+The 173-entry upstream snapshot is filtered by the plugin's managed-account dependency
 policy before browsing/search/counts: 10 managed packages are hidden, including
 ima, Tencent Docs and Lexiang whose upstream entries omit auth_mode. Hiding does not delete
 or disable any existing VM instance. Browser OAuth is also hidden until its flow is supported:
@@ -31,9 +31,9 @@ probe cannot block explicit installation; cancellation does not claim a remote m
 back. Old requests cannot publish into a replacement session. PTY command completion assembles
 its marker only in actual shell output, so command echo cannot be mistaken for completion.
 
-WorkBuddy reference: connector panel separates catalog and installed state, cards expose
+The connector panel separates catalog and installed state, cards expose
 name/description/status, and detail uses token-schema forms. Service icons come from the
-preserved marketplace. We do not copy WorkBuddy's identity-specific authentication flows.
+marketplace snapshot; managed-account authentication is outside this prototype.
 
 ## Delivery
 
@@ -46,7 +46,7 @@ Archive includes only binary, marketplace and integration scripts, never runtime
 ## Deliberate limits
 
 - Linux x64 VM only; the downstream product frontend supports Web and Electron.
-- No WorkBuddy managed-account auth or remote OAuth callback forwarding.
+- No managed-account authentication or remote OAuth callback forwarding.
 - CLI terminal authorization requires a Sidecar advertising `cliAuthPty`; old releases show
   an upgrade notice. This change requires both a new Sidecar and the plugin frontend.
 - UI manages one service instance per package; daemon has multi-instance identity.

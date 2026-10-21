@@ -275,20 +275,21 @@ A 不修改正文回执格式、不开放本机 update、不实现 OAuth，也�
 | 断开/撤销与旧回调竞争 | 旧成功不能复活连接；失效调用被拒绝 |
 | UI 关闭或漏通知 | Engine 仍更新；UI 恢复后从权威快照追平 |
 
-## 9. 当前事实与参考证据
+## 9. 当前实现边界
 
-以下为 2026-09-17 检查的源码边界。`ref/` 为固定参考副本，可能缺少服务端或包含恢复缺损；不能据客户端函数名推断完整产品行为。DSH 库版本后续变化时须重新核对。
+以下为 2026-09-17 检查的实现边界。DSH 库版本变化时须重新核对。
+客户端查询、配置协调和引擎执行是不同的验证范围：
 
-| 来源 | 已确认 | 尚不能据此证明 |
+- Host/CWD 的 Skill 查询缓存失效，不证明引擎每个 Turn 收到新目录或正文。
+- UI 查询失效、OAuth 后重载配置或插件切换，不等于运行时完成更新或已加载正文自动替换。
+- 按 Host/Thread 过滤可访问、已启用的 Apps/MCP，不证明所有会话和调用路径都自动热更新。
+- Connector 的认证编排、Daemon 调用、状态回读和授权事件，不证明全部服务端连接实现或旧 Session 热更新。
+- `connectorSkills` 与 `mcpServers` 可分别贡献，不证明普通 Session 都走同一路径或资源变化自动进入旧会话。
+- 无法追踪用户修改的 Skill 不应静默更新；OpenCraft 的修改检测和 Host 后台更新仍须单独验证。
+- prompt 前等待 Session 配置更新队列，不证明 Skill Artifact 原子更新或版本隔离。
+
+| 实现 | 已确认 | 尚不能据此证明 |
 |---|---|---|
-| Codex `useSkills` / `refreshHostSkills` | Host/CWD 查询缓存，安装后强刷已查询根集合 | 引擎每个 Turn 的 Skill 正文更新 |
-| Codex `skillsChangedHandler` / MCP 重授权 / Plugin toggle | `skills/changed` 使 UI 查询失效；OAuth 成功另发 `config/mcpServer/reload`；配置写入可要求 `reloadUserConfig` | UI 刷新等于运行时完成，或已加载 Skill 正文自动替换 |
-| Codex prompt 工具查询 | 按 Host/Thread 获取 Apps/MCP 并过滤 accessible/enabled | 所有会话和调用路径都自动热更新 |
-| WB Skills adapter | 安装后列表缓存失效；部分缓存仅用于 telemetry 反查 | 模型实际收到新目录或新正文 |
-| WB Connector manager | 按认证类型编排、调用 Daemon、回读状态；有授权事件桥 | 服务端全部连接实现与老 Session 工具热更新 |
-| WB `LocalTaskResourceService` | 项目集成资源分别投影为 `connectorSkills` 和 `mcpServers`，支持其中一种 | 全部普通 Session 都走此路径，或资源变化自动进入旧会话 |
-| WB Skills 更新 hook | 无法追踪用户修改的企业 Skill 不参与静默更新 | OpenCraft 已有同样的修改检测或 Host 后台更新机制 |
-| WB 请求前配置协调 | prompt 前等待 Session 配置更新队列 | Skill Artifact 原子更新或版本隔离 |
 | 实际 DSH `dsh-tool-skill` | 原生 pre-step 比较目录摘要并发布替代目录；工具调用按 scope/cwd 读取正文 | 名称/描述不变的正文更新通知、完整 Artifact 固定版本 |
 | OpenCraft Local DSH | 阶段 A 的同层 Provider、直接 invalidate、步骤对账与通知已经隔离 DSH 验证，见 7.2 | 所有自定义 preset、未接桥的外部 DSH、正文热更新、本机 update 和已安装桌面包同步生效 |
 

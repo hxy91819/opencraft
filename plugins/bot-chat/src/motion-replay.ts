@@ -97,12 +97,12 @@ export const BOT_REPLAY_PARTICIPANTS: readonly BotParticipantSnapshot[] =
       }),
     }),
     Object.freeze({
-      participantId: "bot:vela",
+      participantId: "bot:opencraft",
       kind: "bot",
       displayName: "OpenCraft",
       avatar: Object.freeze({
         kind: "monogram",
-        text: "V",
+        text: "O",
         background: "#17191c",
         foreground: "#ffffff",
       }),
@@ -218,7 +218,7 @@ function galleryScene(state: BotAvatarMotionState): BotMotionReplayScene {
     placement: "thread",
     transcriptPhase: "request",
     facts: Object.freeze([
-      replayFact("bot:vela", semantics.phase, semantics.verb, detail),
+      replayFact("bot:opencraft", semantics.phase, semantics.verb, detail),
     ]),
   });
 }
@@ -246,7 +246,7 @@ export const BOT_MOTION_REPLAY_SCENES: readonly BotMotionReplayScene[] =
       placement: "thread",
       transcriptPhase: "request",
       facts: Object.freeze([
-        replayFact("bot:vela", "working", "spawning", "Starting the task"),
+        replayFact("bot:opencraft", "working", "spawning", "Starting the task"),
       ]),
     }),
     Object.freeze({
@@ -258,7 +258,7 @@ export const BOT_MOTION_REPLAY_SCENES: readonly BotMotionReplayScene[] =
       transcriptPhase: "request",
       facts: Object.freeze([
         replayFact(
-          "bot:vela",
+          "bot:opencraft",
           "thinking",
           "thinking",
           "Understanding the request",
@@ -274,7 +274,7 @@ export const BOT_MOTION_REPLAY_SCENES: readonly BotMotionReplayScene[] =
       transcriptPhase: "request",
       facts: Object.freeze([
         replayFact(
-          "bot:vela",
+          "bot:opencraft",
           "working",
           "searching",
           "Searching the workspace",
@@ -290,7 +290,7 @@ export const BOT_MOTION_REPLAY_SCENES: readonly BotMotionReplayScene[] =
       transcriptPhase: "request",
       facts: Object.freeze([
         replayFact(
-          "bot:vela",
+          "bot:opencraft",
           "working",
           "reading",
           "Reading the page structure",
@@ -306,7 +306,7 @@ export const BOT_MOTION_REPLAY_SCENES: readonly BotMotionReplayScene[] =
       transcriptPhase: "request",
       facts: Object.freeze([
         replayFact(
-          "bot:vela",
+          "bot:opencraft",
           "working",
           "coding",
           "Updating the interaction",
@@ -322,7 +322,7 @@ export const BOT_MOTION_REPLAY_SCENES: readonly BotMotionReplayScene[] =
       transcriptPhase: "group",
       facts: Object.freeze([
         replayFact(
-          "bot:vela",
+          "bot:opencraft",
           "working",
           "running",
           "Coordinating the plan",
@@ -350,7 +350,7 @@ export const BOT_MOTION_REPLAY_SCENES: readonly BotMotionReplayScene[] =
       transcriptPhase: "group",
       facts: Object.freeze([
         replayFact(
-          "bot:vela",
+          "bot:opencraft",
           "waiting",
           "waiting",
           "Checking the preview",
@@ -366,7 +366,7 @@ export const BOT_MOTION_REPLAY_SCENES: readonly BotMotionReplayScene[] =
       transcriptPhase: "group",
       facts: Object.freeze([
         replayFact(
-          "bot:vela",
+          "bot:opencraft",
           "blocked",
           "waiting",
           "Waiting for approval",
@@ -382,7 +382,7 @@ export const BOT_MOTION_REPLAY_SCENES: readonly BotMotionReplayScene[] =
       transcriptPhase: "group",
       facts: Object.freeze([
         replayFact(
-          "bot:vela",
+          "bot:opencraft",
           "typing",
           "writing",
           "Writing the final response",
@@ -511,16 +511,16 @@ export function projectBotMotionReplay(
   const messages: BotConversationMessage[] = [];
   const motionStates = new Map<string, BotAvatarMotionState>();
   const human = replayParticipant(participants, "person:you");
-  const opencraft = replayParticipant(participants, "bot:vela");
+  const opencraft = replayParticipant(participants, "bot:opencraft");
   const nova = replayParticipant(participants, "bot:nova");
   const muse = replayParticipant(participants, "bot:muse");
 
   if (snapshot.scene.id === "group") {
-    motionStates.set("bot:vela", "working");
+    motionStates.set("bot:opencraft", "working");
     motionStates.set("bot:nova", "searching");
     motionStates.set("bot:muse", "writing");
   } else {
-    motionStates.set("bot:vela", motionForScene(snapshot.scene.id));
+    motionStates.set("bot:opencraft", motionForScene(snapshot.scene.id));
   }
 
   if (snapshot.scene.transcriptPhase !== "empty") {
@@ -561,7 +561,7 @@ export function projectBotMotionReplay(
   ) {
     messages.push(
       replayMessage(key, opencraft, {
-        id: "replay:vela:release-plan",
+        id: "replay:opencraft:release-plan",
         executionId: executionId(opencraft.participantId),
         causalMessageKey: promptMessageKey,
         sentAtMs: 4,
@@ -572,7 +572,7 @@ export function projectBotMotionReplay(
     if (snapshot.scene.transcriptPhase === "complete") {
       messages.push(
         replayMessage(key, opencraft, {
-          id: "replay:vela:release-ready",
+          id: "replay:opencraft:release-ready",
           executionId: executionId(opencraft.participantId),
           causalMessageKey: promptMessageKey,
           sentAtMs: 5,

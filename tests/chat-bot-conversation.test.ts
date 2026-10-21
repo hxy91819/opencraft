@@ -315,7 +315,7 @@ test("Bot motion replay retains every active group participant", () => {
 
   assert.deepEqual(
     presence.map((fact) => fact.participantId),
-    ["bot:vela", "bot:nova", "bot:muse"],
+    ["bot:opencraft", "bot:nova", "bot:muse"],
   );
   assert.equal(replay.getSnapshot().playing, false);
   assert.equal(new Set(presence.map((fact) => fact.executionId)).size, 3);
@@ -345,7 +345,7 @@ test("Bot motion replay covers the complete current Grok motion vocabulary", () 
 test("semantic Presence never fabricates celebration on ordinary completion", () => {
   const fact: BotPresenceFact = {
     conversationKey: createConversationKey("bot-preview", "celebration-policy"),
-    participantId: "bot:vela",
+    participantId: "bot:opencraft",
     executionId: "execution",
     seq: 1,
     phase: "working",
@@ -384,7 +384,7 @@ test("replay visual state remains presentation-only and does not rewrite Presenc
 
   assert.equal(presence[0]?.phase, "working");
   assert.equal(presence[0]?.activity?.verb, "running");
-  assert.equal(projection.motionStates.get("bot:vela"), "playful");
+  assert.equal(projection.motionStates.get("bot:opencraft"), "playful");
   replay.dispose();
 });
 
@@ -421,12 +421,12 @@ test("Bot motion replay projects a monotonic product transcript instead of debug
   );
   assert.equal(
     timelineMessages(complete.timeline).at(-2)?.id,
-    "replay:vela:release-plan",
+    "replay:opencraft:release-plan",
   );
   assert.equal(timelineMessages(complete.timeline).at(-2)?.streaming, false);
   assert.equal(
     timelineMessages(complete.timeline).at(-1)?.id,
-    "replay:vela:release-ready",
+    "replay:opencraft:release-ready",
   );
   replay.dispose();
 });
@@ -452,10 +452,10 @@ test("Bot replay hands activity to one stable streaming assistant message", () =
   );
 
   const streamingReply = timelineMessages(streaming.timeline).find(
-    (message) => message.id === "replay:vela:release-plan",
+    (message) => message.id === "replay:opencraft:release-plan",
   )!;
   const completedReply = timelineMessages(complete.timeline).find(
-    (message) => message.id === "replay:vela:release-plan",
+    (message) => message.id === "replay:opencraft:release-plan",
   )!;
   assert.equal(streamingReply.delivery, "sent");
   assert.equal(streamingReply.streaming, true);
@@ -483,7 +483,7 @@ test("bubble adjacency is projected once from transcript order", () => {
   );
   const opencraftRuns = projection.timeline.units.flatMap((unit) =>
     unit.kind === "message" &&
-    unit.messageRuns[0]?.author.participantId === "bot:vela"
+    unit.messageRuns[0]?.author.participantId === "bot:opencraft"
       ? unit.messageRuns
       : [],
   );
@@ -510,7 +510,7 @@ test("Presence projects into its exact execution activity owner", () => {
   const key = createConversationKey("bot-host", "bot-thread");
   const fact: BotPresenceFact = {
     conversationKey: key,
-    participantId: "bot:vela",
+    participantId: "bot:opencraft",
     executionId: "execution:1",
     seq: 1,
     phase: "typing",
@@ -527,14 +527,14 @@ test("Presence projects into its exact execution activity owner", () => {
   assert.equal(model?.mode, "typing");
   assert.equal(model?.entries.length, 1);
   assert.equal(model?.entries[0]?.label, "Writing a reply");
-  assert.equal(model?.semanticKey, "execution:1:bot:vela:typing:writing");
+  assert.equal(model?.semanticKey, "execution:1:bot:opencraft:typing:writing");
 });
 
 test("working Presence without a detailed activity keeps the Bot identity in the live label", () => {
   const key = createConversationKey("bot-host", "bot-thread");
   const fact: BotPresenceFact = {
     conversationKey: key,
-    participantId: "bot:vela",
+    participantId: "bot:opencraft",
     executionId: "execution:2",
     seq: 2,
     phase: "working",

@@ -8,7 +8,7 @@
   min-height: 24px;
   padding: 2px 8px;
   border-radius: 999px;
-  // The reference outline action changes state immediately, without a tween.
+  // The outline action changes state immediately, without a tween.
   transition: none;
   &:disabled { opacity: var(--opacity-control-compact-disabled); }
   &[data-variant="outline"] {

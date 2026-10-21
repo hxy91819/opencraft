@@ -4286,7 +4286,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 
 .thread-user-message-anchor {
   // The content-search wrapper is the scroll target; its child bubble remains
-  // the highlight and measurement target, matching the recovered source tree.
+  // the highlight and measurement target.
   min-width: 0;
   scroll-margin-top: 16px;
 }

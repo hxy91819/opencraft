@@ -70,7 +70,7 @@ try {
     true,
   );
   const activeActor = page.locator(
-    '[data-activity-level="active"][data-participant-id="bot:vela"]',
+    '[data-activity-level="active"][data-participant-id="bot:opencraft"]',
   );
   const beforeMotion = await activeActor
     .locator("g[id]")

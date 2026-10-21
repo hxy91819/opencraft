@@ -357,8 +357,7 @@ No completion observer clears a Goal in the background or performs writes from
 sidebar hydration. Connection replacement fences the remaining create steps.
 Ordinary messages and editing never implicitly reactivate a completed Goal. An
 edit draft open at completion stays available but cannot save over the completed
-Goal. Paused/blocked/limited Goals remain actionable in the rail. This borrows the information-row interaction from
-the fixed Codex reference; it does not reproduce its runtime or side-panel state.
+Goal. Paused/blocked/limited Goals remain actionable in the rail.
 Radix owns detail placement, outside/Escape dismissal and focus restoration;
 editing retains ModalSurface and shared Buttons. Resizing/language changes do
 not remount the Composer or reset an objective draft. There is no independent
@@ -480,9 +479,8 @@ Native 的实时 Thinking 在 Turn 等待占位与 Activity 组之间交接时�
 
 The Turn's existing unified diff remains the read authority for its changed-file summary. ChatUI renders a lightweight in-progress entry and a completed resource card; it only emits an open intent. In the Web Workbench, the actual Composer owns the active Turn's live entry above the editor, including when that Composer floats over a panel. The live entry is a compact, content-width pill centered above the Composer with a visible gap, independent of the attached queue/goal rail and its material. The same placement remains when approval replaces the editor. Its exact Turn identity suppresses duplicate live resources in the main and mini transcript; it is presentation routing, not a second execution or resource owner. Standalone Conversation consumers retain inline presentation. On completion, the same resource appears as the transcript's completed card. The Workbench owns the read-only Review dialog, keeps it tied to the active Thread, and projects the current Timeline block while streaming. File selection filters that existing diff for display; it does not create a second TurnDiff model or mutate the workspace. Undo/Reapply is not advertised until a real Host apply-patch capability is connected.
 
-The Web resource presentation follows Codex 26.930.31428/build 12913's original
-Renderer, not recovered analysis modules: square-plus-minus glyph in a 40px
-slot, 12px header padding, 10px gaps and theme-owned `radius-lg` (10px in its
+The Web resource presentation uses a square-plus-minus glyph in a 40px
+slot, 12px header padding, 10px gaps and theme-owned `radius-lg` (10px in the
 default theme). The title uses chat typography; both signed counts are shown,
 including zero, in chat-minus-one typography with tabular digits and 4px gaps.
 Running counters retain columns and animate their transform, with reduced-motion
@@ -1971,7 +1969,7 @@ dropdown menus, clears state on selection/hidden-row/unload, and prevents a reti
 Popover from restoring focus into a newer one. Escape retains normal focus return.
 No enterprise identity-specific query, count, identity or badge styling belongs to Sidebar.
 
-Chinese emphasis uses the standard Marked tokenizer first. If it rejects an asterisk delimiter at a Han/punctuation boundary, the compiler retries with a length-preserving delimiter mask and a relaxed Han opener boundary. This preserves canonical source, code/escape masking and standard English/underscore behavior. The Codex reference uses Marked 16.4.1 without this override and reproduces both reported completed-text cases.
+Chinese emphasis uses the standard Marked tokenizer first. If it rejects an asterisk delimiter at a Han/punctuation boundary, the compiler retries with a length-preserving delimiter mask and a relaxed Han opener boundary. This preserves canonical source, code/escape masking and standard English/underscore behavior.
 
 
 Mobile Web Composer ordinary Return inserts a paragraph on coarse primary-pointer devices, including iOS native paragraph changes routed back through ProseMirror Enter. Suggestion, code and list commands keep their own precedence. Desktop Enter and explicit Ctrl/Cmd+Enter submissions remain available. Standalone and the downstream product embedded Composer consume the same placeholder message IDs: new conversations use `chat.companionPlaceholder`, and follow-ups use `chat.companionFollowupPlaceholder`.

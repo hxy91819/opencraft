@@ -328,7 +328,7 @@ test("an idle Bot that receives attention wakes before settling into listening",
 
 test("notification and celebration poses are one-shot presentation actions", () => {
   const model = createBotAvatarMotionModel();
-  const behavior = new BotAvatarBehaviorController("bot:vela", "idle", 0, model);
+  const behavior = new BotAvatarBehaviorController("bot:opencraft", "idle", 0, model);
 
   behavior.setState("notifying", 100, model);
   assert.equal(behavior.snapshotState(), "notifying");

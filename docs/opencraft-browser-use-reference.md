@@ -157,8 +157,8 @@ export interface BrowserSessionSnapshot {
 }
 ```
 
-现有 `/vela/packages/browser-core/src/model.ts` 只有 `threadId`，实施会话应将其升级为
-`ThreadKey`，否则不同 Host 上相同 thread ID 会发生串话。
+浏览器会话绑定应使用完整 `ThreadKey`，以隔离不同 Host 上相同的 thread ID；
+领域模型入口见 `packages/browser-core/src/model.ts`。
 
 ## 5. 状态应该放在哪里
 
@@ -309,7 +309,7 @@ type DynamicToolCallResponse = {
 };
 ```
 
-现有 `/vela/packages/appserver-client/src/client.ts` 已提供 `handleServerRequest()` 和
+现有 `packages/appserver-client/src/client.ts` 已提供 `handleServerRequest()` 和
 interceptor 链。浏览器 handler 只捕获自己的 namespace/tool；其他动态工具必须 `next()`，
 不能截断 Composer option picker 等已有处理器。
 
@@ -739,8 +739,8 @@ apps/
     expo-browser-route.tsx
 ```
 
-现有 `/vela/apps/workbench-web/src/browser/web-browser-runtime.ts` 可以作为迁移输入，但最终
-不能同时承担领域 Runtime、localStorage、iframe Engine、geometry 和 UI presentation。
+`apps/workbench-web/src/browser/web-browser-runtime.ts` 是 Web 适配入口；
+领域 Runtime、localStorage、iframe Engine、geometry 和 UI presentation 必须保持各自所有权。
 
 ## 18. 状态机
 

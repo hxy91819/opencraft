@@ -1,6 +1,6 @@
-# Codex Desktop Resume architecture
+# OpenCraft Thread Resume architecture
 
-OpenCraft implements the recovered Desktop hydration state machine in
+OpenCraft implements Thread Resume and View hydration in
 `@opencraft/appserver-session`. It is a separately governed layer between the typed
 AppServer client and the normalized Conversation Read Model.
 

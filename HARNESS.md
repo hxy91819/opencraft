@@ -581,9 +581,9 @@ consume that output, but the CLI must not depend on the browser UI.
 
 ## Differential oracles
 
-A behavior-differential program may act as an Oracle adapter. The existing
-fixed-source Codex VM comparison remains external to production packages and
-must pin every reference input by SHA-256 before execution.
+A behavior-differential program may act as an optional Oracle adapter outside
+production packages. Such an adapter must pin every comparison input by SHA-256
+before execution.
 
 An Oracle can approve deterministic functions and state-machine transitions. It
 cannot approve browser physics, rendering, focus, or compositor behavior unless

@@ -693,7 +693,7 @@ Connector 目录浏览不套用设置行：采用限宽品牌卡片，已配置�
 - 标准权限档位只能由 Host 根据引擎真实 profile/preset 投影；未验证的自定义 profile 保留为引擎原生选项，不因名字相似归类。
 - 目录的 `openCraftMode`/`openCraftLabel` 只在 Host 声明 `opencraft/permission-modes` v1 时有效。缺失能力时，客户端不得自行猜测标准档位。
 - DSH 的 Thread 创建、Turn 执行与 Fork 必须先校验所选 preset；新建 Thread 在创建时应用并回读生效值，不能等到首轮 Turn。DSH 的外部沙箱投影不能冒充 Codex 沙箱。
-- 标准档位用稳定的 `opencraft:permission-mode:*` 提交值，Host 在每次提交时解析当前引擎目录并翻译为原生 profile；会话恢复后原生生效 profile 由目录重新映射为产品档位。产品级权限上限与独立的请求值/生效值持久对账尚未建立，不得声称已实现 bb 的完整权限策略。
+- 标准档位用稳定的 `opencraft:permission-mode:*` 提交值，Host 在每次提交时解析当前引擎目录并翻译为原生 profile；会话恢复后原生生效 profile 由目录重新映射为产品档位。产品级权限上限与独立的请求值/生效值持久对账尚未建立，不得声称已实现完整的产品级权限策略。
 
 ## 会话顺序与展示分段（2026-10-05）
 
@@ -1011,7 +1011,7 @@ Web/Electron UI and prose consume the shared typography registry with bundled In
 
 ## Thread list typography (2026-10-15)
 
-Web/Electron conversation list titles consume the dedicated `threadListTitle` role (13px, 20px line height, regular weight) and normal letter spacing, with body tracking also normalized by UI-TYPE-1. The comparison source is bb 9ddb184943a3ce7e5820fb1d141c782c958af521: `sidebar-row-classes.ts` consumes text-sm, `theme.css` sets it to 0.8125rem and leaves title tracking at the browser default. Header, chat, metadata and code metrics keep their existing roles; row heights, hit targets and theme colors are independent. The Native alias retains the existing thread-title metrics and has no new consumer.
+Web/Electron conversation list titles consume the dedicated `threadListTitle` role (13px, 20px line height, regular weight) and normal letter spacing, with body tracking also normalized by UI-TYPE-1. Header, chat, metadata and code metrics keep their existing roles; row heights, hit targets and theme colors are independent. The Native alias retains the existing thread-title metrics and has no new consumer.
 
 ### Asynchronous operation feedback
 
@@ -1520,7 +1520,6 @@ No command is dispatched for repeats, composition/229, already handled events,
 wrong/extra modifiers, or while a dialog/menu/listbox, terminal or cloud desktop
 owns input, except search can reassert its own open dialog without losing the query. Commands only consume events when the corresponding surface is
 available; actions keep their existing router, draft and panel ownership.
-Reference interaction/context: BB ref 62fe3bc, not a claim of full BB feature parity.
 
 
 ### Mermaid diagram geometry and visual presentation (2026-10-17)
@@ -1533,9 +1532,8 @@ viewport. Actions reserve their own header space and never cover nodes, with
 visible 44px targets on touch. Mermaid defaults to classic/base with lazily
 registered ELK layout and existing semantic theme tokens; no neo node shadows.
 This keeps the reading-surface wide-content limits and render-key continuity.
-The user's BB fork at 47d099969891cab18398dc4064e836040159e6a3 is a configuration
-and visual reference, not another runtime owner. Actual layout and source
-visibility are verified by `scripts/smoke-mermaid-display.ts`.
+Actual layout and source visibility are verified by
+`scripts/smoke-mermaid-display.ts`.
 
 ### First-submit presentation continuity
 

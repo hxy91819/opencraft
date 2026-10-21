@@ -18,8 +18,27 @@ env:
   OPENCRAFT_SOURCE_REVISION: ${{ github.sha }}
 
 jobs:
-  arm64:
+  credentials:
     if: github.repository == 'opencraft-app/opencraft' && (github.event_name == 'push' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: macos-release
+    steps:
+      - name: Check release credentials
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=0
+          for name in MACOS_CERTIFICATE_P12_BASE64 MACOS_CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if test -z "${!name}"; then echo "Missing macos-release secret: ${name}"; missing=1; fi
+          done
+          test "$missing" -eq 0
+
+  arm64:
+    needs: credentials
     runs-on: macos-15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -45,7 +64,7 @@ jobs:
           retention-days: 3
 
   x64:
-    if: github.repository == 'opencraft-app/opencraft' && (github.event_name == 'push' || github.ref == 'refs/heads/main')
+    needs: credentials
     runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -81,6 +100,7 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - run: npm run test:macos-release
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: opencraft-macos-*-app
@@ -92,19 +112,6 @@ jobs:
           ditto -x -k .artifacts/opencraft-macos-arm64-app/OpenCraft-arm64-app.zip .release/arm64
       - name: Merge Universal app
         run: node scripts/merge-macos-universal.mjs --x64 .release/x64/OpenCraft.app --arm64 .release/arm64/OpenCraft.app --output .release/universal/OpenCraft.app
-      - name: Check release credentials
-        env:
-          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
-          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          missing=0
-          for name in MACOS_CERTIFICATE_P12_BASE64 MACOS_CERTIFICATE_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
-            if test -z "${!name}"; then echo "Missing macos-release secret: ${name}"; missing=1; fi
-          done
-          test "$missing" -eq 0
       - name: Import Developer ID
         env:
           MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
@@ -142,6 +149,12 @@ jobs:
             --config.forceCodeSigning=true \
             --config.dmg.sign=true \
             --config.directories.output=release/ci-universal
+      - name: Notarize final DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: node scripts/notarize-macos-dmg.mjs apps/workbench-electron/release/ci-universal/OpenCraft-0.1.0-universal.dmg
       - name: Verify final artifacts
         run: |
           app=.release/universal/OpenCraft.app
@@ -153,6 +166,8 @@ jobs:
           spctl --assess --type execute --verbose=4 "$app"
           codesign --verify --verbose=2 "$dmg"
           hdiutil verify "$dmg"
+          xcrun stapler validate "$dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg"
           unzip -t "$zip"
           shasum -a 256 "$dmg" "$zip" > apps/workbench-electron/release/ci-universal/SHA256SUMS
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -167,7 +182,7 @@ jobs:
       - name: Remove temporary credentials
         if: always()
         run: |
-          if test -n "${CSC_KEYCHAIN:-}"; then security delete-keychain "$CSC_KEYCHAIN" || true; fi
+          security delete-keychain "$RUNNER_TEMP/opencraft-signing.keychain-db" 2>/dev/null || true
           rm -f "$RUNNER_TEMP/opencraft-developer-id.p12"
 
   publish:

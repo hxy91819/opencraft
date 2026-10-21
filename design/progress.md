@@ -24,7 +24,7 @@
 
 - 已读取根/OpenCraft 入口、维护总纲和验证清单；context 无匹配。
 - 工作树已有大量用户变更，按增量编辑保留。
-- 阅读 Codex 参考调用链与 OpenCraft 的 Chat、Browser、Plugin、Platform 相关设计。
+- 阅读 OpenCraft 的 Chat、Browser、Plugin、Platform 相关设计。
 - 尚未修改行为，尚未运行实现验证。
 
 ### 实施更新
@@ -58,7 +58,7 @@
 - 最后的小范围提交契约/拖动作用域检查后，Web 类型检查及 Session/Panel/Browser/drag 聚焦回归 40/40 通过。
 - Web smoke 在普通动效与 reduced-motion 下通过。真实 iframe 页内计数 1→2→3 跨右/底移动及隐藏保持；显式关闭释放页面。初始 about:blank 的 null-origin bridge 竞态已修复，不向不合法 origin 发消息。
 - 主 Composer 在 Overlay 里实际提交的 target 为原 Host/parent Thread；不是只检查草稿文本保留。
-- 临时 fork 真实 AppServer 测试通过父/子各一轮本地合成模型运行；无外部模型请求。策略文本采用参考原文。
+- 临时 fork 真实 AppServer 测试通过父/子各一轮本地合成模型运行；无外部模型请求。
 - macOS arm64 ad-hoc Preview 实机：底部按住高度 342px；终端移下、移回后分别输出 `after-transfer:retained` 和 `after-return:retained`，证明同一 shell 状态保留。截图已人工检查。
 - 最终产物：`apps/workbench-electron/release/workspace-model-preview-final/mac-arm64/OpenCraft Preview.app`；codesign --verify --deep --strict 通过。使用独立测试 profile，不覆盖用户已有预览。
 - 文档检查无警告；diff whitespace 检查通过。`validate_change_impact --staged` 通过但当前没有 staged 文件，因此该项不作为本轮映射覆盖的独立证据；正式领域文档与 design 已同步更新。

@@ -126,7 +126,6 @@ teardown, owned-process recovery, timeout, tools, approvals and real DSH scenari
 
 ## Source and ownership
 
-Reference: ref/hypernode working-tree snapshot described in REFERENCE-SNAPSHOT.md.
 The application imports the TurnManager implementation, tool projection, and
 engine processSessionEvent / completion / interruption / failure / pacing-barrier
 methods. TypeScript types and imports are removed mechanically for isolated

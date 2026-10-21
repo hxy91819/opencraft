@@ -838,9 +838,9 @@ Source boundaries: `sandbox/internal/ingressproxy/router.go`,
 [WebRTC configuration](https://w3c.github.io/webrtc-pc/#rtcconfiguration-dictionary)
 and [TURN transport](https://www.rfc-editor.org/rfc/rfc8656.html#section-3.1).
 
-Reference: read-only Codex 26.930.31428 desktop tab/viewer analysis. Adopted
-per-Conversation tabs, remote/view lifetime split and observe/control split;
-did not copy private signaling endpoints or UID, or assume robust reconnection.
+The viewer uses per-Conversation tabs, separate remote/view lifetimes and
+separate observe/control permissions. Signaling and user identity remain with
+the provider; robust reconnection is not assumed.
 
 ### Explicit takeover from read-only viewing
 

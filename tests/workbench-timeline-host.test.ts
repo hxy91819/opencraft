@@ -808,16 +808,26 @@ test("Composer menus live in the root overlay plane with Codex viewport constrai
   );
 });
 
-test("Composer intelligence keeps model and reasoning in one catalog-owned menu", () => {
+test("Composer intelligence keeps model and reasoning under catalog ownership", () => {
   assert.doesNotMatch(composerSource, /<DropdownMenu\.Sub(?:Trigger|Content)/u);
   assert.match(
     composerSource,
     /opencraft-composer-selection-menu__heading">\s*<FormattedMessage id="chat\.model" defaultMessage="Model"/u,
   );
-  assert.match(
-    composerSource,
-    /opencraft-composer-selection-menu__heading">\s*<FormattedMessage id="chat\.reasoning" defaultMessage="Reasoning"/u,
-  );
+  if (composerSource.includes("<ComposerModelPicker")) {
+    const pickerSource = readFileSync(new URL("../packages/composer-editor/src/composer-model-picker.tsx", import.meta.url), "utf8");
+    assert.match(pickerSource, /id: "chat\.reasoning", defaultMessage: "Reasoning"/u);
+    assert.match(pickerSource, /role="group" aria-label=\{reasoningLabel\}/u);
+    assert.match(pickerSource, /options=\{efforts\} value=\{effort\} label=\{reasoningLabel\}/u);
+    assert.match(pickerSource, /onValueChange=\{onEffortChange\}/u);
+    assert.match(composerSource, /efforts=\{selectedModel\?\.efforts\.map/u);
+    assert.match(composerSource, /const effort = selectedModel\?\.efforts\.find\(candidate => candidate\.value === value\);\s*if \(effort\) selectEffort\(effort\);/u);
+  } else {
+    assert.match(
+      composerSource,
+      /opencraft-composer-selection-menu__heading">\s*<FormattedMessage id="chat\.reasoning" defaultMessage="Reasoning"/u,
+    );
+  }
   assert.doesNotMatch(composerSource, /Power presets|>\s*Advanced\s*</u);
   assert.doesNotMatch(
     composerSource,

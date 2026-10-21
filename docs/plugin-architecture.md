@@ -207,7 +207,7 @@ Contribution 仍不会因为安装或激活而自动进入模型上下文。
 
 面向开发者的一句话定义是：
 
-> **开发手感与信任方式接近 Obsidian，API 稳定性借鉴 Chrome，远端能力接近 Codex。**
+> **插件经显式贡献接口接入，由统一的激活与卸载生命周期管理资源。**
 
 这不会推翻现有的多 Runtime 设计。OpenCraft 仍然保留多个独立 Cordis Context；新增的
 `ExtensionSupervisor` 用一个 Contribution Broker 跨域登记贡献，并把所有 disposer 挂到

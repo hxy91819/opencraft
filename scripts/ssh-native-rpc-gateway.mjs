@@ -1,5 +1,5 @@
 import { APP_HOST_PROTOCOL_VERSION } from "@opencraft/app-host-protocol/version";
-// Recovered join native gateway; Host remains the logical routing owner.
+// OpenCraft native gateway; Host remains the logical routing owner.
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
 import { WebSocket, WebSocketServer } from "ws";

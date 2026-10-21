@@ -1,0 +1,47 @@
+#!/usr/bin/env node
+
+import { execFile } from "node:child_process";
+import { access } from "node:fs/promises";
+import { resolve } from "node:path";
+import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
+
+const execFileAsync = promisify(execFile);
+
+async function runXcrun(args) {
+  try {
+    return await execFileAsync("xcrun", args, { timeout: 45 * 60 * 1000 });
+  } catch {
+    // execFile's error includes argv, which can contain the Apple password.
+    throw new Error(`xcrun ${args[0]} ${args[1]} failed`);
+  }
+}
+
+export async function notarizeMacosDmg(dmgPath, environment = process.env, run = runXcrun) {
+  const credentials = ["APPLE_ID", "APPLE_APP_SPECIFIC_PASSWORD", "APPLE_TEAM_ID"].map(name => {
+    const value = environment[name]?.trim();
+    if (!value) throw new Error(`Missing required environment variable: ${name}`);
+    return value;
+  });
+  const dmg = resolve(dmgPath);
+  if (!dmg.endsWith(".dmg")) throw new Error("Expected a final .dmg artifact");
+  await access(dmg);
+  const { stdout } = await run([
+    "notarytool", "submit", dmg,
+    "--apple-id", credentials[0], "--password", credentials[1], "--team-id", credentials[2],
+    "--wait", "--timeout", "40m", "--output-format", "json",
+  ]);
+  const result = JSON.parse(stdout);
+  if (result.status !== "Accepted") {
+    throw new Error(`DMG notarization was not accepted (status: ${result.status}, request: ${result.id})`);
+  }
+  await run(["stapler", "staple", dmg]);
+  await run(["stapler", "validate", dmg]);
+  return dmg;
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (!process.argv[2]) throw new Error("Usage: notarize-macos-dmg <OpenCraft.dmg>");
+  const dmg = await notarizeMacosDmg(process.argv[2]);
+  process.stdout.write(`[opencraft] notarized and stapled ${dmg}\n`);
+}

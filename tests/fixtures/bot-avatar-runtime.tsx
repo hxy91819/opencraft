@@ -19,12 +19,12 @@ type Scenario = "group" | "idle" | "send";
 const key = createConversationKey("fixture", "bot-avatar-runtime");
 const participants: readonly BotParticipantSnapshot[] = [
   {
-    participantId: "bot:vela",
+    participantId: "bot:opencraft",
     kind: "bot",
     displayName: "OpenCraft",
     avatar: {
       kind: "monogram",
-      text: "V",
+      text: "O",
       background: "#1677ff",
       foreground: "#f8fbff",
     },
@@ -58,7 +58,7 @@ function presenceFor(scenario: Scenario): readonly BotPresenceFact[] {
   return [
     {
       conversationKey: key,
-      participantId: "bot:vela",
+      participantId: "bot:opencraft",
       executionId: `fixture:${scenario}`,
       seq: 1,
       phase: "working",
@@ -120,7 +120,7 @@ function Demo() {
               />
               <strong>{participant.displayName}</strong>
               <span>
-                {participant.participantId === "bot:vela"
+                {participant.participantId === "bot:opencraft"
                   ? "Executing"
                   : participant.participantId === "bot:nova"
                     ? "Handoff"

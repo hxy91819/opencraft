@@ -9,6 +9,7 @@ import {
   synchronizeRuntimeFiles,
 } from "../scripts/merge-macos-universal.mjs";
 import { signAndNotarizeMacos } from "../scripts/sign-notarize-macos.mjs";
+import { notarizeMacosDmg } from "../scripts/notarize-macos-dmg.mjs";
 
 test("universal merge synchronizes architecture-qualified runtime packages without overwriting shared files", async t => {
   const directory = await mkdtemp(join(tmpdir(), "opencraft-universal-"));
@@ -65,7 +66,7 @@ test("universal merge uses one architecture-independent renderer tree", async t 
   await assert.rejects(readFile(join(arm64Renderer, "assets/app-arm64-hash.js")), /ENOENT/u);
 });
 
-test("macOS release workflow isolates secrets to the merge job and uses native runners", async () => {
+test("macOS release workflow isolates signing secrets from native build jobs", async () => {
   const workflow = await readFile(new URL("../.github/workflows/macos-universal-release.yml", import.meta.url), "utf8");
   assert.match(workflow, /runs-on: macos-15\n/u);
   assert.match(workflow, /runs-on: macos-15-intel/u);
@@ -83,4 +84,41 @@ test("macOS release workflow isolates secrets to the merge job and uses native r
 
 test("signing fails before filesystem or Apple access when credentials are absent", async () => {
   await assert.rejects(signAndNotarizeMacos("missing.app", {}), /CSC_NAME/u);
+});
+
+test("final DMG notarization requires Apple's acceptance before stapling", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "opencraft-dmg-notary-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const dmg = join(directory, "OpenCraft.dmg");
+  await writeFile(dmg, "signed DMG fixture");
+  const environment = {
+    APPLE_ID: "test@example.invalid",
+    APPLE_APP_SPECIFIC_PASSWORD: "test-password",
+    APPLE_TEAM_ID: "TESTTEAMID",
+  };
+  const calls = [];
+  const run = async args => {
+    calls.push(args);
+    return { stdout: JSON.stringify({ status: "Accepted", id: "test-request" }) };
+  };
+  assert.equal(await notarizeMacosDmg(dmg, environment, run), dmg);
+  assert.equal(calls[0][0], "notarytool");
+  assert.ok(calls[0].includes("--wait"));
+  assert.deepEqual(calls.slice(1), [["stapler", "staple", dmg], ["stapler", "validate", dmg]]);
+
+  let attempts = 0;
+  await assert.rejects(notarizeMacosDmg(dmg, environment, async () => {
+    attempts++;
+    return { stdout: JSON.stringify({ status: "Invalid", id: "rejected-request" }) };
+  }), /not accepted/u);
+  assert.equal(attempts, 1);
+  await assert.rejects(notarizeMacosDmg("missing.dmg", {}), /APPLE_ID/u);
+});
+
+test("release checks credentials before native builds and verifies the final DMG ticket before upload", async () => {
+  const workflow = await readFile(new URL("../.github/workflows/macos-universal-release.yml", import.meta.url), "utf8");
+  assert.match(workflow, /arm64:\n    needs: credentials/u);
+  assert.match(workflow, /x64:\n    needs: credentials/u);
+  assert.ok(workflow.indexOf("notarize-macos-dmg.mjs") < workflow.indexOf('xcrun stapler validate "$dmg"'));
+  assert.ok(workflow.indexOf('xcrun stapler validate "$dmg"') < workflow.indexOf('shasum -a 256 "$dmg"'));
 });
