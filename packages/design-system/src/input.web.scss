@@ -1,0 +1,26 @@
+// Input capability primitives have no emitted CSS or control/typography dependencies.
+// A hybrid device can report hover capability even after a touch contact.
+// The document's current-input signal suppresses synthetic/sticky hover while
+// focus-visible and persistent selected/open states remain independent.
+@mixin hover-capable {
+  @media (any-hover: hover) and (any-pointer: fine) {
+    @if & {
+      :root:not([data-touch-interaction]) & { @content; }
+    } @else {
+      // Also support complete selectors in shared stylesheets at the root.
+      :root:not([data-touch-interaction]) { @content; }
+    }
+  }
+}
+
+// Essential actions cannot depend on hover, including on a hybrid device after
+// touch contact. Density remains a separate layout preference.
+@mixin touch-input {
+  @media (any-pointer: coarse), (hover: none) { @content; }
+  @if & {
+    :root[data-touch-interaction] & { @content; }
+  } @else {
+    :root[data-touch-interaction] { @content; }
+  }
+}
+

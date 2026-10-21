@@ -20,6 +20,7 @@
     "./material.web": "./src/material.web.scss",
     "./menu.web": "./src/menu.web.scss",
     "./selection.web": "./src/selection.web.scss",
+    "./input.web": "./src/input.web.scss",
     "./controls.web": "./src/controls.web.scss",
     "./focus.web": "./src/focus.web.scss",
     "./empty-state.web": "./src/empty-state.web.scss",

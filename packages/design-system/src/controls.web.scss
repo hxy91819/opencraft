@@ -1,3 +1,5 @@
+@forward "./input.web";
+@use "./input.web" as input;
 @use "./icons.web" as icons;
 @use "./typography-mixins.web" as typography;
 
@@ -18,31 +20,6 @@
   @media (forced-colors: active) { border-color: Mark; }
 }
 
-// A hybrid device can report hover capability even after a touch contact.
-// The document's current-input signal suppresses synthetic/sticky hover while
-// focus-visible and persistent selected/open states remain independent.
-@mixin hover-capable {
-  @media (any-hover: hover) and (any-pointer: fine) {
-    @if & {
-      :root:not([data-touch-interaction]) & { @content; }
-    } @else {
-      // Also support complete selectors in shared stylesheets at the root.
-      :root:not([data-touch-interaction]) { @content; }
-    }
-  }
-}
-
-// Essential actions cannot depend on hover, including on a hybrid device after
-// touch contact. Density remains a separate layout preference.
-@mixin touch-input {
-  @media (any-pointer: coarse), (hover: none) { @content; }
-  @if & {
-    :root[data-touch-interaction] & { @content; }
-  } @else {
-    :root[data-touch-interaction] { @content; }
-  }
-}
-
 // Shared quiet controls. Layout belongs to the consumer, interaction to here.
 // An input-adaptive consumer may own its hover rule while retaining the same
 // open, keyboard-focus, and disabled states from this mixin.
@@ -55,7 +32,7 @@
   border-radius: var(--radius-control);
   cursor: pointer;
   @if $hover {
-    @include hover-capable {
+    @include input.hover-capable {
       &:hover:not(:disabled) {
         background: var(--color-background-button-tertiary-hover);
       }
@@ -84,7 +61,7 @@
   padding: 0 var(--padding-navigation-row-inline);
   text-align: left;
 
-  @include hover-capable {
+  @include input.hover-capable {
     &:hover:not(:disabled) {
       background: var(--color-background-navigation-hover);
     }
@@ -119,7 +96,7 @@
   min-height: var(--size-application-navigation-hit-min);
   border-radius: var(--radius-application-navigation-control);
   color: var(--color-text-tertiary);
-  @include hover-capable {
+  @include input.hover-capable {
     &:hover:not(:disabled) { color: var(--color-text); }
   }
   &[aria-current="page"] { color: var(--color-text); }
@@ -238,7 +215,7 @@
   border-radius: var(--radius-full);
   background: var(--color-discrete-slider-thumb);
   box-shadow: var(--shadow-discrete-slider-thumb), inset 0 0 0 0.5px var(--color-border-default);
-  @include hover-capable { &:hover { box-shadow: var(--shadow-discrete-slider-thumb), inset 0 0 0 1px var(--color-border-default); } }
+  @include input.hover-capable { &:hover { box-shadow: var(--shadow-discrete-slider-thumb), inset 0 0 0 1px var(--color-border-default); } }
 }
 .ui-discrete-slider__limits {
   @include typography.role(metadata, tertiary);

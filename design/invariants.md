@@ -1850,3 +1850,8 @@ content/card actions stay directly reachable with `controls.touch-input`,
 including after touch on hybrid hardware, independently of UI density.
 Separate HTML documents own their binding; embedded media pointer tracking is
 not a hover disclosure and retains its existing input owner.
+
+
+## Input capability stylesheet isolation
+
+Presentation styles that need only hover/touch capability mixins import `@opencraft/design-system/input.web`. It emits no CSS on import. The existing `controls.web` forwards those same primitives for control consumers; it continues to own control rules and typography dependencies. Input semantics, persistent focus/open/current feedback and startup resource budgets remain unchanged. The hover policy tests compile the pure entry and both guards; production startup graph measures total CSS.

@@ -1,4 +1,4 @@
-@use "@opencraft/design-system/controls.web" as controls;
+@use "@opencraft/design-system/input.web" as controls;
 
 .opencraft-chat-document a[data-chat-resource-kind="file"]:not(.chat-file-citation),
 .opencraft-chat-document a[data-chat-resource-kind="workspace-file"]:not(.chat-file-citation),

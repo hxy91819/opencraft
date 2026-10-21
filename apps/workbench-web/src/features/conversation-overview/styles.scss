@@ -1,4 +1,4 @@
-@use "@opencraft/design-system/controls.web" as controls;
+@use "@opencraft/design-system/input.web" as controls;
 
 .modal-surface.conversation-overview[data-size="wide"] {
   display: flex; flex-direction: column; padding: 0; overflow: hidden;
