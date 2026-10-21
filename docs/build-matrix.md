@@ -327,7 +327,10 @@ Developer ID signature, stapled notarization ticket, Gatekeeper assessment,
 DMG signature/image and ZIP integrity, then emits SHA-256 checksums. The final
 signed DMG is separately submitted to Apple; only an `Accepted` result permits
 stapling. Its ticket and Gatekeeper assessment must pass before checksums and
-artifact upload. Only the final DMG, app ZIP and their checksums are delivered;
+artifact upload. The same final-DMG smoke test copies the app to an isolated
+profile, checks its real renderer and retains logs/a screenshot as
+`opencraft-macos-universal-smoke-<sha>` for three days. Only the final DMG,
+app ZIP and their checksums are delivered;
 intermediate update metadata/blockmaps are not published by this workflow.
 
 To provision the Environment, use GitHub **Settings → Environments →
