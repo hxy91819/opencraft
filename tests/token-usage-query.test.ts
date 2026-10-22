@@ -3,18 +3,18 @@ import test from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CodexHostStateDatabase } from "../apps/opencraft-daemon/src/codex-host-state-database.js";
-import { CodexTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { TokenUsageQueryError } from "../apps/opencraft-daemon/src/token-usage-query.js";
 const at=Date.parse("2026-10-20T16:00:00Z");
 const params={from:"2026-10-21",through:"2026-10-21"};
 const A=()=>({actorId:"A",administrator:false}), B=()=>({actorId:"B",administrator:false}), admin=()=>({actorId:"admin",administrator:true});
-async function fixture(body:(ledger:CodexTokenUsageLedger,state:CodexHostStateDatabase)=>void) {
-  const path=await mkdtemp(join(tmpdir(),"oc-query-"));const state=new CodexHostStateDatabase(path);
-  const ledger=new CodexTokenUsageLedger(state,"server",()=>at);
+async function fixture(body:(ledger:OpenCraftTokenUsageLedger,state:OpenCraftHostStateDatabase)=>void) {
+  const path=await mkdtemp(join(tmpdir(),"oc-query-"));const state=new OpenCraftHostStateDatabase(path);
+  const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>at);
   try{body(ledger,state);}finally{state.close();await rm(path,{recursive:true,force:true});}
 }
-function turn(ledger:CodexTokenUsageLedger,id:string,actors:string[],counts=["5","5"],startedAt=at) {
+function turn(ledger:OpenCraftTokenUsageLedger,id:string,actors:string[],counts=["5","5"],startedAt=at) {
   const key={threadId:"thread",turnId:id};
   ledger.startTurn(key,startedAt,"human",true);
   for(const actorId of actors) ledger.recordInput(key,{inputId:id+actorId,actorId,actorKind:"human",mode:"start",admission:"confirmed"});
@@ -73,7 +73,7 @@ test("pending participant remains visible to self without assigning its known ra
 }));
 
 test("bulk team reductions match the generic exact projection for mixed states, models, missing usage and grouped pages",async()=>{
- const path=await mkdtemp(join(tmpdir(),"oc-team-differential-")),state=new CodexHostStateDatabase(path),ledger=new CodexTokenUsageLedger(state,"server",()=>at);
+ const path=await mkdtemp(join(tmpdir(),"oc-team-differential-")),state=new OpenCraftHostStateDatabase(path),ledger=new OpenCraftTokenUsageLedger(state,"server",()=>at);
  try{
   for(let n=0;n<20;n++){
    const key={threadId:"thread"+(n%4),turnId:"turn"+n};
@@ -96,9 +96,9 @@ test("bulk team reductions match the generic exact projection for mixed states, 
 });
 
 test("personal turn selection deduplicates admissions and isolates matching IDs in another deployment",async()=>{
- const path=await mkdtemp(join(tmpdir(),"oc-personal-scope-")),state=new CodexHostStateDatabase(path);
+ const path=await mkdtemp(join(tmpdir(),"oc-personal-scope-")),state=new OpenCraftHostStateDatabase(path);
  try{
-  const ledger=new CodexTokenUsageLedger(state,"server",()=>at),other=new CodexTokenUsageLedger(state,"other",()=>at);
+  const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>at),other=new OpenCraftTokenUsageLedger(state,"other",()=>at);
   turn(ledger,"same",["A","B"]);turn(other,"same",["A"],["9999"]);
   ledger.recordInput({threadId:"thread",turnId:"same"},{inputId:"A-second-device",actorId:"A",actorKind:"human",mode:"steer",admission:"confirmed"});
   turn(ledger,"private-to-B",["B"],["1000"]);

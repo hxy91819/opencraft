@@ -96,7 +96,7 @@ identities. The implementation is `access-control/collaboration`; there is no se
 
 Message, idempotency receipt and optional execution intent are one SQLite
 transaction. `conversation-execution` is the narrow target adapter, using existing
-AppHost logical-client admission. The target's `CodexHostQueue` remains the sole
+AppHost logical-client admission. The target's `OpenCraftHostQueue` remains the sole
 claimant, owns its durable receipt and uses its own model, account, workspace and
 permissions. Target authorization is rechecked immediately before claim. A
 conversation target remains fixed even if an unrelated Session is rebound.

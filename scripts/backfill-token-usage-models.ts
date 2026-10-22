@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import { resolve } from "node:path";
-import { CodexHostStateDatabase } from "../apps/opencraft-daemon/src/codex-host-state-database.js";
-import { CodexTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { backfillTokenUsageModels } from "../apps/opencraft-daemon/src/token-usage-model-backfill.js";
 
 const { values } = parseArgs({
@@ -20,9 +20,9 @@ const apply = values.apply === true && values["dry-run"] !== true;
 
 console.log(`Starting token usage model backfill (data-dir=${dataDir}, server-id=${serverId}, mode=${apply ? "APPLY" : "DRY-RUN"})...`);
 
-const state = new CodexHostStateDatabase(dataDir);
+const state = new OpenCraftHostStateDatabase(dataDir);
 try {
-  const ledger = new CodexTokenUsageLedger(state, serverId);
+  const ledger = new OpenCraftTokenUsageLedger(state, serverId);
   const result = await backfillTokenUsageModels({ state, ledger, apply });
   console.log(JSON.stringify({ passed: true, apply, ...result }, null, 2));
 } finally {

@@ -5,8 +5,8 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {build} from "esbuild";
 import {TokenUsageTelemetry} from "../apps/opencraft-daemon/src/token-usage-telemetry.js";
-import {CodexHostStateDatabase} from "../apps/opencraft-daemon/src/codex-host-state-database.js";
-import {CodexTokenUsageLedger} from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import {OpenCraftHostStateDatabase} from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import {OpenCraftTokenUsageLedger} from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import {TokenUsageQueryService} from "../apps/opencraft-daemon/src/token-usage-query-service.js";
 
 test("diagnostics retain a bounded latency window and return detached, identifier-free snapshots",()=>{
@@ -20,8 +20,8 @@ test("diagnostics retain a bounded latency window and return detached, identifie
 });
 
 test("only committed sources, deduplication and reconciliation update collection diagnostics; queries authorize diagnostics again",async()=>{
- const root=await mkdtemp(join(tmpdir(),"oc-usage-telemetry-")),state=new CodexHostStateDatabase(root),telemetry=new TokenUsageTelemetry();
- const at=Date.parse("2026-10-21T00:00:00Z"),ledger=new CodexTokenUsageLedger(state,"server",()=>at,telemetry),key={threadId:"thread",turnId:"turn"};
+ const root=await mkdtemp(join(tmpdir(),"oc-usage-telemetry-")),state=new OpenCraftHostStateDatabase(root),telemetry=new TokenUsageTelemetry();
+ const at=Date.parse("2026-10-21T00:00:00Z"),ledger=new OpenCraftTokenUsageLedger(state,"server",()=>at,telemetry),key={threadId:"thread",turnId:"turn"};
  let service:TokenUsageQueryService|undefined;
  try{
   ledger.startTurn(key,at,"human",true);ledger.recordInput(key,{inputId:"input",actorId:"A",actorKind:"human",mode:"start",admission:"confirmed"});

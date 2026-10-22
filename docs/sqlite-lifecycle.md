@@ -30,8 +30,8 @@
 | `opencraft-managed-connectors.sqlite` | daemon 内 Local Agent Host：[connector-host/store](../packages/connector-host/src/store.ts) | Host `dataDirectory` | 实例、凭据与 OAuth 事务 |
 | `account-pool.sqlite` | 独立 codex-core：[account-pool-host/store](../packages/account-pool-host/src/store.ts)、[account service](../packages/account-pool-host/src/codex-account-service.ts) | codex-core `dataDirectory` | 账户元数据、亲和性与配额；secret 文件由同一 owner 管理 |
 | `tasks.sqlite` | [TasksSqliteStore](../plugins/tasks/src/sqlite.ts)；Local Agent 启动 owner / Codex 功能私有 owner | 原 Host 目录；各实例各自独占，不跨目录合库 | Tasks、关联、revision/CAS；原 `tasks-rows` v1 SQL/hash 不变 |
-| `codex-host-queue.sqlite` | [CodexHostStateDatabase](../apps/opencraft-daemon/src/codex-host-state-database.ts)；CodexEngineAdapter | 原 Codex 目录；SSH 为原 `ssh-servers/<binding hash>` 目录 | durable queue、message_senders、企业身份 presence/state/completion 与远端会话目录/同步水位共用一个迁移/连接/事务 owner |
-| `codex-message-attachments.sqlite` | [CodexMessageAttachments](../apps/opencraft-daemon/src/codex-message-attachments.ts)；CodexEngineAdapter | 同上 | 已发送文件的 display metadata，不改变原生 mention 输入 |
+| `codex-host-queue.sqlite` | [OpenCraftHostStateDatabase](../apps/opencraft-daemon/src/opencraft-host-state-database.ts)；CodexEngineAdapter | 原 Codex 目录；SSH 为原 `ssh-servers/<binding hash>` 目录 | durable queue、message_senders、企业身份 presence/state/completion 与远端会话目录/同步水位共用一个迁移/连接/事务 owner |
+| `codex-message-attachments.sqlite` | [OpenCraftMessageAttachments](../apps/opencraft-daemon/src/opencraft-message-attachments.ts)；CodexEngineAdapter | 同上 | 已发送文件的 display metadata，不改变原生 mention 输入 |
 | `connections.sqlite` | [SshConnectionStore](../apps/opencraft-daemon/src/ssh-connection-store.ts)；可选 SSH management owner | 原 `ssh` 私有目录 | 连接/CAS、host key 与加密 credential；原 `ssh-connections` v1 SQL/hash 不变，v2 保留旧 reader 的 `user_version=1` |
 
 
@@ -185,7 +185,7 @@ IndexedDB 使用原生升级事务，不运行 SQL runner；广播仅通知已�
 
 ### 受管 Headless 的历史 Codex Bot 数据保留
 
-CodexHostStateDatabase 的已发布 v1 保持原文，v2 追加 rooms/commands/message slots；
+OpenCraftHostStateDatabase 的已发布 v1 保持原文，v2 追加 rooms/commands/message slots；
 旧 Bot bridge 已删除，历史表不再由 Bot adapter 使用。已知旧结构仍在 owner 内有界转换并保留映射/receipt/消息 ID，
 未知仍拒绝；回退接受性须用实际旧 reader 在隔离副本验证。来源与边界见
 [受管 Headless](managed-headless.md#codex-原生会话与保留数据)。
@@ -200,7 +200,7 @@ user_version。原未修改旧入口不能直接作为升级后的回退。固�
 
 ## Codex Host v5：持久会话目录与参与关系完成状态
 
-`CodexHostStateDatabase` 在原 v1–v4 后追加 `durable-thread-catalog` v5；原迁移
+`OpenCraftHostStateDatabase` 在原 v1–v4 后追加 `durable-thread-catalog` v5；原迁移
 SQL、名称与 checksum 保持。迁移新增 `codex_thread_catalog`（受控元数据、归档/删除
 投影、观察时间与本地 revision）、`codex_catalog_sync`（分活动/归档的成功时间、
 更新时间水位、完整扫描时间、同步/就绪/错误状态）及 `ioa_presence_sync`（已完成
@@ -242,7 +242,7 @@ AccountPool owner 的 v2 迁移只向 pool_accounts 追加可空重置券数量�
 
 ## Codex Host v6: token metering foundations
 
-The existing `CodexHostStateDatabase` appends migration v6 without changing the
+The existing `OpenCraftHostStateDatabase` appends migration v6 without changing the
 published v1–v5 SQL or checksums. Its connection and transaction owner also owns
 usage coverage intervals, turns, accepted-input facts, versioned usage sources,
 derived allocations and recovery checkpoints. The metering ledger borrows this

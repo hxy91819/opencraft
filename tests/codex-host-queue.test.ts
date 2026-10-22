@@ -5,12 +5,12 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
-import { CodexHostQueue } from "../apps/opencraft-daemon/src/codex-host-queue.js";
+import { OpenCraftHostQueue } from "../apps/opencraft-daemon/src/opencraft-host-queue.js";
 
 test("Host queue claims survive restart as delivery-unknown and never re-enter the pending head", async () => {
   const root = await mkdtemp(join(tmpdir(), "opencraft-codex-queue-store-"));
   try {
-    const first = new CodexHostQueue(root);
+    const first = new OpenCraftHostQueue(root);
     const item = first.add("thread-1", "message-1", [{ type: "text", text: "hello" }]);
     assert.equal(first.add("thread-1", "message-1", item.input).id, item.id);
     assert.throws(() => first.add("thread-1", "message-1", [{ type: "text", text: "changed" }]));
@@ -19,7 +19,7 @@ test("Host queue claims survive restart as delivery-unknown and never re-enter t
     assert.throws(() => first.reorder("thread-1", []), /Reconcile in-flight/);
     first.close();
 
-    const recovered = new CodexHostQueue(root);
+    const recovered = new OpenCraftHostQueue(root);
     assert.equal(recovered.firstUnsettled("thread-1")?.state, "unknown");
     assert.equal(recovered.firstUnsettled("thread-1")?.pausedReason, "steer-delivery-unconfirmed");
     assert.equal(recovered.discardUnknown("thread-1", item.id, "wrong-turn"), false);
@@ -32,7 +32,7 @@ test("Host queue claims survive restart as delivery-unknown and never re-enter t
 test("accepted steer remains visible for reconciliation without blocking admission of the next queued item", async () => {
   const root = await mkdtemp(join(tmpdir(), "opencraft-codex-queue-admission-"));
   try {
-    const queue = new CodexHostQueue(root);
+    const queue = new OpenCraftHostQueue(root);
     const first = queue.add("thread-1", "message-1", [{ type: "text", text: "first" }]);
     const second = queue.add("thread-1", "message-2", [{ type: "text", text: "second" }]);
     assert.equal(queue.firstAwaitingAdmission("thread-1")?.id, first.id);
@@ -62,7 +62,7 @@ test("native queued rows migrate before Codex starts and replaying migration is 
       JSON.stringify({ UserInput: { content: [{ type: "text", text: "old" }], client_id: "client-old" } }), 1, 123, null);
     native.close();
 
-    const queue = new CodexHostQueue(root);
+    const queue = new OpenCraftHostQueue(root);
     assert.equal(queue.migrateNativeQueue(nativeRoot), 1);
     assert.equal(queue.migrateNativeQueue(nativeRoot), 0);
     assert.equal(queue.firstUnsettled("thread-1")?.clientUserMessageId, "client-old");
@@ -76,7 +76,7 @@ test("native queued rows migrate before Codex starts and replaying migration is 
 test("deleting a Thread retires its Host-owned queued inputs", async () => {
   const root = await mkdtemp(join(tmpdir(), "opencraft-codex-queue-delete-"));
   try {
-    const queue = new CodexHostQueue(root);
+    const queue = new OpenCraftHostQueue(root);
     queue.add("thread-1", "message-1", [{ type: "text", text: "one" }]);
     queue.add("thread-1", "message-2", [{ type: "text", text: "two" }]);
     assert.equal(queue.discardThread("thread-1"), 2);

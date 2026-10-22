@@ -1,7 +1,7 @@
 import { open, realpath } from "node:fs/promises";
 import { relative, isAbsolute } from "node:path";
 import { nativeUsageFact, nativeAcceptedInputFact, type NativeAcceptedInputFact } from "./token-usage-native-facts.js";
-import type { CodexTokenUsageLedger } from "./token-usage-ledger.js";
+import type { OpenCraftTokenUsageLedger } from "./token-usage-ledger.js";
 
 export class OversizedRolloutLineError extends Error {
   constructor(message: string) {
@@ -186,7 +186,7 @@ export async function replayRolloutUsage(options: {
   readonly path: string;
   readonly nativeHome: string;
   readonly threadId: string;
-  readonly ledger: CodexTokenUsageLedger;
+  readonly ledger: OpenCraftTokenUsageLedger;
   readonly cursor?: number;
   readonly maxBytes?: number;
   /** Exclusions verified from native turn start/coverage, never request input. */

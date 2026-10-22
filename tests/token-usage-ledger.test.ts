@@ -4,8 +4,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { CodexHostStateDatabase, CODEX_HOST_STATE_MIGRATIONS } from "../apps/opencraft-daemon/src/codex-host-state-database.js";
-import { CodexTokenUsageLedger, normalizeUsageCounts, type UsageSource } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import { OpenCraftHostStateDatabase, CODEX_HOST_STATE_MIGRATIONS } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { OpenCraftTokenUsageLedger, normalizeUsageCounts, type UsageSource } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { openManagedDatabase } from "../packages/sqlite-node/src/index.js";
 
 const key = { threadId: "thread", turnId: "turn" };
@@ -15,14 +15,14 @@ const source = (amount = "100", id = "response", extra: Partial<UsageSource> = {
 });
 const complete = { executionState: "completed" as const, participantsComplete: true, usageComplete: true, responsesComplete: true };
 
-async function fixture(body: (state: CodexHostStateDatabase, directory: string) => void | Promise<void>) {
+async function fixture(body: (state: OpenCraftHostStateDatabase, directory: string) => void | Promise<void>) {
   const directory = await mkdtemp(join(tmpdir(), "oc-token-usage-"));
-  const state = new CodexHostStateDatabase(directory);
+  const state = new OpenCraftHostStateDatabase(directory);
   try { await body(state, directory); } finally { state.close(); await rm(directory, { recursive: true, force: true }); }
 }
 
 test("F-01/F-02/F-06: calls accumulate once, successful late input reallocates the entire turn", () => fixture(state => {
-  const ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.startTurn(key, 1000, "human", true); ledger.recordInput(key, input());
   for (const [i, amount] of ["100", "200", "300"].entries()) ledger.recordSource(source(amount, String(i)));
   assert.equal(ledger.readTurn(key)?.observedTokens, "600");
@@ -35,7 +35,7 @@ test("F-01/F-02/F-06: calls accumulate once, successful late input reallocates t
 }));
 
 test("F-04/F-16/F-20: unknown admission holds all known tokens pending; verified late evidence releases allocation", () => fixture(state => {
-  const ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.startTurn(key, 1000, "human", true); ledger.recordInput(key, input()); ledger.recordSource(source("120000"));
   const pending = { inputId: "steer", actorId: null, actorKind: "unknown" as const, mode: "steer" as const, admission: "pending" as const };
   ledger.recordInput(key, pending);
@@ -51,7 +51,7 @@ test("F-04/F-16/F-20: unknown admission holds all known tokens pending; verified
 }));
 
 test("pending identity can resolve before admission, without prematurely allocating the known amount", () => fixture(state => {
-  const ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.startTurn(key, 1000, "human", true); ledger.recordInput(key, input()); ledger.recordSource(source());
   ledger.recordInput(key, { inputId: "pending", actorId: null, actorKind: "unknown", mode: "steer", admission: "pending" });
   assert.equal(ledger.recordInput(key, { inputId: "pending", actorId: "B", actorKind: "human", mode: "steer", admission: "pending" }), true);
@@ -61,7 +61,7 @@ test("pending identity can resolve before admission, without prematurely allocat
 }));
 
 test("metering contention fails immediately and restores the shared owner's busy timeout", () => fixture((state, directory) => {
-  const ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.startTurn(key, 1000, "human", true);
   const blocker = new DatabaseSync(join(directory, "codex-host-queue.sqlite"));
   const before = state.database.prepare("PRAGMA busy_timeout").get()!.timeout;
@@ -77,11 +77,11 @@ test("metering contention fails immediately and restores the shared owner's busy
 }));
 
 test("durable trusted submissions join native admission targets through a new ledger instance, with unmatched late steer held pending", () => fixture(state => {
-  let ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  let ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.recordSubmission({threadId:key.threadId,inputId:"start-A",actorId:"A",actorKind:"human",mode:"start",sourceKind:"human",submittedAt:1000});
   // Native input arrives before its turn lifecycle observation.
   ledger.recordAdmission(key,"start-A");
-  ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.startTurn(key,1000,"unknown",true);
   ledger.recordSource(source("1000"));
   assert.equal(ledger.readTurn(key)?.sourceKind,"human");
@@ -97,7 +97,7 @@ test("durable trusted submissions join native admission targets through a new le
   assert.equal(ledger.recordSubmission({threadId:key.threadId,inputId:"steer-B",actorId:"C",actorKind:"human",mode:"steer",sourceKind:"human",submittedAt:1000}),false);
   assert.equal(ledger.readTurn(key)?.allocationState,"pending","conflicting trusted identity holds the entire turn instead of charging the earlier Actor");
   assert.deepEqual(ledger.readAllocations(key),[]);
-  const restored=new CodexTokenUsageLedger(state,"server",()=>1000);
+  const restored=new OpenCraftTokenUsageLedger(state,"server",()=>1000);
   restored.reconcile(key,complete);
   assert.equal(restored.readTurn(key)?.allocationState,"pending","restart and terminal reconciliation do not clear identity ambiguity");
   assert.equal(state.database.prepare("SELECT COUNT(*) AS n FROM token_usage_submissions").get()!.n,2);
@@ -105,7 +105,7 @@ test("durable trusted submissions join native admission targets through a new le
 }));
 
 test("a submission without native admission is excluded, including a rejected steer and an unclaimed queue input",()=>fixture(state=>{
-  const ledger=new CodexTokenUsageLedger(state,"server",()=>1000);
+  const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000);
   ledger.startTurn(key,1000,"human",true);ledger.recordInput(key,input());ledger.recordSource(source("100"));
   ledger.recordSubmission({threadId:key.threadId,inputId:"not-admitted",actorId:"B",actorKind:"human",mode:"steer",sourceKind:"human",submittedAt:1000});
   assert.deepEqual(ledger.readAllocations(key).map(row=>row.actorId),["A"]);
@@ -113,7 +113,7 @@ test("a submission without native admission is excluded, including a rejected st
 }));
 
 test("persisted source gaps preserve known counts while preventing a complete settlement declaration",()=>fixture(state=>{
-  const ledger=new CodexTokenUsageLedger(state,"server",()=>1000);
+  const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000);
   ledger.startTurn(key,1000,"human",true);ledger.recordInput(key,input());
   ledger.recordSourceBatch([source(),source("100","native-turn",{kind:"turn-snapshot"})]);
   ledger.recordNativeTerminal(key);
@@ -137,7 +137,7 @@ test("v6 metering sources survive the additive v7/v8 recovery upgrade with their
     previous.database.prepare("INSERT INTO token_usage_sources VALUES(?,?,?,?,?,?,?,?,?,?)").run("server","thread","turn","native","response","response",0,null,null,JSON.stringify({totalTokens:"123"}));
     const checksum=previous.database.prepare("SELECT checksum FROM schema_migrations WHERE version=6").get()!.checksum;
     previous.database.close();
-    const upgraded=new CodexHostStateDatabase(directory);
+    const upgraded=new OpenCraftHostStateDatabase(directory);
     try {
       assert.equal(upgraded.outcome.appliedVersion,12);
       assert.equal(upgraded.database.prepare("SELECT checksum FROM schema_migrations WHERE version=6").get()!.checksum,checksum);
@@ -149,7 +149,7 @@ test("v6 metering sources survive the additive v7/v8 recovery upgrade with their
 });
 
 test("a late verified initiator receipt resolves unknown origin without assigning a viewing or steering human as initiator", () => fixture(state => {
-  const ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.startTurn(key, 1000, "unknown", true); ledger.recordSource(source("10"));
   ledger.recordInput(key, { ...input("B"), mode: "steer" });
   assert.equal(ledger.readTurn(key)?.sourceKind, "unknown"); assert.deepEqual(ledger.readAllocations(key), []);
@@ -159,7 +159,7 @@ test("a late verified initiator receipt resolves unknown origin without assignin
 }));
 
 test("rejected input is excluded, repeated actor inputs do not increase allocation weight", () => fixture(state => {
-  const ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.startTurn(key, 1000, "human", true); ledger.recordInput(key, input());
   ledger.recordInput(key, { ...input("B"), admission: "rejected", mode: "steer" });
   for (let i = 0; i < 5; i++) ledger.recordInput(key, { ...input("A", `A:${i}`), mode: "steer" });
@@ -168,7 +168,7 @@ test("rejected input is excluded, repeated actor inputs do not increase allocati
 }));
 
 test("F-09: immutable replay is idempotent; corrections replace facts and responses never add to snapshots", () => fixture(state => {
-  const ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.startTurn(key, 1000, "human", true); ledger.recordInput(key, input());
   assert.equal(ledger.recordSource(source("100")), "inserted");
   const revision = ledger.coverage().revision;
@@ -192,7 +192,7 @@ test("F-08: category subsets are never added to totals and missing categories st
 });
 
 test("F-10: failed and interrupted turns preserve actual incurred counts", () => fixture(state => {
-  const ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   for (const [turnId, amount, executionState] of [["failed", "300", "failed"], ["interrupted", "200", "interrupted"]] as const) {
     const turn = { ...key, turnId };
     ledger.startTurn(turn, 1000, "human", true); ledger.recordInput(turn, input("A", turnId)); ledger.recordSource(source(amount, turnId, turn));
@@ -203,7 +203,7 @@ test("F-10: failed and interrupted turns preserve actual incurred counts", () =>
 
 test("F-12: coverage survives reopen; disabling freezes current turns and excludes turns started during gaps", () => fixture(state => {
   let now = 1000;
-  const ledger = new CodexTokenUsageLedger(state, "server", () => now);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => now);
   assert.equal(ledger.startTurn(key, 999, "human"), false);
   ledger.startTurn(key, 1000, "human", true); ledger.recordInput(key, input()); ledger.recordSource(source("10"));
   now = 1500; ledger.setEnabled(false);
@@ -212,12 +212,12 @@ test("F-12: coverage survives reopen; disabling freezes current turns and exclud
   assert.equal(ledger.startTurn({ ...key, turnId: "gap" }, 1600, "human"), false);
   assert.equal(ledger.startTurn({ ...key, turnId: "new" }, 2000, "human"), true);
   assert.equal(ledger.readTurn(key)?.observedTokens, "10"); assert.equal(ledger.readTurn(key)?.frozen, true);
-  assert.equal(new CodexTokenUsageLedger(state, "server", () => 3000).coverage().enabledAt, 1000);
+  assert.equal(new OpenCraftTokenUsageLedger(state, "server", () => 3000).coverage().enabledAt, 1000);
   assert.deepEqual(ledger.coverage().intervals, [{ startsAt: 1000, endsAt: 1500 }, { startsAt: 2000, endsAt: null }]);
 }));
 
 test("F-15/NF-02: projection failure rolls back facts and the recovery cursor atomically", () => fixture(state => {
-  const ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.startTurn(key, 1000, "human", true); ledger.recordInput(key, input());
   state.database.exec("CREATE TEMP TRIGGER reject_allocation BEFORE INSERT ON token_usage_allocations BEGIN SELECT RAISE(ABORT,'synthetic allocation failure'); END");
   assert.throws(() => ledger.recordSource(source("100", "response", { cursor: "cursor:1" })), /synthetic/);
@@ -230,7 +230,7 @@ test("F-15/NF-02: projection failure rolls back facts and the recovery cursor at
 }));
 
 test("F-16: known system/unknown usage never receives human allocations; an unreported count stays unknown", () => fixture(state => {
-  const ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   for (const sourceKind of ["system", "unknown"] as const) {
     const turn = { ...key, turnId: sourceKind }; ledger.startTurn(turn, 1000, sourceKind);
     ledger.recordSource(source("42", sourceKind, turn));
@@ -248,13 +248,13 @@ test("NF-11: upgrade from the published v5 preserves queue/sender data and rejec
     const old = openManagedDatabase({ path, migrations: CODEX_HOST_STATE_MIGRATIONS.slice(0, 5) });
     old.database.prepare("INSERT INTO message_senders VALUES(?,?,?,?)").run("old-thread", "old-input", '{"kind":"synthetic"}', 42);
     old.database.close();
-    const upgraded = new CodexHostStateDatabase(root);
+    const upgraded = new OpenCraftHostStateDatabase(root);
     assert.equal(upgraded.outcome.status, "migrated"); assert.equal(upgraded.outcome.appliedVersion, 12);
     assert.equal(upgraded.database.prepare("SELECT accepted_at_ms FROM message_senders").get()?.accepted_at_ms, 42);
     assert.equal(upgraded.database.prepare("SELECT COUNT(*) AS n FROM token_usage_sources").get()?.n, 0);
     upgraded.database.exec("UPDATE schema_migrations SET checksum='synthetic-invalid-checksum' WHERE version=5");
     upgraded.close();
-    assert.throws(() => new CodexHostStateDatabase(root), (e: unknown) => (e as { kind?: string }).kind === "history-mismatch");
+    assert.throws(() => new OpenCraftHostStateDatabase(root), (e: unknown) => (e as { kind?: string }).kind === "history-mismatch");
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -264,7 +264,7 @@ test("the exact unledgered v5 layout accepted before metering remains upgradable
     const old = new DatabaseSync(join(root, "codex-host-queue.sqlite"));
     old.exec(CODEX_HOST_STATE_MIGRATIONS.slice(0, 5).map(m => m.sql).join("\n"));
     old.prepare("INSERT INTO message_senders VALUES(?,?,?,?)").run("old-thread", "old-input", '{}', 42); old.close();
-    const upgraded = new CodexHostStateDatabase(root);
+    const upgraded = new OpenCraftHostStateDatabase(root);
     assert.equal(upgraded.outcome.status, "migrated");
     assert.equal(upgraded.database.prepare("SELECT accepted_at_ms FROM message_senders").get()?.accepted_at_ms, 42);
     assert.equal(upgraded.database.prepare("SELECT COUNT(*) AS n FROM token_usage_sources").get()?.n, 0);
@@ -273,17 +273,17 @@ test("the exact unledgered v5 layout accepted before metering remains upgradable
 });
 
 test("successful replay repairs persisted transient gaps across restart without clearing invalid source evidence",()=>fixture(state=>{
- let ledger=new CodexTokenUsageLedger(state,"server",()=>1000);
+ let ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000);
  ledger.noteGap({id:"offline",threadId:"thread",reason:"source-offline"});
  ledger.noteGap({id:"invalid",threadId:"thread",reason:"invalid-source"});
- ledger=new CodexTokenUsageLedger(state,"server",()=>1100);
+ ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1100);
  ledger.resolveReplayGaps("thread");
  assert.equal(ledger.gaps().find(g=>g.id==="offline")!.endsAt,1100);
  assert.equal(ledger.gaps().find(g=>g.id==="invalid")!.endsAt,null);
 }));
 
 test("a proven admission with initially missing identity can resolve from a trusted receipt without becoming a conflict",()=>fixture(state=>{
- const ledger=new CodexTokenUsageLedger(state,"server",()=>1000);
+ const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000);
  ledger.recordSubmission({threadId:key.threadId,inputId:"late-start",actorId:null,actorKind:"unknown",mode:"start",sourceKind:"unknown",submittedAt:1000});
  ledger.startTurn(key,1000,"unknown",true);ledger.recordAdmission(key,"late-start");ledger.recordSource(source("100"));ledger.reconcile(key,complete);
  assert.deepEqual(ledger.unresolvedInputIds(key.threadId),["late-start"]);
@@ -295,7 +295,7 @@ test("a proven admission with initially missing identity can resolve from a trus
 }));
 
 test("daily projections preserve missing turns, corrections, frozen turns and bounded restart backfill",()=>fixture(state=>{
- const ledger=new CodexTokenUsageLedger(state,"server",()=>1000),db=state.database;
+ const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000),db=state.database;
  const daily=()=>db.prepare("SELECT tokens,turns,missing_usage FROM token_usage_daily WHERE server_id='server' AND model_filter=0").all();
  ledger.startTurn(key,1000,"human",true);
  assert.deepEqual(daily().map(r=>[r.tokens,r.turns,r.missing_usage]),[["0",1,1]]);
@@ -305,7 +305,7 @@ test("daily projections preserve missing turns, corrections, frozen turns and bo
  // Simulate a pre-projection upgrade, retaining all authoritative facts.
  state.transaction(()=>{db.exec("DELETE FROM token_usage_daily; DELETE FROM token_usage_turn_projections");db.prepare("UPDATE token_usage_projection_state SET ready=0,cursor_thread='',cursor_turn='' WHERE server_id='server'").run();});
  assert.equal(ledger.backfillProjectionBatch(1),false);
- const restarted=new CodexTokenUsageLedger(state,"server",()=>1001);
+ const restarted=new OpenCraftTokenUsageLedger(state,"server",()=>1001);
  assert.equal(restarted.projectionReady(),false);
  assert.equal(restarted.backfillProjectionBatch(1),true);
  assert.deepEqual(daily().map(r=>[r.tokens,r.turns,r.missing_usage]),[["160",1,0]]);
@@ -314,7 +314,7 @@ test("daily projections preserve missing turns, corrections, frozen turns and bo
 }));
 
 test("daily projection failure cannot commit source facts or advance its cursor",()=>fixture(state=>{
- const ledger=new CodexTokenUsageLedger(state,"server",()=>1000),db=state.database;
+ const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000),db=state.database;
  ledger.startTurn(key,1000,"human",true);ledger.recordInput(key,input());
  const before=db.prepare("SELECT * FROM token_usage_daily").all();
  db.exec("CREATE TEMP TRIGGER reject_daily BEFORE INSERT ON token_usage_daily BEGIN SELECT RAISE(ABORT,'synthetic daily failure'); END");
@@ -328,7 +328,7 @@ test("daily projection failure cannot commit source facts or advance its cursor"
 }));
 
 test("rejected steer may become a new start attempt without changing the requester or inventing admission",()=>fixture(state=>{
- const ledger=new CodexTokenUsageLedger(state,"server",()=>1000);
+ const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000);
  const submission={threadId:key.threadId,inputId:"queued-B",actorId:"B",actorKind:"human" as const,mode:"steer" as const,sourceKind:"human" as const,submittedAt:1000};
  ledger.recordAttempt("steer-attempt",submission);
  ledger.recordAttemptOutcome("steer-attempt","rejected");
@@ -346,7 +346,7 @@ test("rejected steer may become a new start attempt without changing the request
 }));
 
 test("uncertain delivery cannot authorize a mode conversion or a different Actor",()=>fixture(state=>{
- const ledger=new CodexTokenUsageLedger(state,"server",()=>1000);
+ const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000);
  const submission={threadId:key.threadId,inputId:"uncertain",actorId:"B",actorKind:"human" as const,mode:"steer" as const,sourceKind:"human" as const,submittedAt:1000};
  ledger.recordAttempt("unknown-attempt",submission);ledger.recordAttemptOutcome("unknown-attempt","unknown");
  ledger.recordAttempt("unsafe-retry",{...submission,mode:"start"});
@@ -359,9 +359,9 @@ test("uncertain delivery cannot authorize a mode conversion or a different Actor
 }));
 
 test("pending attempts survive restart as unknown; a verified late ACK may resolve uncertainty",()=>fixture(state=>{
- let ledger=new CodexTokenUsageLedger(state,"server",()=>1000);
+ let ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000);
  ledger.recordAttempt("lost-ack",{threadId:key.threadId,inputId:"A",actorId:"A",actorKind:"human",mode:"start",sourceKind:"human",submittedAt:1000});
- ledger=new CodexTokenUsageLedger(state,"server",()=>1001);
+ ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1001);
  assert.equal(state.database.prepare("SELECT outcome FROM token_usage_attempts WHERE attempt_id='lost-ack'").get()!.outcome,"unknown");
  assert.equal(state.database.prepare("SELECT reason FROM token_usage_gaps WHERE ends_ms IS NULL").get()!.reason,"source-offline");
  ledger.recordAttemptOutcome("lost-ack","accepted",key.turnId);
@@ -371,7 +371,7 @@ test("pending attempts survive restart as unknown; a verified late ACK may resol
 
 
 test("a queue input rejected for one requester may later be dispatched by another verified requester",()=>fixture(state=>{
- const ledger=new CodexTokenUsageLedger(state,"server",()=>1000);
+ const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000);
  const original={threadId:key.threadId,inputId:"handoff",actorId:"A",actorKind:"human" as const,mode:"start" as const,sourceKind:"human" as const,submittedAt:1000};
  ledger.recoverSubmission(original);
  const first={...original,actorId:"B",mode:"steer" as const};
@@ -387,7 +387,7 @@ test("a queue input rejected for one requester may later be dispatched by anothe
 
 
 test("actor daily projection replaces corrections, distinct people and frozen contributions atomically",()=>fixture(state=>{
- const ledger=new CodexTokenUsageLedger(state,"server",()=>1000),db=state.database;
+ const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000),db=state.database;
  const rows=()=>db.prepare("SELECT actor_id,tokens,turns FROM token_usage_actor_daily WHERE server_id='server' AND model_filter=0 ORDER BY actor_id").all().map(r=>[r.actor_id,r.tokens,r.turns]);
  ledger.startTurn(key,1000,"human",true);ledger.recordInput(key,input());ledger.recordSource(source("101"));
  assert.deepEqual(rows(),[["A","101",1]]);
@@ -421,9 +421,9 @@ test("v10 upgrade resets only the rebuild cursor and adds actor summaries withou
  for(const c of contributions)db.prepare("INSERT INTO token_usage_daily VALUES('server',?,?,?,?,?,?,?,?)").run(c.day,c.modelFilter,c.modelKey,c.state,c.tokens,c.turns,c.missing,c.unknown);
  db.prepare("INSERT INTO token_usage_turn_projections VALUES('server','thread','turn',?)").run(JSON.stringify(contributions));
  db.close();
- const state=new CodexHostStateDatabase(directory);
+ const state=new OpenCraftHostStateDatabase(directory);
  try{
-  const ledger=new CodexTokenUsageLedger(state,"server",()=>1001);
+  const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1001);
   assert.equal(ledger.projectionReady(),false);
   assert.equal(ledger.backfillProjectionBatch(1),false);assert.equal(ledger.backfillProjectionBatch(1),true);
   const day=state.database.prepare("SELECT tokens,turns FROM token_usage_daily WHERE model_filter=0").get();
@@ -444,9 +444,9 @@ test("v12 repairs formerly hidden frozen usage using preserved authoritative all
  db.prepare("INSERT INTO token_usage_turn_projections VALUES('server','thread','turn','[]')").run();
  db.prepare("INSERT INTO token_usage_turn_actor_projections VALUES('server','thread','turn','[]')").run();
  db.close();
- const state=new CodexHostStateDatabase(directory);
+ const state=new OpenCraftHostStateDatabase(directory);
  try{
-  const ledger=new CodexTokenUsageLedger(state,"server",()=>1001);
+  const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1001);
   assert.equal(ledger.projectionReady(),false);
   while(!ledger.backfillProjectionBatch(1)){}
   const day=state.database.prepare("SELECT tokens,turns,missing_usage FROM token_usage_daily WHERE model_filter=0").get();
@@ -461,7 +461,7 @@ test("repeated source corrections reuse native SQL statements without retaining 
   let preparations = 0;
   const prepare = state.database.prepare.bind(state.database);
   state.database.prepare = ((sql: string) => { preparations++; return prepare(sql); }) as typeof state.database.prepare;
-  const ledger = new CodexTokenUsageLedger(state, "statement-owner", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(state, "statement-owner", () => 1000);
   ledger.startTurn(key, 1000, "human", true);
   ledger.recordInput(key, input());
   for (let version = 0; version < 3; version++) ledger.recordSource(source(String(100 + version), "corrected", { version }));

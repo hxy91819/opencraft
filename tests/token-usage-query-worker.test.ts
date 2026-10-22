@@ -5,16 +5,16 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import { CodexHostStateDatabase } from "../apps/opencraft-daemon/src/codex-host-state-database.js";
-import { CodexTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { TokenUsageQueryService } from "../apps/opencraft-daemon/src/token-usage-query-service.js";
 import { TokenUsageQueryError } from "../apps/opencraft-daemon/src/token-usage-query.js";
 const entry=fileURLToPath(new URL("../apps/opencraft-daemon/src/token-usage-query-worker.ts",import.meta.url));
 const parameters={from:"2026-10-21",through:"2026-10-21"};
 const A=()=>({actorId:"A",administrator:false});
-async function fixture(body:(service:TokenUsageQueryService,state:CodexHostStateDatabase)=>Promise<void>,bundled=false){
- const directory=await mkdtemp(join(tmpdir(),"oc-query-worker-")),state=new CodexHostStateDatabase(directory);
- const ledger=new CodexTokenUsageLedger(state,"server",()=>Date.parse("2026-10-20T16:00:00Z"));
+async function fixture(body:(service:TokenUsageQueryService,state:OpenCraftHostStateDatabase)=>Promise<void>,bundled=false){
+ const directory=await mkdtemp(join(tmpdir(),"oc-query-worker-")),state=new OpenCraftHostStateDatabase(directory);
+ const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>Date.parse("2026-10-20T16:00:00Z"));
  const key={threadId:"thread",turnId:"turn"};ledger.startTurn(key,Date.parse("2026-10-20T16:00:00Z"),"human",true);
  ledger.recordInput(key,{inputId:"A",actorId:"A",actorKind:"human",mode:"start",admission:"confirmed"});
  ledger.recordSource({...key,lineage:"epoch",sourceId:"r",version:0,kind:"response",provider:null,model:null,counts:{totalTokens:"9007199254740993123456789"}});
@@ -53,7 +53,7 @@ test("concurrent identical reads share a snapshot but independently recheck iden
 }));
 
 test("coalesced team administrators keep distinct signed cursor ownership and reject a copied cursor",()=>fixture(async(service,state)=>{
- const ledger=new CodexTokenUsageLedger(state,"server");
+ const ledger=new OpenCraftTokenUsageLedger(state,"server");
  const key={threadId:"thread",turnId:"second"};
  ledger.startTurn(key,Date.parse("2026-10-20T16:00:01Z"),"human",true);ledger.recordInput(key,{inputId:"secondA",actorId:"A",actorKind:"human",mode:"start",admission:"confirmed"});
  ledger.recordSource({...key,lineage:"epoch",sourceId:"r",kind:"response",version:0,provider:null,model:null,counts:{totalTokens:"10"}});

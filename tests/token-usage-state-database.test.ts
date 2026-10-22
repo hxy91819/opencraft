@@ -4,16 +4,16 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { CodexHostStateDatabase } from "../apps/opencraft-daemon/src/codex-host-state-database.js";
+import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
 import { TokenUsageStateDatabase, TOKEN_USAGE_STATE_MIGRATIONS } from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import { openManagedDatabase, createSchemaValidator } from "../packages/sqlite-node/src/index.js";
-import { CodexTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { CodexTokenUsageRuntime } from "../apps/opencraft-daemon/src/token-usage-runtime.js";
 import { readTeamUsage } from "../apps/opencraft-daemon/src/token-usage-team-query.js";
 
 const key = { threadId: "thread", turnId: "turn" };
-function seed(state: Pick<CodexHostStateDatabase, "database" | "transaction">, id = "response", tokens = "600") {
-  const ledger = new CodexTokenUsageLedger(state, "server", () => 1000);
+function seed(state: Pick<OpenCraftHostStateDatabase, "database" | "transaction">, id = "response", tokens = "600") {
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.startTurn(key, 1000, "human", true);
   for (const actorId of ["A", "B"]) ledger.recordInput(key, { inputId: actorId, actorId, actorKind: "human", mode: "start", admission: "confirmed" });
   ledger.recordSource({ ...key, lineage: "native", sourceId: id, kind: "response", version: 0, provider: "provider", model: "model", counts: { totalTokens: tokens } });
@@ -22,9 +22,9 @@ function seed(state: Pick<CodexHostStateDatabase, "database" | "transaction">, i
   ledger.advanceRollout(key.threadId, "/fixture/rollout.jsonl", "123");
   return ledger;
 }
-async function fixture(run: (directory: string, legacy: CodexHostStateDatabase) => void | Promise<void>) {
+async function fixture(run: (directory: string, legacy: OpenCraftHostStateDatabase) => void | Promise<void>) {
   const directory = await mkdtemp(join(tmpdir(), "oc-token-owner-"));
-  const legacy = new CodexHostStateDatabase(directory);
+  const legacy = new OpenCraftHostStateDatabase(directory);
   try { await run(directory, legacy); } finally { legacy.close(); await rm(directory, { recursive: true, force: true }); }
 }
 
@@ -84,7 +84,7 @@ test("v1 dedicated store upgrades its thread index without changing facts, alloc
     assert.ok(upgraded.outcome.backupPath);
     assert.deepEqual(upgraded.database.prepare("SELECT * FROM schema_migrations WHERE version=1").get(), migration);
     assert.deepEqual(upgraded.database.prepare("SELECT * FROM token_usage_sources").all(), facts);
-    assert.deepEqual(new CodexTokenUsageLedger(upgraded, "server", () => 1000).query(query, authorize), before);
+    assert.deepEqual(new OpenCraftTokenUsageLedger(upgraded, "server", () => 1000).query(query, authorize), before);
     const plan = upgraded.database.prepare("EXPLAIN QUERY PLAN SELECT * FROM token_usage_turns WHERE server_id=? AND started_ms>=? AND started_ms<? AND thread_id=?").all("server", 0, 86400000, key.threadId);
     assert.ok(plan.some(row => String(row.detail).includes("token_usage_turns_thread_query")), JSON.stringify(plan));
     const statements: string[] = [];
@@ -127,7 +127,7 @@ test("dedicated metering owner copies all facts and recovery state exactly once 
   let isolated = new TokenUsageStateDatabase(directory, path);
   assert.deepEqual(isolated.database.prepare("SELECT * FROM token_usage_sources").all(), before);
   assert.equal(isolated.database.prepare("SELECT count(*) AS n FROM sqlite_schema WHERE name='message_senders'").get()!.n, 0);
-  const ledger = new CodexTokenUsageLedger(isolated, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(isolated, "server", () => 1000);
   assert.equal(ledger.readTurn(key)?.observedTokens, "600");
   assert.deepEqual(ledger.readAllocations(key).map(row => row.tokens), ["300", "300"]);
   assert.equal(ledger.rollout(key.threadId)?.cursor, "123");
@@ -135,7 +135,7 @@ test("dedicated metering owner copies all facts and recovery state exactly once 
   isolated.close();
   isolated = new TokenUsageStateDatabase(directory, path);
   try {
-    assert.equal(new CodexTokenUsageLedger(isolated, "server", () => 1000).readTurn(key)?.observedTokens, "800");
+    assert.equal(new OpenCraftTokenUsageLedger(isolated, "server", () => 1000).readTurn(key)?.observedTokens, "800");
     assert.equal(isolated.database.prepare("SELECT count(*) AS n FROM token_usage_legacy_import").get()!.n, 1);
     assert.equal(old.readTurn(key)?.observedTokens, "600");
     assert.deepEqual(legacy.database.prepare("SELECT * FROM token_usage_sources").all(), before);
@@ -160,7 +160,7 @@ test("a failed late import rolls back every copied table and can retry with the 
 
 test("a metering writer lock cannot lock the Host sender owner, and unwritable gap evidence remains visible in memory", () => fixture((directory, legacy) => {
   const isolated = new TokenUsageStateDatabase(directory, join(directory, "codex-host-queue.sqlite"));
-  const ledger = new CodexTokenUsageLedger(isolated, "server", () => 1000);
+  const ledger = new OpenCraftTokenUsageLedger(isolated, "server", () => 1000);
   const runtime = new CodexTokenUsageRuntime(ledger, { request: async () => ({}), diagnostic: () => {} });
   const blocker = new DatabaseSync(join(directory, "token-usage.sqlite"));
   blocker.exec("BEGIN IMMEDIATE");
@@ -183,5 +183,5 @@ test("a legacy writer after cutover is rejected without overwriting either histo
   const raw = new DatabaseSync(join(directory, "token-usage.sqlite"), { readOnly: true });
   try { assert.equal(raw.prepare("SELECT observed_tokens FROM token_usage_turns").get()!.observed_tokens, "800"); }
   finally { raw.close(); }
-  assert.equal(new CodexTokenUsageLedger(legacy, "server", () => 1000).readTurn(key)?.observedTokens, "900");
+  assert.equal(new OpenCraftTokenUsageLedger(legacy, "server", () => 1000).readTurn(key)?.observedTokens, "900");
 }));

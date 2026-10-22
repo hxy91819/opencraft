@@ -1,7 +1,7 @@
 import type { StatementSync } from "node:sqlite";
 import { readTeamUsage } from "./token-usage-team-query.js";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import type { CodexHostStateDatabase } from "./codex-host-state-database.js";
+import type { OpenCraftHostStateDatabase } from "./opencraft-host-state-database.js";
 
 export class TokenUsageQueryError extends Error {
   constructor(readonly code: "unauthorized" | "forbidden" | "invalid-query" | "stale-snapshot", message: string = code) { super(message); }
@@ -45,7 +45,7 @@ export class TokenUsageQuery {
   }
   private readonly midnightFormat: Intl.DateTimeFormat;
   private readonly dateFormat: Intl.DateTimeFormat;
-  constructor(private readonly state: Pick<CodexHostStateDatabase,"database">, readonly serverId: string, readonly timezone="Asia/Shanghai", private readonly now=Date.now, private readonly secret: Uint8Array=randomBytes(32)) {
+  constructor(private readonly state: Pick<OpenCraftHostStateDatabase,"database">, readonly serverId: string, readonly timezone="Asia/Shanghai", private readonly now=Date.now, private readonly secret: Uint8Array=randomBytes(32)) {
     // Intl owns native ICU allocations. Reuse the two immutable formatters for
     // this physical query owner rather than allocating four on every read.
     this.midnightFormat=new Intl.DateTimeFormat("en-GB",{timeZone:timezone,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"});

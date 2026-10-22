@@ -238,8 +238,8 @@ test("Headless overlay restart restores active queue subscription, dispatches on
     await a.rpc("a", "turn/start", { threadId: unknown.thread.id, clientUserMessageId: "other", input: [{ type: "text", text: "running" }] });
     await a.rpc("a", "thread/queue/add", { threadId: unknown.thread.id, clientUserMessageId: "unconfirmed", input: [{ type: "text", text: "must not replay" }] });
     await delay(50); await a.engine.close();
-    const { CodexHostStateDatabase } = await import("../apps/opencraft-daemon/src/codex-host-state-database.js");
-    const owner = new CodexHostStateDatabase(f.options.dataDirectory);
+    const { OpenCraftHostStateDatabase } = await import("../apps/opencraft-daemon/src/opencraft-host-state-database.js");
+    const owner = new OpenCraftHostStateDatabase(f.options.dataDirectory);
     owner.database.prepare("UPDATE codex_host_queue SET state='unknown',target_turn_id='unknown' WHERE client_id='unconfirmed'").run(); owner.close();
     const b = await f.adapter(true); await b.rpc("b", "initialize");
     for (let n = 0; n < 200 && (await b.rpc("b", "fixture/subscribers", { threadId: thread.id })).count === 0; n++) await delay(10);

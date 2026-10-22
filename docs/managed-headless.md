@@ -32,7 +32,7 @@ Codex 使用原生 Thread/Turn 协议。旧 Codex Bot bridge 已删除；Headles
 声明 Codex 的 `vela/bot-conversations` 能力，也不再把 `bot/*` 请求翻译为原生会话操作。
 通用 Bot 协议及其他引擎提供的 Bot 能力不受影响。
 
-`CodexHostStateDatabase` 仍由 Host 独占。历史 `codex_bot_rooms`、
+`OpenCraftHostStateDatabase` 仍由 Host 独占。历史 `codex_bot_rooms`、
 `codex_bot_commands`、`codex_bot_message_slots` 表、已发布迁移与 checksum 保持不变，
 兼容读取和数据保留测试继续执行；本次退役不删除、转换或重放历史 Bot 数据。
 原生会话、队列、sender、附件、Tasks、pins 与 core/Host writer 边界保持。

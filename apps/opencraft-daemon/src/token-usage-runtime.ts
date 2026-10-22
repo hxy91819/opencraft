@@ -1,7 +1,7 @@
 import { nativeLiveAcceptedInputFact } from "./token-usage-native-facts.js";
 import { randomUUID } from "node:crypto";
 import { stat, realpath } from "node:fs/promises";
-import { CodexTokenUsageLedger, normalizeUsageCounts, type UsageSource, type UsageSubmission, type UsageTurnKey, type UsageExecutionState } from "./token-usage-ledger.js";
+import { OpenCraftTokenUsageLedger, normalizeUsageCounts, type UsageSource, type UsageSubmission, type UsageTurnKey, type UsageExecutionState } from "./token-usage-ledger.js";
 import { replayRolloutUsage, readTurnIdentity, type RolloutTurnIdentity } from "./token-usage-rollout.js";
 
 function record(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
@@ -83,7 +83,7 @@ export class CodexTokenUsageRuntime {
     try { return this.ledger.coverage().enabled; }
     catch { try { this.port.diagnostic("storage-read"); } catch {} return false; }
   }
-  constructor(readonly ledger: CodexTokenUsageLedger, private readonly port: {
+  constructor(readonly ledger: OpenCraftTokenUsageLedger, private readonly port: {
     readonly request: (method: string, params: Record<string, unknown>) => Promise<unknown>;
     readonly submission?: (threadId: string, inputId: string) => UsageSubmission | null;
     readonly diagnostic: (category: string) => void;

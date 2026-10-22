@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import type { AttachmentRef } from "@opencraft/appserver-protocol";
-import { CodexMessageAttachments } from "../apps/opencraft-daemon/src/codex-message-attachments.ts";
+import { OpenCraftMessageAttachments } from "../apps/opencraft-daemon/src/opencraft-message-attachments.ts";
 import {
   projectCodexAttachmentNotification,
   projectCodexAttachmentResult,
@@ -19,7 +19,7 @@ const file: AttachmentRef = {
 test("Codex message attachments survive store reopen and follow forked history", async () => {
   const directory = await mkdtemp(join(tmpdir(), "codex-message-attachments-"));
   try {
-    const first = new CodexMessageAttachments(directory);
+    const first = new OpenCraftMessageAttachments(directory);
     first.record("thread-1", "client-1", [file]);
     first.record("thread-1", "client-1", [file]);
     assert.throws(() => first.record("thread-1", "client-1", [{ ...file, name: "other.pdf" }]));
@@ -27,7 +27,7 @@ test("Codex message attachments survive store reopen and follow forked history",
     first.cloneThread("thread-1", "thread-2");
     first.close();
 
-    const reopened = new CodexMessageAttachments(directory);
+    const reopened = new OpenCraftMessageAttachments(directory);
     assert.deepEqual(reopened.list("thread-1", "client-1"), [file]);
     assert.deepEqual(reopened.list("thread-2", "client-1"), [file]);
     reopened.close();
@@ -39,7 +39,7 @@ test("Codex message attachments survive store reopen and follow forked history",
 test("Codex live acknowledgement and paged history receive the same typed file metadata", async () => {
   const directory = await mkdtemp(join(tmpdir(), "codex-message-projection-"));
   try {
-    const store = new CodexMessageAttachments(directory);
+    const store = new OpenCraftMessageAttachments(directory);
     store.record("thread-1", "client-1", [file]);
     const nativeItem = {
       type: "userMessage", clientId: "client-1",
