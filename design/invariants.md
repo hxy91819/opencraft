@@ -228,16 +228,17 @@ nor persisted provenance.
 
 ## Queued-message authors
 
-Each queue entry displays its own submitter photo in the leading drag control,
-with fixed geometry and a neutral fallback. No decorative return arrow is shown
-there; action icons retain their own meaning. The shared Composer receives generic
-name/avatar URL values resolved by the 企业身份 contribution. Server sender, including
-explicit null, takes precedence over exact-client optimistic hints. Current-account
-changes, edits and reorder cannot reattribute old entries. Error/recovery warnings
-and accessible pointer/keyboard sorting remain available.
-The drag target expands into existing spacing while the desktop photo and text
-stay fixed; touch targets occupy non-overlapping 44px rows. Hover/keyboard focus
-reveals the grip in the avatar slot without adding a permanent handle column.
+Each queue entry displays its own submitter photo in a fixed 20px slot beside
+an independent drag handle, with a neutral fallback. The handle remains visible;
+hover, keyboard focus and dragging never overlay the grip on the photo or fade
+its contents. Pointer activation belongs only to the handle. Its desktop target
+and the coarse-pointer 44px target stay within their own column and row, without
+covering the photo or message text. Warning badges remain anchored to the sender.
+The shared Composer receives generic name/avatar URL values resolved by the
+identity contribution. Server sender, including explicit null, takes precedence
+over exact-client optimistic hints. Current-account changes, edits and reorder
+cannot reattribute old entries. Accessible pointer/keyboard sorting and existing
+queue actions remain available.
 
 ## Queue modified-Enter shortcut
 

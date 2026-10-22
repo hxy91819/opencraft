@@ -9208,7 +9208,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
   display: grid;
   min-width: 0;
   min-height: var(--height-composer-queue-row);
-  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-columns: 34px 20px minmax(0, 1fr) auto;
   align-items: center;
   gap: calc(var(--spacing) * 2);
   padding: var(--padding-composer-rail-row);
@@ -9257,12 +9257,9 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 }
 
 .opencraft-composer-queue-item__drag {
-  position: relative;
   display: grid;
   width: 34px;
   height: var(--height-composer-queue-row);
-  margin: 0 -6px;
-  justify-self: center;
   padding: 0;
   border: 0;
   border-radius: 5px;
@@ -9280,29 +9277,23 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
     cursor: default;
   }
 
-  .opencraft-composer-queue-item__grip {
-    position: absolute;
-    opacity: 0;
-    transition: opacity 100ms ease;
-  }
-
   @media (hover: hover) {
     @include controls.hover-capable {
       &:hover:not(:disabled) {
         background: var(--color-background-button-tertiary-hover);
-
-        .opencraft-composer-queue-item__avatar { opacity: 0.16; }
-        .opencraft-composer-queue-item__grip { opacity: 1; }
       }
     }
   }
 
   html:not([data-touch-interaction="true"]) &:focus-visible:not(:disabled) {
     background: var(--color-background-button-tertiary-hover);
-
-    .opencraft-composer-queue-item__avatar { opacity: 0.16; }
-    .opencraft-composer-queue-item__grip { opacity: 1; }
   }
+}
+
+.opencraft-composer-queue-item__sender {
+  position: relative;
+  width: 20px;
+  height: 20px;
 }
 
 .opencraft-composer-queue-item__avatar {
@@ -9314,7 +9305,6 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
   border-radius: 50%;
   background: var(--color-background-control);
   color: var(--color-text-secondary);
-  transition: opacity 100ms ease;
 
   img {
     width: 100%;
@@ -9331,26 +9321,15 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
   background: var(--color-background-elevated-primary-opaque);
 }
 
-.opencraft-composer-queue-item[data-dragging="true"]
-  .opencraft-composer-queue-item__grip {
-  opacity: 1;
-}
-
-.opencraft-composer-queue-item[data-dragging="true"]
-  .opencraft-composer-queue-item__avatar {
-  opacity: 0.16;
-}
-
 @media (pointer: coarse) {
   .opencraft-composer-queue-item {
     padding-block: 0;
-    grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-columns: 44px 20px minmax(0, 1fr) auto;
   }
 
   .opencraft-composer-queue-item__drag {
     width: 44px;
     height: var(--height-composer-queue-row);
-    margin: 0 -5px;
   }
 }
 
