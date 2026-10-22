@@ -2553,8 +2553,10 @@ Only a stopped/blocked recovery or required client update presents
 an actionable instruction in normal flow above the Composer, never over the
 transcript. Its diagnostic report stays collapsed. Elapsed time, attempts, retry
 deadlines and machine failure codes remain in the existing diagnostic snapshot;
-they do not add visible progress chrome or schedule work. The presentation clock is mounted only with failure
-details, pauses in background tabs and never schedules work.
+they do not add visible progress chrome or schedule work. Both cold and retained-history
+terminal failures render only the collapsed technical report and retry/update action;
+no progress presentation clock is mounted after recovery stops. Opening or copying
+the report consumes the existing allowlisted snapshot and never starts recovery.
 Authoritative recovery removes any manual action row; invalidation fences late observations.
 No remote error text, content, endpoint or credentials enter this report.
 A fresh work item after a terminal failure starts a new history observation;
