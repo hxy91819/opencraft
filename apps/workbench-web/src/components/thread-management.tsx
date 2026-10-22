@@ -140,6 +140,7 @@ export function ThreadRowMenu({ activityLabelId, target, capabilities, disabled 
   const { onFork, onArchive, onSetPinned } = owner.callbacks;
   const { busy, forking } = owner.activity(target);
   const modalHandoff = useRef(false);
+  const [touchContext, setTouchContext] = useState(false);
   const run = (operation: () => Promise<void>, action: "fork" | "archive" | "pin" | "delete" | "other" = "other") => { void owner.run(target, operation, action); };
   // Shared item model for both the right-click context menu and the row
   // "..." dropdown, mirroring the actions(entry).map pattern in bot-management.
@@ -162,8 +163,11 @@ export function ThreadRowMenu({ activityLabelId, target, capabilities, disabled 
   return <>
     <div className="sidebar-activity-row" data-has-menu={hasMenu ? "true" : "false"}>
       {/* Keep the dropdown outside this trigger: portal pointer events still bubble through the React tree. */}
-      <ContextMenu.Root modal={false} open={!disabled && hasMenu && openMenuKind === "context"} onOpenChange={open => onOpenMenuChange("context", open)}>
-        <ContextMenu.Trigger asChild disabled={disabled || !hasMenu} onPointerDown={onPointerDown}
+      <ContextMenu.Root modal={touchContext} open={!disabled && hasMenu && openMenuKind === "context"} onOpenChange={open => onOpenMenuChange("context", open)}>
+        <ContextMenu.Trigger asChild disabled={disabled || !hasMenu} onPointerDown={event => {
+          setTouchContext(event.pointerType === "touch");
+          onPointerDown?.(event);
+        }}
           onClickCapture={event => {
             // Touch release retains its original target even after a context menu opens.
             if (openMenuKind === "context" && "pointerType" in event.nativeEvent && event.nativeEvent.pointerType === "touch") {
