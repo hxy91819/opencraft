@@ -2629,3 +2629,17 @@ The indicator never overlays message text or controls and respects reduced motio
 Short conversations, restored reading anchors and both scroll policies share this
 surface; loading feedback does not introduce a second scroll controller.
 AI follow-up cards separate static, selectable title/decision/material/state/time/Owner from a persistent action footer. Only native action buttons are clickable or receive pointer/focus feedback: quiet View details and primary Open chat; a single primary View details when no navigable link exists. No outer or body click handler, nested button, whole-body hover fill, misleading external-detail arrow or missing-link action placeholder. Multiple chats retain the original accessible menu and exact resolver; this overrides whole-card opening only in AI follow-up.
+
+## Touch navigation glass groups
+
+Touch Newera conversation chrome uses a leading circular sidebar control and one
+trailing capsule for the existing conversation menu and preview action. The two
+trailing targets remain independent, with no divider or nested glass. Other
+routes/densities keep their existing presentation. Shell owns placement and safe
+areas; the design system owns LiquidGlassBackdrop, semantic material tokens and
+opaque accessibility fallbacks. A supported live backdrop lens uses a small
+geometry-dependent map updated on resize; it never captures content or runs a
+scroll/frame loop. Unsupported lens engines retain tint, softened transmission
+and curved highlights. Icons, focus rings and portalled menus are unfiltered.
+
+- Navigation glass optics consume the live compositor backdrop: rounded-surface refraction, center scattering and local detail adaptation update with content frames. The geometry texture contains only normals/offsets, never conversation content. No per-frame DOM capture, scroll controller, random wobble or business-state ownership is added. URL-filter limitations retain a blur fallback; no Safari optical parity is assumed.

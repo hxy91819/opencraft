@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./native-controls": "./src/native-controls.tsx",
+    "./liquid-glass": "./src/liquid-glass.tsx",
     "./progress": "./src/progress.tsx",
     "./discrete-slider": "./src/discrete-slider.tsx",
     "./action-icons": "./src/action-icons.tsx",
