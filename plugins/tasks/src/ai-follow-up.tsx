@@ -1,6 +1,6 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { SegmentedControl, SettingsButton, SettingsSelect, SettingsTextInput } from "@opencraft/extension-react";
 import { useIntl } from "@opencraft/i18n/react";
 import type { TaskConversation, TaskDetail, TaskMember, TasksRequestPort } from "@opencraft/appserver-protocol";
@@ -131,17 +131,18 @@ export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwne
             const wait = p.lane === "needs" && unverified(task) ? text("正在核实本轮等待…", "Checking current wait…") : p.readyAt !== null ? text(`等待 ${duration(p.readyAt)}`, `Waiting ${duration(p.readyAt)}`)
               : text(`${duration(p.updatedAt)}前更新`, `Updated ${duration(p.updatedAt)} ago`);
             return <li className="tasks-ai-follow-up__item" key={task.id} data-ai-follow-up-task-id={task.id}>
-              <button type="button" className="tasks-ai-follow-up__open" onClick={() => onOpenTask(task)} aria-label={text(`查看详情：${task.title}`, `View details: ${task.title}`)}>
+              <div className="tasks-ai-follow-up__content">
                 <h4>{task.title}</h4>
                 {p.lane === "needs" ? <p className="tasks-ai-follow-up__decision">{p.decision}</p> : null}
                 {p.report ? <p className="tasks-ai-follow-up__artifact" title={p.report.artifact}>{p.report.artifact}</p> : null}
                 <div className="tasks-ai-follow-up__state"><span title={status}>{status}</span><span className={p.readyAt !== null ? "tasks-ai-follow-up__wait" : undefined}><Clock size={12} aria-hidden="true" />{wait}</span></div>
                 {p.lane === "review" && unverified(task) ? <span className="tasks-ai-follow-up__unknown">{text("交接尚未核实 · 不计人工等待", "Handoff unverified · no human wait clock")}</span> : null}
                 {p.lane === "needs" ? <span className="tasks-ai-follow-up__judge">{text("本轮判断人：", "Current judge: ")}{p.report ? p.report.judgeId ? ownerName(p.report.judgeId) : text("待认领", "Unclaimed") : text("未单独记录", "Not recorded separately")}</span> : null}
-                <span className="tasks-ai-follow-up__cta">{text("查看详情", "View details")}<ArrowUpRight size={12} aria-hidden="true" /></span>
-              </button>
-              <footer><span className="tasks-ai-follow-up__owner" title={`Owner: ${owner}`}><MemberAvatar member={members.find(m => m.id === task.assigneeId)} name={owner} assigned={!!task.assigneeId} /><span>{owner}</span></span>
-                {!task.conversations.length ? <span className="tasks-ai-follow-up__unlinked">{text("未关联会话", "No linked conversation")}</span> : !onOpenConversation ? <span className="tasks-ai-follow-up__unlinked">{text("暂不能打开会话", "Navigation unavailable")}</span> : task.conversations.length === 1 ? <SettingsButton variant="quiet" onClick={() => onOpenConversation(task.conversations[0]!)} aria-label={text(`打开会话：${task.title}`, `Open conversation: ${task.title}`)}>{text("打开会话", "Open chat")}<ArrowUpRight size={14} aria-hidden="true" /></SettingsButton> : <DropdownMenu.Root><DropdownMenu.Trigger asChild><SettingsButton variant="quiet" aria-label={text(`选择关联会话：${task.title}`, `Choose conversation: ${task.title}`)}>{text("打开会话", "Open chat")} ({task.conversations.length})<ArrowUpRight size={14} aria-hidden="true" /></SettingsButton></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="tasks-card-menu" sideOffset={4}>{task.conversations.map((link, i) => <DropdownMenu.Item key={JSON.stringify([link.serverId, link.threadId])} onSelect={() => onOpenConversation(link)}>{text(`关联会话 ${i + 1}`, `Linked conversation ${i + 1}`)}</DropdownMenu.Item>)}</DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>}
+                <span className="tasks-ai-follow-up__owner" title={`Owner: ${owner}`}><MemberAvatar member={members.find(m => m.id === task.assigneeId)} name={owner} assigned={!!task.assigneeId} /><span>{owner}</span></span>
+              </div>
+              <footer>
+                <SettingsButton type="button" variant={task.conversations.length && onOpenConversation ? "quiet" : "primary"} onClick={() => onOpenTask(task)} aria-label={text(`查看详情：${task.title}`, `View details: ${task.title}`)}>{text("查看详情", "View details")}</SettingsButton>
+                {task.conversations.length && onOpenConversation ? task.conversations.length === 1 ? <SettingsButton type="button" variant="primary" onClick={() => onOpenConversation(task.conversations[0]!)} aria-label={text(`进入会话：${task.title}`, `Open conversation: ${task.title}`)}>{text("进入会话", "Open chat")}</SettingsButton> : <DropdownMenu.Root><DropdownMenu.Trigger asChild><SettingsButton type="button" variant="primary" aria-label={text(`选择关联会话：${task.title}`, `Choose conversation: ${task.title}`)}>{text("进入会话", "Open chat")} ({task.conversations.length})</SettingsButton></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="tasks-card-menu" sideOffset={4}>{task.conversations.map((link, i) => <DropdownMenu.Item key={JSON.stringify([link.serverId, link.threadId])} onSelect={() => onOpenConversation(link)}>{text(`关联会话 ${i + 1}`, `Linked conversation ${i + 1}`)}</DropdownMenu.Item>)}</DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root> : null}
               </footer>
             </li>;
           })}</ul>}
