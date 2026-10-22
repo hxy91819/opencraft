@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import type { MessageSender } from "@opencraft/appserver-protocol";
 import type { ThreadMetadataContext, ThreadMetadataExtension, TransportSubmissionContext } from "@opencraft/appserver-client";
-import { ThreadMessageSenders } from "./thread-message-senders.js";
+import { OpenCraftMessageSenders } from "./opencraft-message-senders.js";
 import { projectThreadMessageResult, projectThreadMessageNotification } from "./thread-message-projection.js";
 
 export type IdentityRecord = Record<string, unknown>;
@@ -20,14 +20,14 @@ export function assertSubmissionIdentity(context: TransportSubmissionContext): v
 
 /** Shared by native Codex and proxied DSH: trusted identity never enters model input. */
 export class ThreadIdentity {
-  readonly senders: ThreadMessageSenders;
+  readonly senders: OpenCraftMessageSenders;
   readonly metadata: ThreadMetadataExtension | null;
   constructor(database: DatabaseSync, port: {
     createMetadata?: ThreadMetadataFactory;
     readMessageIds: ThreadMetadataContext["readMessageIds"];
     notify: ThreadMetadataContext["notify"];
   }) {
-    this.senders = new ThreadMessageSenders(database);
+    this.senders = new OpenCraftMessageSenders(database);
     this.metadata = port.createMetadata?.(database, {
       getSender: (threadId, messageId) => this.senders.get(threadId, messageId),
       hasSenders: threadId => this.senders.hasEmployees(threadId),

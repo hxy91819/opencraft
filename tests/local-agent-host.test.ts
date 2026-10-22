@@ -12,8 +12,8 @@ import { openLocalAgentStorage, startLocalAgentHost } from "../apps/local-agent-
 import { seedNewerHostStorage } from "./local-agent-storage-fixture.js";
 import { ThreadCatalog } from "../apps/local-agent-host/src/thread-catalog.js";
 import { DshExecutionAuthority } from "../apps/local-agent-host/src/dsh-execution-authority.js";
-import { CodexHostStateDatabase } from "../apps/opencraft-daemon/src/codex-host-state-database.js";
-import { CodexMessageSenders } from "../apps/opencraft-daemon/src/codex-message-senders.js";
+import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { OpenCraftMessageSenders } from "../apps/opencraft-daemon/src/opencraft-message-senders.js";
 import { SshConnectionStore } from "../apps/opencraft-daemon/src/ssh-connection-store.js";
 
 test("Host storage failure neither listens nor starts the engine", async () => {

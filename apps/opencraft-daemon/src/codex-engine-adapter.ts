@@ -14,15 +14,15 @@ import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { createInterface, type Interface as ReadLineInterface } from "node:readline";
 import { join } from "node:path";
-import { CodexHostQueue, type HostQueuedSubmission } from "./codex-host-queue.js";
-import { CodexHostStateDatabase } from "./codex-host-state-database.js";
-import { CodexTokenUsageLedger, type UsageSubmission } from "./token-usage-ledger.js";
+import { OpenCraftHostQueue, type HostQueuedSubmission } from "./opencraft-host-queue.js";
+import { OpenCraftHostStateDatabase } from "./opencraft-host-state-database.js";
+import { OpenCraftTokenUsageLedger, type UsageSubmission } from "./token-usage-ledger.js";
 import { CodexTokenUsageRuntime } from "./token-usage-runtime.js";
 import { CodexThreadTitles } from "./codex-thread-titles.js";
 import { DurableThreadCatalog } from "./durable-thread-catalog.js";
 import { ThreadIdentity, assertSubmissionIdentity, readThreadMessageIds } from "./thread-identity.js";
 import { projectCodexMessageResult, projectCodexMessageNotification } from "./codex-message-projection.js";
-import { CodexMessageAttachments } from "./codex-message-attachments.js";
+import { OpenCraftMessageAttachments } from "./opencraft-message-attachments.js";
 import { CodexThreadPins } from "./codex-thread-pins.js";
 import { CodexCoreBridge } from "./codex-core-bridge.js";
 import { CodexNativeCoreTransport } from "./codex-native-core-transport.js";
@@ -186,7 +186,7 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Codex account operation failed";
 }
 
-class CodexQueueRpcError extends Error {
+class OpenCraftQueueRpcError extends Error {
   constructor(readonly code: number, message: string, readonly data?: unknown) { super(message); }
 }
 
@@ -255,9 +255,9 @@ export class CodexEngineAdapter implements DuplexTransport {
   private readonly activeGoalThreads = new Set<string>();
   private readonly goalContinuationTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly capacityRetries = new Map<string, CapacityRetry>();
-  private queue: CodexHostQueue | null = null;
+  private queue: OpenCraftHostQueue | null = null;
   private schedules: ConversationSchedules | null = null;
-  private hostState: CodexHostStateDatabase | null = null;
+  private hostState: OpenCraftHostStateDatabase | null = null;
   private tokenUsageState: TokenUsageStateDatabase | null = null;
   private tokenUsageStorageUnavailable = false;
   private tokenUsage: CodexTokenUsageRuntime | null = null;
@@ -267,7 +267,7 @@ export class CodexEngineAdapter implements DuplexTransport {
   private get threadMetadata() { return this.identity?.metadata ?? null; }
   private durableCatalog: DurableThreadCatalog | null = null;
   private metadataRequests = 0;
-  private messageAttachments: CodexMessageAttachments | null = null;
+  private messageAttachments: OpenCraftMessageAttachments | null = null;
   private statusValue: TransportStatus = { state: "idle" };
   private sequence = 0;
   private clientSequence = 0;
@@ -409,11 +409,11 @@ export class CodexEngineAdapter implements DuplexTransport {
       const transport = this.options.transport;
       if (this.attachmentStaging && this.options.attachmentHistoryDirectory) {
         await mkdir(this.options.attachmentHistoryDirectory, { recursive: true, mode: 0o700 });
-        this.messageAttachments = new CodexMessageAttachments(this.options.attachmentHistoryDirectory);
+        this.messageAttachments = new OpenCraftMessageAttachments(this.options.attachmentHistoryDirectory);
       }
       if (this.options.attachmentHistoryDirectory) {
         await mkdir(this.options.attachmentHistoryDirectory, { recursive: true, mode: 0o700 });
-        this.hostState = new CodexHostStateDatabase(this.options.attachmentHistoryDirectory);
+        this.hostState = new OpenCraftHostStateDatabase(this.options.attachmentHistoryDirectory);
         this.installThreadMetadata();
         this.installDurableCatalog();
       }
@@ -440,11 +440,11 @@ export class CodexEngineAdapter implements DuplexTransport {
     if (this.nativeCore) this.releaseOverlays = await acquireCodexWriter(join(dataRoot, "host-overlays-owner"));
     const runtimeRoot = join(dataRoot, "runtime");
     await mkdir(runtimeRoot, { recursive: true, mode: 0o700 });
-    this.hostState = new CodexHostStateDatabase(dataRoot);
+    this.hostState = new OpenCraftHostStateDatabase(dataRoot);
     try {
       const telemetry=new TokenUsageTelemetry();
       this.tokenUsageState = new TokenUsageStateDatabase(dataRoot, join(dataRoot,"codex-host-queue.sqlite"));
-      this.tokenUsage = new CodexTokenUsageRuntime(new CodexTokenUsageLedger(this.tokenUsageState,this.options.tokenUsage?.serverId ?? "local-codex",Date.now,telemetry), {
+      this.tokenUsage = new CodexTokenUsageRuntime(new OpenCraftTokenUsageLedger(this.tokenUsageState,this.options.tokenUsage?.serverId ?? "local-codex",Date.now,telemetry), {
         request:(method,params)=>this.requestPhysical(method,params,5000),
         submission:this.options.tokenUsage?.submission,
         diagnostic:category=>this.diagnostic({event:"token-usage-partial",category}),
@@ -457,7 +457,7 @@ export class CodexEngineAdapter implements DuplexTransport {
       this.tokenUsageState?.close();this.tokenUsageState=null;
       this.diagnostic({event:"token-usage-unavailable",category:"storage-open"});
     }
-    const queue = new CodexHostQueue(dataRoot, this.hostState.database);
+    const queue = new OpenCraftHostQueue(dataRoot, this.hostState.database);
     try {
       const migrated = this.nativeCore ? 0 : queue.migrateNativeQueue(runtimeRoot);
       if (migrated > 0) this.diagnostic({ event: "native-queue-migrated", count: migrated });
@@ -471,7 +471,7 @@ export class CodexEngineAdapter implements DuplexTransport {
     this.schedules = new ConversationSchedules(dataRoot, this.scheduleExecutionPort(), Date.now, event => this.diagnostic(event), () => {
       for (const clientId of this.initializedClients) this.emit({ method: "opencraft/schedules/changed", params: {} }, clientId);
     });
-    this.messageAttachments = new CodexMessageAttachments(dataRoot);
+    this.messageAttachments = new OpenCraftMessageAttachments(dataRoot);
     this.installThreadMetadata();
     if (this.nativeCore) {
       const transport = this.nativeTransport!;
@@ -1672,8 +1672,8 @@ export class CodexEngineAdapter implements DuplexTransport {
     });
   }
 
-  private rpcError(error: RpcRecord): CodexQueueRpcError {
-    return new CodexQueueRpcError(typeof error.code === "number" ? error.code : -32000,
+  private rpcError(error: RpcRecord): OpenCraftQueueRpcError {
+    return new OpenCraftQueueRpcError(typeof error.code === "number" ? error.code : -32000,
       string(error.message) || "Codex AppServer request failed", error.data);
   }
 
@@ -1744,12 +1744,12 @@ export class CodexEngineAdapter implements DuplexTransport {
     this.internalRequests.clear();
   }
 
-  private queueStore(): CodexHostQueue {
+  private queueStore(): OpenCraftHostQueue {
     if (!this.queue) throw new Error("Codex Host queue is unavailable");
     return this.queue;
   }
 
-  private attachmentRecords(): CodexMessageAttachments {
+  private attachmentRecords(): OpenCraftMessageAttachments {
     if (!this.messageAttachments) throw new Error("Codex message attachments are unavailable");
     return this.messageAttachments;
   }
@@ -2026,9 +2026,9 @@ export class CodexEngineAdapter implements DuplexTransport {
   private async assertDurableQueueThread(threadId: string): Promise<void> {
     const response = record(await this.requestPhysical("thread/read", { threadId, includeTurns: false }));
     const thread = record(response.thread);
-    if (string(thread.id) !== threadId) throw new CodexQueueRpcError(-32600, "Queued Thread was not found");
-    if (thread.ephemeral === true) throw new CodexQueueRpcError(-32600, "Ephemeral Thread cannot own durable queued input");
-    if (thread.canAcceptDirectInput === false) throw new CodexQueueRpcError(-32600, "Thread does not accept direct user input");
+    if (string(thread.id) !== threadId) throw new OpenCraftQueueRpcError(-32600, "Queued Thread was not found");
+    if (thread.ephemeral === true) throw new OpenCraftQueueRpcError(-32600, "Ephemeral Thread cannot own durable queued input");
+    if (thread.canAcceptDirectInput === false) throw new OpenCraftQueueRpcError(-32600, "Thread does not accept direct user input");
   }
 
   private async queueThreadIsIdle(threadId: string): Promise<boolean> {
@@ -2080,7 +2080,7 @@ export class CodexEngineAdapter implements DuplexTransport {
   private actorInput(row: HostQueuedSubmission, mode: 'queue' | 'steer', expectedTurnId?: string): void {
     if (!row.clientUserMessageId.startsWith('actor-input:')) return;
     if (!this.options.collaborationInput?.authorize(row.threadId, row.clientUserMessageId, mode, expectedTurnId)) {
-      throw new CodexQueueRpcError(-32600, 'Actor execution authorization changed');
+      throw new OpenCraftQueueRpcError(-32600, 'Actor execution authorization changed');
     }
   }
 
@@ -2115,10 +2115,10 @@ export class CodexEngineAdapter implements DuplexTransport {
   private async dispatchQueuedStart(threadId: string, id: string, context?:TransportSubmissionContext): Promise<RpcRecord> {
     const queue = this.queueStore();
     const head = queue.firstAwaitingAdmission(threadId);
-    if (head?.state === "unknown") throw new CodexQueueRpcError(-32600, "Earlier delivery is unconfirmed; review it before sending another message");
-    if (head?.state === "dispatching") throw new CodexQueueRpcError(-32600, "Earlier delivery is still being sent");
+    if (head?.state === "unknown") throw new OpenCraftQueueRpcError(-32600, "Earlier delivery is unconfirmed; review it before sending another message");
+    if (head?.state === "dispatching") throw new OpenCraftQueueRpcError(-32600, "Earlier delivery is still being sent");
     const queued = queue.find(threadId, id);
-    if (!queued) throw new CodexQueueRpcError(-32600, "Queued message is unavailable");
+    if (!queued) throw new OpenCraftQueueRpcError(-32600, "Queued message is unavailable");
     const prepared = await this.modelVisibleAttachmentInput(queued.input);
     if (prepared.attachments.length > 0) this.attachmentRecords().record(
       threadId, queued.clientUserMessageId, prepared.attachments);
@@ -2128,7 +2128,7 @@ export class CodexEngineAdapter implements DuplexTransport {
     const thread = selection ? record(record(await this.requestPhysical("thread/read", { threadId, includeTurns: false })).thread) : null;
     const permissions = selection ? await this.resolvePermissionSelection(selection, thread?.cwd) : null;
     const row = queue.claim(threadId, id, "unknown");
-    if (!row) throw new CodexQueueRpcError(-32600, "Queued message is already being dispatched");
+    if (!row) throw new OpenCraftQueueRpcError(-32600, "Queued message is already being dispatched");
     this.emitQueueChanged(threadId);
     try {
       const response = record(await this.requestPhysical("turn/start", {
@@ -2148,7 +2148,7 @@ export class CodexEngineAdapter implements DuplexTransport {
   }
 
   private definitiveSteerRejection(error: unknown): boolean {
-    if (!(error instanceof CodexQueueRpcError)) return false;
+    if (!(error instanceof OpenCraftQueueRpcError)) return false;
     if (error.code === -32601) return true;
     if (error.code !== -32600) return false;
     const info = record(record(error.data).codexErrorInfo);
@@ -2161,16 +2161,16 @@ export class CodexEngineAdapter implements DuplexTransport {
     const queue = this.queueStore();
     if (queue.firstAwaitingAdmission(threadId)?.state === "unknown") await this.reconcileQueue(threadId);
     const head = queue.firstAwaitingAdmission(threadId);
-    if (head?.state === "unknown") throw new CodexQueueRpcError(-32600, "Earlier delivery is unconfirmed; review it before sending another message");
-    if (head?.state === "dispatching") throw new CodexQueueRpcError(-32600, "Earlier delivery is still being sent");
+    if (head?.state === "unknown") throw new OpenCraftQueueRpcError(-32600, "Earlier delivery is unconfirmed; review it before sending another message");
+    if (head?.state === "dispatching") throw new OpenCraftQueueRpcError(-32600, "Earlier delivery is still being sent");
     const queued = queue.find(threadId, id);
-    if (!queued) throw new CodexQueueRpcError(-32600, "Queued message is unavailable");
+    if (!queued) throw new OpenCraftQueueRpcError(-32600, "Queued message is unavailable");
     const prepared = await this.modelVisibleAttachmentInput(queued.input);
     if (prepared.attachments.length > 0) this.attachmentRecords().record(
       threadId, queued.clientUserMessageId, prepared.attachments);
     this.actorInput(queued, 'steer', expectedTurnId);
     const row = queue.claim(threadId, id, expectedTurnId);
-    if (!row) throw new CodexQueueRpcError(-32600, "Queued message is already being dispatched");
+    if (!row) throw new OpenCraftQueueRpcError(-32600, "Queued message is already being dispatched");
     this.emitQueueChanged(threadId);
     try {
       const response = record(await this.requestPhysical("turn/steer", {
@@ -2193,25 +2193,25 @@ export class CodexEngineAdapter implements DuplexTransport {
   private async handleQueueRequest(clientId: string, id: string | number, method: string, params: RpcRecord, context: TransportSubmissionContext): Promise<void> {
     const threadId = string(params.threadId);
     try {
-      if (!this.initializedClients.has(clientId)) throw new CodexQueueRpcError(-32600, "Client is not initialized");
-      if (!threadId) throw new CodexQueueRpcError(-32602, "Queue request requires threadId");
+      if (!this.initializedClients.has(clientId)) throw new OpenCraftQueueRpcError(-32600, "Client is not initialized");
+      if (!threadId) throw new OpenCraftQueueRpcError(-32602, "Queue request requires threadId");
       const queue = this.queueStore();
       let result: RpcRecord;
       const actorRequest = context.collaborationRequestId;
       const selected = string(params.queuedSubmissionId) ? queue.find(threadId, string(params.queuedSubmissionId)) : null;
       const actorClientId = selected?.clientUserMessageId ?? string(params.clientUserMessageId);
       if (actorClientId.startsWith('actor-input:') && actorClientId !== `actor-input:${actorRequest}`) {
-        throw new CodexQueueRpcError(-32600, 'Actor input requires its trusted admission');
+        throw new OpenCraftQueueRpcError(-32600, 'Actor input requires its trusted admission');
       }
-      if (selected?.clientUserMessageId.startsWith('actor-input:') && method === 'thread/queue/update') throw new CodexQueueRpcError(-32600, 'Actor messages are immutable');
+      if (selected?.clientUserMessageId.startsWith('actor-input:') && method === 'thread/queue/update') throw new OpenCraftQueueRpcError(-32600, 'Actor messages are immutable');
       if (method === "thread/queue/collaborationReceipt") {
-        if (!actorRequest) throw new CodexQueueRpcError(-32600, 'Trusted Actor admission required');
+        if (!actorRequest) throw new OpenCraftQueueRpcError(-32600, 'Trusted Actor admission required');
         const row = queue.findByClientId(threadId, `actor-input:${actorRequest}`);
         result = { receipt: row ? { id: row.id, state: row.state, targetTurnId: row.targetTurnId } : null };
       } else if (method === "thread/queue/list") {
         const cursor = params.cursor == null ? 0 : Number(params.cursor);
         const limit = params.limit == null ? 50 : Number(params.limit);
-        if (!Number.isSafeInteger(cursor) || cursor < 0 || !Number.isSafeInteger(limit) || limit < 1) throw new CodexQueueRpcError(-32602, "Invalid queue pagination");
+        if (!Number.isSafeInteger(cursor) || cursor < 0 || !Number.isSafeInteger(limit) || limit < 1) throw new OpenCraftQueueRpcError(-32602, "Invalid queue pagination");
         const rows = queue.list(threadId);
         const queued = rows.filter(row => row.state === "queued");
         const page = queued.slice(cursor, cursor + Math.min(limit, 100));
@@ -2225,9 +2225,9 @@ export class CodexEngineAdapter implements DuplexTransport {
         await this.assertDurableQueueThread(threadId);
         if (actorClientId.startsWith('actor-input:')) {
           const mode = this.options.collaborationInput?.mode(actorClientId);
-          if (!mode) throw new CodexQueueRpcError(-32600, 'Actor request unavailable');
+          if (!mode) throw new OpenCraftQueueRpcError(-32600, 'Actor request unavailable');
           // Steer is checked again against its exact Turn at dispatch; add itself never executes it.
-          if (mode === 'queue' && !this.options.collaborationInput?.authorize(threadId, actorClientId, mode)) throw new CodexQueueRpcError(-32600, 'Actor execution authorization changed');
+          if (mode === 'queue' && !this.options.collaborationInput?.authorize(threadId, actorClientId, mode)) throw new OpenCraftQueueRpcError(-32600, 'Actor execution authorization changed');
         }
         const row = this.hostState!.transaction(() => {
           this.recordSender(params, context);
@@ -2239,7 +2239,7 @@ export class CodexEngineAdapter implements DuplexTransport {
         this.scheduleQueueMaintenance(threadId);
       } else if (method === "thread/queue/update") {
         const row = queue.update(threadId, string(params.queuedSubmissionId), params.input as readonly unknown[]);
-        if (!row) throw new CodexQueueRpcError(-32600, "Queued message is not editable");
+        if (!row) throw new OpenCraftQueueRpcError(-32600, "Queued message is not editable");
         result = { queuedSubmission: this.queueProjection(row) };
         this.emitQueueChanged(threadId);
       } else if (method === "thread/queue/delete") {
@@ -2248,16 +2248,16 @@ export class CodexEngineAdapter implements DuplexTransport {
           const target = string(params.expectedTurnId);
           const row = queue.find(threadId, itemId);
           if (!target || !row || row.state !== "unknown" || row.targetTurnId !== target) {
-            throw new CodexQueueRpcError(-32600, "Unknown delivery claim does not match the target turn");
+            throw new OpenCraftQueueRpcError(-32600, "Unknown delivery claim does not match the target turn");
           }
           await this.withThreadOperation(threadId, async () => {
-            if (!(await this.queueThreadIsIdle(threadId))) throw new CodexQueueRpcError(-32600, "Turn is still active");
+            if (!(await this.queueThreadIsIdle(threadId))) throw new OpenCraftQueueRpcError(-32600, "Turn is still active");
             if (await this.historyHasClientMessage(threadId, row.clientUserMessageId, target === "unknown" ? null : target)) {
               queue.settle(threadId, itemId, "delivered");
               this.emitQueueChanged(threadId);
-              throw new CodexQueueRpcError(-32600, "Steered input is present in Codex history");
+              throw new OpenCraftQueueRpcError(-32600, "Steered input is present in Codex history");
             }
-            if (!queue.discardUnknown(threadId, itemId, target)) throw new CodexQueueRpcError(-32600, "Delivery claim changed before discard");
+            if (!queue.discardUnknown(threadId, itemId, target)) throw new OpenCraftQueueRpcError(-32600, "Delivery claim changed before discard");
           });
           result = { deleted: true };
         } else {
@@ -2266,32 +2266,32 @@ export class CodexEngineAdapter implements DuplexTransport {
         this.emitQueueChanged(threadId);
         this.scheduleQueueMaintenance(threadId);
       } else if (method === "thread/queue/reorder") {
-        if (!Array.isArray(params.queuedSubmissionIds)) throw new CodexQueueRpcError(-32602, "Queue order must be an array");
-        if (queue.list(threadId).some(row => row.clientUserMessageId.startsWith('actor-input:'))) throw new CodexQueueRpcError(-32600, 'Actor inputs retain authority ordering');
+        if (!Array.isArray(params.queuedSubmissionIds)) throw new OpenCraftQueueRpcError(-32602, "Queue order must be an array");
+        if (queue.list(threadId).some(row => row.clientUserMessageId.startsWith('actor-input:'))) throw new OpenCraftQueueRpcError(-32600, 'Actor inputs retain authority ordering');
         queue.reorder(threadId, params.queuedSubmissionIds as string[]);
         result = {};
         this.emitQueueChanged(threadId);
       } else if (method === "thread/queue/start") {
         result = await this.withThreadOperation(threadId, async () => {
-          if (!(await this.queueThreadIsIdle(threadId))) throw new CodexQueueRpcError(-32600, "Thread is not idle");
+          if (!(await this.queueThreadIsIdle(threadId))) throw new OpenCraftQueueRpcError(-32600, "Thread is not idle");
           await this.reconcileQueue(threadId);
           const row = string(params.queuedSubmissionId)
             ? queue.find(threadId, string(params.queuedSubmissionId))
             : queue.firstAwaitingAdmission(threadId);
-          if (row?.state === "unknown") throw new CodexQueueRpcError(-32600, "Earlier delivery is unconfirmed; review it before sending another message");
-          if (!row || row.state !== "queued") throw new CodexQueueRpcError(-32600, "Queued message is unavailable");
-          if (row.clientUserMessageId.startsWith('actor-input:') && row.clientUserMessageId !== `actor-input:${actorRequest}`) throw new CodexQueueRpcError(-32600, 'Actor input requires its trusted admission');
+          if (row?.state === "unknown") throw new OpenCraftQueueRpcError(-32600, "Earlier delivery is unconfirmed; review it before sending another message");
+          if (!row || row.state !== "queued") throw new OpenCraftQueueRpcError(-32600, "Queued message is unavailable");
+          if (row.clientUserMessageId.startsWith('actor-input:') && row.clientUserMessageId !== `actor-input:${actorRequest}`) throw new OpenCraftQueueRpcError(-32600, 'Actor input requires its trusted admission');
           return this.dispatchQueuedStart(threadId, row.id,context);
         });
       } else if (method === "thread/queue/steer") {
         const target = string(params.expectedTurnId);
-        if (!target) throw new CodexQueueRpcError(-32602, "Steer requires expectedTurnId");
+        if (!target) throw new OpenCraftQueueRpcError(-32602, "Steer requires expectedTurnId");
         result = await this.withThreadOperation(threadId, () => this.dispatchQueuedSteer(threadId, string(params.queuedSubmissionId), target,context));
-      } else throw new CodexQueueRpcError(-32601, `Unknown queue method ${method}`);
+      } else throw new OpenCraftQueueRpcError(-32601, `Unknown queue method ${method}`);
       this.emit({ id, result }, clientId);
     } catch (error) {
-      this.emit({ id, error: { code: error instanceof CodexQueueRpcError ? error.code : -32000,
-        message: errorMessage(error), ...(error instanceof CodexQueueRpcError && error.data !== undefined ? { data: error.data } : {}) } }, clientId);
+      this.emit({ id, error: { code: error instanceof OpenCraftQueueRpcError ? error.code : -32000,
+        message: errorMessage(error), ...(error instanceof OpenCraftQueueRpcError && error.data !== undefined ? { data: error.data } : {}) } }, clientId);
     }
   }
 

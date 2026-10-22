@@ -131,7 +131,7 @@ export const CODEX_HOST_STATE_MIGRATIONS = [
   { version: 12, name: "token-usage-frozen-coverage", sql: CODEX_HOST_TOKEN_USAGE_FROZEN },
 ] as const;
 
-export class CodexHostStateDatabase {
+export class OpenCraftHostStateDatabase {
   readonly database: DatabaseSync;
   readonly outcome: DatabaseOutcome;
   constructor(directory: string) {

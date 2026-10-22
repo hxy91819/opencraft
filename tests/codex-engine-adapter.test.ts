@@ -10,7 +10,7 @@ import { LOGICAL_CLIENT_FIELD } from "@opencraft/app-host-protocol";
 import { AccountPoolStore } from "@opencraft/account-pool-host";
 import { OPENCRAFT_ATTACHMENT_STAGING_EXTENSION, OPENCRAFT_THREAD_LIFECYCLE_EXTENSION, OPENCRAFT_THREAD_QUEUE_EXTENSION, OPENCRAFT_THREAD_START_DURABILITY_EXTENSION, OPENCRAFT_PERMISSION_MODES_EXTENSION } from "@opencraft/appserver-protocol";
 import { CodexEngineAdapter, capacityRetryDelayMs } from "../apps/opencraft-daemon/src/codex-engine-adapter.js";
-import { CodexHostQueue } from "../apps/opencraft-daemon/src/codex-host-queue.js";
+import { OpenCraftHostQueue } from "../apps/opencraft-daemon/src/opencraft-host-queue.js";
 import { LocalDesktopService } from "../apps/local-agent-host/src/desktop/local-desktop-service.js";
 import { OPENCRAFT_DESKTOP_ATTACH, OPENCRAFT_DESKTOP_RELEASE, OPENCRAFT_DESKTOP_EXTENSION } from "@opencraft/appserver-protocol/desktop";
 
@@ -816,7 +816,7 @@ test("a queued start with an unknown target reconciles against all Turn history 
   const root = await mkdtemp(join(tmpdir(), "opencraft-codex-host-unknown-start-"));
   const dataRoot = join(root, "data");
   await mkdir(dataRoot);
-  const queue = new CodexHostQueue(dataRoot);
+  const queue = new OpenCraftHostQueue(dataRoot);
   const claim = queue.add("codex-thread-1", "accepted-before-restart", [{ type: "text", text: "same input" }]);
   queue.claim("codex-thread-1", claim.id, "unknown");
   queue.settle("codex-thread-1", claim.id, "unknown", "steer-delivery-unconfirmed");
@@ -1002,7 +1002,7 @@ test("restart preserves an unconfirmed claim and blocks a later queued turn", as
   const root = await mkdtemp(join(tmpdir(), "opencraft-codex-host-restart-"));
   const dataRoot = join(root, "data");
   await mkdir(dataRoot);
-  const queue = new CodexHostQueue(dataRoot);
+  const queue = new OpenCraftHostQueue(dataRoot);
   const uncertain = queue.add("codex-thread-1", "uncertain", [{ type: "text", text: "maybe" }]);
   queue.claim("codex-thread-1", uncertain.id, "turn-old");
   queue.add("codex-thread-1", "later", [{ type: "text", text: "later" }]);
@@ -1029,7 +1029,7 @@ test("Host resumes an unloaded Codex thread and drains a durable queued message 
   const root = await mkdtemp(join(tmpdir(), "opencraft-codex-host-background-"));
   const dataRoot = join(root, "data");
   await mkdir(dataRoot);
-  const queue = new CodexHostQueue(dataRoot);
+  const queue = new OpenCraftHostQueue(dataRoot);
   queue.add("codex-thread-1", "background", [{ type: "text", text: "continue" }]);
   queue.close();
   const frames: Array<Record<string, unknown>> = [];

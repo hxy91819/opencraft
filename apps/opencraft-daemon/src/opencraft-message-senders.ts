@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import type { MessageSender } from "@opencraft/appserver-protocol";
 
 /** One instance per stable Server identity directory; message identity outlives connections. */
-export class ThreadMessageSenders {
+export class OpenCraftMessageSenders {
   private readonly db: DatabaseSync;
   constructor(database: DatabaseSync) {
     this.db = database;

@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdtemp, rm, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { CodexHostStateDatabase, CODEX_HOST_STATE_BASELINE, CODEX_HOST_BOT_STATE } from "../apps/opencraft-daemon/src/codex-host-state-database.js";
+import { OpenCraftHostStateDatabase, CODEX_HOST_STATE_BASELINE, CODEX_HOST_BOT_STATE } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
 
 async function fixture(run: (directory: string) => Promise<void>) {
   const root = await mkdtemp(join(tmpdir(), "oc-bot-owner-"));
@@ -23,7 +23,7 @@ for (const [index, columns] of layouts.entries()) test(`known deployed Bot layou
   if (index) old.exec("UPDATE codex_bot_rooms SET native_thread_id='native',cwd='/synthetic',draft=1");
   old.exec("INSERT INTO codex_bot_commands VALUES ('send:room:pending','fp',NULL); INSERT INTO codex_bot_message_slots VALUES('room','turn','agentMessage',0,'item');");
   old.close();
-  const owner = new CodexHostStateDatabase(root);
+  const owner = new OpenCraftHostStateDatabase(root);
   assert.equal(owner.outcome.status, "migrated");
   assert.equal(owner.outcome.appliedVersion, 12); assert.ok(owner.outcome.backupPath); assert.deepEqual(owner.outcome.movedAsidePaths, []);
   const row = owner.database.prepare("SELECT * FROM codex_bot_rooms").get()!;
@@ -40,13 +40,13 @@ for (const [index, columns] of layouts.entries()) test(`known deployed Bot layou
   rollback.exec("CREATE TABLE IF NOT EXISTS codex_bot_rooms (thread_id TEXT PRIMARY KEY, created_ms INTEGER NOT NULL);");
   rollback.prepare("INSERT INTO codex_bot_rooms(thread_id,created_ms,cwd,draft) VALUES (?,?,?,?)").run("rollback-room", 50, "/retained", 1);
   assert.equal(rollback.prepare("SELECT thread_id FROM codex_bot_rooms WHERE thread_id='room'").get()?.thread_id, "room"); rollback.close();
-  const reopened = new CodexHostStateDatabase(root); assert.equal(reopened.outcome.status, "up-to-date"); reopened.close();
+  const reopened = new OpenCraftHostStateDatabase(root); assert.equal(reopened.outcome.status, "up-to-date"); reopened.close();
 }));
 
 test("unknown Bot schema remains rejected without moving user data", async () => fixture(async root => {
   const path = join(root, "codex-host-queue.sqlite"), db = new DatabaseSync(path);
   db.exec(CODEX_HOST_STATE_BASELINE + CODEX_HOST_BOT_STATE + "CREATE INDEX unknown_room_policy ON codex_bot_rooms(cwd)"); db.close();
-  assert.throws(() => new CodexHostStateDatabase(root), (e: any) => e.kind === "unsupported-legacy");
+  assert.throws(() => new OpenCraftHostStateDatabase(root), (e: any) => e.kind === "unsupported-legacy");
   assert.ok(!(await readdir(root)).some(name => name.includes(".legacy-")));
 }));
 
@@ -59,7 +59,7 @@ test("known room conversion failure rolls back records and leaves a pre-write sn
     if (sql.startsWith("INSERT INTO codex_bot_rooms(thread_id,created_ms,cwd")) throw new Error("synthetic write failure");
     return original.call(this, sql);
   });
-  assert.throws(() => new CodexHostStateDatabase(root)); mock.mock.restore();
+  assert.throws(() => new OpenCraftHostStateDatabase(root)); mock.mock.restore();
   const read = new DatabaseSync(path, { readOnly: true });
   assert.equal(read.prepare("SELECT thread_id FROM codex_bot_rooms").get()?.thread_id, "room");
   assert.equal(read.prepare("SELECT name FROM sqlite_master WHERE name='schema_migrations'").get(), undefined); read.close();

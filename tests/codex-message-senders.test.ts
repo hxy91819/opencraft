@@ -4,19 +4,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { createConversationKey, createDefaultTimelineProjectorRegistry, projectTimeline } from "@opencraft/chat-core";
-import { CodexHostStateDatabase } from "../apps/opencraft-daemon/src/codex-host-state-database";
-import { CodexHostQueue } from "../apps/opencraft-daemon/src/codex-host-queue";
-import { CodexMessageSenders } from "../apps/opencraft-daemon/src/codex-message-senders";
+import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database";
+import { OpenCraftHostQueue } from "../apps/opencraft-daemon/src/opencraft-host-queue";
+import { OpenCraftMessageSenders } from "../apps/opencraft-daemon/src/opencraft-message-senders";
 import { projectCodexMessageNotification, projectCodexMessageResult } from "../apps/opencraft-daemon/src/codex-message-projection";
 const a = { kind: "employee" as const, loginName: "employee.a" };
 const b = { kind: "employee" as const, loginName: "employee.b" };
 
 test("message authors share queue SQLite, survive reopen, and cannot be reassigned", async () => {
   const root = await mkdtemp(join(tmpdir(), "message-senders-"));
-  let host = new CodexHostStateDatabase(root);
+  let host = new OpenCraftHostStateDatabase(root);
   try {
-    let senders = new CodexMessageSenders(host.database);
-    const queue = new CodexHostQueue(root, host.database);
+    let senders = new OpenCraftMessageSenders(host.database);
+    const queue = new OpenCraftHostQueue(root, host.database);
     host.transaction(() => { senders.record("t", "m", a); queue.add("t", "m", [{ type: "text", text: "hello" }]); });
     senders.record("t", "m", a);
     assert.throws(() => senders.record("t", "m", b), /another sender/);
@@ -29,8 +29,8 @@ test("message authors share queue SQLite, survive reopen, and cannot be reassign
     assert.equal(host.database.prepare("SELECT count(*) AS n FROM message_senders WHERE client_message_id='rejected'").get()?.n, 0);
     assert.equal(queue.findByClientId("t", "rejected"), null);
     assert.deepEqual((await readdir(root)).filter(n => n.endsWith('.sqlite')), ["codex-host-queue.sqlite"]);
-    queue.close(); host.close(); host = new CodexHostStateDatabase(root);
-    senders = new CodexMessageSenders(host.database);
+    queue.close(); host.close(); host = new OpenCraftHostStateDatabase(root);
+    senders = new OpenCraftMessageSenders(host.database);
     assert.deepEqual(senders.get("t", "m"), a);
     assert.equal(senders.get("other-thread", "m"), null);
     senders.cloneThread("t", "fork");
@@ -42,8 +42,8 @@ test("message authors share queue SQLite, survive reopen, and cannot be reassign
     senders.cloneThread("fork", "nested");
     assert.equal(senders.isInherited("nested", "m"), true);
     assert.equal(senders.isInherited("nested", "fresh"), true);
-    host.close(); host = new CodexHostStateDatabase(root);
-    senders = new CodexMessageSenders(host.database);
+    host.close(); host = new OpenCraftHostStateDatabase(root);
+    senders = new OpenCraftMessageSenders(host.database);
     assert.equal(senders.isInherited("fork", "m"), true);
     assert.equal(senders.isInherited("fork", "fresh"), false);
     assert.deepEqual(senders.get("nested", "m"), a);

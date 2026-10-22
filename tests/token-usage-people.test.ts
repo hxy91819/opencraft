@@ -4,12 +4,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { TokenUsageStateDatabase } from "../apps/opencraft-daemon/src/token-usage-state-database.js";
-import { CodexTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { labelUsagePeople } from "../apps/opencraft-daemon/src/token-usage-people.js";
 
 test("authorized paginated people use current directory names without storing names, changing allocation or exposing other people to self", async () => {
   const directory = await mkdtemp(join(tmpdir(),"oc-usage-people-")), state = new TokenUsageStateDatabase(directory);
-  const at = Date.parse("2026-10-21T00:00:00Z"), ledger = new CodexTokenUsageLedger(state,"server",()=>at);
+  const at = Date.parse("2026-10-21T00:00:00Z"), ledger = new OpenCraftTokenUsageLedger(state,"server",()=>at);
   const key = {threadId:"thread",turnId:"turn"}, request = {from:"2026-10-21",through:"2026-10-21"};
   const admin = ()=>({actorId:"admin",administrator:true}), self = ()=>({actorId:"A",administrator:false});
   try {

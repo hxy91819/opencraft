@@ -9,8 +9,8 @@ import { LOGICAL_CLIENT_FIELD } from "@opencraft/app-host-protocol";
 import { AccountPoolStore } from "@opencraft/account-pool-host";
 
 import { CodexEngineAdapter } from "../apps/opencraft-daemon/src/codex-engine-adapter.js";
-import { CodexHostStateDatabase } from "../apps/opencraft-daemon/src/codex-host-state-database.js";
-import { CodexTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { replayRolloutUsage } from "../apps/opencraft-daemon/src/token-usage-rollout.js";
 
 
@@ -88,10 +88,10 @@ try {
   const notifications = frames.filter(frame => ["rawResponse/completed","thread/tokenUsage/updated"].includes(frame.method));
   const rollout = thread.path ? (await readFile(thread.path,"utf8")).split("\n").filter(Boolean).map(line=>JSON.parse(line)) : [];
   const exactUsage = rollout.filter(row=>row.type === "token_usage_record").map(row=>row.payload);
-  const usageState = new CodexHostStateDatabase(join(root,"metering-probe"));
+  const usageState = new OpenCraftHostStateDatabase(join(root,"metering-probe"));
   let recovery;
   try {
-    const ledger = new CodexTokenUsageLedger(usageState,"probe-server",()=>0);
+    const ledger = new OpenCraftTokenUsageLedger(usageState,"probe-server",()=>0);
     for (const turn of thread.turns) ledger.startTurn({threadId,turnId:turn.id},turn.startedAt*1000,"unknown");
     const options = {path:thread.path,nativeHome:join(dataDirectory,"runtime"),threadId,ledger};
     const firstReplay = await replayRolloutUsage(options);

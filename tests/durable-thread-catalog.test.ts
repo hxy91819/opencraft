@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 import { openManagedDatabase, SqliteLifecycleError } from "@opencraft/sqlite-node";
-import { CodexHostStateDatabase, CODEX_HOST_STATE_MIGRATIONS, CODEX_HOST_STATE_BASELINE, CODEX_HOST_BOT_STATE, CODEX_HOST_IOA_CREATORS, CODEX_HOST_SENDER_ORIGINS } from "../apps/opencraft-daemon/src/codex-host-state-database";
+import { OpenCraftHostStateDatabase, CODEX_HOST_STATE_MIGRATIONS, CODEX_HOST_STATE_BASELINE, CODEX_HOST_BOT_STATE, CODEX_HOST_IOA_CREATORS, CODEX_HOST_SENDER_ORIGINS } from "../apps/opencraft-daemon/src/opencraft-host-state-database";
 import { DurableThreadCatalog } from "../apps/opencraft-daemon/src/durable-thread-catalog";
 
 const row = (id: string, updatedAt: number, name = id) => ({ id, cwd: "/fixture", updatedAt, createdAt: 1, recencyAt: null, name,
@@ -13,7 +13,7 @@ const row = (id: string, updatedAt: number, name = id) => ({ id, cwd: "/fixture"
 const query = { sortKey: "updated_at", sortDirection: "desc", useStateDbOnly: true };
 async function fixture(t: TestContext) {
   const root = await mkdtemp(join(tmpdir(), "oc-durable-catalog-"));
-  const owner = new CodexHostStateDatabase(root);
+  const owner = new OpenCraftHostStateDatabase(root);
   t.after(async () => { owner.close(); await rm(root, { recursive: true, force: true }); });
   return { root, owner };
 }
@@ -34,14 +34,14 @@ test("v4 to v5 migration preserves every existing row and checksum history; tamp
     const tables = ["message_senders", "ioa_thread_creators", "ioa_message_presence", "ioa_participant_state", "message_sender_origins", "codex_host_queue"];
     const before = tables.map(table => old.prepare(`SELECT * FROM ${table}`).all());
     const history = old.prepare("SELECT * FROM schema_migrations ORDER BY version").all(); old.close();
-    let owner = new CodexHostStateDatabase(root);
+    let owner = new OpenCraftHostStateDatabase(root);
     assert.equal(owner.outcome.status, "migrated"); assert.ok(owner.outcome.backupPath); assert.deepEqual(owner.outcome.movedAsidePaths, []);
     assert.deepEqual(tables.map(table => owner.database.prepare(`SELECT * FROM ${table}`).all()), before);
     assert.deepEqual(owner.database.prepare("SELECT * FROM schema_migrations WHERE version<=4 ORDER BY version").all(), history);
     assert.equal(owner.database.prepare("SELECT MAX(version) AS n FROM schema_migrations").get()?.n, CODEX_HOST_STATE_MIGRATIONS.at(-1)!.version);
-    owner.close(); owner = new CodexHostStateDatabase(root); assert.equal(owner.outcome.status, "up-to-date"); owner.close();
+    owner.close(); owner = new OpenCraftHostStateDatabase(root); assert.equal(owner.outcome.status, "up-to-date"); owner.close();
     const tamper = new DatabaseSync(path); tamper.exec("UPDATE schema_migrations SET checksum='tampered' WHERE version=4"); tamper.close();
-    assert.throws(() => new CodexHostStateDatabase(root), e => e instanceof SqliteLifecycleError && e.kind === "history-mismatch");
+    assert.throws(() => new OpenCraftHostStateDatabase(root), e => e instanceof SqliteLifecycleError && e.kind === "history-mismatch");
     const read = new DatabaseSync(path, {readOnly: true}); assert.deepEqual(tables.map(table => read.prepare(`SELECT * FROM ${table}`).all()), before); read.close();
   } finally { await rm(root, {recursive: true, force: true}); }
 });

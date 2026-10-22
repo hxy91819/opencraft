@@ -11,7 +11,7 @@ import { AccountPoolStore } from "@opencraft/account-pool-host";
 
 import { CodexEngineAdapter } from "../apps/opencraft-daemon/src/codex-engine-adapter.js";
 import { TokenUsageStateDatabase } from "../apps/opencraft-daemon/src/token-usage-state-database.js";
-import { CodexTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { replayRolloutUsage } from "../apps/opencraft-daemon/src/token-usage-rollout.js";
 
 
@@ -117,7 +117,7 @@ try {
   await adapter.close();
   const reopened=new TokenUsageStateDatabase(dataDirectory);
   try{
-   const ledger=new CodexTokenUsageLedger(reopened,"fork-probe");
+   const ledger=new OpenCraftTokenUsageLedger(reopened,"fork-probe");
    assert.equal(ledger.query({from:today,through:today},()=>({actorId:"A",administrator:false})).summary.tokens,"500");
    assert.equal(ledger.query({from:today,through:today},()=>({actorId:"B",administrator:false})).summary.tokens,"100");
   }finally{reopened.close();}

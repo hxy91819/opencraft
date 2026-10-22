@@ -18,7 +18,7 @@ CREATE TABLE codex_message_attachments (
 `;
 
 /** Durable display metadata; Codex's native `mention` remains the execution input. */
-export class CodexMessageAttachments {
+export class OpenCraftMessageAttachments {
   private readonly db: DatabaseSync;
   readonly outcome: DatabaseOutcome;
 

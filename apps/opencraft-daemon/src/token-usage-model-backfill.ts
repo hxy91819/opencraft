@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
-import type { CodexHostStateDatabase } from "./codex-host-state-database.js";
-import type { CodexTokenUsageLedger } from "./token-usage-ledger.js";
+import type { OpenCraftHostStateDatabase } from "./opencraft-host-state-database.js";
+import type { OpenCraftTokenUsageLedger } from "./token-usage-ledger.js";
 import { scanRolloutTurnModels } from "./token-usage-rollout.js";
 
 export interface BackfillModelsResult {
@@ -12,8 +12,8 @@ export interface BackfillModelsResult {
 }
 
 export async function backfillTokenUsageModels(options: {
-  readonly state?: CodexHostStateDatabase;
-  readonly ledger: CodexTokenUsageLedger;
+  readonly state?: OpenCraftHostStateDatabase;
+  readonly ledger: OpenCraftTokenUsageLedger;
   readonly nativeHome?: string;
   readonly apply: boolean;
 }): Promise<BackfillModelsResult> {

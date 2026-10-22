@@ -1,7 +1,7 @@
 import type { StatementSync } from "node:sqlite";
 import { TokenUsageTelemetry } from "./token-usage-telemetry.js";
 import { TokenUsageQuery, type TokenUsageAuthority } from "./token-usage-query.js";
-import type { CodexHostStateDatabase } from "./codex-host-state-database.js";
+import type { OpenCraftHostStateDatabase } from "./opencraft-host-state-database.js";
 import { allocateTurnTokens, tokenInteger, tokenModelKey, type TokenCount, type TokenModelBucket } from "./token-usage-allocation.js";
 
 export type UsageExecutionState = "running" | "completed" | "failed" | "interrupted";
@@ -71,9 +71,9 @@ function timestamp(value: number): number {
  * writes facts and derived allocations through its existing transaction owner.
  * Callers must verify source receipts and query authorization at ingress.
  */
-export class CodexTokenUsageLedger {
+export class OpenCraftTokenUsageLedger {
   readonly serverId: string;
-  private readonly state: Pick<CodexHostStateDatabase,"database"|"transaction">;
+  private readonly state: Pick<OpenCraftHostStateDatabase,"database"|"transaction">;
   private readonly now: () => number;
   private writing = false;
   private committedEffects:(()=>void)[]=[];
@@ -96,7 +96,7 @@ export class CodexTokenUsageLedger {
   query(value: unknown, authorize: () => TokenUsageAuthority | null) {
     return (this.queryOwner ??= new TokenUsageQuery(this.state, this.serverId, "Asia/Shanghai", this.now)).read(value, authorize);
   }
-  constructor(state: Pick<CodexHostStateDatabase,"database"|"transaction">, serverId: string, now: () => number = Date.now, readonly telemetry=new TokenUsageTelemetry()) {
+  constructor(state: Pick<OpenCraftHostStateDatabase,"database"|"transaction">, serverId: string, now: () => number = Date.now, readonly telemetry=new TokenUsageTelemetry()) {
     this.state = state;
     this.serverId = requiredId(serverId);
     this.now = now;

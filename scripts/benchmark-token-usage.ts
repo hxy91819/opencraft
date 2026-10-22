@@ -3,13 +3,13 @@ import {mkdtemp,writeFile} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir,cpus,totalmem} from "node:os";
 import {performance} from "node:perf_hooks";
-import {CodexHostStateDatabase} from "../apps/opencraft-daemon/src/codex-host-state-database.js";
-import {CodexTokenUsageLedger} from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import {OpenCraftHostStateDatabase} from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import {OpenCraftTokenUsageLedger} from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import {TokenUsageQueryService} from "../apps/opencraft-daemon/src/token-usage-query-service.js";
 const directory=process.env.OPENCRAFT_USAGE_BENCH_DIRECTORY??await mkdtemp(join(tmpdir(),"oc-usage-bench-"));
 const at=Date.parse("2026-07-23T16:00:00Z"),now=Date.parse("2026-10-21T12:00:00Z");
-const state=new CodexHostStateDatabase(directory),db=state.database;
-const ledger=new CodexTokenUsageLedger(state,"benchmark",()=>at);
+const state=new OpenCraftHostStateDatabase(directory),db=state.database;
+const ledger=new OpenCraftTokenUsageLedger(state,"benchmark",()=>at);
 const existing=Number(db.prepare("SELECT count(*) AS n FROM token_usage_turns").get()!.n);
 if(!existing){
  const turn=db.prepare("INSERT INTO token_usage_turns VALUES(?,?,?,?,'completed','human',1,1,1,0,'10000','settled',1,0)");

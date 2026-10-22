@@ -3,16 +3,16 @@ import test from "node:test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CodexHostStateDatabase } from "../apps/opencraft-daemon/src/codex-host-state-database.js";
-import { CodexTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { backfillTokenUsageModels } from "../apps/opencraft-daemon/src/token-usage-model-backfill.js";
 
 const now = Date.parse("2026-10-22T08:00:00Z");
 
 async function setup() {
   const dir = await mkdtemp(join(tmpdir(), "oc-backfill-"));
-  const state = new CodexHostStateDatabase(dir);
-  const ledger = new CodexTokenUsageLedger(state, "server:test", () => now);
+  const state = new OpenCraftHostStateDatabase(dir);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server:test", () => now);
   return { dir, state, ledger };
 }
 

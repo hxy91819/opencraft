@@ -1,4 +1,4 @@
-import { CodexHostStateDatabase } from "./codex-host-state-database.js";
+import { OpenCraftHostStateDatabase } from "./opencraft-host-state-database.js";
 import type { DatabaseOutcome } from "@opencraft/sqlite-node";
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
@@ -45,13 +45,13 @@ function fromRow(row: Record<string, unknown>): HostQueuedSubmission {
   };
 }
 
-export class CodexHostQueue {
+export class OpenCraftHostQueue {
   private readonly db: DatabaseSync;
-  private readonly owner: CodexHostStateDatabase | null;
+  private readonly owner: OpenCraftHostStateDatabase | null;
   readonly outcome: DatabaseOutcome | undefined;
 
   constructor(dataDirectory: string, database?: DatabaseSync) {
-    this.owner = database === undefined ? new CodexHostStateDatabase(dataDirectory) : null;
+    this.owner = database === undefined ? new OpenCraftHostStateDatabase(dataDirectory) : null;
     this.db = database ?? this.owner!.database;
     this.outcome = this.owner?.outcome;
     this.db.prepare("UPDATE codex_host_queue SET state='unknown', paused_reason='steer-delivery-unconfirmed', updated_at_ms=? WHERE state='dispatching'").run(Date.now());

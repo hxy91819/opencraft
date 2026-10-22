@@ -8,14 +8,14 @@ import { ExtensionManager, ExtensionSupervisor, MemoryExtensionInstallationPersi
 import { PlatformViewRendererRegistry } from "@opencraft/extension-react";
 import { createPlatformViewRendererContributionAdapter } from "../apps/workbench-web/src/runtime/platform-view-renderers";
 import { tokenUsageBuiltin } from "../apps/workbench-web/src/runtime/token-usage-builtin";
-import { CodexHostStateDatabase } from "../apps/opencraft-daemon/src/codex-host-state-database";
-import { CodexTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger";
+import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database";
+import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger";
 
 for (const platform of ["web", "electron"] as const) test(`F-14/NF-11: ${platform} view retires 20 times while Host meters`, async () => {
   const directory = await mkdtemp(join(tmpdir(), "oc-token-extension-"));
-  const state = new CodexHostStateDatabase(directory);
+  const state = new OpenCraftHostStateDatabase(directory);
   const at = Date.parse("2026-10-21T00:00:00Z");
-  const ledger = new CodexTokenUsageLedger(state, "server", () => at);
+  const ledger = new OpenCraftTokenUsageLedger(state, "server", () => at);
   const key = { threadId: "thread", turnId: "turn" };
   ledger.startTurn(key, at, "human", true);
   ledger.recordInput(key, { inputId: "start", actorId: "A", actorKind: "human", mode: "start", admission: "confirmed" });

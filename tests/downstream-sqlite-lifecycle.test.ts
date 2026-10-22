@@ -6,10 +6,10 @@ import { createHash } from "node:crypto";
 import { chmod, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CodexHostStateDatabase } from "../apps/opencraft-daemon/src/codex-host-state-database";
-import { CodexHostQueue } from "../apps/opencraft-daemon/src/codex-host-queue";
-import { CodexMessageSenders } from "../apps/opencraft-daemon/src/codex-message-senders";
-import { CodexMessageAttachments } from "../apps/opencraft-daemon/src/codex-message-attachments";
+import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database";
+import { OpenCraftHostQueue } from "../apps/opencraft-daemon/src/opencraft-host-queue";
+import { OpenCraftMessageSenders } from "../apps/opencraft-daemon/src/opencraft-message-senders";
+import { OpenCraftMessageAttachments } from "../apps/opencraft-daemon/src/opencraft-message-attachments";
 import { TasksSqliteStore } from "../plugins/tasks/src/sqlite";
 import { SshConnectionStore } from "../apps/opencraft-daemon/src/ssh-connection-store";
 import { openLocalAgentStorage } from "../apps/local-agent-host/src/storage/local-agent-storage";
@@ -31,18 +31,18 @@ for (const partial of [false, true]) test(`old shared Codex DB keeps queue, veri
     old.prepare("INSERT INTO ioa_participant_state VALUES(?,?)").run("t", 7);
     if (partial) old.exec("DROP INDEX ioa_presence_names");
     old.close();
-    let owner = new CodexHostStateDatabase(root);
+    let owner = new OpenCraftHostStateDatabase(root);
     assert.equal(owner.outcome.status, "migrated", "Bot v2 tables are additive; the old queue/sender/enterprise identity rows remain");
     assert.ok(owner.outcome.backupPath); assert.deepEqual(owner.outcome.movedAsidePaths, []);
-    const queue = new CodexHostQueue(root, owner.database);
+    const queue = new OpenCraftHostQueue(root, owner.database);
     assert.equal(queue.find("t", "q")?.state, "unknown", "existing recovery keeps uncertain delivery fenced");
     assert.equal(queue.find("t", "q")?.position, 4);
-    assert.deepEqual(new CodexMessageSenders(owner.database).get("t", "m"), { kind: "employee", loginName: "fixture" });
+    assert.deepEqual(new OpenCraftMessageSenders(owner.database).get("t", "m"), { kind: "employee", loginName: "fixture" });
     assert.equal(owner.database.prepare("SELECT revision FROM ioa_participant_state").get()?.revision, 7);
     assert.equal(owner.database.prepare("SELECT login_name FROM ioa_message_presence").get()?.login_name, "fixture");
     const backup = new DatabaseSync(owner.outcome.backupPath!, { readOnly: true });
     assert.equal(backup.prepare("SELECT state FROM codex_host_queue").get()?.state, "dispatching"); backup.close();
-    queue.close(); owner.close(); owner = new CodexHostStateDatabase(root);
+    queue.close(); owner.close(); owner = new OpenCraftHostStateDatabase(root);
     assert.equal(owner.outcome.status, "up-to-date");
     assert.equal(owner.database.prepare("SELECT revision FROM ioa_participant_state").get()?.revision, 7); owner.close();
   } finally { await rm(root, { recursive: true, force: true }); }
@@ -58,13 +58,13 @@ test("partial legacy shared DB failure rolls back and keeps source and pre-write
       if (sql.includes("CREATE TABLE IF NOT EXISTS codex_host_queue")) throw new Error("synthetic conversion failure");
       return exec.call(this, sql);
     });
-    assert.throws(() => new CodexHostStateDatabase(root), fault("io")); mock.mock.restore();
+    assert.throws(() => new OpenCraftHostStateDatabase(root), fault("io")); mock.mock.restore();
     const read = new DatabaseSync(path, { readOnly: true });
     assert.equal(read.prepare("SELECT client_message_id FROM message_senders").get()?.client_message_id, "m");
     assert.equal(read.prepare("SELECT name FROM sqlite_master WHERE name='schema_migrations'").get(), undefined); read.close();
     assert.ok((await readdir(root)).some(name => name.includes(".pre-v12-")));
     assert.ok(!(await readdir(root)).some(name => name.includes(".legacy-")));
-    const retry = new CodexHostStateDatabase(root); assert.equal(retry.outcome.status, "migrated"); retry.close();
+    const retry = new OpenCraftHostStateDatabase(root); assert.equal(retry.outcome.status, "migrated"); retry.close();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -73,13 +73,13 @@ test("attachment legacy index completion retains actual refs and rejects rewritt
   try {
     const old = new DatabaseSync(path); old.exec(legacyAttachmentsSql); old.exec("DROP INDEX codex_message_attachments_message");
     old.prepare("INSERT INTO codex_message_attachments VALUES(?,?,?,?,?)").run("t", "m", "a", 1, '{"id":"a","name":"retained"}'); old.close();
-    let store = new CodexMessageAttachments(root); assert.equal(store.outcome.status, "migrated");
+    let store = new OpenCraftMessageAttachments(root); assert.equal(store.outcome.status, "migrated");
     assert.equal(store.list("t", "m")[0].name, "retained"); store.close();
-    store = new CodexMessageAttachments(root); assert.equal(store.outcome.status, "up-to-date"); store.close();
+    store = new OpenCraftMessageAttachments(root); assert.equal(store.outcome.status, "up-to-date"); store.close();
     const tamper = new DatabaseSync(path); tamper.exec("UPDATE schema_migrations SET checksum='wrong'"); tamper.close();
-    assert.throws(() => new CodexMessageAttachments(root), fault("history-mismatch"));
+    assert.throws(() => new OpenCraftMessageAttachments(root), fault("history-mismatch"));
     const newer = new DatabaseSync(path); newer.exec("UPDATE schema_migrations SET version=99"); newer.close();
-    assert.throws(() => new CodexMessageAttachments(root), fault("newer-schema"));
+    assert.throws(() => new OpenCraftMessageAttachments(root), fault("newer-schema"));
     const read = new DatabaseSync(path); assert.equal(read.prepare("SELECT attachment_id FROM codex_message_attachments").get()?.attachment_id, "a"); read.close();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -123,10 +123,10 @@ test("SSH published v1 upgrades with a backup, keeps encrypted rows/key and CAS;
 test("ledgered shared state with missing domain objects fails without recreating them", async () => {
   const root = await mkdtemp(join(tmpdir(), "oc-downstream-domain-")), path = join(root, "codex-host-queue.sqlite");
   try {
-    const owner = new CodexHostStateDatabase(root);
-    new CodexMessageSenders(owner.database).record("t", "m", { kind: "employee", loginName: "retained" }); owner.close();
+    const owner = new OpenCraftHostStateDatabase(root);
+    new OpenCraftMessageSenders(owner.database).record("t", "m", { kind: "employee", loginName: "retained" }); owner.close();
     const edit = new DatabaseSync(path); edit.exec("DROP TABLE ioa_participant_state"); edit.close();
-    assert.throws(() => new CodexHostStateDatabase(root), fault("history-mismatch"));
+    assert.throws(() => new OpenCraftHostStateDatabase(root), fault("history-mismatch"));
     const read = new DatabaseSync(path); assert.equal(read.prepare("SELECT client_message_id FROM message_senders").get()?.client_message_id, "m");
     assert.equal(read.prepare("SELECT name FROM sqlite_master WHERE name='ioa_participant_state'").get(), undefined); read.close();
   } finally { await rm(root, { recursive: true, force: true }); }
@@ -137,7 +137,7 @@ for (const owner of ["state", "attachments", "tasks"]) test(`unknown unledgered 
   const path = join(root, owner === "state" ? "codex-host-queue.sqlite" : owner === "attachments" ? "codex-message-attachments.sqlite" : "tasks.sqlite");
   try {
     const old = new DatabaseSync(path); old.exec("CREATE TABLE foreign_data(value TEXT); INSERT INTO foreign_data VALUES('retained')"); old.close();
-    assert.throws(() => owner === "state" ? new CodexHostStateDatabase(root) : owner === "attachments" ? new CodexMessageAttachments(root) : new TasksSqliteStore(path), fault("unsupported-legacy"));
+    assert.throws(() => owner === "state" ? new OpenCraftHostStateDatabase(root) : owner === "attachments" ? new OpenCraftMessageAttachments(root) : new TasksSqliteStore(path), fault("unsupported-legacy"));
     const read = new DatabaseSync(path); assert.equal(read.prepare("SELECT value FROM foreign_data").get()?.value, "retained"); read.close();
     assert.ok(!(await readdir(root)).some(name => name.includes(".legacy-")));
   } finally { await rm(root, { recursive: true, force: true }); }
@@ -180,7 +180,7 @@ test("required Codex state failure prevents native process/open status; unused T
   const root=await mkdtemp(join(tmpdir(),"oc-downstream-codex-startup-"));
   let spawned=0;
   try {
-    const state=new CodexHostStateDatabase(root);new CodexMessageSenders(state.database).record("t","m",null);state.close();
+    const state=new OpenCraftHostStateDatabase(root);new OpenCraftMessageSenders(state.database).record("t","m",null);state.close();
     const bad=new DatabaseSync(join(root,"codex-host-queue.sqlite"));bad.exec("UPDATE schema_migrations SET version=99 WHERE version=2");bad.close();
     // Private Codex Tasks is unopened until a consumer actually uses the feature.
     const tasks=new DatabaseSync(join(root,"tasks.sqlite"));tasks.exec("CREATE TABLE unused_feature(value TEXT)");tasks.close();

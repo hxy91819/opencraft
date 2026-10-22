@@ -1,7 +1,7 @@
-import type { CodexTokenUsageLedger, UsageSource, UsageSourceKind, UsageTurnKey } from "./token-usage-ledger.js";
+import type { OpenCraftTokenUsageLedger, UsageSource, UsageSourceKind, UsageTurnKey } from "./token-usage-ledger.js";
 
-type Input = Parameters<CodexTokenUsageLedger["recordInput"]>[1];
-type Reconciliation = Parameters<CodexTokenUsageLedger["reconcile"]>[1];
+type Input = Parameters<OpenCraftTokenUsageLedger["recordInput"]>[1];
+type Reconciliation = Parameters<OpenCraftTokenUsageLedger["reconcile"]>[1];
 export type TokenUsageWork =
   | { readonly kind: "start"; readonly key: UsageTurnKey; readonly startedAt: number; readonly sourceKind: UsageSourceKind; readonly participantsComplete: boolean }
   | { readonly kind: "input"; readonly key: UsageTurnKey; readonly input: Input }
@@ -31,7 +31,7 @@ export class TokenUsageWorkQueue {
   private lastSuccessAt: number | null = null;
   private maxWriteMs = 0;
   private notifying = false;
-  constructor(private readonly ledger: CodexTokenUsageLedger, private readonly options: {
+  constructor(private readonly ledger: OpenCraftTokenUsageLedger, private readonly options: {
     readonly capacity?: number;
     readonly batchSize?: number;
     readonly missing: (reason: "queue-full" | "storage-write" | "shutdown") => void;
