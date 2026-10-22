@@ -22,12 +22,12 @@
 - 文档验证无错误/警告，16 个相关相对链接通过；显式源码路径与 `--staged` 变更影响检查通过（staged 为空）。根 context-audit 的 33 项测试通过，audit 仅为 discovery/not_assessed，不宣称完成治理评分。
 - 仓库级 context validation 未通过：旧 Task Pack 缺字段、治理历史引用等错误；根 context tests 26 项中 4 项失败。示例 `2026-09-04-fix-cn-home-cta.md`、`2026-09-16-appserver-transport-generation-reconnect.md`、`2026-09-17-opencraft-skills-scroll-ownership.md` 没有本轮 diff。保留问题，不扩大为全仓文档治理修复；正式文档 validator 仍通过。
 - 最终交接门禁：期限修复后完整 `npm run gate` 再次退出 0（平台边界、全部 workspace 类型和配置的测试集、Web/Expo Web/iOS bundle）。详细本地输出 `/tmp/opencraft-connector-final-gate.log`。没有新增发布、真实账号授权、Hermes/ref 修改或自动提交；已有 dirty 工作保留。
-- 第三阶段开始：落用户确认的 Octop 风格目录/引导、Skills Tab、Host 数据库凭据。已完成当前状态和 context 核对；原模型 credentials.json 不属于本轮迁移范围。
+- 第三阶段开始：落用户确认的服务目录/接入引导、Skills Tab、Host 数据库凭据。已完成当前状态和 context 核对；原模型 credentials.json 不属于本轮迁移范围。
 - 新增 connector-core（目录/contract）和 connector-host（SQLite/OAuth/MCP/API）；凭据不会出现在客户端配置 store。SDK 采用已核对本地声明的 @modelcontextprotocol/sdk 1.30.0。首次类型检查纠正 SDK schema 导出名，不靠猜测保留不存在接口。
 - 当前源码已接 Skills header 的连接器 Tab（复用既有 Header portal，无需修改官网/shared 生成副本），新增平台内容 slot；Composer 生产入口收敛为会话选择。Host 显示名类型纠正为 displayName。
 - 隔离数据库/CAS/多实例、API 格式探测与调用、真实 loopback OAuth 交换/刷新/取消/重开测试通过，连同前两阶段共 20 项。首次 OAuth fixture 的 DCR 响应缺 redirect_uris，被 SDK 严格校验拒绝；已修 fixture，不降低生产协议校验。
 - 当前接通 10 个远端 MCP 目录 adapter 与 6 个 HTTP API 映射；其余服务保留目录说明但不允许保存成可用连接。后续继续补适配与真实组件/桌面验收。平台边界检查通过。
-- API 增加 IMA/元典/WeKnora，当前 19 个服务有 adapter。CLI 参考实现会落地凭据文件，与用户数据库约束冲突，未照搬；邮箱/飞猪尚未接执行。22 项 Connector 聚焦测试已包含所有已声明 API 工具的请求映射检查。
+- API 增加 IMA/元典/WeKnora，当前 19 个服务有 adapter。CLI 接入尚需解决凭据只存 Host 数据库的约束；邮箱/飞猪尚未接执行。22 项 Connector 聚焦测试已包含所有已声明 API 工具的请求映射检查。
 - 浏览器 smoke 已通过实际保存、秘密字段清空、format-only 反馈。修正两处定位误差（IMA 搜索也匹配 IMAP；状态块包含工具子列表不能全文 exact）；继续定位会话写操作未显示审批的问题，未宣称最终验收通过。完整 gate 与原生桌面验收正在执行。
 - 会话 smoke 改为等待真实 checkbox 完成勾选再发现工具；之前“工具列表非空”的异步轮询没有可靠等待选择提交，导致过早触发。现已连续通过浏览器全链路，最后证据 `/tmp/oc-connector-library-LOw9vK/report.json`：配置写入真实 Host SQLite、密钥不回显、检测不执行真实查询、勾选后写审批拒绝/一次允许、刷新不自动授权、删除后凭据清理。
 - 当前源码 Electron 的 Main/Preload/Host/Skills Tab 实际验收通过（`/tmp/oc-connector-desktop-Qtml42/report.json`）。截图复核发现共享无图标 ListItem 保留图标列及表单 grid 压缩字段，已在共享 primitive 和弹窗本征高度处理，窄屏正文宽度增加断言并通过；修后截图在 `/tmp/oc-connector-library-8FoBK3/`。
@@ -38,7 +38,7 @@
 - 收尾结论：23 项目录、19 项已实现 adapter，经隔离协议/组件验收但没有真实第三方账号验收；个人邮箱/飞猪/两项 CLI 仍仅说明。新凭据只在 Host 数据库，旧借用原生 MCP 由其原 owner 保持原存储。
 - 第四阶段：基线 24 项测试与旧浏览器 smoke 通过后，替换目录为限宽品牌卡片/独立已配置视图，删除旧列表 CSS 和重复通用引导。提取唯一原生 MCP 发现组件，移除 Composer 中仅测试使用的管理分支，原生授权 smoke 已迁移到实际共用入口并通过。
 - 详情新增共享 Modal inspector variant，Native 使用 sheet 投影；业务不持有位置/遮罩/键盘。正文滚动、固定操作区、可展开工具结果、品牌资源和语义排版均已接入。新浏览器 smoke 已通过多列、Enter 打开、关闭焦点返回和查询保留、写审批/重启/删除；窄屏全屏详情继续补验。
-- 本轮只新增 23 个静态品牌资源；未导入 Octop runtime/CSS。apply_patch 两次格式错误没有写入半成品；修正为分别删除/新增后正常替换，未保留临时备份或旧组件。
+- 本轮曾新增 23 个静态品牌资源，后续已移除，当前使用已许可的分类图标。apply_patch 两次格式错误没有写入半成品；修正为分别删除/新增后正常替换，未保留临时备份或旧组件。
 - 第四阶段验证：26 项 Connector 测试通过；新增守卫确认目录不再依赖 SettingsListItem、没有 Composer 备用发现分支或旧 CSS selector、23 项品牌资源齐全。原生 OAuth `smoke:connector-controls` 通过，共用生产 NativeServices 入口，不再用特供测试 UI。
 - Web 新 UI 实测 `/tmp/oc-connector-library-4vpJZ8/`：4 列品牌目录、Enter 打开、Escape/关闭焦点返回、查询保留、窄屏全屏详情与固定操作区、浅深主题、数据库不回显、拒绝/逐次写审批/删除均通过。实际 Electron 源码预览 `/tmp/oc-connector-desktop-nka0Fe/` 完成 Skills Tab、保存/检测和重启验证；截图已人工查看。
 - 文档 validator、显式变更影响及 git diff --check 通过。完整门禁日志：`/tmp/opencraft-connector-ui-cleanup-gate.log`。保持既有引擎/数据库机制和未接通服务边界，未提交或推送。

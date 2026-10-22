@@ -1,11 +1,14 @@
 # Hermes connector prototype
 
+Historical downstream integration contract. The plugin and connector runtime are
+owned outside the public core; this page does not describe the platform Connector Library.
+
 ## Ownership
 
 - Workbench owns only generic settings/view contributions. No connector branch was added to core.
-- `plugins/lightvela-hermes/src/connectors` owns UI, cloud-service client and installation action.
+- The downstream Hermes connector plugin owns UI, cloud-service client and installation action.
 - A view is bound to a physical Bot ID; switching Bot or logging out disposes its requests.
-- `/data/overmind` owns catalog, instance state, credentials, service clients and skills.
+- The downstream connector runtime owns catalog, instance state, credentials, service clients and skills.
 - Hermes uses a stdio MCP bridge to the VM's loopback daemon. Neither COS credentials nor
   the daemon Bearer are stored in Hermes model config or browser persistence.
 
@@ -17,8 +20,8 @@ supply required tokens, add/connect or disable. The installer URL/checksum live 
 advanced section, not the primary page.
 The installer is an explicit user action, never an effect of opening settings.
 
-`scripts/export-hermes-connector-catalog.mjs` exports public browsing metadata from Overmind's
-marketplace; icons are copied from the same snapshot. This build-time projection contains no
+`scripts/export-hermes-connector-catalog.mjs` exports public browsing metadata from an explicit
+marketplace directory; icons are copied from the same snapshot. This build-time projection contains no
 credentials or live authorization state. Installed instances and status always come from the VM.
 The 173-entry upstream snapshot is filtered by the plugin's managed-account dependency
 policy before browsing/search/counts: 10 managed packages are hidden, including
@@ -37,11 +40,10 @@ marketplace snapshot; managed-account authentication is outside this prototype.
 
 ## Delivery
 
-Beijing bucket: `lightvela-overmind-test-1388575217`, private bucket with public-read test artifact.
-Exact content-addressed URL/checksum: `src/connectors/test-release.ts` in the Hermes plugin.
-Release sources: `/data/overmind/scripts/install-hermes.sh`, `configure-hermes.py`,
-`hermes-connector-skill.md`. `installer-script.ts` is generated from the installer.
-Archive includes only binary, marketplace and integration scripts, never runtime state/keys.
+The downstream product owns deployment artifacts, installer sources and the pinned
+content-addressed installer URL/checksum in its Hermes plugin. The installer projection
+is generated there. Archives include only the binary, marketplace and integration scripts,
+never runtime state or keys. Public core does not supply that deployment.
 
 ## Deliberate limits
 
