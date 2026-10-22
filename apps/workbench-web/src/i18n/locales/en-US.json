@@ -683,6 +683,7 @@
   "common.operation.pending": "Applying change…",
   "settings.tokenUsage": "Token usage",
   "conversation.reference.copy": "Copy conversation reference",
+  "conversation.reference.copying": "Preparing conversation reference…",
   "conversation.reference.label": "Conversation",
   "conversation.reference.unavailable": "Could not confirm the operation. Keep your message and review the delivery before retrying.",
   "conversation.reference.open": "Open conversation",

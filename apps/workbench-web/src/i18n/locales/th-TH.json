@@ -684,6 +684,7 @@
   "chat.delete.done": "ลบการสนทนาแล้ว",
   "common.operation.pending": "กำลังใช้การเปลี่ยนแปลง…",
   "conversation.reference.copy": "คัดลอกการอ้างอิงการสนทนา",
+  "conversation.reference.copying": "กำลังเตรียมข้อมูลอ้างอิงการสนทนา…",
   "conversation.reference.label": "การสนทนา",
   "conversation.reference.unavailable": "ยังยืนยันผลไม่ได้ โปรดเก็บข้อความไว้และตรวจสอบการส่งก่อนลองอีกครั้ง",
   "conversation.reference.open": "เปิดการสนทนา",

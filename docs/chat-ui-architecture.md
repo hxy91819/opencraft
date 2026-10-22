@@ -3331,3 +3331,13 @@ through the shared coarse-pointer/no-hover/current-touch policy. Desktop pointer
 clocks remain hidden at rest and reveal on existing message hover/focus. Keep
 time metadata, slot geometry, history cache and action-button availability;
 elapsed work duration is separate.
+
+
+### Conversation reference copy feedback
+
+The shared ThreadActionOwner treats reference copying as one asynchronous row
+action. Its keyed Workbench notice remains pending while the reference RPC and
+clipboard write complete, then reports success only after the write resolves.
+A failure uses the same error owner, and a late completion after unmount removes
+the pending notice without reviving feedback. Menu closure does not cancel the
+operation; the existing per-thread busy guard prevents duplicate submissions.
