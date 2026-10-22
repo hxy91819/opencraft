@@ -2644,3 +2644,8 @@ scroll/frame loop. Unsupported lens engines retain tint, softened transmission
 and curved highlights. Icons, focus rings and portalled menus are unfiltered.
 
 - Navigation glass optics consume the live compositor backdrop: rounded-surface refraction, center scattering and local detail adaptation update with content frames. The geometry texture contains only normals/offsets, never conversation content. No per-frame DOM capture, scroll controller, random wobble or business-state ownership is added. URL-filter limitations retain a blur fallback; no Safari optical parity is assumed.
+User and assistant message footer clocks are visible at rest for touch input
+through the shared coarse-pointer/no-hover/current-touch policy. Desktop pointer
+clocks remain hidden at rest and reveal on existing message hover/focus. Keep
+time metadata, slot geometry, history cache and action-button availability;
+elapsed work duration is separate.

@@ -6495,13 +6495,24 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 }
 
 
-// Message clocks stay quiet by default, including touch. Keep their geometry
-// and authoritative datetime; the existing message hover/focus owns disclosure.
+// A clock cannot be visible through an otherwise transparent action lane.
+.thread-user-message__actions:has(time),
+.thread-message-actions:has(time) {
+  @include controls.touch-input { opacity: 1; }
+}
+
+// Touch clocks are readable before interaction. Desktop hover/focus still owns
+// disclosure; both keep the same time metadata and slot geometry.
 .thread-user-message__actions time,
 .thread-message-actions time {
   opacity: 0;
   transition: opacity 100ms ease;
   pointer-events: none;
+
+  @include controls.touch-input {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 .thread-user-message:focus-within .thread-user-message__actions time,
 .thread-frame--assistant:focus-within > .thread-message-actions time {

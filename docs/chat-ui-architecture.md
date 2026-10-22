@@ -3291,3 +3291,10 @@ projecting the current history owner's loading state without changing geometry.
 The indicator never overlays message text or controls and respects reduced motion.
 Short conversations, restored reading anchors and both scroll policies share this
 surface; loading feedback does not introduce a second scroll controller.
+## Message footer time disclosure
+
+User and assistant message footer clocks are visible at rest for touch input
+through the shared coarse-pointer/no-hover/current-touch policy. Desktop pointer
+clocks remain hidden at rest and reveal on existing message hover/focus. Keep
+time metadata, slot geometry, history cache and action-button availability;
+elapsed work duration is separate.
