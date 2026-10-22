@@ -2024,3 +2024,13 @@ previously measured size remains authoritative. Metadata and contribution rows
 retain natural layout. Focused rows and rows with open menus retain ordinary
 rendering so focus rings and overlays remain reachable. Native scrolling,
 keyboard reveal, destination selection and drafts keep their existing owners.
+
+## Conversation top spacing
+
+The Web conversation surface owns its block-start inset inside the reversed scroll
+viewport. The normal reading gap is twelve spacing units; edge-scroll hosts add
+their toolbar clearance. Older-history loading uses the same reserved gap,
+projecting the current history owner's loading state without changing geometry.
+The indicator never overlays message text or controls and respects reduced motion.
+Short conversations, restored reading anchors and both scroll policies share this
+surface; loading feedback does not introduce a second scroll controller.

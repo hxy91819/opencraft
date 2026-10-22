@@ -2504,3 +2504,13 @@ Task-list paragraph detection still owns grid activation and checkbox spacing.
 Non-checkbox children keep column two independently of that detection, because
 grid placement is inert outside a grid. No DOM, event, layout owner or preview
 lifetime change is needed.
+
+## History loading space
+
+The Web conversation surface owns its block-start inset inside the reversed scroll
+viewport. The normal reading gap is twelve spacing units; edge-scroll hosts add
+their toolbar clearance. Older-history loading uses the same reserved gap,
+projecting the current history owner's loading state without changing geometry.
+The indicator never overlays message text or controls and respects reduced motion.
+Short conversations, restored reading anchors and both scroll policies share this
+surface; loading feedback does not introduce a second scroll controller.

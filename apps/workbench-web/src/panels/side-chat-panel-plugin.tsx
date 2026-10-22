@@ -26,6 +26,7 @@ export function SideChatContent({ session, service, runtime }: { session: SideCh
         await session.lease.respond(createInteractionResponse(pending, action));
       }}
       onLoadOlder={snapshot.history.hasOlder ? () => session.lease.loadOlder() : undefined}
+      loadingOlder={snapshot.history.loading}
       footer={<div className="thread-composer-region">
         {error ? <p role="alert">{error}</p> : null}
         <OpenCraftComposer modelDisplayOnly controller={session.composer} defaultFollowUpAction="steer" isStreaming={snapshot.activeTurn !== null} submissionDisabled={!snapshot.authoritative}

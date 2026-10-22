@@ -36,6 +36,8 @@ WebConversationViewportOwner.prototype.setLatestTurnMeasurementListener = functi
 };
 function Demo() {
   const [mounted, setMounted] = useState(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  probe.setHistoryLoading = setLoadingOlder;
   const [state, setState] = useState({ revision: 0, heights: [600, 600, 600, 600, 600, 200], active: !submissionMode && !historyMode, phase: "final_answer", lifetime: 0 });
   const [authorityIndices, setAuthorityIndices] = useState<readonly number[]>([]);
   const turnId = (index: number) => authorityIndices.includes(index) ? `authority-${index}` : `turn-${index}`;
@@ -87,6 +89,7 @@ function Demo() {
       {mounted && <Conversation key={state.lifetime} timeline={timeline} scrollPolicy={naturalMode ? "natural" : "response-placement"}
         onTerminalResultVisible={resultVisible}
         onLoadOlder={historyMode ? loadHistory : undefined}
+        loadingOlder={loadingOlder}
         initialRestoreSnapshot={probe.initialRestoreSnapshot ?? null}
         consumePendingLatestTurnSubmitPlacement={() => { probe.placementReads++; const value = probe.pendingPlacement; probe.pendingPlacement = null; return value; }}
         onRestoreSnapshotChange={(snapshot) => { probe.restoreSnapshot = snapshot; }}

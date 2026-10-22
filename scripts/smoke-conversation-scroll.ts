@@ -72,6 +72,7 @@ try {
   await page.waitForFunction(() => (window as any).api && document.querySelector('[data-probe="text-5"]'));
   const settle = () => page.evaluate(async () => { for (let i = 0; i < 40; i++) await new Promise(requestAnimationFrame); });
   await settle();
+  if (process.env.OPENCRAFT_SCROLL_CHECK_TOP_SPACE_ONLY !== "1") {
   const events = await page.evaluate(() => (window as any).events);
   assert.equal(events.find((event: any) => event.kind === "turn-height" && event.turnKey === "turn-5")?.heightDeltaPx, 0);
   assert.ok(events.some((event: any) => event.kind === "follow-content"));
@@ -359,8 +360,48 @@ try {
     assert.equal(await page.evaluate(() => (window as any).historyLoads), 1, "a render alone cannot request another page");
     assert.deepEqual(await page.evaluate(() => (window as any).resizeWarnings), []);
   }
+  }
+  for (const width of [390, 1280]) for (const natural of [false, true]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(`http://127.0.0.1:${(vite.httpServer!.address() as { port: number }).port}/?submissions${natural ? "&natural" : ""}`);
+    await page.waitForFunction(() => (window as any).setHistoryLoading && (window as any).api);
+    // Keep the real scroll owner and virtualizer, use a short timeline to expose
+    // the content boundary, then verify that feedback never changes geometry.
+    await page.evaluate(() => {
+      (window as any).shrinkHistory();
+      (document.querySelector("#root > div") as HTMLElement).style.width = "100%";
+    });
+    await settle();
+    for (const edge of [false, true]) {
+      await page.evaluate((edge: boolean) => {
+        const root = document.querySelector("#root > div") as HTMLElement;
+        root.style.setProperty("--thread-content-top-inset", edge ? "104px" : "48px");
+      }, edge);
+      await settle();
+      const measure = () => page.evaluate(() => {
+        const scroll = document.querySelector(".thread-scroll")!.getBoundingClientRect();
+        const slot = document.querySelector(".thread-history-status")!.getBoundingClientRect();
+        const first = document.querySelector("[data-virtualized-turn-key]")!.getBoundingClientRect();
+        const icon = document.querySelector(".thread-history-status svg")?.getBoundingClientRect();
+        return { top: first.top, gap: first.top - scroll.top, slotTop: slot.top, slotBottom: slot.bottom,
+          icon: icon ? { top: icon.top, bottom: icon.bottom, height: icon.height } : null };
+      });
+      const before = await measure();
+      assert.ok(Math.abs(before.gap - (edge ? 104 : 48)) < 2, `content inset must survive reversed scrolling: ${JSON.stringify(before)}`);
+      await page.evaluate(() => (window as any).setHistoryLoading(true));
+      await settle();
+      const loading = await measure();
+      assert.equal(loading.top, before.top, "history feedback must not shift the first row");
+      assert.ok(loading.icon && loading.icon.height === 20 && loading.icon.top >= loading.slotTop && loading.icon.bottom <= loading.slotBottom && loading.icon.bottom < loading.top,
+        "history spinner must fit completely in the reserved gap above the message");
+      await page.evaluate(() => (window as any).setHistoryLoading(false));
+      await settle();
+      assert.equal((await measure()).top, before.top, "settled history feedback must keep row geometry");
+    }
+  }
+  console.log("Top inset and history feedback passed at narrow/wide widths, with toolbar clearance, in both scroll policies.");
   assert.deepEqual(errors, []);
-  console.log("History fill passed in both policies: content shrink loads once, rerender does not reload, zero ResizeObserver warnings.");
+  if (process.env.OPENCRAFT_SCROLL_CHECK_TOP_SPACE_ONLY !== "1") console.log("History fill passed in both policies: content shrink loads once, rerender does not reload, zero ResizeObserver warnings.");
 } finally {
   await browser?.close();
   await vite.close();
