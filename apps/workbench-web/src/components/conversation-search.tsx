@@ -21,18 +21,19 @@ function SearchSnippet({ text, term }: { text: string; term: string }) {
   </>}</span>;
 }
 
-const ConversationSearchResult = memo(function ConversationSearchResult({ thread, index, listId, selected, selecting, select, onActivate }: {
+const ConversationSearchResult = memo(function ConversationSearchResult({ thread, index, listId, selected, selecting, select, onActivate, selectableIndex }: {
   thread: ConversationSearchRow;
   index: number;
   listId: string;
   selected: boolean;
   selecting: boolean;
   select(thread: ConversationSearchRow): Promise<void>;
-  onActivate(thread: ConversationSearchRow): void;
+  onActivate(index: number): void;
+  selectableIndex: number;
 }) {
   return <button type="button" role="option" tabIndex={-1} id={`${listId}-${index}`}
     aria-selected={selected} disabled={thread.interactionAvailable === false}
-    onMouseMove={() => onActivate(thread)} onClick={() => { if (!selecting) void select(thread); }}>
+    onMouseMove={() => { if (selectableIndex >= 0) onActivate(selectableIndex); }} onClick={() => { if (!selecting) void select(thread); }}>
     <span className="conversation-search__result-icon" aria-hidden="true"><MessageSquare size={20} /></span>
     <span className="conversation-search__text"><span className="conversation-search__title">{thread.title}</span>
       {thread.snippet ? <SearchSnippet text={thread.snippet} term={thread.searchTerm ?? ""} /> : null}</span>
@@ -92,16 +93,16 @@ function ConversationSearchDialog({ threads, loading, sources, onClose, onSelect
     content.rows.flatMap(row => row.matches)), [threads, normalized, intl.locale, content.rows]);
   const busy = loading || content.pending;
   const selectable = useMemo(() => results.filter(thread => thread.interactionAvailable !== false), [results]);
+  const selectableIndexes = useMemo(() => {
+    let next = 0;
+    return results.map(thread => thread.interactionAvailable === false ? -1 : next++);
+  }, [results]);
   const selected = selectable[Math.min(active, Math.max(0, selectable.length - 1))];
   const selectedIndex = selected ? results.indexOf(selected) : -1;
   useEffect(() => {
     list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
   }, [selected?.connectionHostId, selected?.id]);
   useEffect(() => () => selection.current?.abort(), [query, sources]);
-  const activate = useCallback((thread: ConversationSearchRow) => {
-    const next = selectable.indexOf(thread);
-    if (next >= 0) setActive(next);
-  }, [selectable]);
   const select = useCallback(async (thread: ConversationSearchRow) => {
     selection.current?.abort();
     const abort = new AbortController(); selection.current = abort;
@@ -152,7 +153,7 @@ function ConversationSearchDialog({ threads, loading, sources, onClose, onSelect
     <div className="conversation-search__results" ref={list} role="listbox" id={listId} aria-label={label} aria-busy={busy || selecting}>
       {results.map((thread, index) => <ConversationSearchResult key={JSON.stringify([thread.connectionHostId, thread.id])}
         thread={thread} index={index} listId={listId} selected={index === selectedIndex}
-        selecting={selecting} select={select} onActivate={activate} />)}
+        selecting={selecting} select={select} onActivate={setActive} selectableIndex={selectableIndexes[index]} />)}
     </div>
     {normalized && content.rows.length ? <div className="conversation-search__sources">
       {content.rows.map(row => <div key={row.source.key}>
