@@ -1,3 +1,4 @@
+import { LoaderCircle as LoadingRingIcon } from "lucide-react";
 import { ForkTurnButton } from "./conversation/fork-turn-button";
 import { MessageTimestamp } from "./conversation/message-timestamp";
 import { PatchActivityIcon } from "./activity-glyphs";
@@ -649,6 +650,7 @@ export interface ConversationProps {
   readonly initialRestoreSnapshot?: ConversationRestoreSnapshot | null;
   readonly onRestoreSnapshotChange?: (snapshot: ConversationRestoreSnapshot) => void;
   readonly onLoadOlder?: () => void | "stop" | Promise<void | "stop">;
+  readonly loadingOlder?: boolean;
   readonly onContinueTurn?: (turnId: TurnId) => void;
   readonly continuableTurnId?: TurnId | null;
   /** Opens a child/background-agent thread when the host exposes it. */
@@ -723,6 +725,7 @@ export function Conversation({
   initialRestoreSnapshot = null,
   onRestoreSnapshotChange,
   onLoadOlder,
+  loadingOlder = false,
   onOpenSubagent,
   onContinueTurn,
   continuableTurnId = null,
@@ -740,6 +743,7 @@ export function Conversation({
   surfaceCapabilities = DEFAULT_TIMELINE_SURFACE_CAPABILITIES,
   threadDetailLevel = "STEPS_COMMANDS",
 }: ConversationProps) {
+  const intl = useIntl();
   const allowEntryMotion = useConversationEntryMotion(timeline);
   const entries = useMemo(() => timeline === null ? [] : groupTimelineFramesByTurn(timeline), [timeline]);
   const latestTurn = entries.length === 0 ? null : entries[entries.length - 1] ?? null;
@@ -1033,6 +1037,9 @@ export function Conversation({
                         "--thread-wide-block-inline-shift": `${Math.abs(surfaceCapabilities.wideContentOffsetPx)}px`,
                       } as CSSProperties}
                     >
+                      <div className="thread-history-status" role="status" aria-label={loadingOlder ? intl.formatMessage({ id: "chat.restore.loading", defaultMessage: "Loading conversation history…" }) : undefined}>
+                        {loadingOlder ? <LoadingRingIcon aria-hidden="true" className="is-spinning" size={20} /> : null}
+                      </div>
                       <div
                         className="thread-content thread-layout-width"
                         data-mcp-app-portal-target={surfaceCapabilities.embeddedPortalTarget || undefined}

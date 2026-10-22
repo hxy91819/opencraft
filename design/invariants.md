@@ -2619,3 +2619,12 @@ local part visible (all available characters for shorter names). Keep its first
 character only when more than three characters exist; mask the middle and retain
 the existing private-domain masking. Presentation never changes Host identity or
 credentials. The existing Codex reset-credit smoke covers these consumers.
+## Conversation top spacing
+
+The Web conversation surface owns its block-start inset inside the reversed scroll
+viewport. The normal reading gap is twelve spacing units; edge-scroll hosts add
+their toolbar clearance. Older-history loading uses the same reserved gap,
+projecting the current history owner's loading state without changing geometry.
+The indicator never overlays message text or controls and respects reduced motion.
+Short conversations, restored reading anchors and both scroll policies share this
+surface; loading feedback does not introduce a second scroll controller.

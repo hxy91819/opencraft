@@ -3284,3 +3284,12 @@ the Workbench notification owner with a stable footer hint, rather than adding a
 layout-changing diagnostic block.
 
 Question card presentation and its stylesheet are loaded together when a timeline contains a question. The pending fallback keeps the original question readable; theme and draft state stay with their existing owners, and the card is not part of the required startup CSS graph.
+## History loading space
+
+The Web conversation surface owns its block-start inset inside the reversed scroll
+viewport. The normal reading gap is twelve spacing units; edge-scroll hosts add
+their toolbar clearance. Older-history loading uses the same reserved gap,
+projecting the current history owner's loading state without changing geometry.
+The indicator never overlays message text or controls and respects reduced motion.
+Short conversations, restored reading anchors and both scroll policies share this
+surface; loading feedback does not introduce a second scroll controller.
