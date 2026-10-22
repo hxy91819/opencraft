@@ -209,6 +209,16 @@ function Demo() {
           agent("new", "Typography", "sendInput", "Inspect current typography"),
           agent("other", "Icons", "spawnAgent", "Inspect icons")] }); return;
     }
+    if (action === "subagent-grow") {
+      setTurn(current => ({ ...current, items: [...current.items, {
+        id: "density-operation-new", type: "collabAgentToolCall", payload: {
+          tool: "spawnAgent", status: "completed", receiverThreadIds: ["density-agent-new"],
+          prompt: "Inspect Juniper", agentsStates: { "density-agent-new": {
+            status: "completed", displayName: "Juniper", message: "Juniper finished",
+          } },
+        },
+      }] })); return;
+    }
     if (action === "subagent-many" || action === "subagent-many-single") {
       restore = null; setGeneration(value => value + 1);
       const names = ["Aster", "Birch", "Cedar", "Dahlia", "Elm", "Fir", "Ginkgo", "Hazel"];
@@ -320,12 +330,11 @@ function Demo() {
   return <div data-revision={revision} style={{ width: "100vw", height: "100dvh" }}>
     <WorkbenchPresentationActivityProvider active={presentationActive}>
     <TimelineBlockRendererProvider registry={ctx.timelineBlockRenderers}>
-      {mounted ? <Conversation key={generation} timeline={timeline} scrollPolicy="natural" onOpenSubagent={(threadId, displayName) => probe.openedSubagents.push({ threadId, displayName })} initialRestoreSnapshot={restore}
+      {mounted ? <Conversation key={generation} timeline={timeline} scrollPolicy="natural" initialRestoreSnapshot={restore}
         documentContext={{ composerChangeSummaryTurnId: turnEntry ? turn.id : undefined, theme, conversationId: "thread", hostId: engine, cwd: "/work",
           onOpenResource: (target, decision) => probe.openedReasoningResources.push({ target, kind: decision.kind }) }}
         onOpenSubagent={(threadId, displayName) => probe.openedSubagents.push({ threadId, displayName })}
         onRestoreSnapshotChange={value => { restore = value; }}
-        onOpenSubagent={(threadId, displayName) => probe.openedSubagents.push({ threadId, displayName })}
         footer={<>{turnEntry ? <ComposerTurnChangeSummary timeline={timeline} turnId={turn.id}
           documentContext={{ theme, conversationId: "thread", hostId: engine, cwd: "/work", onReviewTurnDiff: () => { probe.reviewedLiveChanges = true; } }} /> : null}<div style={{ height: 48 }}>Composer fixture</div></>} /> : null}
     </TimelineBlockRendererProvider>

@@ -100,6 +100,28 @@ try {
       await activate(disclosure);
       assert.equal(await agents.locator('.thread-subagent-details__inner').innerText(), content,
         'folding retains the same assigned instructions');
+      const visibleChipCount = await agents.locator('.thread-subagent-chip').count();
+      await update("restore");
+      assert.equal(await disclosure.getAttribute('aria-expanded'), 'true', 'View return retains explicit subagent detail expansion');
+      assert.equal(await agents.locator('.thread-subagent-chip').count(), visibleChipCount,
+        'View return retains the expanded member list independently');
+      assert.equal(await agents.locator('.thread-subagent-details__inner').innerText(), content);
+      await activate(disclosure);
+      await update("restore");
+      assert.equal(await disclosure.getAttribute('aria-expanded'), 'false', 'View return retains explicit detail collapse');
+      assert.equal(await agents.locator('.thread-subagent-chip').count(), visibleChipCount);
+      await activate(disclosure);
+      if (scene === "subagent-many" || scene === "subagent-many-single") {
+        await update("subagent-grow");
+        assert.equal(await disclosure.getAttribute('aria-expanded'), 'true');
+        assert.equal(await agents.locator('.thread-subagent-chip').count(), 9,
+          'new group members preserve the existing full-list choice');
+        await update("restore");
+        assert.equal(await disclosure.getAttribute('aria-expanded'), 'true',
+          'single-operation to grouped presentation keeps the render unit owner');
+        assert.equal(await agents.locator('.thread-subagent-chip').count(), 9);
+        assert.match(await agents.locator('.thread-subagent-details__inner').innerText(), /Inspect Juniper/);
+      }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.screenshot({ path: join(output, `${theme}-${touch ? 'touch' : 'mouse'}-${scene}.png`) });
       subagentDetails.push({ scene, theme, touch, content });
