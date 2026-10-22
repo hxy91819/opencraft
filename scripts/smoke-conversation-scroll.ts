@@ -384,7 +384,7 @@ try {
         const first = document.querySelector("[data-virtualized-turn-key]")!.getBoundingClientRect();
         const icon = document.querySelector(".thread-history-status svg")?.getBoundingClientRect();
         return { top: first.top, gap: first.top - scroll.top, slotTop: slot.top, slotBottom: slot.bottom,
-          icon: icon ? { top: icon.top, bottom: icon.bottom, height: icon.height } : null };
+          icon: icon ? { top: icon.top, bottom: icon.bottom, height: icon.height, cssHeight: getComputedStyle(document.querySelector(".thread-history-status svg")!).height } : null };
       });
       const before = await measure();
       assert.ok(Math.abs(before.gap - (edge ? 104 : 48)) < 2, `content inset must survive reversed scrolling: ${JSON.stringify(before)}`);
@@ -392,8 +392,8 @@ try {
       await settle();
       const loading = await measure();
       assert.equal(loading.top, before.top, "history feedback must not shift the first row");
-      assert.ok(loading.icon && loading.icon.height === 20 && loading.icon.top >= loading.slotTop && loading.icon.bottom <= loading.slotBottom && loading.icon.bottom < loading.top,
-        "history spinner must fit completely in the reserved gap above the message");
+      assert.ok(loading.icon && loading.icon.cssHeight === "20px" && loading.icon.top >= loading.slotTop && loading.icon.bottom <= loading.slotBottom && loading.icon.bottom < loading.top,
+        `history spinner must fit completely in the reserved gap above the message: ${JSON.stringify(loading)}`);
       await page.evaluate(() => (window as any).setHistoryLoading(false));
       await settle();
       assert.equal((await measure()).top, before.top, "settled history feedback must keep row geometry");
