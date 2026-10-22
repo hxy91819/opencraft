@@ -1,6 +1,6 @@
 import { nodeObserver } from "../../../packages/observability-contract/node.mjs";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
 import { PiDurableSession, createPiModels, type PiSnapshot, type PiForkContext } from "./session.js";
@@ -20,7 +20,7 @@ interface Session {
   format: "pi-durable-1"; id: string; cwd: string; model: string; name: string | null; preview: string;
   createdAt: number; updatedAt: number; archived: boolean; projectId?: string | null; pendingRecovery?: boolean; tools: Value[];
   threadSource?: Value | null; sessionStartSource?: Value | string | null;
-  ephemeral?: boolean; forkedFromId?: string; inherited?: PiForkContext;
+  ephemeral?: boolean; forkedFromId?: string; inherited?: PiForkContext; pinned?: boolean; pinnedAt?: number;
   native?: PiDurableSession; starting?: Promise<PiDurableSession>; owner?: EngineClient; lease?: AbortController;
   active?: Value; turns?: Value[]; snapshot?: PiSnapshot; effort?: string; failed?: boolean;
 }
@@ -49,7 +49,7 @@ export class PiEngine {
   readonly threadPrefix = "pi_";
   readonly modelPrefix = "pi:";
   readonly extensions = Object.freeze({
-    "opencraft/thread-lifecycle": { version: 1, fork: false, ephemeralFork: true, ephemeral: true, injectItems: true, rename: true, archive: true, unsubscribe: true, pin: false },
+    "opencraft/thread-lifecycle": { version: 1, fork: false, ephemeralFork: true, ephemeral: true, injectItems: true, rename: true, archive: true, unsubscribe: true, pin: true },
     "opencraft/host-capabilities": { version: 1 },
     "opencraft/scoped-model-catalog": { version: 1 },
     "opencraft/resume-history": { version: 1, mode: "legacy" },
@@ -60,6 +60,7 @@ export class PiEngine {
   private loading?: Promise<void>;
   private closed = false;
   private readonly writes = new Map<string, Promise<void>>();
+  private latestPinAt = 0;
   private readonly operations = new Map<string, Promise<unknown>>();
   private readonly modelsRuntime: ReturnType<typeof createPiModels>;
   private resolvedModels?: Awaited<ReturnType<typeof createPiModels>>;
@@ -96,13 +97,22 @@ export class PiEngine {
       catch { this.fail(session, "Pi session recovery failed"); }
     }
   }
-  private save(session: Session): Promise<void> {
+  private save(session: Session, pinState?: Pick<Session, "pinned" | "pinnedAt">): Promise<void> {
     if (session.ephemeral) return Promise.resolve();
     const { native: _native, starting: _starting, owner: _owner, lease: _lease, active: _active, turns: _turns,
       snapshot: _snapshot, effort: _effort, failed: _failed, ...record } = session;
     const file = join(this.options.directory, `${session.id}.json`), temporary = `${file}.${randomUUID()}.tmp`;
     const operation = (this.writes.get(session.id) ?? Promise.resolve()).catch(() => {}).then(async () => {
-      await writeFile(temporary, JSON.stringify(record), { mode: 0o600 }); await rename(temporary, file);
+      // Native snapshots can queue metadata while a pin write is pending. Read
+      // the committed pin fields when this write runs, not when it is queued.
+      const next = { ...record, ...(pinState ?? { pinned: session.pinned, pinnedAt: session.pinnedAt }) };
+      try {
+        await writeFile(temporary, JSON.stringify(next), { mode: 0o600 }); await rename(temporary, file);
+      } catch (error) {
+        await rm(temporary, { force: true }).catch(() => {});
+        throw error;
+      }
+      if (pinState) { session.pinned = pinState.pinned; session.pinnedAt = pinState.pinnedAt; }
     });
     this.writes.set(session.id, operation);
     void operation.finally(() => { if (this.writes.get(session.id) === operation) this.writes.delete(session.id); }).catch(() => {});
@@ -270,6 +280,28 @@ export class PiEngine {
     }
     return { native, model };
   }
+  private pinCatalog(): Value {
+    return { supported: true, data: [...this.sessions.values()]
+      .filter(session => session.pinned === true && !session.ephemeral && !session.archived)
+      .sort((left, right) => (left.pinnedAt ?? 0) - (right.pinnedAt ?? 0) || left.id.localeCompare(right.id))
+      .map(session => this.thread(session)) };
+  }
+  private async setPinned(params: Value): Promise<Value> {
+    if (typeof params.threadId !== "string" || params.threadId.length === 0) throw new Error("Invalid thread pin target");
+    if (typeof params.pinned !== "boolean") throw new Error("Invalid thread pin state");
+    const session = await this.session(params.threadId);
+    if (session.ephemeral) throw new Error("Temporary Pi threads cannot be pinned");
+    if (params.pinned) {
+      if (session.pinned !== true) {
+        const latest = [...this.sessions.values()].reduce((latest, entry) => Math.max(latest, entry.pinnedAt ?? 0), this.latestPinAt);
+        this.latestPinAt = Math.max(Date.now(), latest + 1);
+        await this.save(session, { pinned: true, pinnedAt: this.latestPinAt });
+      }
+    } else if (session.pinned === true) {
+      await this.save(session, { pinned: undefined, pinnedAt: undefined });
+    }
+    return { pinned: params.pinned };
+  }
   request(method: string, params: Value, client: EngineClient): Promise<any> {
     const key = typeof params.threadId === "string" ? params.threadId : method.startsWith("config/") ? "config" : undefined;
     if (key === undefined) return this.handle(method, params, client);
@@ -280,6 +312,8 @@ export class PiEngine {
   }
   private async handle(method: string, params: Value, client: EngineClient): Promise<any> {
     await this.load(); if (this.closed) throw new Error("Pi engine is closed");
+    if (method === "opencraft/thread-pins/list") return this.pinCatalog();
+    if (method === "opencraft/thread-pins/set") return this.setPinned(params);
     if (["config/read", "config/batchWrite", "thread/start", "thread/fork", "thread/resume", "turn/start"].includes(method)) await this.options.configuration?.synchronize();
     if (method === "config/read") {
       const saved = await this.defaults();

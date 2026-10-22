@@ -845,8 +845,16 @@ adapter; its list response separately proves support for the current initialized
 connection. Codex uses its reserved native pinned section and metadata-only
 section moves; legacy peers without that section remain unsupported. Hermes
 uses the already-authenticated Dashboard HTTP channel, passes the owning profile
-in each PATCH, and preserves native compression-lineage persistence. DSH has no
-fallback pin store. Neither discovery nor mutation resumes or starts a Thread.
+in each PATCH, and preserves native compression-lineage persistence. DSH owns an
+ordered, atomic pin index in its home; Pi owns pin fields in each durable session
+record. Temporary Pi sessions cannot be pinned. Neither discovery nor mutation
+resumes or starts a Thread.
+
+Pi publishes pin changes only after the atomic record replacement succeeds.
+A rejected write leaves the previous committed state visible and a repeated
+intent retries storage. Metadata saves queued during a pin write preserve its
+committed result; failed writes remove only their own temporary file. Concurrent
+pin intents reserve ordered timestamps without making pending state authoritative.
 
 The normalized pinned catalog returns complete summaries beyond recent pages.
 Runtime merges them once into the initial Sidebar catalog; pinned rows have a

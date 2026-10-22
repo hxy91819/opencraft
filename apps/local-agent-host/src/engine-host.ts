@@ -177,7 +177,7 @@ export async function startEngineHost(options: {
           if (method === "initialize") {
             const piInitialization = {
               userAgent: "opencraft-pi-durable/1.3.0", platformFamily: "unix", platformOs: process.platform,
-              capabilities: { extensions: { "opencraft/thread-lifecycle": { version: 1, fork: false, ephemeral: false, injectItems: false, rename: true, archive: true, unsubscribe: true }, "opencraft/host-capabilities": { version: 1 } } },
+              capabilities: { extensions: { "opencraft/thread-lifecycle": { version: 1, fork: false, ephemeral: false, injectItems: false, rename: true, archive: true, unsubscribe: true, pin: true }, "opencraft/host-capabilities": { version: 1 } } },
             };
             // A configured legacy backend supplies this Host's negotiated
             // capabilities. Failure must reject initialization, not silently
@@ -187,7 +187,38 @@ export async function startEngineHost(options: {
               : piInitialization;
             reply({ ...initialized, capabilities: { ...initialized.capabilities, extensions: { ...initialized.capabilities?.extensions, ...resources?.extensions,
               "opencraft/execution-engines": { version: 1, defaultEngine: options.defaultEngine, providers: options.providers.map(provider => ({ id: provider.id, threadPrefix: provider.threadPrefix, modelPrefix: provider.modelPrefix, extensions: provider.extensions })) },
+              "opencraft/thread-pins": { version: 1 },
               "opencraft/scoped-model-catalog": { version: 1 } } } }); return;
+          }
+          if (method === "opencraft/thread-pins/list") {
+            const outcomes = await Promise.allSettled([
+              ...(options.legacy ? [callLegacy(method, params, clientId)] : []),
+              ...options.providers.map(provider => provider.request(method, params, state.owner)),
+            ]);
+            const pages = outcomes.flatMap(outcome => outcome.status === "fulfilled" ? [outcome.value] : [])
+              .filter(page => page?.supported === true && Array.isArray(page.data));
+            // Only an engine that answered can prove support. A rejected engine
+            // is either unsupported or temporarily unavailable; never turn that
+            // into an authoritative empty pin catalog.
+            if (pages.length === 0) {
+              const failure = outcomes.find((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
+              if (failure) throw failure.reason;
+              reply({ supported: false, data: [] }); return;
+            }
+            const seen = new Set<string>(), data: Value[] = [];
+            for (const page of pages) for (const row of page.data) {
+              if (typeof row?.id !== "string" || seen.has(row.id)) continue;
+              seen.add(row.id); data.push(row);
+            }
+            reply({ supported: true, data }); return;
+          }
+          if (method === "opencraft/thread-pins/set") {
+            const threadId = params.threadId, pinned = params.pinned;
+            if (typeof threadId !== "string" || threadId.length === 0) throw new Error("Invalid thread pin target");
+            if (typeof pinned !== "boolean") throw new Error("Invalid thread pin state");
+            const provider = options.providers.find(provider => provider.ownsThread(threadId));
+            if (provider) { reply(await provider.request(method, params, state.owner)); return; }
+            reply(await callLegacy(method, params, clientId)); return;
           }
           if (method === "config/read" && options.defaultEngine !== options.legacy?.id) {
             reply(await registry.get(options.defaultEngine)!.request(method, params, state.owner)); return;
@@ -228,7 +259,7 @@ export async function startEngineHost(options: {
             reply(catalog); return;
           }
           if (provider) {
-            if (params.threadId && !["thread/read", "thread/resume"].includes(method) && !state.opened.has(params.threadId)) throw new Error("Open the thread before mutating it");
+            if (params.threadId && !["thread/read", "thread/resume", "opencraft/thread-pins/set", "thread/name/set", "thread/archive", "thread/unarchive", "thread/delete"].includes(method) && !state.opened.has(params.threadId)) throw new Error("Open the thread before mutating it");
             const result = await provider.request(method, params, state.owner);
             if (["thread/start", "thread/resume", "thread/fork"].includes(method) && result.thread?.id) state.opened.add(result.thread.id);
             if (method === "thread/unsubscribe") state.opened.delete(params.threadId);
