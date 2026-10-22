@@ -2036,6 +2036,8 @@ areas; the design system owns LiquidGlassBackdrop, semantic material tokens and
 opaque accessibility fallbacks. A supported live backdrop lens uses a small
 geometry-dependent map updated on resize; it never captures content or runs a
 scroll/frame loop. Unsupported lens engines retain tint, softened transmission
-and curved highlights. Icons, focus rings and portalled menus are unfiltered.
+and soft surface highlights. Navigation glass casts no external shadow and paints
+no perimeter stroke except the forced-colors system boundary. Icons, focus rings
+and portalled menus are unfiltered.
 
 - Navigation glass optics consume the live compositor backdrop: rounded-surface refraction, center scattering and local detail adaptation update with content frames. The geometry texture contains only normals/offsets, never conversation content. No per-frame DOM capture, scroll controller, random wobble or business-state ownership is added. URL-filter limitations retain a blur fallback; no Safari optical parity is assumed.
