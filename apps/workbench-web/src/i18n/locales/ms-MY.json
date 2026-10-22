@@ -684,6 +684,7 @@
   "chat.delete.done": "Perbualan dipadamkan",
   "common.operation.pending": "Menerapkan perubahan…",
   "conversation.reference.copy": "Salin rujukan perbualan",
+  "conversation.reference.copying": "Menyediakan rujukan perbualan…",
   "conversation.reference.label": "Perbualan",
   "conversation.reference.unavailable": "Operasi tidak dapat disahkan. Simpan mesej dan semak penghantaran sebelum mencuba lagi.",
   "conversation.reference.open": "Buka perbualan",

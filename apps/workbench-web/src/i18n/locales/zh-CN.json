@@ -707,6 +707,7 @@
   "common.operation.pending": "正在应用更改…",
   "settings.tokenUsage": "Token 用量",
   "conversation.reference.copy": "复制会话引用",
+  "conversation.reference.copying": "正在准备会话引用…",
   "conversation.reference.label": "会话",
   "conversation.reference.unavailable": "暂时无法确认操作结果。消息已保留，请核对投递状态后重试。",
   "conversation.reference.open": "打开会话",
