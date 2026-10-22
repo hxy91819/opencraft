@@ -27,6 +27,16 @@
   }
 }
 
+// Coarse/no-hover devices and the current touch signal share one input policy.
+@mixin touch-input {
+  @media (any-pointer: coarse), (hover: none) { @content; }
+  @if & {
+    :root[data-touch-interaction] & { @content; }
+  } @else {
+    :root[data-touch-interaction] { @content; }
+  }
+}
+
 // Shared quiet controls. Layout belongs to the consumer, interaction to here.
 // An input-adaptive consumer may own its hover rule while retaining the same
 // open, keyboard-focus, and disabled states from this mixin.

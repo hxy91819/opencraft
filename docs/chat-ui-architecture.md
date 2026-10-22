@@ -2500,3 +2500,11 @@ grid placement is inert outside a grid. No DOM, event, layout owner or preview
 lifetime change is needed.
 
 Message footer sending clocks are hidden at rest on desktop and touch. Existing message hover/focus reveals user and assistant clocks while retaining their slots and time metadata. Touch action controls remain available; elapsed work duration is a separate status.
+
+## Message footer time disclosure
+
+User and assistant message footer clocks are visible at rest for touch input
+through the shared coarse-pointer/no-hover/current-touch policy. Desktop pointer
+clocks remain hidden at rest and reveal on existing message hover/focus. Keep
+time metadata, slot geometry, history cache and action-button availability;
+elapsed work duration is separate.
