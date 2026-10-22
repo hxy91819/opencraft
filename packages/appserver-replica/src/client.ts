@@ -34,7 +34,7 @@ export interface ReplicaClientSnapshot<TValue extends ReplicaJsonValue = Replica
   readonly journalStartSeq: number | null;
   readonly entities: ReadonlyMap<string, TValue>;
   readonly lastError: Error | null;
-  /** A timed-out disposable cache is bypassed; source authority remains separate. */
+  /** An unavailable disposable cache is bypassed; source authority remains separate. */
   readonly cacheError?: Error | null;
 }
 
@@ -43,7 +43,7 @@ export interface ReplicaClientConfig<TValue extends ReplicaJsonValue = ReplicaJs
   storageKey: string;
   storage: ReplicaClientStorage<TValue>;
   pageSize?: number;
-  /** Client storage is a paint cache. Timeout bypasses it for this instance;
+  /** Client storage is a paint cache. Failure or timeout bypasses it for this instance;
    * accepted writes retain their order and never authorize source data. */
   storageTimeoutMs?: number;
   storageClock?: { setTimeout(callback: () => void, delay: number): unknown; clearTimeout(handle: unknown): void };
@@ -68,7 +68,8 @@ export class ReplicaClient<TValue extends ReplicaJsonValue = ReplicaJsonValue> {
   private readonly pageSize: number;
   private readonly storageTimeoutMs: number;
   private readonly storageClock: NonNullable<ReplicaClientConfig["storageClock"]>;
-  private cacheError: CacheTimeout | null = null;
+  private cacheError: Error | null = null;
+  private cacheRepairScheduled = false;
   private readonly listeners = new Set<() => void>();
   private snapshot: ReplicaClientSnapshot<TValue>;
   private prepared: Promise<void> | null = null;
@@ -253,11 +254,18 @@ export class ReplicaClient<TValue extends ReplicaJsonValue = ReplicaJsonValue> {
     try {
       stored = await this.awaitStorage(Promise.resolve().then(() => this.storage.loadClient(this.storageKey)));
     } catch (error) {
-      if (error instanceof CacheTimeout) return;
-      throw new ReplicaError("STORAGE_ERROR", "Failed to load Replica client state", { cause: error });
+      this.disableCache(error);
+      if (!(error instanceof CacheTimeout)) this.scheduleCacheRepair();
+      return;
     }
     if (stored === null || this.disposed || generation !== this.sourceGeneration) return;
-    validateClientState(stored, this.storageKey, this.scope);
+    try {
+      validateClientState(stored, this.storageKey, this.scope);
+    } catch (error) {
+      this.disableCache(error);
+      this.scheduleCacheRepair();
+      return;
+    }
     this.publish({
       phase: "painted",
       authoritative: false,
@@ -434,8 +442,8 @@ export class ReplicaClient<TValue extends ReplicaJsonValue = ReplicaJsonValue> {
         if (!this.cacheError) await this.storage.commitClient(state);
       }));
     } catch (error) {
-      if (!(error instanceof CacheTimeout))
-        throw new ReplicaError("STORAGE_ERROR", "Failed to commit Replica client state", { cause: error });
+      this.disableCache(error);
+      if (!(error instanceof CacheTimeout)) this.scheduleCacheRepair();
     }
     this.ensureGeneration(generation);
     this.publish(update);
@@ -444,9 +452,8 @@ export class ReplicaClient<TValue extends ReplicaJsonValue = ReplicaJsonValue> {
   private awaitStorage<T>(operation: Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
       const timer = this.storageClock.setTimeout(() => {
-        this.cacheError ??= new CacheTimeout("Replica cache timed out; using source data without persistence");
-        if (!this.disposed) this.publish({ cacheError: this.cacheError });
-        reject(this.cacheError);
+        const timeout = new CacheTimeout("Replica cache timed out; using source data without persistence");
+        reject(this.disableCache(timeout));
       }, this.storageTimeoutMs);
       void operation.then(resolve, reject).finally(() => this.storageClock.clearTimeout(timer));
     });
@@ -456,6 +463,23 @@ export class ReplicaClient<TValue extends ReplicaJsonValue = ReplicaJsonValue> {
     const operation = this.storageTail.then(run, run);
     this.storageTail = operation.catch(() => undefined);
     return operation;
+  }
+
+  private disableCache(error: unknown): Error {
+    if (this.cacheError !== null) return this.cacheError;
+    const failure = error instanceof Error ? error : new Error(String(error));
+    this.cacheError = failure;
+    if (!this.disposed) this.publish({ cacheError: failure });
+    return failure;
+  }
+
+  private scheduleCacheRepair(): void {
+    if (this.cacheRepairScheduled || this.disposed) return;
+    this.cacheRepairScheduled = true;
+    // A rejected operation is settled before repair is queued. The client keeps
+    // persistence disabled for this lifetime; a later instance may reuse the
+    // cache only after this best-effort removal of the broken row succeeds.
+    void this.serializeStorage(() => this.storage.clearClient(this.storageKey)).catch(() => undefined);
   }
 
   private fail(error: unknown): void {

@@ -594,30 +594,92 @@ test("a superseded bootstrap cannot cancel or overwrite the new source generatio
   assert.deepEqual(replica.get("new"), value("new"));
 });
 
-test("a storage failure never publishes an uncommitted live cursor", async () => {
-  const durable = new MemoryReplicaStorage();
-  let fail = false;
+test("a rejected cache load is cleared and bypassed without blocking source activation", async () => {
+  const serverStorage = new MemoryReplicaStorage();
+  const server = authority(serverStorage);
+  await server.commit([{ kind: "upsert", entityId: "source", value: value("source") }], {
+    commandId: "source",
+  });
+  let clears = 0;
+  let commits = 0;
   const storage: ReplicaClientStorage = {
-    loadClient: (key) => durable.loadClient(key),
-    clearClient: (key) => durable.clearClient(key),
-    async commitClient(state: ReplicaClientState) {
-      if (fail) throw new Error("disk full");
-      await durable.commitClient(state);
+    async loadClient() { throw new Error("IndexedDB transaction failed"); },
+    async clearClient() { clears += 1; },
+    async commitClient() { commits += 1; },
+  };
+  const replica = client(storage, "load-failure");
+  await replica.synchronize(server);
+  await waitFor(() => clears === 1);
+
+  assert.equal(replica.getSnapshot().phase, "live");
+  assert.equal(replica.getSnapshot().authoritative, true);
+  assert.deepEqual(replica.get("source"), value("source"));
+  assert.match(replica.getSnapshot().cacheError?.message ?? "", /IndexedDB transaction failed/);
+  assert.equal(commits, 0, "a disabled cache must not receive the authoritative snapshot");
+  await assert.rejects(replica.clear(), /Failed to clear/, "explicit clear must not pretend cache health");
+  replica.dispose();
+});
+
+test("an invalid cache row is cleared and replaced by source authority", async () => {
+  const serverStorage = new MemoryReplicaStorage();
+  const server = authority(serverStorage);
+  let clears = 0;
+  const storage: ReplicaClientStorage = {
+    async loadClient() {
+      return {
+        schemaVersion: 1,
+        storageKey: "wrong-key",
+        scope: SCOPE,
+        epoch: "stale",
+        nextSeq: 1,
+        journalStartSeq: 1,
+        entities: [],
+      };
+    },
+    async clearClient() { clears += 1; },
+    async commitClient() { throw new Error("disabled cache must not commit"); },
+  };
+  const replica = client(storage, "invalid-row");
+  await replica.synchronize(server);
+  await waitFor(() => clears === 1);
+
+  assert.equal(replica.getSnapshot().phase, "live");
+  assert.equal(replica.getSnapshot().authoritative, true);
+  assert.equal(replica.getSnapshot().epoch, "epoch-1");
+  assert.match(replica.getSnapshot().cacheError?.message ?? "", /wrong key/);
+  replica.dispose();
+});
+
+test("a rejected cache commit degrades to source authority and skips later writes", async () => {
+  const serverStorage = new MemoryReplicaStorage();
+  const server = authority(serverStorage);
+  let commits = 0;
+  let clears = 0;
+  const storage: ReplicaClientStorage = {
+    async loadClient() { return null; },
+    async clearClient() { clears += 1; },
+    async commitClient() {
+      commits += 1;
+      throw new Error("quota exceeded");
     },
   };
-  const server = authority(durable);
-  const replica = client(storage, "failure");
+  const replica = client(storage, "commit-failure");
   await replica.synchronize(server);
-  const committedCursor = replica.getSnapshot().nextSeq;
-  fail = true;
-  await server.commit([{ kind: "upsert", entityId: "lost", value: value("lost") }], {
-    commandId: "fails-locally",
-  });
-  await waitFor(() => replica.getSnapshot().phase === "error");
+  await waitFor(() => clears === 1);
+  assert.equal(replica.getSnapshot().phase, "live");
+  assert.equal(replica.getSnapshot().authoritative, true);
+  assert.match(replica.getSnapshot().cacheError?.message ?? "", /quota exceeded/);
 
-  assert.equal(replica.getSnapshot().nextSeq, committedCursor);
-  assert.equal(replica.get("lost"), null);
-  assert.equal(replica.getSnapshot().authoritative, false);
+  await server.commit([{ kind: "upsert", entityId: "live", value: value("live") }], {
+    commandId: "live-after-cache-failure",
+  });
+  await waitFor(() => replica.get("live") !== null);
+
+  assert.deepEqual(replica.get("live"), value("live"));
+  assert.equal(replica.getSnapshot().phase, "live");
+  assert.equal(replica.getSnapshot().authoritative, true);
+  assert.equal(commits, 1, "later source updates must not retry the failed cache in this instance");
+  replica.dispose();
 });
 
 test("disconnect preserves display state but removes authority", async () => {
