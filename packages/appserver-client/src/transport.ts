@@ -90,7 +90,10 @@ export function combineAbortSignals(signals: readonly AbortSignal[]): {
   };
   const cancel = (source: AbortSignal) => {
     if (disposed || controller.signal.aborted) return;
-    controller.abort(source.reason);
+    // React Native exposes the legacy no-argument signature in its global types.
+    // Optional reason support remains a runtime capability of the same controller.
+    const reason = (source as AbortSignal & { readonly reason?: unknown }).reason;
+    (controller as { abort(reason?: unknown): void }).abort(reason);
     dispose();
   };
   for (const source of signals) {

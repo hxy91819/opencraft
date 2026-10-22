@@ -500,3 +500,20 @@ windows directly. The panel retains its header spacing, content insets and
 container-driven row layout without requiring a previous Settings visit.
 Feature-specific Settings styles remain lazy; account providers supply content
 and actions while Modal/Radix retains window, dismissal and focus ownership.
+## Touch navigation glass groups
+
+Touch Newera conversation chrome uses a leading circular sidebar control and one
+trailing capsule for the existing conversation menu and preview action. The two
+trailing targets remain independent, with no divider or nested glass. Other
+routes/densities keep their existing presentation. Shell owns placement and safe
+areas; the design system owns LiquidGlassBackdrop, semantic material tokens and
+opaque accessibility fallbacks. A supported live backdrop lens uses a small
+geometry-dependent map updated on resize; it never captures content or runs a
+scroll/frame loop. Unsupported lens engines retain tint, softened transmission
+and curved highlights. Icons, focus rings and portalled menus are unfiltered.
+
+### Live navigation optics
+
+Floating navigation glass uses a rounded shoulder height field. Its normals and a bounded Snell ray offset determine backdrop lookup; a clear curved edge blends into a softly scattered center. A local detail filter derives a theme-colored contrast veil from the current transmitted backdrop. These operations run on the live compositor input, including while content scrolls, without copying the page, polling content, or driving React on animation frames. The geometry lookup is rebuilt only on resize. This is a 2D optical approximation, not a volumetric renderer. Unsupported URL backdrop filters retain the shared blur/tint fallback; reduced transparency and forced colors remain opaque. Icons, focus rings and menus stay outside the filtered plane.
+
+Prefixed backdrop engines retain the CSS blur/tint path even if a URL passes syntax checking; syntax alone does not establish SVG backdrop rendering support.

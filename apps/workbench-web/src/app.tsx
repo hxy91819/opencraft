@@ -2124,6 +2124,7 @@ export function App({
                       ? loadOlderConversation
                       : undefined
                   }
+                  loadingOlder={!showingDisplayCache && snapshot.conversation?.history.loading === true}
                   onOpenSubagent={showingDisplayCache ? undefined : (threadId) => {
                     void hostCatalog.navigate(
                       createWorkbenchThreadLocation(snapshot.hostId, threadId),

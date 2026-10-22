@@ -16,6 +16,27 @@ try {
   await page.goto(`${vite.resolvedUrls!.local[0]}?palette=${palette}&mode=${mode}`);
   await page.evaluate(width=>{document.documentElement.dataset.uiDensity=width===390?'touch':'compact'},width);
   await page.locator('.opencraft-composer-queue-item').waitFor(); await page.waitForTimeout(250);
+  const row = page.locator('.opencraft-composer-queue-item').first();
+  const handle = row.locator('.opencraft-composer-queue-item__drag');
+  const separateAuthorAndHandle = async () => {
+   const layout = await row.evaluate(e => {
+    const handle = e.querySelector('.opencraft-composer-queue-item__drag')!;
+    const photo = e.querySelector('.opencraft-composer-queue-item__avatar')!;
+    const grip = e.querySelector('.opencraft-composer-queue-item__grip')!;
+    const text = e.querySelector('.opencraft-composer-queue-item__preview')!;
+    return {handleRight:handle.getBoundingClientRect().right, photoLeft:photo.getBoundingClientRect().left,
+     photoRight:photo.getBoundingClientRect().right, textLeft:text.getBoundingClientRect().left,
+     opacity:getComputedStyle(photo).opacity, gripOpacity:getComputedStyle(grip).opacity,
+     photoActivatesDrag:handle.contains(photo)};
+   });
+   assert(layout.handleRight <= layout.photoLeft && layout.photoRight <= layout.textLeft, 'handle, sender and text occupy separate slots');
+   assert.equal(layout.opacity, '1'); assert.equal(layout.gripOpacity, '1');
+   assert.equal(layout.photoActivatesDrag, false, 'sender photo is not a drag target');
+  };
+  await separateAuthorAndHandle();
+  if(width !== 390) { await handle.hover(); await separateAuthorAndHandle(); }
+  else { await handle.tap(); await separateAuthorAndHandle(); }
+  await handle.focus(); await separateAuthorAndHandle();
   await page.evaluate(() => (window as any).setRailCount(8));
   const tray = page.locator('.opencraft-composer-queue-tray');
   await page.locator('.opencraft-composer-queue-item').last().scrollIntoViewIfNeeded();

@@ -465,7 +465,13 @@ Cards show title, a two-line decision when applicable, recorded material,
 current state/time, Owner and a clear detail action. Full content and editing use
 the existing task workspace/activity; conversation actions independently open the
 exact Server/Thread through the original resolver, using the accessible menu for
-multiple links. Missing links/navigation stay explicit. Current judge and task
+multiple links. The card body is static selectable content, including the title,
+state/time and Owner; it is never a button or a hidden click target. A separated
+action footer contains a quiet View details button and a primary Open chat button.
+Both stay visible without hover; neither contains the other. When links or
+navigation are unavailable, only View details is shown as the primary action; no
+non-action placeholder occupies the footer. Detail opens the existing workspace,
+not an external destination. Current judge and task
 Owner are separate, and avatars use existing profile identity resolution.
 
 Owner filtering supports all, a stored member ID and unassigned. All/Needs me/My

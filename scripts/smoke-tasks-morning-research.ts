@@ -67,6 +67,26 @@ for(const width of [1440,390,320])for(const theme of ['light','dark']){
 
  const card=page.locator('[data-ai-follow-up-task-id="Oldest handoff"]');
  assert.equal(await card.locator('h4').innerText(),'Oldest handoff');
+ const title=card.locator('h4');
+ assert.equal(await title.evaluate(el=>el.closest('button,a,[role="button"]')!==null),false,'Reading text must not be an implicit detail button');
+ const content=card.locator('.tasks-ai-follow-up__content');
+ assert.equal(await content.locator('button,a,[role="button"]').count(),0);
+ assert.equal(await content.evaluate(el=>getComputedStyle(el).userSelect),'text','Body supports selecting and copying text');
+ const background=await content.evaluate(el=>getComputedStyle(el).backgroundColor);
+ if(width<600)await title.tap();else {await title.hover();await title.click({clickCount:3});assert.match(await page.evaluate(()=>getSelection()?.toString()??''),/Oldest handoff/);}
+ assert.equal(await content.evaluate(el=>getComputedStyle(el).backgroundColor),background,'Hover does not paint the body as a button');
+ assert.notEqual(await title.evaluate(el=>getComputedStyle(el).cursor),'pointer');
+ await card.locator('.tasks-ai-follow-up__owner').click();
+ assert.equal(await page.locator('.tasks-editor').count(),0,'Reading or selecting content/Owner must not open details');
+ const details=card.getByRole('button',{name:'查看详情：Oldest handoff',exact:true});
+ const chat=card.getByRole('button',{name:'进入会话：Oldest handoff',exact:true});
+ assert.equal(await card.locator('footer button').count(),2,'Only two explicit independent destinations');
+ assert.match(await details.getAttribute('class')??'',/--quiet/);assert.match(await chat.getAttribute('class')??'',/--primary/);
+ assert.equal(await details.locator('svg').count(),0,'Details is an internal destination without an external-link arrow');
+ const contentBounds=await content.boundingBox();const footerBounds=await card.locator('footer').boundingBox();
+ assert.ok(contentBounds&&footerBounds&&contentBounds.y+contentBounds.height<=footerBounds.y+1,'Actions are separated below all information');
+ if(width===1440){await details.focus();await page.keyboard.press('Tab');assert.equal(await chat.evaluate(el=>el===document.activeElement),true,'Keyboard follows detail then chat without a body stop');}
+
  assert.equal(await card.locator('.tasks-ai-follow-up__decision').innerText(),'Approve option A? Recommendation: A');
  assert.doesNotMatch(await card.innerText(),/Verified report|Design A after judgment/);
  const filter=page.getByRole('combobox',{name:'按 Owner 筛选',exact:true});
@@ -76,13 +96,14 @@ for(const width of [1440,390,320])for(const theme of ['light','dark']){
  await page.getByRole('radio',{name:'看板',exact:true}).click();await page.getByRole('radio',{name:'AI 跟进',exact:true}).click();
  assert.equal(await filter.inputValue(),'member:owner-a','Owner selection survives leaving the follow-up view');
  await page.getByText('等待 3 天 8 小时',{exact:true}).waitFor();assert.equal(await page.locator('[data-ai-follow-up-task-id]').count(),2);
- const cta=card.getByRole('button',{name:'打开会话：Oldest handoff',exact:true});
+ const cta=card.getByRole('button',{name:'进入会话：Oldest handoff',exact:true});
  if(width<600)await cta.tap();else {await cta.focus();await page.keyboard.press('Enter');}
  assert.deepEqual(await page.evaluate(()=>window.openedConversations),[{serverId:'server-test',threadId:'thread-Oldest handoff'}]);
  assert.equal(await page.locator('.tasks-editor').count(),0,'Conversation destination must not open task details');
  await filter.selectOption('unassigned');assert.equal(await page.locator('[data-ai-follow-up-task-id]').count(),9);
  assert.deepEqual(await page.locator('.tasks-ai-follow-up__count').allTextContents(),['3','1','1','3','1']);
- assert.equal(await page.getByText('未关联会话',{exact:true}).count(),9);
+ assert.equal(await page.getByText('未关联会话',{exact:true}).count(),0);
+ const unlinked=page.locator('[data-ai-follow-up-task-id="Queued research"]');assert.equal(await unlinked.locator('button').count(),1);assert.match(await unlinked.getByRole('button',{name:'查看详情：Queued research',exact:true}).getAttribute('class')??'',/--primary/);
  await filter.selectOption('');
  const multi=page.getByRole('button',{name:'选择关联会话：Overdue handoff',exact:true});
  if(width<600)await multi.tap();else await multi.click();

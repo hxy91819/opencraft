@@ -81,15 +81,13 @@ the viewer or grants interaction authority.
 
 ## Queued-message sender display
 
-The queue uses a fixed 20px author photo in its leading drag control, replacing
-the decorative return arrow. Hover/focus exposes the author through the existing
-custom tooltip; unknown authors and failed photos retain a same-size person icon.
-The drag grip and warning indicator retain their interaction/state roles, and
-right-side Steer/Send, edit, delete and unconfirmed-delivery review stay distinct.
-The avatar is also the drag handle: its desktop hit area extends into existing
-padding without moving the 20px photo or message text. Hover/keyboard focus
-reveals a centered grip in the same slot. Coarse pointers get a 44px control and
-non-overlapping rows; touch focus does not retain a hover grip over the photo.
+The queue uses separate leading slots for its drag handle and fixed 20px author
+photo. The handle remains visible and owns sortable activation; the photo has its
+own author tooltip and is never a drag target. Unknown authors and failed photos
+retain a same-size person icon. Hover, keyboard focus and held dragging do not
+fade the photo or place the grip over it. The warning indicator belongs to the
+sender slot; right-side Steer/Send, edit, delete and unconfirmed-delivery review
+stay distinct. Coarse pointers get a 44px handle contained in non-overlapping rows.
 ChatRuntime carries the original per-entry protocol sender. Exact-client local
 submission hints may paint a pending queue before acknowledgement; explicit server
 identity (including null) wins, and restored/unrelated entries never inherit the
@@ -3294,3 +3292,19 @@ the Workbench notification owner with a stable footer hint, rather than adding a
 layout-changing diagnostic block.
 
 Question card presentation and its stylesheet are loaded together when a timeline contains a question. The pending fallback keeps the original question readable; theme and draft state stay with their existing owners, and the card is not part of the required startup CSS graph.
+## History loading space
+
+The Web conversation surface owns its block-start inset inside the reversed scroll
+viewport. The normal reading gap is twelve spacing units; edge-scroll hosts add
+their toolbar clearance. Older-history loading uses the same reserved gap,
+projecting the current history owner's loading state without changing geometry.
+The indicator never overlays message text or controls and respects reduced motion.
+Short conversations, restored reading anchors and both scroll policies share this
+surface; loading feedback does not introduce a second scroll controller.
+## Message footer time disclosure
+
+User and assistant message footer clocks are visible at rest for touch input
+through the shared coarse-pointer/no-hover/current-touch policy. Desktop pointer
+clocks remain hidden at rest and reveal on existing message hover/focus. Keep
+time metadata, slot geometry, history cache and action-button availability;
+elapsed work duration is separate.

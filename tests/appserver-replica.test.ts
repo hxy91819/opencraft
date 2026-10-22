@@ -882,3 +882,27 @@ for (const hang of ["load", "commit"] as const) test(`hung cache ${hang} is bypa
     await assert.rejects(replica.clear(),/Failed to clear/,'clear must not pretend a timed-out write was canceled');
   } finally {release.resolve();replica.dispose();}
 });
+
+
+test("default cache timers preserve the browser global receiver", async t => {
+  const receivers: unknown[] = [];
+  const schedule = globalThis.setTimeout;
+  const cancel = globalThis.clearTimeout;
+  t.mock.method(globalThis, "setTimeout", function (this: unknown, ...args: Parameters<typeof setTimeout>) {
+    receivers.push(this);
+    assert.equal(this, globalThis);
+    return Reflect.apply(schedule, globalThis, args);
+  });
+  t.mock.method(globalThis, "clearTimeout", function (this: unknown, ...args: Parameters<typeof clearTimeout>) {
+    receivers.push(this);
+    assert.equal(this, globalThis);
+    return Reflect.apply(cancel, globalThis, args);
+  });
+  const replica = new ReplicaClient({ scope: SCOPE, storageKey: "browser-timer-receiver", storage: new MemoryReplicaStorage() });
+  try {
+    await replica.synchronize(ownedSource("timer-owner", []));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(replica.getSnapshot().authoritative, true);
+    assert.ok(receivers.length >= 2, "both timer setup and cleanup use the native global receiver");
+  } finally { replica.dispose(); }
+});

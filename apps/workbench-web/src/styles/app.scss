@@ -518,7 +518,7 @@ html[data-timeline-tracks-visual-viewport="true"] :is(.app-shell-root, .app-shel
 
 .main-content-viewport {
   --app-shell-main-content-frame-top-offset: var(--height-toolbar);
-  --thread-content-top-inset: calc(var(--spacing) * 8);
+  --thread-content-top-inset: calc(var(--spacing) * 12);
   --thread-floating-content-top-inset: calc(var(--spacing) * 3);
   --thread-floating-content-bottom-inset: calc(var(--spacing) * 3);
   position: relative;
@@ -601,7 +601,7 @@ html[data-opencraft-window-type="browser"] .main-content-top-fade {
 .main-content-viewport[data-app-shell-main-content-layout="thread-edge-scroll"][data-app-shell-thread-edge-scroll="true"]
   .main-content-frame {
   --app-shell-main-content-frame-top-offset: 0px;
-  --thread-content-top-inset: calc(var(--height-toolbar) + var(--spacing) * 8);
+  --thread-content-top-inset: calc(var(--height-toolbar) + var(--spacing) * 12);
 }
 
 .main-content-viewport[data-app-shell-main-content-layout="thread-edge-scroll"][data-app-shell-thread-edge-scroll="true"]
@@ -1162,6 +1162,12 @@ html[data-opencraft-window-type="browser"] .main-content-top-fade {
   justify-content: flex-end;
   pointer-events: none;
   container-type: inline-size;
+}
+
+.app-shell-header__action-group {
+  display: flex;
+  align-items: center;
+  height: 100%;
 }
 
 .app-shell-header__end-actions {
@@ -3796,7 +3802,6 @@ html[data-opencraft-window-type="browser"] .main-content-top-fade {
   // `contain` only handles chaining and still permits the rubber-band motion
   // that visibly carries the sticky Composer by roughly one text line.
   overscroll-behavior: none;
-  padding-top: var(--thread-content-top-inset);
   scroll-padding-block-end: var(--thread-scroll-padding-bottom);
   container-name: thread-content;
   container-type: inline-size;
@@ -4158,11 +4163,30 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 }
 
 .thread-scroll-surface {
+  position: relative;
+  box-sizing: border-box;
+  padding-block-start: var(--thread-content-top-inset, calc(var(--spacing) * 12));
   display: flex;
   min-height: 100%;
   flex: 0 0 auto;
   flex-direction: column;
   justify-content: flex-start;
+}
+
+.thread-history-status {
+  position: absolute;
+  inset-inline: 0;
+  top: calc(var(--thread-content-top-inset, calc(var(--spacing) * 12)) - var(--spacing) * 12);
+  height: calc(var(--spacing) * 12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+
+  @media (prefers-reduced-motion: reduce) {
+    .is-spinning { animation: none; }
+  }
 }
 
 .thread-layout-width {
@@ -6471,13 +6495,24 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 }
 
 
-// Message clocks stay quiet by default, including touch. Keep their geometry
-// and authoritative datetime; the existing message hover/focus owns disclosure.
+// A clock cannot be visible through an otherwise transparent action lane.
+.thread-user-message__actions:has(time),
+.thread-message-actions:has(time) {
+  @include controls.touch-input { opacity: 1; }
+}
+
+// Touch clocks are readable before interaction. Desktop hover/focus still owns
+// disclosure; both keep the same time metadata and slot geometry.
 .thread-user-message__actions time,
 .thread-message-actions time {
   opacity: 0;
   transition: opacity 100ms ease;
   pointer-events: none;
+
+  @include controls.touch-input {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 .thread-user-message:focus-within .thread-user-message__actions time,
 .thread-frame--assistant:focus-within > .thread-message-actions time {
@@ -9184,7 +9219,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
   display: grid;
   min-width: 0;
   min-height: var(--height-composer-queue-row);
-  grid-template-columns: 22px minmax(0, 1fr) auto;
+  grid-template-columns: 34px 20px minmax(0, 1fr) auto;
   align-items: center;
   gap: calc(var(--spacing) * 2);
   padding: var(--padding-composer-rail-row);
@@ -9233,12 +9268,9 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 }
 
 .opencraft-composer-queue-item__drag {
-  position: relative;
   display: grid;
   width: 34px;
   height: var(--height-composer-queue-row);
-  margin: 0 -6px;
-  justify-self: center;
   padding: 0;
   border: 0;
   border-radius: 5px;
@@ -9256,29 +9288,23 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
     cursor: default;
   }
 
-  .opencraft-composer-queue-item__grip {
-    position: absolute;
-    opacity: 0;
-    transition: opacity 100ms ease;
-  }
-
   @media (hover: hover) {
     @include controls.hover-capable {
       &:hover:not(:disabled) {
         background: var(--color-background-button-tertiary-hover);
-
-        .opencraft-composer-queue-item__avatar { opacity: 0.16; }
-        .opencraft-composer-queue-item__grip { opacity: 1; }
       }
     }
   }
 
   html:not([data-touch-interaction="true"]) &:focus-visible:not(:disabled) {
     background: var(--color-background-button-tertiary-hover);
-
-    .opencraft-composer-queue-item__avatar { opacity: 0.16; }
-    .opencraft-composer-queue-item__grip { opacity: 1; }
   }
+}
+
+.opencraft-composer-queue-item__sender {
+  position: relative;
+  width: 20px;
+  height: 20px;
 }
 
 .opencraft-composer-queue-item__avatar {
@@ -9290,7 +9316,6 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
   border-radius: 50%;
   background: var(--color-background-control);
   color: var(--color-text-secondary);
-  transition: opacity 100ms ease;
 
   img {
     width: 100%;
@@ -9307,26 +9332,15 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
   background: var(--color-background-elevated-primary-opaque);
 }
 
-.opencraft-composer-queue-item[data-dragging="true"]
-  .opencraft-composer-queue-item__grip {
-  opacity: 1;
-}
-
-.opencraft-composer-queue-item[data-dragging="true"]
-  .opencraft-composer-queue-item__avatar {
-  opacity: 0.16;
-}
-
 @media (pointer: coarse) {
   .opencraft-composer-queue-item {
     padding-block: 0;
-    grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-columns: 44px 20px minmax(0, 1fr) auto;
   }
 
   .opencraft-composer-queue-item__drag {
     width: 44px;
     height: var(--height-composer-queue-row);
-    margin: 0 -5px;
   }
 }
 
@@ -12680,8 +12694,9 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 
   // Wide touch layouts portal this existing control above drawer motion.
   .app-shell-touch-sidebar-toggle .app-shell-conversation-sidebar-toggle {
-    @include mobile-glass.surface($floating: true);
-    border-radius: var(--radius-full);
+    @include material.liquid;
+    width: var(--size-material-liquid-control);
+    height: var(--size-material-liquid-control);
   }
 
   .app-shell-root .app-shell-header[data-app-shell-conversation-header="true"] {
@@ -12692,8 +12707,13 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
       --window-controls-padding-start: max(var(--spacing-token-safe-header-left), var(--shell-mobile-safe-left, 0px), calc(var(--spacing) * 3));
     }
     .app-shell-header__end-actions {
-      gap: calc(var(--spacing) * 2);
       padding-right: max(var(--spacing-token-safe-header-right), var(--shell-mobile-safe-right, 0px), calc(var(--spacing) * 3));
+    }
+    .app-shell-header__action-group {
+      @include material.liquid;
+      height: var(--size-material-liquid-control);
+      gap: var(--gap-material-liquid-group);
+      padding: var(--padding-material-liquid-group);
     }
     .app-shell-header__context-surface,
     .application-brand,
@@ -12702,10 +12722,14 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
     }
     .app-shell-header__window-controls-rail[data-navigation-brand] { width: max-content; }
     .chrome-button {
-      @include mobile-glass.surface($floating: true);
       width: var(--chrome-action-width, var(--size-shell-header-action-mobile));
       height: var(--size-shell-header-action-mobile);
       border-radius: var(--radius-full);
+    }
+    .app-shell-conversation-sidebar-toggle {
+      @include material.liquid;
+      width: var(--size-material-liquid-control);
+      height: var(--size-material-liquid-control);
     }
   }
 
@@ -12714,7 +12738,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
   .main-content-surface:has(.app-shell-header[data-app-shell-conversation-header="true"]) {
     .main-content-frame {
       --app-shell-main-content-frame-top-offset: 0px;
-      --thread-content-top-inset: calc(var(--height-toolbar) + var(--spacing) * 8);
+      --thread-content-top-inset: calc(var(--height-toolbar) + var(--spacing) * 12);
       border-top: 0;
     }
   }

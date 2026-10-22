@@ -165,7 +165,7 @@ function SortableQueueItem({
         transition: sortable.transition,
       }}
     >
-      <QueueTooltip label={item.sender ? `${item.sender.name} · ${dragTooltip}` : dragTooltip} portalContainer={portalContainer} disabled={dragDisabled}>
+      <QueueTooltip label={dragTooltip} portalContainer={portalContainer} disabled={dragDisabled}>
         <button
           ref={sortable.setActivatorNodeRef}
           className="opencraft-composer-queue-item__drag"
@@ -175,14 +175,19 @@ function SortableQueueItem({
           {...sortable.attributes}
           {...sortable.listeners}
         >
+          {item.reorderable === false ? null : <GripVertical className="opencraft-composer-queue-item__grip" size={12} aria-hidden="true" />}
+        </button>
+      </QueueTooltip>
+
+      <QueueTooltip label={item.sender?.name ?? "Queued message"} portalContainer={portalContainer}>
+        <span className="opencraft-composer-queue-item__sender">
           <span className="opencraft-composer-queue-item__avatar" role={item.sender ? "img" : undefined} aria-label={item.sender?.name} aria-hidden={item.sender ? undefined : true}>
             <AvatarImage src={item.sender?.avatarUrl ?? null} fallback={<User size={13} aria-hidden="true" />} />
           </span>
-          {item.reorderable === false ? null : <GripVertical className="opencraft-composer-queue-item__grip" size={12} aria-hidden="true" />}
           {item.state === "failed" || item.state === "unknown" || item.pausedReason ? (
             <CircleAlert className="opencraft-composer-queue-item__status" size={11} aria-hidden="true" />
           ) : null}
-        </button>
+        </span>
       </QueueTooltip>
 
       <QueueTooltip label={item.error ?? item.pausedReason ?? item.preview} portalContainer={portalContainer}>
