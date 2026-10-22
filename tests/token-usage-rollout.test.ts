@@ -52,12 +52,15 @@ test("native storage boundary rejects escapes and truncated cursors, and oversiz
   await assert.rejects(replayRolloutUsage({...options,maxBytes:50}),/exceeds replay batch/);
 
   // Oversized non-fact line is skipped without gap
+  const notifications: Array<[boolean, number]> = [];
+  const onOversizedLine = (mayContainFact: boolean, bytes: number) => { notifications.push([mayContainFact, bytes]); };
   const oversizedToolOutput = JSON.stringify({type:"response_item",payload:{output:"x".repeat(500)}})+"\n";
   await writeFile(options.path, oversizedToolOutput + record("one", 100));
-  const skipResult = await replayRolloutUsage({...options, maxBytes: 300});
+  const skipResult = await replayRolloutUsage({...options, maxBytes: 300, onOversizedLine});
   assert.equal(skipResult.skipped, 1);
   assert.equal(skipResult.oversizedFact, false);
   assert.equal(skipResult.cursor, oversizedToolOutput.length);
+  assert.deepEqual(notifications, [[false, oversizedToolOutput.length]], "one non-fact line emits one typed observation");
   const nextReplay = await replayRolloutUsage({...options, maxBytes: 300, cursor: skipResult.cursor});
   assert.equal(nextReplay.observed, 1);
   assert.equal(nextReplay.changed, 1);
@@ -65,11 +68,13 @@ test("native storage boundary rejects escapes and truncated cursors, and oversiz
   // Oversized fact line is skipped with gap (missing++)
   const oversizedFactOutput = JSON.stringify({type:"event_msg",payload:{type:"item_completed",content:"y".repeat(500)}})+"\n";
   await writeFile(options.path, oversizedFactOutput + record("two", 200));
-  const factSkipResult = await replayRolloutUsage({...options, maxBytes: 300});
+  notifications.length = 0;
+  const factSkipResult = await replayRolloutUsage({...options, maxBytes: 300, onOversizedLine});
   assert.equal(factSkipResult.skipped, 1);
   assert.equal(factSkipResult.oversizedFact, true);
   assert.equal(factSkipResult.missing, 1);
   assert.equal(factSkipResult.cursor, oversizedFactOutput.length);
+  assert.deepEqual(notifications, [[true, oversizedFactOutput.length]], "one possible fact emits one typed observation");
 }));
 
 test("rollout replay parses session_meta and turn_context into source provider and model",()=>fixture(async options=>{
