@@ -1,7 +1,7 @@
 # ChatUI presentation ownership
 
 Scope: the five remaining categories identified after the scroll/Worked-for
-refactors. This is not a claim of full application or pixel-for-pixel parity.
+refactors.
 
 ## Ownership and invariants
 

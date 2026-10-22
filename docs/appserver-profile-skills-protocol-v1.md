@@ -591,5 +591,5 @@ own domain services, without becoming part of Profile Skills.
 5. Remove the current page-owned mock/direct behavior; do not retain a second
    compatibility path.
 
-This order freezes the domain contract before borrowing presentation code and
-prevents an external UI implementation from becoming the owner of the model.
+This order freezes the domain contract before integrating presentation code and
+prevents a UI implementation from becoming the owner of the model.

@@ -1682,8 +1682,7 @@ Configuration/intended selections use a separate CAS store (Web IndexedDB,
 Electron Main SQLite); credentials remain with the Host, and restart restores
 intent without automatic connection or execution grants. Native OAuth completion
 is uncorrelated by operation ID and never grants conversation access by itself.
-This implemented vertical slice does not imply the complete Capability Fabric, reuse of the Hermes Settings
-prototype, new native methods in DSH/Hermes, or verified third-party accounts.
+This implemented vertical slice does not imply the complete Capability Fabric, new native methods in DSH/Hermes, or verified third-party accounts.
 
 The Skills capability surface now hosts a platform Connector Library alongside
 Skills/packages. `connector-core` owns the directory and DTOs; `connector-host`
@@ -1692,7 +1691,7 @@ plus the MCP SDK/API adapters. The renderer receives only public projection and
 authorization progress, never stored tokens. This managed path is independent of
 the existing borrowed native-MCP adapter, which retains its original authority.
 The Composer remains a per-conversation selector, not the configuration catalog.
-The Octop-derived catalog contains 23 recipes; 19 have execution adapters and four
+The connector catalog contains 23 recipes; 19 have execution adapters and four
 remain guide-only. Isolated validation is not third-party account qualification.
 
 The settled AppServer ownership model is application `HostRuntimeRegistry` →

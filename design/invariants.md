@@ -799,7 +799,7 @@ permissions or removes pending requests.
 
 Connector 交互不变量：Composer 入口消费应用级 Manager；授权完成、连接、会话选择与写审批分别表达用户意图。面板卸载不销毁已就绪共享连接；审批由共享 Modal/Radix 管理焦点和层级，配置恢复不恢复执行授权。见 [Connector 设计](../docs/platform-connectors.md) 与 `smoke:connector-controls`。
 
-Connector 目录属于 Skills 能力页的同级 Tab；配置弹窗复用 Settings 原语，不引入 Octop 的 Antd/Less。共享 SettingsListItem 显式投影是否有图标，无图标不能保留空图标列挤压正文；配置弹窗内容按本征高度滚动，检测结果不能压掉必填字段。凭据不出现在会话、Skill 或持久 UI 状态里；第三方服务运行结果与静态目录说明分别呈现。
+Connector 目录属于 Skills 能力页的同级 Tab；配置弹窗复用 Settings 原语，不另建页面专属 UI 框架。共享 SettingsListItem 显式投影是否有图标，无图标不能保留空图标列挤压正文；配置弹窗内容按本征高度滚动，检测结果不能压掉必填字段。凭据不出现在会话、Skill 或持久 UI 状态里；第三方服务运行结果与静态目录说明分别呈现。
 
 Connector 目录浏览不套用设置行：采用限宽品牌卡片，已配置实例单独管理，分类/搜索和返回位置不因打开详情丢失。详情的侧边/窄屏呈现由共享 Modal `inspector` variant 持有，业务不能手写 focus trap 或遮罩；正文滚动不带走操作区。不保留旧长列表模式或为测试专设的第二套管理入口。
 
@@ -975,8 +975,8 @@ Sidebar Server 来源以 metadata 项目名前的7px实心圆点呈现，仅 rem
 
 ## UI 图标：共享视觉语言
 
-- 图形由 product identity 选择：OpenCraft core 保留新功能的语义图形，但视觉风格按下游产品 Agent Console 源码统一；下游产品嵌入聊天和完整 lightvela-web 保留固定回迁前组件的形状、描边、尺度、leading-slot 与选中/hover；颜色主题不选择图形或授予能力。每个 Shadow DOM/presentation root 独立投影 token，多实例不写 document 产品状态。
-- core Web/Electron 导航角色对齐 `frontend/src/styles.css` 的 `.lv-agents-nav-icon svg`：Lucide 24 单位画布、14px、1.8 描边、圆端点和圆连接；普通控件按对应下游产品源组件的显式尺度与 Lucide 默认描边呈现；下游产品保留旧 Lucide/16 单位填充图形和显式描边；品牌标识、内容插图与上游生成资源独立，不由通用 SVG 选择器改写。
+- 图形由显式呈现策略选择：OpenCraft core 使用语义图形和共享图标 primitive；下游产品适配保留既有组件的形状、描边、尺度、leading-slot 与选中/hover；颜色主题不选择图形或授予能力。每个 Shadow DOM/presentation root 独立投影 token，多实例不写 document 产品状态。
+- core Web/Electron 导航使用共享图标度量：Lucide 24 单位画布、14px、1.8 描边、圆端点和圆连接；普通控件使用其共享 primitive 的显式尺度与描边；下游产品保留旧 Lucide/16 单位填充图形和显式描边；品牌标识、内容插图与上游生成资源独立，不由通用 SVG 选择器改写。
 - `apps/workbench-web/src/components/ui/workbench-icon.tsx` 是导航、设置与面板扩展语义名到图形的唯一 Web 映射。扩展传递语义名；core 未知名称显示中性帮助图形；下游产品的导航/设置/面板保留旧 consumer 的 Blocks/Plus fallback，不误呈现为某个已知功能。
 - `workbenchIconMetrics` 与 `icons.web.scss` 拥有尺度/描边 primitive，core 导航14px、1.8描边，普通/选中均为轮廓，选中含义由行背景和文字保持；下游产品按旧 consumer 的15/16/14px与原 SVG 属性投影，不强改其他旧组件的显式描边。导航前导槽位沿用 `--size-navigation-leading-slot`，直接 SVG 与包装槽位保持光学中心和文字起点对齐；unified Shell 对 core 上方目的地与下方 Settings 共享 Shell inline inset，不让窄屏通用 Settings padding 改变其中一列。紧凑工具按钮保留其宿主尺寸；不能将所有场景强制放大。
 - 同一操作在展开/收起入口使用相同图形；状态变化不改变按钮命中区、焦点或布局。图标继承控件颜色，不另设选中配色。
