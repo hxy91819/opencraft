@@ -53,15 +53,13 @@ and is excluded from copied message text and native model input.
 
 ## Queued-message sender display
 
-The queue uses a fixed 20px author photo in its leading drag control, replacing
-the decorative return arrow. Hover/focus exposes the author through the existing
-custom tooltip; unknown authors and failed photos retain a same-size person icon.
-The drag grip and warning indicator retain their interaction/state roles, and
-right-side Steer/Send, edit, delete and unconfirmed-delivery review stay distinct.
-The avatar is also the drag handle: its desktop hit area extends into existing
-padding without moving the 20px photo or message text. Hover/keyboard focus
-reveals a centered grip in the same slot. Coarse pointers get a 44px control and
-non-overlapping rows; touch focus does not retain a hover grip over the photo.
+The queue uses separate leading slots for its drag handle and fixed 20px author
+photo. The handle remains visible and owns sortable activation; the photo has its
+own author tooltip and is never a drag target. Unknown authors and failed photos
+retain a same-size person icon. Hover, keyboard focus and held dragging do not
+fade the photo or place the grip over it. The warning indicator belongs to the
+sender slot; right-side Steer/Send, edit, delete and unconfirmed-delivery review
+stay distinct. Coarse pointers get a 44px handle contained in non-overlapping rows.
 ChatRuntime carries the original per-entry protocol sender. Exact-client local
 submission hints may paint a pending queue before acknowledgement; explicit server
 identity (including null) wins, and restored/unrelated entries never inherit the
