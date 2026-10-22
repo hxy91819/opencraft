@@ -1795,6 +1795,16 @@ mouse/touch animation path; they do not claim Native or Electron acceptance.
 
 ### Subagent detail continuity
 
+Web retains explicit detail and full-member-list choices in the existing
+Conversation View disclosure snapshot. The core render-unit identity owns a
+collaboration group, including when one operation grows into several; a standalone
+block uses its own identity. Member order, count and status do not replace that
+owner. Detail choices retain the running/settled defaults separately, while
+showing all members is independent of execution phase. A fresh View starts with
+the original defaults. Only display booleans enter this snapshot; agent content,
+status, navigation and execution remain under their existing owners.
+
+
 Grouped collaboration rows retain each agent’s latest matching operation and
 instruction. Their display names, status and messages still come from the shared
 core aggregate; a later operation for another agent cannot replace that detail.
