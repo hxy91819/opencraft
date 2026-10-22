@@ -203,11 +203,11 @@ export function ToolCallBlock({ block }: { block: Tool }) {
     <RawToolOutput block={block} />
   </div> : undefined;
   const body = content === undefined ? coreBody : content;
-  const hasBody = hasCoreBody || content !== undefined || block.automaticApprovalReviews.length > 0;
+  const hasBody = (content === undefined ? hasCoreBody : hasCustomBody) || block.automaticApprovalReviews.length > 0;
   return <><ActivityDisclosure icon={icon === undefined ? activityIcon(presentation.icon) : icon}
     summary={presentation.summary} detail={presentation.detail} open={open} onOpenChange={setOpen}
     running={presentation.state === "running"} status={presentation.state}
-    bodyVariant={content !== null && (hasBody || content !== undefined) ? "grouped" : "default"}
+    bodyVariant={hasBody ? "grouped" : "default"}
     accessory={block.automaticApprovalReviews.length > 0 ? <AutomaticApprovalReviewIcon /> : undefined}
     unmountBodyWhenCollapsed>
     {hasBody ? <>{body}<AutomaticApprovalReviewList blockId={block.id} reviews={block.automaticApprovalReviews} /></> : undefined}

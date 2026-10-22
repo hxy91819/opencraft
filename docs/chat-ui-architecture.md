@@ -2653,6 +2653,9 @@ The renderer is called once per tool render; its body is not duplicated with
 the default content. Default thread creation/navigation stays semantic when
 the Host returns `undefined` or does not provide the port. Handoff disclosures
 exist only for reported progress steps; an empty step list leaves a summary row.
+Explicit `null` or `false` suppresses the default body and does not create an
+empty disclosure. Approval reviews remain visible when the Host suppresses its
+own tool content.
 These choices own presentation and cannot create a Thread or execute a tool.
 
 Side Chat queries the child Host/runtime model catalog for display metadata only. The execution snapshot owns inherited model, effort and service tier. The compact non-interactive footer retains catalog casing, with readable identifier fallback.
@@ -3178,6 +3181,9 @@ The renderer is called once per tool render; its body is not duplicated with
 the default content. Default thread creation/navigation stays semantic when
 the Host returns `undefined` or does not provide the port. Handoff disclosures
 exist only for reported progress steps; an empty step list leaves a summary row.
+Explicit `null` or `false` suppresses the default body and does not create an
+empty disclosure. Approval reviews remain visible when the Host suppresses its
+own tool content.
 These choices own presentation and cannot create a Thread or execute a tool.
 
 ## Composer execution material feedback

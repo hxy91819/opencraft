@@ -528,6 +528,9 @@ try {
         assert.ok(await input.evaluate(node => node === (window as any).hostInputNode));
       } else if (mode === "null" || mode === "false") {
         assert.equal(await bodies.count(), 0); assert.equal(await builtins.count(), 0);
+        assert.equal(await page.getByRole('button', { name: 'Transfer · Queued', exact: true }).count(), 0,
+          'explicit Host suppression must not create an empty disclosure without progress steps');
+        await page.screenshot({ path: join(output, `host-${mode}-${width}-${theme}.png`) });
       } else {
         assert.equal(await page.locator('.thread-created-thread-card').count(), 1);
         assert.equal(await page.locator('.thread-handoff-step').count(), 3);
