@@ -303,8 +303,8 @@ type AgentToggle = {
   readonly onClick: (event: import("react").MouseEvent<HTMLButtonElement>) => void;
 };
 
-function Agents({ blocks, grouped, renderToggle }: {
-  blocks: readonly AgentBlock[]; grouped: boolean;
+function Agents({ blocks, grouped, restoreKey, renderToggle }: {
+  blocks: readonly AgentBlock[]; grouped: boolean; restoreKey: string;
   renderToggle: (props: AgentToggle) => import("react").ReactNode;
 }) {
   const navigation = useContext(SubagentNavigationContext);
@@ -316,8 +316,9 @@ function Agents({ blocks, grouped, renderToggle }: {
     for (const agent of detail.agents) detailsByThread.set(agent.threadId, { block, actionLabel: detail.actionLabel });
   }
   const running = blocks.some(block => block.status === "running" || block.status === "pending");
-  const [open, setOpen] = useActivityOpen(running);
-  const [showAllAgents, setShowAllAgents] = useState(false);
+  const [open, setOpen] = useActivityOpen(running, false, restoreKey);
+  const [showAllAgents, setShowAllAgents] = useActivityOpen(false, false,
+    JSON.stringify(["subagent-members", restoreKey]));
   const visibleAgents = showAllAgents ? presentation.agents : presentation.agents.slice(0, 3);
   const hiddenAgentCount = presentation.agents.length - visibleAgents.length;
   const reflow = useDisclosureReflow();
@@ -331,7 +332,6 @@ function Agents({ blocks, grouped, renderToggle }: {
       <Avatar agent={agent} /><span>{subagentInlineStatusLabel(agent)}</span>
     </button>;
   }
-
   return <section className="thread-subagent-activity" data-status={blocks.at(-1)?.status} data-open={open || undefined}>
     <div className="thread-subagent-activity__header">
       {renderToggle({ label: presentation.actionLabel, open, disabled: !presentation.expandable, onClick: event => {
@@ -375,7 +375,7 @@ function Agents({ blocks, grouped, renderToggle }: {
 }
 
 export function SubagentBlock({ block }: { block: AgentBlock }) {
-  return <Agents blocks={[block]} grouped={false} renderToggle={props =>
+  return <Agents blocks={[block]} grouped={false} restoreKey={JSON.stringify(["subagent", block.id])} renderToggle={props =>
     <button type="button" className="thread-subagent-activity__toggle thread-activity-item__header"
       aria-expanded={props.open} disabled={props.disabled} onClick={props.onClick}>
       <ActivityIcon><AgentActivityIcon /></ActivityIcon><span className="thread-activity-item__summary">{props.label}</span>
@@ -383,7 +383,8 @@ export function SubagentBlock({ block }: { block: AgentBlock }) {
 }
 
 export function SubagentActivityGroup({ unit }: { readonly unit: SubagentActivityRenderUnit }) {
-  return unit.blocks.length > 0 ? <Agents blocks={unit.blocks} grouped={unit.blocks.length > 1} renderToggle={props =>
+  return unit.blocks.length > 0 ? <Agents blocks={unit.blocks} grouped={unit.blocks.length > 1}
+    restoreKey={JSON.stringify(["subagent-group", unit.id])} renderToggle={props =>
     <button type="button" className="thread-subagent-activity__toggle thread-activity-item__header"
       aria-expanded={props.open} disabled={props.disabled} onClick={props.onClick}>
       <ActivityIcon><AgentActivityIcon /></ActivityIcon><span className="thread-activity-item__summary">{props.label}</span>

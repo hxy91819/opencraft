@@ -68,7 +68,7 @@ try {
       await page.locator(`[data-revision="${before + 1}"]`).waitFor();
     };
     const activate = (target: any) => touch ? target.tap() : target.click();
-    for (const scene of ["subagent-details", "subagent-single", "subagent-wait"]) {
+    for (const scene of ["subagent-details", "subagent-single", "subagent-wait", "subagent-many", "subagent-many-single"]) {
       await update(scene);
       const agents = page.locator('.thread-subagent-activity');
       const disclosure = agents.locator('.thread-subagent-activity__toggle');
@@ -77,7 +77,21 @@ try {
       const rows = agents.locator('.thread-subagent-details__row');
       await rows.first().waitFor();
       const content = await agents.locator('.thread-subagent-details__inner').innerText();
-      if (scene === "subagent-details") {
+      if (scene === "subagent-many" || scene === "subagent-many-single") {
+        const header = agents.locator('.thread-subagent-activity__header');
+        const chips = header.locator('.thread-subagent-chip');
+        assert.equal(await chips.count(), 3, 'the initial summary retains a bounded preview');
+        assert.ok(await chips.evaluateAll(nodes => nodes.every(node =>
+          (node.querySelector('span:not(.thread-subagent-avatar)') as HTMLElement).clientWidth > 0)),
+          'preview names retain visible space on narrow touch screens');
+        await activate(header.getByRole('button', { name: '5 more', exact: true }));
+        assert.equal(await chips.count(), 8);
+        await activate(header.getByRole('button', { name: 'Open Hazel subagent', exact: true }));
+        assert.deepEqual(await page.evaluate(() => (window as any).openedSubagents.slice(-1)),
+          [{ threadId: 'density-agent-7', displayName: 'Hazel' }]);
+        assert.equal(await rows.count(), 8);
+        assert.match(content, scene === "subagent-many" ? /Inspect Hazel/ : /Wait for the density audit/);
+      } else if (scene === "subagent-details") {
         assert.equal(await rows.count(), 2, 'one current detail per agent');
         const typography = rows.filter({ has: page.getByText('Typography', { exact: true }) });
         const icons = rows.filter({ has: page.getByText('Icons', { exact: true }) });
@@ -100,15 +114,63 @@ try {
       await activate(disclosure);
       assert.equal(await agents.locator('.thread-subagent-details__inner').innerText(), content,
         'folding retains the same assigned instructions');
+      const visibleChipCount = await agents.locator('.thread-subagent-chip').count();
+      await update("restore");
+      assert.equal(await disclosure.getAttribute('aria-expanded'), 'true', 'View return retains explicit subagent detail expansion');
+      assert.equal(await agents.locator('.thread-subagent-chip').count(), visibleChipCount,
+        'View return retains the expanded member list independently');
+      assert.equal(await agents.locator('.thread-subagent-details__inner').innerText(), content);
+      await activate(disclosure);
+      await update("restore");
+      assert.equal(await disclosure.getAttribute('aria-expanded'), 'false', 'View return retains explicit detail collapse');
+      assert.equal(await agents.locator('.thread-subagent-chip').count(), visibleChipCount);
+      await activate(disclosure);
+      if (scene === "subagent-many" || scene === "subagent-many-single") {
+        await update("subagent-grow");
+        assert.equal(await disclosure.getAttribute('aria-expanded'), 'true');
+        assert.equal(await agents.locator('.thread-subagent-chip').count(), 9,
+          'new group members preserve the existing full-list choice');
+        await update("restore");
+        assert.equal(await disclosure.getAttribute('aria-expanded'), 'true',
+          'single-operation to grouped presentation keeps the render unit owner');
+        assert.equal(await agents.locator('.thread-subagent-chip').count(), 9);
+        assert.match(await agents.locator('.thread-subagent-details__inner').innerText(), /Inspect Juniper/);
+      }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.screenshot({ path: join(output, `${theme}-${touch ? 'touch' : 'mouse'}-${scene}.png`) });
       subagentDetails.push({ scene, theme, touch, content });
+    }
+    for (const [kind, label] of [
+      ["started", "Compiler Reviewer started working"],
+      ["interacted", "Compiler Reviewer updated"],
+      ["interrupted", "Compiler Reviewer interrupted"],
+      ["completed", null],
+    ] as const) {
+      await update("subagent-lifecycle-" + kind);
+      const inline = page.locator('.thread-subagent-inline');
+      if (label === null) {
+        assert.equal(await inline.count(), 0, 'completed notices retain their existing aggregate presentation');
+      } else {
+        await inline.waitFor();
+        assert.equal(await inline.locator('span:not(.thread-subagent-avatar)').last().innerText(), label);
+        assert.equal(await page.locator('.thread-subagent-activity__status').count(), 0);
+      }
+      const before = await page.evaluate(() => (window as any).openedSubagents.length);
+      // Tap the label, not just the avatar/name chip: the whole notice navigates.
+      await activate(label === null ? page.getByRole('button', { name: 'Open Compiler Reviewer subagent', exact: true })
+        : inline.locator('span:not(.thread-subagent-avatar)').last());
+      assert.equal(await page.evaluate(() => (window as any).openedSubagents.length), before + 1);
+      assert.deepEqual(await page.evaluate(() => (window as any).openedSubagents.slice(-1)),
+        [{ threadId: 'lifecycle-child', displayName: 'Compiler Reviewer' }]);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      subagentDetails.push({ scene: "subagent-lifecycle-" + kind, theme, touch, content: label });
     }
     if (process.argv.includes("--subagents-only")) {
       assert.deepEqual(errors, []);
       await page.close();
       continue;
     }
+    await update("reset");
     await update("reset");
     if (process.argv.includes("--turn-entry-only")) {
       await page.evaluate(() => {
