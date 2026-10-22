@@ -43,23 +43,45 @@ const daemon = new OpenCraftDaemonClientManager({
 
 const manifest = JSON.parse(await readFile(join(releaseRoot, 'package.json'), 'utf8'));
 const core = new CodexCoreControlClient(coreEndpoint, (await readFile(tokenPath, 'utf8')).trim());
-// Readiness traverses the deployed daemon IPC and core, without initializing DSH.
-await core.health(AbortSignal.timeout(5000));
-const readiness = await daemon.connectAppHost('gateway-readiness');
-// Probes must not allocate a daemon connection every five seconds. The
-// readiness connection already proved the deployed daemon IPC and storage
-// snapshot; close it and retain that immutable summary for /health.
-const storage = readiness.storage;
-readiness.close();
+// Keep one idle IPC observer: a startup snapshot cannot prove daemon liveness.
+// Recovery is shared, and probes never wait for a daemon to restart.
 let stopping = false;
+let readiness;
+let readinessAttempt;
+function ensureReadiness() {
+  if (stopping || readiness) return Promise.resolve();
+  if (!readinessAttempt) {
+    const operation = daemon.connectAppHost('gateway-readiness').then(connection => {
+      if (stopping) { connection.close(); return; }
+      const unsubscribe = connection.subscribeClose(() => {
+        unsubscribe();
+        if (readiness === connection) readiness = undefined;
+      });
+      readiness = connection;
+    }).finally(() => {
+      if (readinessAttempt === operation) readinessAttempt = undefined;
+    });
+    readinessAttempt = operation;
+  }
+  return readinessAttempt;
+}
+// Startup traverses the deployed daemon IPC and Core without initializing DSH.
+await core.health(AbortSignal.timeout(5000));
+await ensureReadiness();
 const server = createServer(async (request, response) => {
   response.setHeader("cache-control", "no-store");
   response.setHeader("content-type", "application/json; charset=utf-8");
   if (stopping) { response.writeHead(503); response.end('{}'); return; }
   if (request.url !== '/health') { response.writeHead(404); response.end('{}'); return; }
   try {
+    const observed = readiness;
+    if (!observed) {
+      void ensureReadiness().catch(() => {});
+      throw new Error("Daemon readiness unavailable");
+    }
     const health = await core.health(AbortSignal.timeout(5000));
-    response.end(JSON.stringify({ ok: true, version: manifest.version, buildId: manifest.opencraftWeb.buildId, core: health, storage }));
+    if (stopping || readiness !== observed) throw new Error("Daemon readiness changed");
+    response.end(JSON.stringify({ ok: true, version: manifest.version, buildId: manifest.opencraftWeb.buildId, core: health, storage: observed.storage }));
   } catch { response.writeHead(503); response.end(JSON.stringify({ ok: false })); }
 });
 const sockets = new WebSocketServer({ noServer: true });
@@ -154,6 +176,8 @@ server.listen(port, "127.0.0.1", () => {
 const shutdown = async () => {
   if (stopping) return;
   stopping = true;
+  readiness?.close();
+  readiness = undefined;
   const serverClosed = new Promise((done) => server.close(done));
   const daemonClosed = daemon.shutdown();
   for (const close of [...activeClosers]) close();

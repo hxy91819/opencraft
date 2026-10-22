@@ -357,6 +357,17 @@ an authorization grant. Actor admission and Host access stay at the existing ing
 The current registry composes the local DSH/Pi endpoint; Codex's existing endpoint
 continues independently. Enabling this registry does not migrate Codex into it.
 
+### Daemon gateway health observation
+
+The daemon deployment profile retains one idle readiness IPC connection. Normal
+health probes reuse it without allocating connections or initializing an engine.
+Losing it immediately invalidates readiness; probes report unavailable and share
+one background recovery attempt. Recovery replaces the storage summary with the
+new connection's summary. A Core result is healthy only if that same readiness
+connection still owns the observation after the await. Shutdown closes the
+observer and rejects late recovery results. Headless deployment keeps its
+independent Core/DSH health contract.
+
 ### Backend connection loss and client recovery
 
 The multi-engine Host treats each frontend connection and its DSH backend as one
