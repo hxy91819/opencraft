@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createServer } from 'node:http';
 import { mkdtemp, mkdir, readFile, readlink, writeFile, rm, symlink, rename, cp } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import { createServer as createNetServer } from 'node:net';
+import { once } from 'node:events';
+import { build } from 'esbuild';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -365,4 +368,97 @@ test('headless execution identity follows the current release pointer', async ()
     assert.deepEqual(await readCurrentReleaseManifest(first, join(link, 'execution/gateway.mjs')), { version: '1.1.0', opencraftWeb: { buildId: 'two' } });
     assert.deepEqual(await readCurrentReleaseManifest(first, '/tmp/unrelated-runner.mjs'), { version: '1.0.0', opencraftWeb: { buildId: 'one' } });
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+
+test('daemon gateway health tracks IPC lifetime, shares recovery and fences shutdown', { timeout: 30_000 }, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'daemon-gateway-health-'));
+  const state = join(root, 'state'), release = join(root, 'release');
+  const token = 'synthetic-daemon-health-token-not-a-real-secret';
+  const connections = new Set(), heldReady = [];
+  let generation = 1, holdReady = false, hellos = 0, appMessages = 0, gateway;
+  let releaseCore, coreEntered;
+  const core = createServer(async (request, response) => {
+    assert.equal(request.headers.authorization, `Bearer ${token}`);
+    if (coreEntered) { const entered = coreEntered; coreEntered = null; entered(); await new Promise(done => { releaseCore = done; }); }
+    response.end(JSON.stringify({ protocolVersion: 1, pid: process.pid, codexPid: process.pid, nativeSocket: join(state, 'native.sock') }));
+  });
+  const daemon = createNetServer(socket => {
+    connections.add(socket); socket.on('close', () => connections.delete(socket));
+    let buffer = '';
+    socket.on('data', chunk => {
+      buffer += chunk;
+      while (buffer.includes('\n')) {
+        const end = buffer.indexOf('\n');
+        const message = JSON.parse(buffer.slice(0, end)); buffer = buffer.slice(end + 1);
+        if (message.type === 'daemon/hello') {
+          assert.equal(message.authToken, token); hellos++;
+          const ready = () => {
+            if (!socket.destroyed) socket.write(JSON.stringify({ type: 'daemon/ready', protocolVersion: 1,
+              buildId: 'opencraft-daemon-v2', pid: process.pid,
+              storage: [{ name: 'synthetic-owner', status: 'up-to-date', appliedVersion: generation, movedAside: false }] }) + '\n');
+          };
+          if (holdReady && message.role === 'app-host') heldReady.push(ready); else ready();
+        } else if (message.type === 'daemon/shutdown') {
+          socket.end(JSON.stringify({ type: 'daemon/shutting-down' }) + '\n');
+        } else appMessages++;
+      }
+    });
+  });
+  let output = '';
+  try {
+    await mkdir(join(release, 'execution'), { recursive: true }); await mkdir(state);
+    await writeFile(join(state, 'daemon.token'), token, { mode: 0o600 });
+    await writeFile(join(release, 'package.json'), JSON.stringify({ version: 'fixture', opencraftWeb: { buildId: 'fixture' } }));
+    await build({ entryPoints: [resolve('scripts/server-deployment/gateway.mjs')], outfile: join(release, 'execution/gateway.mjs'),
+      bundle: true, platform: 'node', format: 'esm', target: 'node22', external: ['node-pty'],
+      banner: { js: "import {createRequire} from 'node:module'; const require = createRequire(import.meta.url);" } });
+    await new Promise(done => core.listen(join(state, 'core.sock'), done));
+    await new Promise(done => daemon.listen(join(state, 'daemon.sock'), done));
+    const reserved = createNetServer(); await new Promise(done => reserved.listen(0, '127.0.0.1', done));
+    const port = reserved.address().port; await new Promise(done => reserved.close(done));
+    gateway = spawn(process.execPath, [join(release, 'execution/gateway.mjs')], { env: {
+      PATH: process.env.PATH, OPENCRAFT_EXECUTION_CWD: root, OPENCRAFT_EXECUTION_STATE: state,
+      OPENCRAFT_CODEX_CORE_ENDPOINT: join(state, 'core.sock'), OPENCRAFT_DSH_EXECUTABLE: join(root, 'unused-dsh'), OPENCRAFT_GATEWAY_PORT: String(port),
+    }, stdio: ['ignore', 'pipe', 'pipe'] });
+    gateway.stdout.on('data', chunk => { output += chunk; }); gateway.stderr.on('data', chunk => { output += chunk; });
+    const read = async () => {
+      const response = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(5000) });
+      return { status: response.status, body: await response.json() };
+    };
+    await until(async () => { if (gateway.exitCode !== null) throw Error(output); try { return await read(); } catch { return null; } }, value => value?.status === 200);
+    const initialHellos = hellos;
+    assert.equal(initialHellos, 2, 'one control probe and one persistent readiness connection');
+    for (const value of await Promise.all(Array.from({ length: 6 }, read))) assert.equal(value.status, 200);
+    assert.equal(hellos, initialHellos, 'routine health does not allocate new IPC connections');
+    // Loss while Core is awaited must invalidate that same observation.
+    const entered = new Promise(done => { coreEntered = done; });
+    const racingHealth = read(); await entered;
+    holdReady = true; generation = 2; for (const socket of connections) socket.destroy();
+    await until(async () => connections.size, count => count === 0); await delay(30); releaseCore();
+    const lost = await racingHealth; assert.equal(lost.status, 503); assert.equal(lost.body.ok, false);
+    for (const value of await Promise.all(Array.from({ length: 8 }, read))) assert.equal(value.status, 503);
+    await until(async () => heldReady.length, count => count === 1);
+    assert.equal(hellos, initialHellos + 2, 'concurrent failed probes share a single recovery operation');
+    heldReady.shift()();
+    const recovered = await until(read, value => value.status === 200);
+    assert.equal(recovered.body.storage[0].appliedVersion, 2, 'recovery uses the new daemon storage summary');
+    for (const value of await Promise.all(Array.from({ length: 6 }, read))) assert.equal(value.status, 200);
+    assert.equal(hellos, initialHellos + 2);
+    assert.equal(appMessages, 0, 'health does not initialize an execution engine');
+    // A late successful readiness result cannot revive the gateway during shutdown.
+    for (const socket of connections) socket.destroy(); await delay(30);
+    assert.equal((await read()).status, 503);
+    await until(async () => heldReady.length, count => count === 1);
+    const exited = once(gateway, 'exit'); gateway.kill('SIGTERM'); await delay(30); heldReady.shift()();
+    const [code] = await exited; assert.equal(code, 0, output);
+    await until(async () => connections.size, count => count === 0);
+  } finally {
+    releaseCore?.();
+    if (gateway && gateway.exitCode === null) { const exited = once(gateway, 'exit'); gateway.kill('SIGKILL'); await exited; }
+    for (const socket of connections) socket.destroy();
+    if (daemon.listening) await new Promise(done => daemon.close(done));
+    core.closeAllConnections(); if (core.listening) await new Promise(done => core.close(done));
+    await rm(root, { recursive: true, force: true });
+  }
 });
