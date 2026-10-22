@@ -35,19 +35,6 @@ export async function startEngineHost(options: {
     return legacy ??= options.legacy.start().catch(error => { legacy = undefined; throw error; });
   };
   const token = randomUUID();
-  // Reconnects arrive in bursts. Share one identical backend read instead of
-  // multiplying the same initialize/catalog work across every socket.
-  const flights = new Map<string, Promise<unknown>>();
-  const singleflight = <T>(key: string, operation: () => Promise<T>): Promise<T> => {
-    const existing = flights.get(key) as Promise<T> | undefined;
-    if (existing !== undefined) return existing;
-    const started = Promise.resolve().then(operation);
-    flights.set(key, started);
-    // The shared promise is awaited by its callers; cleanup must not create a
-    // second unhandled rejection when the only origin socket disconnects.
-    void started.finally(() => { if (flights.get(key) === started) flights.delete(key); }).catch(() => undefined);
-    return started;
-  };
   const server = createServer((_request, response) => { response.writeHead(404); response.end(); });
   const sockets = new WebSocketServer({ noServer: true, maxPayload: 32 * 1024 * 1024 });
   server.on("upgrade", (request, socket, head) => {
@@ -56,6 +43,18 @@ export async function startEngineHost(options: {
     sockets.handleUpgrade(request, socket, head, client => sockets.emit("connection", client));
   });
   sockets.on("connection", socket => {
+    // A backend read is canceled with its frontend connection. Only logical
+    // clients sharing that lifetime may share an in-flight request.
+    const flights = new Map<string, Promise<unknown>>();
+    const singleflight = <T>(key: string, operation: () => Promise<T>): Promise<T> => {
+      const existing = flights.get(key) as Promise<T> | undefined;
+      if (existing !== undefined) return existing;
+      const started = Promise.resolve().then(operation);
+      flights.set(key, started);
+      // Callers observe rejection; the cleanup promise must also handle it.
+      void started.finally(() => { if (flights.get(key) === started) flights.delete(key); }).catch(() => undefined);
+      return started;
+    };
     let stopped = false, backend: WebSocket | undefined, backendStarting: Promise<WebSocket> | undefined;
     const internal = new Map<string, { resolve(value: any): void; reject(error: Error): void; timer: NodeJS.Timeout }>();
     const platform = new Map<string, { clientId: string; resolve(value: any): void; reject(error: Error): void; timer: NodeJS.Timeout }>();
