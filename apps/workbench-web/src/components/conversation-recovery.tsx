@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { writeTextToClipboard } from "@opencraft/chat-render-web/clipboard";
 import { conversationRecoveryDiagnosticText, type ConversationRecoveryDiagnostic } from "../runtime/conversation-recovery-diagnostic";
 import { FormattedMessage } from "@opencraft/i18n/react";
@@ -56,48 +56,10 @@ function RecoveryTechnicalDetails({ diagnostic, pending = false }: { readonly di
   </details>;
 }
 
-/** The only timer is a visible presentation clock; it never drives retries or RPCs. */
-function RecoveryProgressDetails({ diagnostic, failed = false }: { readonly diagnostic: ConversationRecoveryDiagnostic; readonly failed?: boolean }) {
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | undefined;
-    const sync = () => {
-      if (timer !== undefined) clearInterval(timer);
-      timer = undefined;
-      if (!document.hidden) { setNow(Date.now()); timer = setInterval(() => setNow(Date.now()), 1_000); }
-    };
-    sync(); document.addEventListener("visibilitychange", sync);
-    return () => { if (timer !== undefined) clearInterval(timer); document.removeEventListener("visibilitychange", sync); };
-  }, []);
-  const progress = diagnostic.progress;
-  const stage = progress?.stage ?? (diagnostic.stage === "connection" ? "connecting" : diagnostic.stage === "activation" ? "queued" : "history");
-  const elapsed = Math.max(0, Math.floor((now - (progress?.startedAt ?? Date.parse(diagnostic.occurredAt))) / 1_000));
-  const remaining = progress?.retryAt === undefined ? null : Math.max(0, Math.ceil((progress.retryAt - now) / 1_000));
-  return <div className="conversation-recovery-progress">
-    <span className="conversation-recovery-progress__stage">
-      {stage === "connecting" ? <FormattedMessage id="chat.recovery.progress.connecting" defaultMessage="Connecting to server" />
-        : stage === "initializing" ? <FormattedMessage id="chat.recovery.progress.initializing" defaultMessage="Initializing connection" />
-        : stage === "backoff" ? <FormattedMessage id="chat.recovery.progress.backoff" defaultMessage="Waiting to retry" />
-        : stage === "blocked" ? <FormattedMessage id="chat.recovery.progress.blocked" defaultMessage="Automatic retry stopped" />
-        : stage === "failed" ? <FormattedMessage id="chat.recovery.progress.failed" defaultMessage="Recovery failed" />
-        : stage === "queued" ? <FormattedMessage id="chat.recovery.progress.queued" defaultMessage="Preparing conversation" />
-        : <FormattedMessage id="chat.recovery.progress.history" defaultMessage="Restoring conversation history" />}
-    </span>
-    <span className="conversation-recovery-progress__time" aria-live="off">
-      <FormattedMessage id="chat.recovery.progress.elapsed" defaultMessage="{seconds}s elapsed" values={{ seconds: elapsed }} />
-      {progress ? <> · <FormattedMessage id="chat.recovery.progress.attempt" defaultMessage="Attempts started: {count}" values={{ count: progress.attempt }} /></> : null}
-      {remaining !== null ? <> · <FormattedMessage id="chat.recovery.progress.retry" defaultMessage="Retry in {seconds}s" values={{ seconds: remaining }} /></> : null}
-    </span>
-    {progress?.lastFailure ? <span className="conversation-recovery-progress__failure"><FormattedMessage id="chat.recovery.progress.lastFailure" defaultMessage="Last failure: {code}" values={{ code: progress.lastFailure.code }} /></span> : null}
-    <RecoveryTechnicalDetails diagnostic={diagnostic} pending={!failed} />
-  </div>;
-}
-
 /** An intermediate failed request can still be waiting for automatic retry. */
 function RecoveryFailureDetails({ diagnostic }: { readonly diagnostic: ConversationRecoveryDiagnostic }) {
   if (diagnostic.progress) {
     if (diagnostic.progress.stage !== "failed" && diagnostic.progress.stage !== "blocked") return null;
-    return <RecoveryProgressDetails diagnostic={diagnostic} failed />;
   }
   return <RecoveryTechnicalDetails diagnostic={diagnostic} />;
 }

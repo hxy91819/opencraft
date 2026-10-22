@@ -107,7 +107,8 @@ test("loading hides technical observations while failures retain diagnostic deta
    else assert.equal(html, "");
    assert.doesNotMatch(html,/Technical details|Copy details|Attempts started|elapsed|Retry in|TIMEOUT|local-episode|<details|<pre/);
   }
-  const terminalDiagnostic={...diagnostic,progress:{...diagnostic.progress,stage:"failed" as const}};
+  for (const stage of ["failed", "blocked"] as const) {
+  const terminalDiagnostic={...diagnostic,progress:{...diagnostic.progress,stage}};
   for(const child of [
    createElement(ConversationRecoveryNotice,{failed:true,reconnecting:false,diagnostic:terminalDiagnostic,onRetry(){}}),
    createElement(ConversationRecoveryEmptyState,{failed:true,diagnostic:terminalDiagnostic,onRetry(){}}),
@@ -116,6 +117,8 @@ test("loading hides technical observations while failures retain diagnostic deta
    assert.match(html,/Try again/);
    assert.match(html,/Technical details/);assert.match(html,/Copy details/);
    assert.doesNotMatch(html,/<details[^>]*open/);
+   assert.doesNotMatch(html,/conversation-recovery-progress|Attempts started:|Retry in |\d+s elapsed/, "stopped recovery keeps observations inside the collapsed report");
+  }
   }
  }finally{runtime.dispose();}
 });
