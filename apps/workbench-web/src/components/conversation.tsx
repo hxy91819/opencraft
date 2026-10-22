@@ -1,4 +1,4 @@
-import { LoadingRingIcon } from "@opencraft/design-system-web/action-icons";
+import { LoaderCircle as LoadingRingIcon } from "lucide-react";
 import { ForkTurnButton } from "./conversation/fork-turn-button";
 import { ConversationSelectionMenu } from "./conversation/selection-menu";
 import { ConversationEntryMotionContext, useConversationEntryMotion } from "./conversation/entry-motion";
