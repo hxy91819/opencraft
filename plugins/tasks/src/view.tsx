@@ -37,7 +37,6 @@ import {
   TASK_PRIORITIES,
   TASK_KINDS,
   TASK_AI_RESEARCH,
-  type TaskKind,
   type TaskMember,
   type TasksMethodMap,
   type TaskContent,
@@ -52,6 +51,7 @@ import { TasksArchiveController } from "./archive-controller";
 import { TasksController } from "./controller";
 import "./styles.scss";
 import { TaskDescriptionField } from "./description-field";
+import { KindBadge, useKindText } from "./task-kind";
 import { AIFollowUp, type FollowUpSelection } from "./ai-follow-up";
 import { MorningOverview } from "./morning-overview";
 import { parseFollowUpReport } from "./ai-follow-up-model";
@@ -244,17 +244,6 @@ function useText() {
   const intl = useIntl();
   return (key: keyof typeof words) =>
     words[key][intl.locale.startsWith("zh") ? 0 : 1];
-}
-const kindWords: Record<TaskKind, readonly [string, string]> = {
-  unclassified: ["未分类", "Unclassified"], feature: ["功能需求", "Feature"], improvement: ["改进优化", "Improvement"], bug: ["缺陷修复", "Bug"], engineering: ["技术建设", "Engineering"], harness: ["Harness 建设", "Harness"], research: ["调研验证", "Research"], documentation: ["文档知识", "Documentation"], operations: ["发布运维", "Operations"], growth: ["运营增长", "Growth"], task: ["通用任务", "Task"],
-};
-function useKindText() {
-  const intl = useIntl();
-  return (kind: string) => kindWords[kind as TaskKind]?.[intl.locale.startsWith("zh") ? 0 : 1] ?? kind;
-}
-function KindBadge({ kind = "unclassified" }: { kind?: string }) {
-  const label = useKindText();
-  return <span className="tasks-kind" data-kind={TASK_KINDS.includes(kind as TaskKind) ? kind : "unknown"}>{label(kind)}</span>;
 }
 function starterTemplate(kind: string, chinese: boolean) {
   if (chinese) {
@@ -1636,7 +1625,7 @@ export function createTasksView(
             </div>
           ) : <>
           {morningOpen ? <MorningOverview /> : null}
-          {draft.mode === "ai" && !morningOpen && !managementOpen && !overviewOpen ? <AIFollowUp tasks={state.tasks} members={state.members} activity={state.activity} port={morningPort} myMemberId={myMemberId} selection={aiViewSelections.get(memberScope) ?? { scope: "all", search: "" }} onSelectionChange={value => { aiViewSelections.set(memberScope, value); refreshLocalSelection(epoch => epoch + 1); }} onOpenTask={task => openEditor(task)} ownerFilter={aiOwnerSelections.get(memberScope) ?? ""} onOwnerFilterChange={value => { aiOwnerSelections.set(memberScope, value); refreshLocalSelection(epoch => epoch + 1); }} onOpenConversation={host.openConversation ? open : undefined} /> : null}
+          {draft.mode === "ai" && !morningOpen && !managementOpen && !overviewOpen ? <AIFollowUp tasks={state.tasks} members={state.members} activity={state.activity} port={morningPort} myMemberId={myMemberId} selection={aiViewSelections.get(memberScope) ?? { scope: "all", search: "" }} onSelectionChange={value => { aiViewSelections.set(memberScope, value); refreshLocalSelection(epoch => epoch + 1); }} ownerFilter={aiOwnerSelections.get(memberScope) ?? ""} onOwnerFilterChange={value => { aiOwnerSelections.set(memberScope, value); refreshLocalSelection(epoch => epoch + 1); }} onOpenConversation={host.openConversation ? open : undefined} /> : null}
           {archiveOpen && state.archive ? <ArchivePanel model={archives} members={state.members} pending={state.pending} reportError={reportError} ports={ports} session={editorSession}
             activityFor={item => { let activity = activities.get(item.id); if (!activity) { activity = new TaskActivityController({ request: (method, params) => ports.request(authority!, method, params) }, item.id, () => {}); activities.set(item.id, activity); } return activity; }}
             onRead={id => ports.request(authority!, TASKS.read, { id })} onOpen={open} onRestore={async item => { const saved = await model.mutate(TASKS.unarchive, { id: item.id, expectedRevision: item.revision }); await archives.refresh(); return saved; }} /> : null}

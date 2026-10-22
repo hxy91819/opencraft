@@ -1,10 +1,11 @@
 import * as DropdownMenu from "@opencraft/design-system-web/dropdown-menu";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Clock } from "lucide-react";
+import { ArrowRight, Clock } from "lucide-react";
 import { SegmentedControl, SettingsButton, SettingsSelect, SettingsTextInput } from "@opencraft/extension-react";
 import { useIntl } from "@opencraft/i18n/react";
 import type { TaskConversation, TaskDetail, TaskMember, TasksRequestPort } from "@opencraft/appserver-protocol";
 import { activeFollowUpTask, FOLLOW_UP_LANES, followUpProjection, followUpTaskKey, readFollowUpEvents, type FollowUpProjection } from "./ai-follow-up-model";
+import { KindBadge } from "./task-kind";
 import { MemberAvatar } from "./member-avatar";
 import "./ai-follow-up.scss";
 
@@ -12,7 +13,7 @@ export interface FollowUpSelection { readonly scope: string; readonly search: st
 type CachedProjection = { key: string; status: string; value: FollowUpProjection; failed: boolean };
 
 /** A read-only projection; task status, activity and navigation retain their existing owners. */
-export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwnerFilterChange, selection, onSelectionChange, myMemberId, onOpenTask, onOpenConversation }: {
+export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwnerFilterChange, selection, onSelectionChange, myMemberId, onOpenConversation }: {
   tasks: readonly TaskDetail[];
   members: readonly TaskMember[];
   activity: boolean;
@@ -22,7 +23,6 @@ export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwne
   selection: FollowUpSelection;
   onSelectionChange(value: FollowUpSelection): void;
   myMemberId: string | null;
-  onOpenTask(task: TaskDetail): void;
   onOpenConversation?: (link: TaskConversation) => void;
 }) {
   const zh = useIntl().locale.startsWith("zh");
@@ -118,6 +118,7 @@ export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwne
     <div className="tasks-ai-follow-up__feedback" role="status" aria-live="polite">
       {checking ? text("正在核实协作记录…", "Checking collaboration records…") : unavailable ? <>{text("部分协作记录暂不可用；未推断执行或等待时间。", "Some records are unavailable; execution and waiting are not inferred.")} {activity ? <SettingsButton variant="quiet" onClick={retry}>{text("重新核实", "Retry")}</SettingsButton> : null}</> : null}
     </div>
+    <div className="tasks-ai-follow-up__board-scroll" role="region" aria-label={text("任务分组，可横向滚动", "Task lanes, scroll horizontally")} tabIndex={0}>
     <div className="tasks-ai-follow-up__board" aria-busy={checking}>
       {FOLLOW_UP_LANES.map(lane => {
         const items = active.filter(task => projection(task).lane === lane).sort((a, b) => lane === "needs"
@@ -132,22 +133,22 @@ export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwne
               : text(`${duration(p.updatedAt)}前更新`, `Updated ${duration(p.updatedAt)} ago`);
             return <li className="tasks-ai-follow-up__item" key={task.id} data-ai-follow-up-task-id={task.id}>
               <div className="tasks-ai-follow-up__content">
+                <KindBadge kind={task.kind} />
                 <h4>{task.title}</h4>
-                {p.lane === "needs" ? <p className="tasks-ai-follow-up__decision">{p.decision}</p> : null}
-                {p.report ? <p className="tasks-ai-follow-up__artifact" title={p.report.artifact}>{p.report.artifact}</p> : null}
+                {p.lane === "needs" ? <div className="tasks-ai-follow-up__decision"><span>{text("待判断", "Decision needed")}</span><p>{p.decision}</p></div> : null}
                 <div className="tasks-ai-follow-up__state"><span title={status}>{status}</span><span className={p.readyAt !== null ? "tasks-ai-follow-up__wait" : undefined}><Clock size={12} aria-hidden="true" />{wait}</span></div>
                 {p.lane === "review" && unverified(task) ? <span className="tasks-ai-follow-up__unknown">{text("交接尚未核实 · 不计人工等待", "Handoff unverified · no human wait clock")}</span> : null}
                 {p.lane === "needs" ? <span className="tasks-ai-follow-up__judge">{text("本轮判断人：", "Current judge: ")}{p.report ? p.report.judgeId ? ownerName(p.report.judgeId) : text("待认领", "Unclaimed") : text("未单独记录", "Not recorded separately")}</span> : null}
-                <span className="tasks-ai-follow-up__owner" title={`Owner: ${owner}`}><MemberAvatar member={members.find(m => m.id === task.assigneeId)} name={owner} assigned={!!task.assigneeId} /><span>{owner}</span></span>
               </div>
               <footer>
-                <SettingsButton type="button" variant={task.conversations.length && onOpenConversation ? "quiet" : "primary"} onClick={() => onOpenTask(task)} aria-label={text(`查看详情：${task.title}`, `View details: ${task.title}`)}>{text("查看详情", "View details")}</SettingsButton>
-                {task.conversations.length && onOpenConversation ? task.conversations.length === 1 ? <SettingsButton type="button" variant="primary" onClick={() => onOpenConversation(task.conversations[0]!)} aria-label={text(`进入会话：${task.title}`, `Open conversation: ${task.title}`)}>{text("进入会话", "Open chat")}</SettingsButton> : <DropdownMenu.Root><DropdownMenu.Trigger asChild><SettingsButton type="button" variant="primary" aria-label={text(`选择关联会话：${task.title}`, `Choose conversation: ${task.title}`)}>{text("进入会话", "Open chat")} ({task.conversations.length})</SettingsButton></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="tasks-card-menu" sideOffset={4}>{task.conversations.map((link, i) => <DropdownMenu.Item key={JSON.stringify([link.serverId, link.threadId])} onSelect={() => onOpenConversation(link)}>{text(`关联会话 ${i + 1}`, `Linked conversation ${i + 1}`)}</DropdownMenu.Item>)}</DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root> : null}
+                <span className="tasks-ai-follow-up__owner" title={`Owner: ${owner}`}><MemberAvatar member={members.find(m => m.id === task.assigneeId)} name={owner} assigned={!!task.assigneeId} /><span>{owner}</span></span>
+                {task.conversations.length && onOpenConversation ? task.conversations.length === 1 ? <SettingsButton type="button" variant="quiet" className="tasks-ai-follow-up__chat" onClick={() => onOpenConversation(task.conversations[0]!)} aria-label={text(`进入会话：${task.title}`, `Open conversation: ${task.title}`)}>{text("进入会话", "Open chat")}<ArrowRight size={14} aria-hidden="true" /></SettingsButton> : <DropdownMenu.Root><DropdownMenu.Trigger asChild><SettingsButton type="button" variant="quiet" className="tasks-ai-follow-up__chat" aria-label={text(`选择关联会话：${task.title}`, `Choose conversation: ${task.title}`)}>{text("进入会话", "Open chat")} ({task.conversations.length})<ArrowRight size={14} aria-hidden="true" /></SettingsButton></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="tasks-card-menu" sideOffset={4}>{task.conversations.map((link, i) => <DropdownMenu.Item key={JSON.stringify([link.serverId, link.threadId])} onSelect={() => onOpenConversation(link)}>{text(`关联会话 ${i + 1}`, `Linked conversation ${i + 1}`)}</DropdownMenu.Item>)}</DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root> : null}
               </footer>
             </li>;
           })}</ul>}
         </section>;
       })}
+    </div>
     </div>
     <p className="tasks-ai-follow-up__footnote">{text("人工等待从本轮材料就绪开始，评论与改派不重置。可合入不代表已合并或已发布。", "Human waiting starts when this round is ready; comments and reassignment do not reset it. Ready to merge does not mean merged or deployed.")}</p>
   </section>;

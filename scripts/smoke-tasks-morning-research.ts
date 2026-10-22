@@ -78,16 +78,20 @@ for(const width of [1440,390,320])for(const theme of ['light','dark']){
  assert.notEqual(await title.evaluate(el=>getComputedStyle(el).cursor),'pointer');
  await card.locator('.tasks-ai-follow-up__owner').click();
  assert.equal(await page.locator('.tasks-editor').count(),0,'Reading or selecting content/Owner must not open details');
- const details=card.getByRole('button',{name:'查看详情：Oldest handoff',exact:true});
  const chat=card.getByRole('button',{name:'进入会话：Oldest handoff',exact:true});
- assert.equal(await card.locator('footer button').count(),2,'Only two explicit independent destinations');
- assert.match(await details.getAttribute('class')??'',/--quiet/);assert.match(await chat.getAttribute('class')??'',/--primary/);
- assert.equal(await details.locator('svg').count(),0,'Details is an internal destination without an external-link arrow');
- const contentBounds=await content.boundingBox();const footerBounds=await card.locator('footer').boundingBox();
- assert.ok(contentBounds&&footerBounds&&contentBounds.y+contentBounds.height<=footerBounds.y+1,'Actions are separated below all information');
- if(width===1440){await details.focus();await page.keyboard.press('Tab');assert.equal(await chat.evaluate(el=>el===document.activeElement),true,'Keyboard follows detail then chat without a body stop');}
+ assert.equal(await page.getByRole('button',{name:/^查看详情：/}).count(),0,'No detail action in this view');
+ assert.equal(await card.locator('footer button').count(),1,'Chat is the sole explicit card action');
+ assert.match(await chat.getAttribute('class')??'',/--quiet/);
+ assert.equal(await chat.locator('svg').count(),1);
+ assert.equal(await card.locator('.tasks-kind').count(),1,'Original task-kind badge is shared');
+ const frame=page.locator('.tasks-ai-follow-up__column--needs');
+ assert.equal(await frame.evaluate(el=>getComputedStyle(el).borderTopWidth),'0px','Lane has no outer frame');
+ assert.equal(await frame.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');
+ assert.equal(await card.locator('footer').evaluate(el=>getComputedStyle(el).borderTopWidth),'0px');
+ assert.equal(await card.locator('.tasks-ai-follow-up__state').evaluate(el=>getComputedStyle(el).borderTopWidth),'0px');
+ assert.equal(await chat.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)','Chat is a lightweight text action');
 
- assert.equal(await card.locator('.tasks-ai-follow-up__decision').innerText(),'Approve option A? Recommendation: A');
+ assert.equal(await card.locator('.tasks-ai-follow-up__decision p').innerText(),'Approve option A? Recommendation: A');
  assert.doesNotMatch(await card.innerText(),/Verified report|Design A after judgment/);
  const filter=page.getByRole('combobox',{name:'按 Owner 筛选',exact:true});
  await filter.selectOption('member:owner-a');assert.equal(await page.locator('[data-ai-follow-up-task-id]').count(),2);
@@ -103,7 +107,7 @@ for(const width of [1440,390,320])for(const theme of ['light','dark']){
  await filter.selectOption('unassigned');assert.equal(await page.locator('[data-ai-follow-up-task-id]').count(),9);
  assert.deepEqual(await page.locator('.tasks-ai-follow-up__count').allTextContents(),['3','1','1','3','1']);
  assert.equal(await page.getByText('未关联会话',{exact:true}).count(),0);
- const unlinked=page.locator('[data-ai-follow-up-task-id="Queued research"]');assert.equal(await unlinked.locator('button').count(),1);assert.match(await unlinked.getByRole('button',{name:'查看详情：Queued research',exact:true}).getAttribute('class')??'',/--primary/);
+ const unlinked=page.locator('[data-ai-follow-up-task-id="Queued research"]');assert.equal(await unlinked.locator('button,a,[role="button"]').count(),0,'Unlinked cards have no action');
  await filter.selectOption('');
  const multi=page.getByRole('button',{name:'选择关联会话：Overdue handoff',exact:true});
  if(width<600)await multi.tap();else await multi.click();
@@ -112,11 +116,11 @@ for(const width of [1440,390,320])for(const theme of ['light','dark']){
  const first=await card.boundingBox();const second=await page.locator('[data-ai-follow-up-task-id="Overdue handoff"]').boundingBox();
  assert.ok(first&&second);assert.ok(second.y>first.y,'Items stack inside each collaboration lane');
  const todo=await page.locator('.tasks-ai-follow-up__column--todo').boundingBox();const working=await page.locator('.tasks-ai-follow-up__column--working').boundingBox();assert.ok(todo&&working);
- if(width===1440)assert.ok(Math.abs(todo.y-working.y)<2&&working.x>todo.x,'Desktop columns are parallel');else assert.ok(working.y>todo.y,'Phone columns stack');
+ assert.ok(Math.abs(todo.y-working.y)<2&&working.x>todo.x,'Lanes stay parallel at every width');
  await page.getByRole('searchbox',{name:'搜索跟进事项'}).fill('Queued');assert.equal(await page.locator('[data-ai-follow-up-task-id]').count(),1);await page.getByRole('searchbox',{name:'搜索跟进事项'}).fill('');
- await card.getByRole('button',{name:'查看详情：Oldest handoff',exact:true}).click();await page.locator('.tasks-editor').waitFor();await page.keyboard.press('Escape');
+ assert.equal(await page.locator('.tasks-editor').count(),0);
 
- await page.locator('.tasks-ai-follow-up').evaluate(el=>{(document.activeElement as HTMLElement)?.blur();el.scrollTop=0;});
+ await page.locator('.tasks-ai-follow-up').evaluate(el=>{(document.activeElement as HTMLElement)?.blur();el.scrollTop=0;el.querySelector('.tasks-ai-follow-up__board-scroll').scrollLeft=0;});
  await page.screenshot({path:join(output,`${width}-${theme}.png`)});
  await page.getByRole('radio',{name:'看板',exact:true}).click();assert.equal(await page.getByRole('searchbox',{name:'搜索任务…',exact:true}).inputValue(),'Queued');
  if(width===1440&&theme==='light'){failReads=true;await page.getByRole('radio',{name:'AI 跟进',exact:true}).click();await page.getByText('部分协作记录暂不可用；未推断执行或等待时间。',{exact:false}).waitFor();assert.equal(await page.locator('.tasks-ai-follow-up__wait').count(),0);failReads=false;await page.getByRole('button',{name:'重新核实',exact:true}).click();await page.getByText('等待 3 天 8 小时',{exact:true}).waitFor();}
