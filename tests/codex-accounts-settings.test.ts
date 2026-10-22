@@ -87,7 +87,7 @@ test("Codex account Settings renders only redacted account state and device code
   await service.refresh();
   const View = createCodexAccountsView(service);
   const render = () => renderToStaticMarkup(createElement(View, {} as any));
-  assert.match(render(), /u\*\*\*@e\*\*\*\.com/);
+  assert.match(render(), /u\*\*\*er@e\*\*\*\.com/);
   assert.doesNotMatch(render(), /user@example\.com/);
   assert.match(render(), /codex-account__plan[^>]*>Pro/);
   assert.match(render(), /codex-account__status-copy[^>]*>可用/);

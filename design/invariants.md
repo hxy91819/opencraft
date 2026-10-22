@@ -2013,3 +2013,12 @@ interrupting capture, controls or bounded sample collection; changing preference
 and unmounting retain a single paint/listener owner.
 
 Sidebar search may reuse unchanged row presentation. Parent props, grouping and action-owner/context changes must invalidate render-time readers; controlled menus, badges, locale and busy states remain live through their own subscriptions. Reuse must preserve input focus, Host/Thread identity and current capability/callback ownership; it must not cap semantic catalog membership.
+
+## Account display identity
+
+Codex account rows, details, action labels, confirmations and error text share
+`maskCodexAccountIdentity`. Keep the final two Unicode characters of the mailbox
+local part visible (all available characters for shorter names). Keep its first
+character only when more than three characters exist; mask the middle and retain
+the existing private-domain masking. Presentation never changes Host identity or
+credentials. The existing Codex reset-credit smoke covers these consumers.
