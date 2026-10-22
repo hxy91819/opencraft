@@ -324,7 +324,12 @@ Each task card retains its Host identity, even if conversation metadata has not 
 The catalog uses a responsive card grid with a task title, explicit task status,
 next execution time where applicable, and conversation/management actions.
 Paused tasks explain that automatic execution is suspended; Host connectivity
-remains a separate group-level state. Cards consume the existing content-free
+remains a separate group-level state when loading, offline or failed. Healthy
+connections do not repeat a connected label. Each server heading exposes an
+icon-only refresh action at its trailing edge, sharing the catalog-wide refresh
+owner (discovery plus admitted Hosts); the page header retains only creation.
+When no Hosts are available, the empty catalog retains an icon refresh for retry.
+Cards consume the existing content-free
 summary without per-task schedule reads or an additional execution owner.
 It can navigate through the application Router or open the existing conversation
 schedule editor. The catalog also creates schedules using an admitted Host’s

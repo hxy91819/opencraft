@@ -3,7 +3,7 @@ import type { ConversationSchedulesRequestPort } from "@opencraft/appserver-prot
 import { useEffect, useRef, useState } from "react";
 
 import { useIntl } from "@opencraft/i18n/react";
-import { SettingsButton, SettingsPageHeader } from "@opencraft/extension-react";
+import { SettingsButton, SettingsIconButton, SettingsPageHeader } from "@opencraft/extension-react";
 import { useScheduledTaskCatalog } from "../runtime/scheduled-task-catalog-context";
 import { ConversationSchedulesPanel } from "./conversation-schedules-panel";
 import { useAsyncNotices } from "./async-notices";
@@ -42,10 +42,6 @@ export function ScheduledTasksPage() {
     <div className="scheduled-tasks-page__header">
       <SettingsPageHeader title={text("title")} description={text("description")} />
       <SettingsButton variant="primary" disabled={!hosts.some(host => host.creation && host.port)} onClick={event => { returnFocus.current = event.currentTarget; setCreating(true); }}>{intl.formatMessage(scheduleCreateMessages.title)}</SettingsButton>
-      <SettingsButton variant="quiet" disabled={pending} aria-busy={pending} onClick={() => void refresh()} aria-label={text("refresh")}>
-        <RefreshCw size={16} aria-hidden="true" className={pending ? "scheduled-tasks-page__refresh-pending" : undefined} />
-        {text("refresh")}
-      </SettingsButton>
     </div>
     <div className="scheduled-tasks-page__groups">
       {hosts.map(host => {
@@ -54,7 +50,12 @@ export function ScheduledTasksPage() {
         return <section className="scheduled-tasks-page__group" key={host.scope} aria-label={host.hostLabel}>
           <header className="scheduled-tasks-page__group-heading">
             <h3>{host.hostLabel}</h3>
-            <span className="scheduled-tasks-page__host-state" data-phase={host.phase} title={host.cached && (host.phase === "offline" || host.phase === "error") ? text("cached") : undefined}>{text(phase)}</span>
+            <div className="scheduled-tasks-page__group-actions">
+              {host.phase !== "ready" ? <span className="scheduled-tasks-page__host-state" data-phase={host.phase} title={host.cached && (host.phase === "offline" || host.phase === "error") ? text("cached") : undefined}>{text(phase)}</span> : null}
+              <SettingsIconButton label={text("refresh")} disabled={pending} aria-busy={pending} onClick={() => void refresh()}>
+                <RefreshCw size={16} aria-hidden="true" className={pending ? "scheduled-tasks-page__refresh-pending" : undefined} />
+              </SettingsIconButton>
+            </div>
           </header>
           {rows.length ? <ul className="scheduled-tasks-page__list">{rows.map(row => {
             const status = row.needsReview ? "review" : row.status === "paused" ? "paused" : row.status === "active" ? "active" : "completed";
@@ -87,7 +88,12 @@ export function ScheduledTasksPage() {
           })}</ul> : <p className="scheduled-tasks-page__empty" role="status">{text(host.phase === "ready" ? "empty" : host.phase === "offline" ? "offline" : host.phase === "error" ? "loadError" : "loading")}</p>}
         </section>;
       })}
-      {hosts.length === 0 ? <p className="scheduled-tasks-page__empty" role="status">{text(catalog.discovery === "loading" ? "loading" : catalog.discovery === "error" ? "loadError" : "unsupported")}</p> : null}
+      {hosts.length === 0 ? <div className="scheduled-tasks-page__group-heading">
+        <p className="scheduled-tasks-page__empty" role="status">{text(catalog.discovery === "loading" ? "loading" : catalog.discovery === "error" ? "loadError" : "unsupported")}</p>
+        <SettingsIconButton className="scheduled-tasks-page__group-actions" label={text("refresh")} disabled={pending} aria-busy={pending} onClick={() => void refresh()}>
+          <RefreshCw size={16} aria-hidden="true" className={pending ? "scheduled-tasks-page__refresh-pending" : undefined} />
+        </SettingsIconButton>
+      </div> : null}
     </div>
     {creating ? <ScheduleCreateDialog hosts={hosts} onClose={() => setCreating(false)} returnFocus={() => returnFocus.current} onCreated={() => { void refresh(); }} /> : null}
     {selected && source ? <ConversationSchedulesPanel key={`${selected.scope}:${selected.threadId}`} hostId={selected.hostId} threadId={selected.threadId} scope={selected.scope}
