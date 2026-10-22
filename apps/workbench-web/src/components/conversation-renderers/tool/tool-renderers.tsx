@@ -231,7 +231,7 @@ function InspectedImage({ path, index, id }: { path: string; index: number; id: 
 }
 
 export function ImageViewToolBlock({ block }: { readonly block: Tool }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useActivityOpen(false, false, JSON.stringify(["image-view", block.id]));
   const running = block.status === "pending" || block.status === "running";
   const paths = block.imagePaths ?? [];
   const summary = (running ? "Viewing " : "Viewed ") + (paths.length > 1 ? paths.length + " images" : "an image");

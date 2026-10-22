@@ -1793,6 +1793,18 @@ while the former DOM is still connected. Actual disclosure unmount separately
 verifies hook cancellation. These adapter lifetime checks complement the real
 mouse/touch animation path; they do not claim Native or Electron acceptance.
 
+### Image and plan reading continuity
+
+Web keeps explicit inspected-image disclosure and plan preview choices in the
+existing Conversation View disclosure snapshot, keyed by block identity. Separate
+image blocks remain independent even when they refer to the same path. The latest
+plan and its completion state still come from the timeline; a saved display
+choice does not cache plan text, media, permissions or execution. Writing plans
+keep the existing bounded preview default and completed plans start expanded in
+a fresh View. An explicit choice survives content updates, completion and a return
+to the retained View. Media opening, plan copy/download and preview geometry keep
+their existing owners.
+
 ### Subagent detail continuity
 
 Web retains explicit detail and full-member-list choices in the existing

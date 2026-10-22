@@ -68,6 +68,52 @@ try {
       await page.locator(`[data-revision="${before + 1}"]`).waitFor();
     };
     const activate = (target: any) => touch ? target.tap() : target.click();
+    if (process.argv.includes("--reading-panels-only") || !process.argv.some(value => value.endsWith("-only"))) {
+      const restoreView = async () => {
+        const scroll = await page.locator('.thread-scroll').elementHandle();
+        await update("restore"); await page.waitForFunction(element => !element?.isConnected, scroll);
+        await page.locator('.thread-scroll').waitFor();
+      };
+      const images = page.locator('.thread-agent-activity__unit').filter({ has: page.locator('[data-action-glyph="image"]') });
+      const plan = page.locator('.thread-plan');
+      const imageToggle = (i: number) => images.nth(i).getByRole('button').first();
+      const planToggle = () => plan.locator('header button[aria-expanded]');
+      const reveal = async () => {
+        const outer = page.locator('.thread-agent-activity__turn-toggle > button[aria-expanded="false"]');
+        for (let n = 0; n < 8 && await outer.count(); n++) await activate(outer.first());
+      };
+      const choices = async () => ({ images: await Promise.all([0, 1].map(i => imageToggle(i).getAttribute('aria-expanded'))), plan: await planToggle().getAttribute('aria-expanded') });
+      await update("reading-panels-reset"); await reveal(); await plan.waitFor();
+      assert.equal(await images.count(), 2); assert.equal(await plan.count(), 1);
+      assert.deepEqual(await choices(), { images: ['false', 'false'], plan: 'true' });
+      await plan.locator('h1').waitFor();
+      await activate(imageToggle(0)); await activate(planToggle()); const selected = await choices();
+      await restoreView(); await reveal();
+      assert.deepEqual(await choices(), selected, "View return retains explicit image expansion and plan collapse");
+      await update("reading-panels-grow"); await reveal();
+      assert.deepEqual(await choices(), selected);
+      assert.ok((await plan.innerText()).includes('Updated reading plan'), "current plan content remains authoritative");
+      assert.equal(await images.nth(0).locator('.thread-image-view__preview').getAttribute('title'), '/work/refreshed.png');
+      await activate(imageToggle(0)); await activate(imageToggle(1)); await activate(planToggle());
+      const opposite = await choices(); await restoreView(); await reveal();
+      assert.deepEqual(await choices(), opposite, "separate image blocks and plan preserve independent reversed choices");
+      await plan.locator('h1').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: join(output, `reading-panels-${touch ? 'touch' : 'mouse'}-${theme}.png`) });
+      await update("reading-panels-reset"); await reveal();
+      assert.deepEqual(await choices(), { images: ['false', 'false'], plan: 'true' }, "new View uses original completed defaults");
+      await update("reading-panels-running"); await reveal();
+      assert.equal(await planToggle().getAttribute('aria-expanded'), 'false', "writing plan keeps its bounded preview default");
+      await activate(planToggle()); await restoreView(); await reveal();
+      assert.equal(await planToggle().getAttribute('aria-expanded'), 'true');
+      await update("reading-panels-running-grow");
+      assert.ok((await plan.innerText()).includes('Updated reading plan'));
+      await activate(planToggle()); await update("reading-panels-complete"); await restoreView(); await reveal();
+      assert.equal(await planToggle().getAttribute('aria-expanded'), 'false', "explicit plan collapse survives completion and View restoration");
+      assert.deepEqual(errors, []);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      results.push({ touch, theme, inspectedImagesAndPlanRestored: true, independentChoices: true, freshDefaults: true, writingCompletion: true, refreshedContent: true });
+      if (process.argv.includes("--reading-panels-only")) { await page.close(); continue; }
+    }
     for (const scene of ["subagent-details", "subagent-single", "subagent-wait", "subagent-many", "subagent-many-single"]) {
       await update(scene);
       const agents = page.locator('.thread-subagent-activity');
