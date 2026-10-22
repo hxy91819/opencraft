@@ -75,10 +75,13 @@ try {
     assert.match(await confirmation.innerText(), /\*\*\*wo@e\*\*\*\.test/);
     assert.equal((await confirmation.innerHTML()).includes("two@example.test"), false);
     await confirmation.getByRole("button", { name: "取消", exact: true }).click();
+    await confirmation.waitFor({ state: "detached" });
+    await page.waitForFunction(() => document.body.style.pointerEvents !== "none");
     await page.screenshot({ path: join(output, `${theme}-${width}.png`), fullPage: true });
     await page.getByRole("button", { name: "***wo@e***.test 的操作" }).click();
     await page.getByRole("menuitem", { name: "刷新用量" }).click();
     await page.waitForFunction(() => document.querySelector(".codex-account__reset-credits strong")?.textContent === "4 张");
+    await page.locator('[role="menu"]').waitFor({ state: "detached" });
     await page.evaluate(() => { (window as any).failRefresh = true; });
     await page.getByRole("button", { name: "***wo@e***.test 的操作" }).click();
     await page.getByRole("menuitem", { name: "刷新用量" }).click();

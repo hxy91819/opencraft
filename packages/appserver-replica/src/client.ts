@@ -92,7 +92,10 @@ export class ReplicaClient<TValue extends ReplicaJsonValue = ReplicaJsonValue> {
     this.storage = config.storage;
     this.storageTimeoutMs = config.storageTimeoutMs ?? 5_000;
     if (!Number.isFinite(this.storageTimeoutMs) || this.storageTimeoutMs <= 0) throw new RangeError("Replica storage timeout must be positive and finite");
-    this.storageClock = config.storageClock ?? { setTimeout, clearTimeout: handle => clearTimeout(handle as ReturnType<typeof setTimeout>) };
+    this.storageClock = config.storageClock ?? {
+      setTimeout: (callback, delay) => globalThis.setTimeout(callback, delay),
+      clearTimeout: handle => globalThis.clearTimeout(handle as ReturnType<typeof setTimeout>),
+    };
     this.pageSize = config.pageSize ?? 100;
     if (!Number.isInteger(this.pageSize) || this.pageSize < 1) {
       throw new RangeError("Replica pageSize must be a positive integer");

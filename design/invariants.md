@@ -2620,6 +2620,10 @@ local part visible (all available characters for shorter names). Keep its first
 character only when more than three characters exist; mask the middle and retain
 the existing private-domain masking. Presentation never changes Host identity or
 credentials. The existing Codex reset-credit smoke covers these consumers.
+
+Account menus hand modal input ownership to their confirmation or login dialog.
+Cancelling a dialog must release its pointer lock so account actions remain
+clickable; the menu retains Radix focus, keyboard and dismissal semantics.
 ## Conversation top spacing
 
 The Web conversation surface owns its block-start inset inside the reversed scroll
