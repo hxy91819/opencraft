@@ -1,14 +1,14 @@
 # 平台级 Connector：连接、授权与执行
 
-状态：已实现第一方 SPI、应用级运行时、Host 原生 MCP OAuth 适配、Composer 入口、逐次写审批及配置持久化。使用隔离 Host/授权服务验收，未连接真实第三方账号；不是 Hermes 设置页连接器原型。
+状态：已实现第一方 SPI、应用级运行时、Host 原生 MCP OAuth 适配、Composer 入口、逐次写审批及配置持久化。使用隔离 Host/授权服务验收，未连接真实第三方账号。
 
 ## 设计结论
 
 ### 第三阶段用户确认与当前实现
 
-连接器目录/引导参考 Octop `ae65fe4` 的 23 个服务，视觉仅使用 OpenCraft token 与现有控件。Skills 页面新增连接器 Tab，与技能/技能包同层；Composer 保留会话选择，目录浏览不要求登录。
+连接器目录提供 23 个服务的接入引导，视觉仅使用 OpenCraft token 与现有控件。Skills 页面新增连接器 Tab，与技能/技能包同层；Composer 保留会话选择，目录浏览不要求登录。
 
-新增 `connector-core`（引擎中立目录/contract）→ `connector-host`（Node Host 的 SQLite、OAuth、MCP/API 执行）→ Workbench controller/provider → Skills/Composer。原生 MCP adapter 保持独立兼容；不改 Hermes，不复制 Python/harness，也不把凭据塞入 Skill。
+新增 `connector-core`（引擎中立目录/contract）→ `connector-host`（Node Host 的 SQLite、OAuth、MCP/API 执行）→ Workbench controller/provider → Skills/Composer。原生 MCP adapter 保持独立兼容；执行与凭据由 Host 持有，不把凭据塞入 Skill。
 
 用户指定“只存数据库”：本机执行 Host 的私有 SQLite 分表保存连接实例、凭据和授权事务，不引入 Keychain/凭据 JSON 文件，不宣称数据库内容已加密。原有 Renderer/Main 配置 store 仍只保存非敏感的选择引用；它不是新凭据真源。多个同类账号使用独立实例 ID。
 
@@ -16,13 +16,13 @@ OAuth 由 Host 使用 MCP SDK 的 DCR/PKCE 流程执行；临时 verifier/client
 
 接入说明、格式通过、授权有效、工具发现成功是不同状态。HTTP API 初始检测不发起可能计费/读取用户内容的查询；明确报告 format-only。未知/写工具仍走既有逐次审批，删除只移除 Host 配置/凭据，不冒充已撤销第三方授权。网络凭据不跨 origin 重定向，Host 固定 DNS 解析并屏蔽元数据地址；用户显式填写的自托管地址允许访问目标 Host 的局域网。
 
-第三阶段已实现目录/引导、数据库凭据、Host RPC 和 Skills 入口。目录含 Octop 的 23 项服务；当前 19 项接通 adapter：10 项远端 MCP（腾讯文档/会议/微云/乐享、有道、滴滴、Dify、Notion、Ardot、滴答）和 9 项 HTTP API（IMA、新闻、读书、音乐、百度地图、美团旅游、携程问道、元典、WeKnora）。这是实现范围，不等于真实账号逐项验收。
+第三阶段已实现目录/引导、数据库凭据、Host RPC 和 Skills 入口。目录含 23 项服务；当前 19 项接通 adapter：10 项远端 MCP（腾讯文档/会议/微云/乐享、有道、滴滴、Dify、Notion、Ardot、滴答）和 9 项 HTTP API（IMA、新闻、读书、音乐、百度地图、美团旅游、携程问道、元典、WeKnora）。这是实现范围，不等于真实账号逐项验收。
 
-暂仅展示接入说明、不允许保存成可用连接：个人邮箱、飞猪、飞书 CLI、企微 CLI。CLI 参考实现将凭据写入 CLI 配置目录，与本轮数据库约束冲突，未照搬；邮箱协议和飞猪签名适配尚未实现。不得把目录覆盖数称作全部服务可用。
+暂仅展示接入说明、不允许保存成可用连接：个人邮箱、飞猪、飞书 CLI、企微 CLI。CLI 接入尚需解决凭据只存 Host 数据库的约束；邮箱协议和飞猪签名适配尚未实现。不得把目录覆盖数称作全部服务可用。
 
 源码拓扑：
 
-- `packages/connector-core/src/{contract,catalog}.ts`：稳定 DTO、23 项目录和字段/步骤；保留 Octop MIT attribution。
+- `packages/connector-core/src/{contract,catalog}.ts`：稳定 DTO、23 项目录和字段/步骤；第三方许可见 [NOTICE](../packages/connector-core/NOTICE.md)。
 - `packages/connector-host/src/store.ts`：Host SQLite，实例/凭据/授权事务分表，revision CAS、敏感字段白名单、删除和过期清理。
 - `packages/connector-host/src/{oauth,mcp,api,api-knowledge,network,service}.ts`：SDK 协议、各服务请求映射、网络边界和窄 RPC 分发，独立于 DSH。
 - `packages/workbench-runtime/src/connectors/{managed-controller,managed-provider}.ts`：无凭据的 UI 状态与既有 ConnectorRuntime 对接，通知按实例失效。
@@ -37,7 +37,7 @@ OAuth 由 Host 使用 MCP SDK 的 DCR/PKCE 流程执行；临时 verifier/client
 
 ### 呈现整改：目录不是设置列表
 
-后续用户否定第三阶段的全宽列表与通用文案。现将它替换为限宽品牌卡片目录，保留全部服务/已配置两个浏览视图、同一工具栏内的分类和搜索；单张卡片集中呈现服务身份、用途及真实配置状态。品牌资源仅引用 Octop 的 23 项静态资产并保留归属，不导入其组件、样式或运行时。
+后续用户否定第三阶段的全宽列表与通用文案。现将它替换为限宽品牌卡片目录，保留全部服务/已配置两个浏览视图、同一工具栏内的分类和搜索；单张卡片集中呈现服务身份、用途及真实配置状态。服务通过名称和已许可的分类图标识别；当前目录不包含服务品牌图片。
 
 详情使用共享 Modal 的 `inspector` 呈现：Web/Electron 靠边面板、窄屏铺满；Native 投影为现有 sheet。平台拥有位置、层级和 Radix 焦点，业务只提供内容。详情由品牌/用途、服务专属接入准备、连接信息、内联检测结果组成；正文独立滚动，底部只保留当前有效操作。格式检测和真实认证仍明确区分，工具清单按需展开。
 

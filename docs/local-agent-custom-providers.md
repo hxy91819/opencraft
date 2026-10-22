@@ -35,7 +35,7 @@ These are API wire formats, not authentication mechanisms or a guarantee that
 every provider implements every model capability. Codex OAuth remains separate.
 
 Ollama Cloud is a fixed provider entry even when the pinned DSH catalog does not
-list it. Its new connection draft uses OpenCode's OpenAI-compatible endpoint
+list it. Its new connection draft uses the provider's OpenAI-compatible endpoint
 `https://ollama.com/v1`, the `openai-completions` wire format and the optional
 Host environment reference `OLLAMA_API_KEY`. The existing endpoint discovery
 reads `/v1/models`; imported models stay disabled until the user enables them.

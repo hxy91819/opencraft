@@ -60,7 +60,7 @@
 用户已要求设计与实现这四项，并同步正式设计；它们不再属于未授权范围。
 
 - [x] Host 原生 MCP OAuth adapter：订阅先于请求、代次/超时、取消不误认迟到成功、token 仍归 Host。
-- [x] 独立 Composer 入口与共享 Modal 呈现；不复用 Hermes 设置页原型。
+- [x] 独立 Composer 入口与共享 Modal 呈现。
 - [x] 写调用逐次确认，绑定原参数/Host/会话/连接代次，确认后再次校验；拒绝/取消不调用。
 - [x] 保存非敏感配置与期望会话选择；重启重新准备，不持久化 handle、token 或审批。
 - [x] 隔离协议/组件/重启回归与正式文档更新。
@@ -93,7 +93,7 @@
 - [x] 首批 19 项 MCP/API provider 接入、OAuth、探测分级、工具调用与撤销；另 4 项仅说明，不冒充可用。
 - [x] Skills 连接器 Tab、目录/已配置/详情引导；Composer 仅会话选择。全部使用现有平台原语。
 - [x] 隔离协议/数据库/浏览器/桌面/DSH 验证，正式文档和最终 gate。
-- [ ] 剩余服务：个人邮箱 IMAP/SMTP、飞猪签名适配；飞书/企微 CLI 需解决不持久化凭据文件的接入方式，不能照搬 Octop。
+- [ ] 剩余服务：个人邮箱 IMAP/SMTP、飞猪签名适配；飞书/企微 CLI 需解决不持久化凭据文件的接入方式。
 
 ### context_receipt
 
@@ -105,7 +105,7 @@ stage：第三阶段首批交付完成，保留剩余服务边界。24 项 Conne
 
 ## 第四阶段：连接器呈现整改与清理
 
-用户否定全宽设置列表，要求不保留垃圾代码；保留数据库/协议/审批行为。参考现有设置连接器的限宽/卡片/品牌识别，以及 Octop 的目录与详情接入层级；视觉仍由 OpenCraft token 与共享控件持有。
+用户否定全宽设置列表，要求不保留垃圾代码；保留数据库/协议/审批行为。目录使用限宽卡片与服务身份，详情承载接入引导；复用现有设置控件；视觉仍由 OpenCraft token 与共享控件持有。
 
 ### 清理范围和顺序
 
@@ -118,7 +118,7 @@ stage：第三阶段首批交付完成，保留剩余服务边界。24 项 Conne
 ### 本轮状态
 
 - stage：呈现替换与清理完成，正式门禁与实际 Web/Electron 验收通过。
-- context_receipt：重读 must_read 四份、OpenCraft AGENTS；ai-slop-cleaner、executor、baseline-ui、fixing-accessibility、better-icons；前轮已核验 frontend-design/maintenance 及 Octop/设置页源码。本轮仅 app UI、必要共享 Modal contract、目录引导和测试/文档，不修改引擎与数据库。
+- context_receipt：重读 must_read 四份、OpenCraft AGENTS；ai-slop-cleaner、executor、baseline-ui、fixing-accessibility、better-icons；前轮已核验 frontend-design/maintenance 及现有设置页源码。本轮仅 app UI、必要共享 Modal contract、目录引导和测试/文档，不修改引擎与数据库。
 - errors：精确文件查询纠正至 design-system/src/modal.shared.ts；不存在路径未被当成新建平行文件的理由。
 - verified：26 项 Connector 测试、原生 OAuth smoke、品牌目录/侧边详情/窄屏/焦点恢复 smoke、真实 Electron Skills 页面和数据库重启验收通过。旧选择器/样式有静态删除守卫；无新增依赖，无真实账号操作，未提交发布。
 

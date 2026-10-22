@@ -158,8 +158,6 @@ sheet、safe area 和 native gesture。
 物理实现校正 Engine/Presentation SPI；通过两种 Adapter 后才冻结 v1，不预先为所有
 未来平台设计十几个空包。
 
-## 3. 参考实现约束
-
 ## 4. 产品级身份
 
 ```ts
