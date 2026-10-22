@@ -9,7 +9,10 @@ export function LiquidGlassBackdrop() {
   const [map, setMap] = useState<{ href: string; width: number; height: number } | null>(null);
   useLayoutEffect(() => {
     const element = ref.current;
-    if (!element || !CSS.supports("backdrop-filter", 'url("#lens")')) return;
+    // Prefixed backdrop engines can accept URL syntax without rendering it.
+    // Keep their working CSS blur instead of replacing it with an inert lens.
+    if (!element || !CSS.supports("backdrop-filter", 'url("#lens")')
+      || CSS.supports("-webkit-backdrop-filter", "blur(1px)")) return;
     const observer = new ResizeObserver(() => {
       const width = Math.round(element.clientWidth), height = Math.round(element.clientHeight);
       if (width < 1 || height < 1) return;
