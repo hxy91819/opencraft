@@ -1,6 +1,6 @@
 import { nodeObserver } from "../../../packages/observability-contract/node.mjs";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
 import { PiDurableSession, createPiModels, type PiSnapshot, type PiForkContext } from "./session.js";
@@ -60,6 +60,7 @@ export class PiEngine {
   private loading?: Promise<void>;
   private closed = false;
   private readonly writes = new Map<string, Promise<void>>();
+  private latestPinAt = 0;
   private readonly operations = new Map<string, Promise<unknown>>();
   private readonly modelsRuntime: ReturnType<typeof createPiModels>;
   private resolvedModels?: Awaited<ReturnType<typeof createPiModels>>;
@@ -96,13 +97,22 @@ export class PiEngine {
       catch { this.fail(session, "Pi session recovery failed"); }
     }
   }
-  private save(session: Session): Promise<void> {
+  private save(session: Session, pinState?: Pick<Session, "pinned" | "pinnedAt">): Promise<void> {
     if (session.ephemeral) return Promise.resolve();
     const { native: _native, starting: _starting, owner: _owner, lease: _lease, active: _active, turns: _turns,
       snapshot: _snapshot, effort: _effort, failed: _failed, ...record } = session;
     const file = join(this.options.directory, `${session.id}.json`), temporary = `${file}.${randomUUID()}.tmp`;
     const operation = (this.writes.get(session.id) ?? Promise.resolve()).catch(() => {}).then(async () => {
-      await writeFile(temporary, JSON.stringify(record), { mode: 0o600 }); await rename(temporary, file);
+      // Native snapshots can queue metadata while a pin write is pending. Read
+      // the committed pin fields when this write runs, not when it is queued.
+      const next = { ...record, ...(pinState ?? { pinned: session.pinned, pinnedAt: session.pinnedAt }) };
+      try {
+        await writeFile(temporary, JSON.stringify(next), { mode: 0o600 }); await rename(temporary, file);
+      } catch (error) {
+        await rm(temporary, { force: true }).catch(() => {});
+        throw error;
+      }
+      if (pinState) { session.pinned = pinState.pinned; session.pinnedAt = pinState.pinnedAt; }
     });
     this.writes.set(session.id, operation);
     void operation.finally(() => { if (this.writes.get(session.id) === operation) this.writes.delete(session.id); }).catch(() => {});
@@ -283,13 +293,12 @@ export class PiEngine {
     if (session.ephemeral) throw new Error("Temporary Pi threads cannot be pinned");
     if (params.pinned) {
       if (session.pinned !== true) {
-        const latest = [...this.sessions.values()].reduce((latest, entry) => Math.max(latest, entry.pinnedAt ?? 0), 0);
-        session.pinned = true; session.pinnedAt = Math.max(Date.now(), latest + 1);
-        await this.save(session);
+        const latest = [...this.sessions.values()].reduce((latest, entry) => Math.max(latest, entry.pinnedAt ?? 0), this.latestPinAt);
+        this.latestPinAt = Math.max(Date.now(), latest + 1);
+        await this.save(session, { pinned: true, pinnedAt: this.latestPinAt });
       }
     } else if (session.pinned === true) {
-      delete session.pinned; delete session.pinnedAt;
-      await this.save(session);
+      await this.save(session, { pinned: undefined, pinnedAt: undefined });
     }
     return { pinned: params.pinned };
   }
