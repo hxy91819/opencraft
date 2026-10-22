@@ -538,6 +538,7 @@ export function createAppServerWorkbenchRuntime(
   let connectionObservation: { client: AppServerClient; revision: number } | null = null;
   const recovery = new ConversationRecoveryOwner({ hostId, clock,
     delaysMs: config.reconnectDelaysMs,
+    jitter: config.clock === undefined,
     log: config.onRecoveryEvent ? event => config.onRecoveryEvent!({
       ...event, generation: client?.connectionGeneration ?? 0, eventAtMs: clock.now?.() ?? Date.now(), ...((currentTransport?.status as {attemptId?:string}|undefined)?.attemptId ? {attemptId:(currentTransport!.status as {attemptId?:string}).attemptId} : {}),
     }) : undefined, changed: () => publish(),
@@ -692,6 +693,7 @@ export function createAppServerWorkbenchRuntime(
   type ConnectionBinding = { client: AppServerClient; transport: DuplexTransport; generation: number; revision: number };
   const connection = new ConnectionLifecycleOwner<ConnectionBinding>({
     clock, autoReconnect: config.autoReconnect, delaysMs: config.reconnectDelaysMs,
+    jitter: config.clock === undefined,
     stableMs: config.reconnectStableMs, timeoutMs: Math.max(60_000, (config.requestTimeoutMs ?? 30_000) + 15_000),
     async run(attempt: ConnectionAttempt) {
       // Assembly settles on revocation. Retired bundles clean only their own
@@ -1267,7 +1269,15 @@ export function createAppServerWorkbenchRuntime(
             if (view?.resumeState !== "resumed" || view.connectionGeneration !== requireClient().connectionGeneration) {
               throw new Error("This temporary side chat expired after disconnect. Start a new side chat.");
             }
-          } else await currentSession.resume.resume({ threadId: binding.threadId, force, retryRejected, unresolvedTurnIds: [...binding.acceptedTurnIds] });
+          } else {
+            // Only an authoritative transcript without an in-flight Turn can
+            // offer its checkpoint. An active Turn may have advanced beyond it.
+            const snapshot = binding.runtime.getSnapshot();
+            const historyCheckpoint = force && snapshot.authoritative && snapshot.activeTurn === null
+              ? currentSession.views.get(binding.threadId)?.historyCheckpoint ?? null : null;
+            await currentSession.resume.resume({ threadId: binding.threadId, force, retryRejected,
+              unresolvedTurnIds: [...binding.acceptedTurnIds], ...(force ? { historyCheckpoint } : {}) });
+          }
           if (!current()) throw new AppServerClientError("ABORTED", "Thread recovery was superseded");
           // Prewarm execution readiness, but do not keep already-restored
           // history behind a slow connector/tool registration request.

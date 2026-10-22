@@ -1,15 +1,68 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { readFile, readlink, symlink, rename, rm, writeFile } from 'node:fs/promises';
+import { readFile, readdir, readlink, symlink, rename, rm, writeFile } from 'node:fs/promises';
 import { isAbsolute, join, resolve, dirname } from 'node:path';
 import { request } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import { assertExecutionNativePayload } from './native-preflight.mjs';
 import { attachDshHost, readPrivateJson } from './dsh-host-client.mjs';
 
 const exec = promisify(execFile);
+async function executionFiles(directory, prefix = '') {
+  const entries = await readdir(directory, { withFileTypes: true });
+  entries.sort((left, right) => left.name.localeCompare(right.name));
+  const files = [];
+  for (const entry of entries) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) files.push(...await executionFiles(join(directory, entry.name), relative));
+    else if (entry.isFile()) files.push(relative);
+  }
+  return files;
+}
+async function releaseIdentity(root) {
+  const identity = [];
+  try {
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+    if (typeof manifest?.opencraftWeb?.buildId === 'string') identity.push(manifest.opencraftWeb.buildId);
+  } catch { /* A release without a manifest cannot claim a web identity. */ }
+  try {
+    const web = JSON.parse(await readFile(join(root, 'web/version.json'), 'utf8'));
+    if (typeof web?.sourceRevision === 'string') identity.push(web.sourceRevision);
+  } catch { /* Web assets are optional for an embedded execution-only release. */ }
+  return [...new Set(identity.filter(value => value.length > 0))];
+}
+function normalizeReleaseIdentity(content, identity) {
+  let normalized = content;
+  for (const value of [...identity].sort((left, right) => right.length - left.length)) {
+    const needle = Buffer.from(value);
+    if (needle.length === 0) continue;
+    const pieces = [];
+    let start = 0;
+    for (let at = normalized.indexOf(needle); at >= 0; at = normalized.indexOf(needle, start)) {
+      pieces.push(normalized.subarray(start, at), Buffer.from('__opencraft_release_identity__'));
+      start = at + needle.length;
+    }
+    if (pieces.length > 0) { pieces.push(normalized.subarray(start)); normalized = Buffer.concat(pieces); }
+  }
+  return normalized;
+}
+/** Hash the backend runtime payload while ignoring release identity strings
+ * embedded by the web build. A real backend change still alters the digest. */
+export async function computeExecutionHash(root, extraIdentity = []) {
+  const directory = join(root, 'execution');
+  let files;
+  try { files = await executionFiles(directory); }
+  catch (error) { if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return null; throw error; }
+  const identity = [...new Set([...await releaseIdentity(root), ...extraIdentity])];
+  const hash = createHash('sha256');
+  for (const relative of files) {
+    const content = normalizeReleaseIdentity(await readFile(join(directory, relative)), identity);
+    hash.update(relative); hash.update('\0'); hash.update(String(content.length)); hash.update('\0'); hash.update(content);
+  }
+  return hash.digest('hex');
+}
 // Observe the independent process identity. Protocol compatibility is checked by
 // its connection adapter, never by Web/execution deployment admission.
 export async function coreHealth(endpoint, tokenPath) {
@@ -187,9 +240,24 @@ export function createExecutionDeployment({ link, unit, coreUnit, coreEndpoint, 
       await validate(before);
       await prepareAccess(release);
       await pin([...(await pinnedRoots()), ...(oldRoot ? [oldRoot] : []), release.releaseRoot]);
+      // A different backend payload needs a fresh process. A web-only release
+      // may switch the pointer while the running gateway reports the current
+      // release identity from that same pointer.
+      // Normalize the union so a partially rewritten bundle still compares
+      // equal when only its embedded web identity differs.
+      const comparisonIdentity = [...new Set([...(oldRoot ? await releaseIdentity(oldRoot) : []),
+        ...await releaseIdentity(release.releaseRoot)])];
+      const previousRuntimeHash = oldRoot ? await computeExecutionHash(oldRoot, comparisonIdentity) : null;
+      const runtimeHash = await computeExecutionHash(release.releaseRoot, comparisonIdentity);
+      const runtimeChanged = previousRuntimeHash !== runtimeHash;
       // Startup also reconciles a pointer changed by an interrupted update.
-      if (oldRoot !== release.releaseRoot) { await point(release.releaseRoot); await restart(); }
-      else {
+      if (oldRoot !== release.releaseRoot) {
+        await point(release.releaseRoot);
+        if (!runtimeChanged) {
+          try { await ready(release, before, dshBefore); await pin([release.releaseRoot]); return; }
+          catch { await restart(); }
+        } else await restart();
+      } else {
         try { await ready(release, before, dshBefore); await pin([release.releaseRoot]); return; }
         catch { await restart(); }
       }

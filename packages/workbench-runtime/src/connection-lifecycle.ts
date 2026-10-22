@@ -42,6 +42,9 @@ export class ConnectionLifecycleOwner<T> {
     manual(error: unknown): boolean;
     autoReconnect?: boolean;
     delaysMs?: readonly number[];
+    /** Default backoff spreads reconnect storms; explicit schedules stay exact. */
+    jitter?: boolean;
+    random?: () => number;
     stableMs?: number;
     timeoutMs?: number;
   }) {}
@@ -131,8 +134,9 @@ export class ConnectionLifecycleOwner<T> {
     this.retire(error);
     let delayMs = 0;
     if (!blocked) {
-      const schedule = this.input.delaysMs ?? delays;
-      delayMs = schedule[Math.min(this.failures++, schedule.length - 1)] ?? 60_000;
+      const schedule = this.input.delaysMs;
+      const base = (schedule ?? delays)[Math.min(this.failures++, (schedule ?? delays).length - 1)] ?? 60_000;
+      delayMs = this.jitteredDelay(base, schedule === undefined);
       const ticket = ++this.retryTicket;
       this.retryTimer = this.input.clock.setTimeout(() => {
         if (ticket !== this.retryTicket || this.state.phase !== "backoff") return;
@@ -144,6 +148,11 @@ export class ConnectionLifecycleOwner<T> {
     this.input.invalidate();
     this.input.changed();
     if (this.state.phase === "backoff") this.input.backoff(this.failures, delayMs);
+  }
+  private jitteredDelay(delayMs: number, useDefaultSchedule: boolean): number {
+    if (!useDefaultSchedule || this.input.jitter === false) return delayMs;
+    const random = Math.min(1, Math.max(0, this.input.random?.() ?? Math.random()));
+    return Math.max(1, Math.round(delayMs * (0.8 + random * 0.4)));
   }
   admitRecoveryHint(): boolean {
     if (this.state.phase === "disposed" || this.state.phase === "blocked" || this.pending

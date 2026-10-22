@@ -81,6 +81,21 @@ export function canReadHostThreadCatalog(
   return profile.autoConnect || phase === "ready";
 }
 
+/** A connection precondition failed before any catalog read could start. */
+export class HostThreadCatalogUnavailableError extends Error {
+  readonly code = "HOST_THREAD_CATALOG_UNAVAILABLE" as const;
+  constructor() {
+    super("此连接当前不可读取会话，请刷新连接列表。");
+    this.name = "HostThreadCatalogUnavailableError";
+  }
+}
+
+export function isHostThreadCatalogUnavailableError(error: unknown): boolean {
+  return error instanceof HostThreadCatalogUnavailableError
+    || (typeof error === "object" && error !== null
+      && (error as { code?: unknown }).code === "HOST_THREAD_CATALOG_UNAVAILABLE");
+}
+
 /** Establish only a logical reader through the existing registry. Never select
  * a Host, resume a Thread, or grant interaction ownership to discover history. */
 export async function readHostThreadCatalog(input: {
@@ -102,19 +117,21 @@ export async function readHostThreadCatalog(input: {
       || management?.getAuthorizationEpoch() !== authorizationEpoch || current.revision !== input.profile.revision
       || !canReadHostThreadCatalog(current, input.registry.peekRuntime(current.hostId)?.getSnapshot().phase,
         management?.getSnapshot() ?? null)) {
-      throw new Error("此连接当前不可读取会话，请刷新连接列表。");
+      throw new HostThreadCatalogUnavailableError();
     }
   };
+  // A connection precondition is not a catalog attempt. Starting observation
+  // after it prevents a false 0ms catalog failure when the reader is not ready.
+  assertCurrent();
   const finishFull = beginObservedOperation("catalog_complete");
   const finishFirst = beginObservedOperation("catalog_first");
+  const pages: ThreadListResponse[] = [];
   try {
-  assertCurrent();
   const runtime = await input.registry.ensureConnected(input.profile.hostId);
   assertCurrent();
   // Sidebar and global title search share this catalog. A recent-page window
   // silently hides older conversations from both, even when the Server still
   // has them. Follow the Server's cursor through metadata pages only.
-  const pages = [];
   const cursors = new Set<string>();
   let cursor: string | null = null;
   do {
@@ -133,5 +150,9 @@ export async function readHostThreadCatalog(input: {
   // The first page backfills old pins, which can recur in later recent pages.
   finishFull("ok", {count:mergeThreadCatalogPages(pages).length});
   return { ...pages[0]!, data: mergeThreadCatalogPages(pages), nextCursor: null };
-  } catch(error) { const outcome=input.signal?.aborted?"aborted":"failed";finishFirst(outcome);finishFull(outcome);throw error; }
+  } catch(error) { const outcome=input.signal?.aborted?"aborted":"failed";
+    // The first page already settled ok; a later-page failure must not rewrite
+    // that successful first-screen observation as aborted/failed.
+    if (pages.length === 0) finishFirst(outcome);
+    finishFull(outcome);throw error; }
 }

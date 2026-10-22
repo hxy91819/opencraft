@@ -1,7 +1,7 @@
 import { executionEngineExtension } from "@opencraft/appserver-client";
 import { Context, Service } from "@deepseek-ai/cordis";
 import { AppServerRpcError, type AppServerClient } from "@opencraft/appserver-client";
-import { OPENCRAFT_RESUME_HISTORY_EXTENSION, buildResumeHistoryRequest, type AppServerThread, type ThreadResumeParams, type ThreadResumeResponse, type ThreadForkResponse } from "@opencraft/appserver-protocol";
+import { OPENCRAFT_RESUME_HISTORY_EXTENSION, buildResumeHistoryRequest, type AppServerThread, type ThreadHistoryCheckpoint, type ThreadResumeParams, type ThreadResumeResponse, type ThreadForkResponse } from "@opencraft/appserver-protocol";
 
 import type { HydratedThreadHistory, ResumeHistoryContext } from "./history-strategies";
 import { mergeTurns, reconcileHistoryTurns, reconcileHistoryWindow, reconcileRecoveryWindow } from "./merge-turns";
@@ -58,6 +58,8 @@ export interface ResumeThreadOptions {
   baseInstructions?: string | null;
   developerInstructions?: string | null;
   personality?: unknown;
+  /** Null explicitly suppresses a checkpoint that is no longer safe to reuse. */
+  historyCheckpoint?: ThreadHistoryCheckpoint | null;
   requestOverrides?: Readonly<Record<string, unknown>>;
 }
 
@@ -377,6 +379,8 @@ export class ThreadResumeCoordinatorService extends Service {
       } | undefined;
       const supportsMergedPage = capability?.version === 1 && capability.initialTurnsPage === true;
       const supportsBoundedRecovery = supportsMergedPage && capability?.boundedRecovery === true;
+      const requestedCheckpoint = options.historyCheckpoint === undefined
+        ? initial.historyCheckpoint : options.historyCheckpoint ?? undefined;
       const historyRequest = buildResumeHistoryRequest({
         useTailHydration: this.useTailHydration,
         isDurableHost,
@@ -415,8 +419,8 @@ export class ThreadResumeCoordinatorService extends Service {
         ...(options.developerInstructions === undefined ? {} : { developerInstructions: options.developerInstructions }),
         ...(options.personality === undefined ? {} : { personality: options.personality }),
         ...historyRequest,
-        ...(supportsBoundedRecovery && initial.historyCheckpoint
-          ? { historyCheckpoint: initial.historyCheckpoint } : {}),
+        ...(supportsBoundedRecovery && requestedCheckpoint
+          ? { historyCheckpoint: requestedCheckpoint } : {}),
         ...(historyMode === "message-window" ? {
           historyPreviewToken: `${generation}:${++this.previewSequence}`,
         } : {}),
@@ -443,6 +447,11 @@ export class ThreadResumeCoordinatorService extends Service {
       }
       const response = requireResumeResponse(resumed, threadId);
       this.ensureGeneration(generation);
+      const recovery = supportsBoundedRecovery ? response.historyRecovery : undefined;
+      if (recovery && (typeof recovery.checkpoint?.epoch !== "string" || !Number.isSafeInteger(recovery.checkpoint.nextSeq)
+        || recovery.checkpoint.nextSeq < 0 || !["unchanged", "append", "replace"].includes(recovery.mode))) {
+        throw new Error("Invalid provider history recovery checkpoint");
+      }
 
       const historyContext: ResumeHistoryContext = {
         client: this.client,
@@ -456,21 +465,25 @@ export class ThreadResumeCoordinatorService extends Service {
         pageSize: this.pageSize,
         requestTimeoutMs: this.requestTimeoutMs,
       };
-      const history = await this.ctx.threadHistoryStrategies.load(historyContext);
+      // The provider already proved that our authoritative transcript still
+      // matches its head. Do not re-read every Turn or replay the history stage
+      // merely to discard that identical payload.
+      const history: HydratedThreadHistory = recovery?.mode === "unchanged" ? {
+        source: initial.historySource ?? "paginated",
+        turns: [],
+        complete: initial.tailHydrationComplete,
+        olderCursor: initial.turnsPagination.olderCursor,
+        itemsPaginationByTurnId: initial.itemsPaginationByTurnId,
+      } : await this.ctx.threadHistoryStrategies.load(historyContext);
       this.ensureGeneration(generation);
       this.historyContexts.set(threadId, historyContext);
 
       const committed = this.ctx.threadViews.update(threadId, (current) => {
         const projected = this.ctx.threadResumeProjectors.project(current, { metadata, response });
-        const recovery = supportsBoundedRecovery ? response.historyRecovery : undefined;
-        if (recovery && (typeof recovery.checkpoint?.epoch !== "string" || !Number.isSafeInteger(recovery.checkpoint.nextSeq)
-          || recovery.checkpoint.nextSeq < 0 || !["unchanged", "append", "replace"].includes(recovery.mode))) {
-          throw new Error("Invalid provider history recovery checkpoint");
-        }
-        if (recovery && recovery.mode !== "replace" && (!initial.historyCheckpoint
-          || initial.historyCheckpoint.epoch !== recovery.checkpoint.epoch
-          || recovery.checkpoint.nextSeq < initial.historyCheckpoint.nextSeq
-          || (recovery.mode === "unchanged" && (recovery.checkpoint.nextSeq !== initial.historyCheckpoint.nextSeq || history.turns.length !== 0)))) {
+        if (recovery && recovery.mode !== "replace" && (!requestedCheckpoint
+          || requestedCheckpoint.epoch !== recovery.checkpoint.epoch
+          || recovery.checkpoint.nextSeq < requestedCheckpoint.nextSeq
+          || (recovery.mode === "unchanged" && (recovery.checkpoint.nextSeq !== requestedCheckpoint.nextSeq || history.turns.length !== 0)))) {
           throw new Error("History recovery does not cover the requested checkpoint");
         }
         const preserveRange = recovery?.mode === "unchanged" || recovery?.mode === "append";

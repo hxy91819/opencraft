@@ -35,6 +35,19 @@ export async function startEngineHost(options: {
     return legacy ??= options.legacy.start().catch(error => { legacy = undefined; throw error; });
   };
   const token = randomUUID();
+  // Reconnects arrive in bursts. Share one identical backend read instead of
+  // multiplying the same initialize/catalog work across every socket.
+  const flights = new Map<string, Promise<unknown>>();
+  const singleflight = <T>(key: string, operation: () => Promise<T>): Promise<T> => {
+    const existing = flights.get(key) as Promise<T> | undefined;
+    if (existing !== undefined) return existing;
+    const started = Promise.resolve().then(operation);
+    flights.set(key, started);
+    // The shared promise is awaited by its callers; cleanup must not create a
+    // second unhandled rejection when the only origin socket disconnects.
+    void started.finally(() => { if (flights.get(key) === started) flights.delete(key); }).catch(() => undefined);
+    return started;
+  };
   const server = createServer((_request, response) => { response.writeHead(404); response.end(); });
   const sockets = new WebSocketServer({ noServer: true, maxPayload: 32 * 1024 * 1024 });
   server.on("upgrade", (request, socket, head) => {
@@ -170,7 +183,9 @@ export async function startEngineHost(options: {
             // A configured legacy backend supplies this Host's negotiated
             // capabilities. Failure must reject initialization, not silently
             // manufacture a successful Pi handshake for a DSH conversation.
-            const initialized = options.legacy ? await callLegacy(method, params, clientId) : piInitialization;
+            const initialized = options.legacy
+              ? await singleflight(`initialize:${JSON.stringify(params)}`, () => callLegacy(method, params, clientId))
+              : piInitialization;
             reply({ ...initialized, capabilities: { ...initialized.capabilities, extensions: { ...initialized.capabilities?.extensions, ...resources?.extensions,
               "opencraft/execution-engines": { version: 1, defaultEngine: options.defaultEngine, providers: options.providers.map(provider => ({ id: provider.id, threadPrefix: provider.threadPrefix, modelPrefix: provider.modelPrefix, extensions: provider.extensions })) },
               "opencraft/scoped-model-catalog": { version: 1 } } } }); return;
@@ -189,6 +204,7 @@ export async function startEngineHost(options: {
             : typeof params.model === "string" ? options.providers.find(provider => provider.ownsModel(params.model))
             : method === "thread/start" ? registry.get(options.defaultEngine) : undefined;
           if ((method === "model/list" || method === "thread/list") && !params.threadId) {
+            const catalog = await singleflight(`${method}:${JSON.stringify(params)}`, async () => {
             const outcomes = await Promise.allSettled([
               ...(options.legacy ? [allLegacy(method, params, clientId).then(data => ({ data: method === "model/list" ? data.map(model => ({ ...model,
                 groupKey: `dsh:${model.groupKey ?? "models"}`, groupLabel: `DSH · ${model.groupLabel ?? "Models"}`,
@@ -208,7 +224,9 @@ export async function startEngineHost(options: {
             const offset = params.cursor == null ? 0 : /^engines:\d+$/u.test(params.cursor) ? Number(params.cursor.slice(8)) : NaN;
             if (!Number.isSafeInteger(offset) || offset < 0) throw new Error("Invalid engine catalog cursor");
             const limit = Math.max(1, Math.min(200, Number(params.limit) || 100));
-            reply({ data: entries.slice(offset, offset + limit), nextCursor: offset + limit < entries.length ? `engines:${offset + limit}` : null, unavailableEngines }); return;
+            return { data: entries.slice(offset, offset + limit), nextCursor: offset + limit < entries.length ? `engines:${offset + limit}` : null, unavailableEngines };
+            });
+            reply(catalog); return;
           }
           if (provider) {
             if (params.threadId && !["thread/read", "thread/resume"].includes(method) && !state.opened.has(params.threadId)) throw new Error("Open the thread before mutating it");

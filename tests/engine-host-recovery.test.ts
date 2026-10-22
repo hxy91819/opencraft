@@ -134,3 +134,49 @@ test("a late backend target cannot allocate a socket after the frontend incarnat
   gate.resolve(); await flush();
   assert.equal(f.connections.length, 1); assert.equal(f.runtime.getSnapshot().phase, "ready");
 });
+
+test("bursts of identical initialize and thread/list requests reuse one backend read", async () => {
+  const backend = createServer();
+  const backendSockets = new WebSocketServer({ server: backend });
+  const calls = new Map<string, number>();
+  backendSockets.on("connection", socket => socket.on("message", data => {
+    const frame = JSON.parse(String(data));
+    if (typeof frame.id === "undefined") return;
+    calls.set(frame.method, (calls.get(frame.method) ?? 0) + 1);
+    const result = frame.method === "initialize"
+      ? { userAgent: "singleflight-fixture", platformFamily: "unix", platformOs: "linux" }
+      : frame.method === "thread/list" ? { data: [], nextCursor: null } : {};
+    setTimeout(() => {
+      if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ jsonrpc: "2.0", id: frame.id, result }));
+    }, 50);
+  }));
+  await new Promise<void>(resolve => backend.listen(0, "127.0.0.1", resolve));
+  const target = `ws://127.0.0.1:${(backend.address() as { port: number }).port}`;
+  const host = await startEngineHost({ providers: [], defaultEngine: "dsh",
+    legacy: { id: "dsh", label: "DSH", start: async () => ({ websocketUrl: target, async close() {} }) } });
+  const clients = [new WebSocket(host.websocketUrl), new WebSocket(host.websocketUrl)];
+  const pending = new Map<string, (value: any) => void>();
+  const send = (clientId: string, socket: WebSocket, id: string, method: string, params: Record<string, unknown> = {}) =>
+    new Promise<any>(resolve => {
+      pending.set(`${clientId}:${id}`, resolve);
+      socket.send(JSON.stringify({ jsonrpc: "2.0", id, method, params, [LOGICAL_CLIENT_FIELD]: clientId }));
+    });
+  try {
+    await Promise.all(clients.map(socket => new Promise<void>(resolve => socket.once("open", () => resolve()))));
+    for (const [index, socket] of clients.entries()) socket.on("message", data => {
+      const frame = JSON.parse(String(data));
+      if (frame.id !== undefined) pending.get(`${["a", "b"][index]}:${frame.id}`)?.(frame);
+    });
+    const initialized = await Promise.all(clients.map((socket, index) => send(["a", "b"][index]!, socket, "init", "initialize", { clientInfo: { name: "burst", version: "1" } })));
+    assert.deepEqual(initialized.map(frame => frame.result.userAgent), ["singleflight-fixture", "singleflight-fixture"]);
+    assert.equal(calls.get("initialize"), 1);
+    const catalogs = await Promise.all(clients.map((socket, index) => send(["a", "b"][index]!, socket, "list", "thread/list", { limit: 50 })));
+    assert.deepEqual(catalogs.map(frame => frame.result), [{ data: [], nextCursor: null, unavailableEngines: [] }, { data: [], nextCursor: null, unavailableEngines: [] }]);
+    assert.equal(calls.get("thread/list"), 1);
+  } finally {
+    for (const socket of clients) socket.terminate();
+    await host.close();
+    backendSockets.close();
+    await new Promise<void>(resolve => backend.close(() => resolve()));
+  }
+});

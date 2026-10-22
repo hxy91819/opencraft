@@ -6,6 +6,7 @@ import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { connect } from "node:net";
+import { PassThrough } from "node:stream";
 import test from "node:test";
 
 import { MessagePortAppHostClient } from "@opencraft/app-host-client";
@@ -347,4 +348,12 @@ test("daemon wire keeps the old five-name projection and exposes complete scoped
     const manager=new OpenCraftDaemonClientManager({endpoint,tokenPath,tokenMode:"existing",daemonEntry:"unused",executable:process.execPath,runtimeDirectory:root,dataDirectory:root,dshExecutable:"unused",codexExecutable:"unused",codexDataDirectory:join(root,"codex"),nativeCodexHomeDirectory:join(root,"native")});
     const connection=await manager.connectAppHost("new-client");assert.deepEqual(connection.storage,storage);connection.close();
   }finally{await server.close();await appHost.close();await rm(root,{recursive:true,force:true});}
+});
+
+test("closing a daemon JSON line channel destroys its socket instead of only half-closing", () => {
+  const socket = new PassThrough();
+  const channel = new DaemonJsonLineChannel(socket as unknown as import("node:net").Socket);
+  assert.equal(socket.destroyed, false);
+  channel.close();
+  assert.equal(socket.destroyed, true, "short-lived probes must release their descriptor immediately");
 });

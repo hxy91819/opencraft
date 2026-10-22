@@ -180,18 +180,28 @@ export class AppHostServer {
   removeConnection(connection: AppHostServerConnection): void {
     if (!this.connections.delete(connection)) return;
     connection.takeLeases();
+    // Claims may already be gone when an explicit host/disconnect failed to
+    // notify the transport. Retain their logical client identities across that
+    // failure so closing this WebSocket can still release native Thread state.
+    const clients = connection.takeLogicalClients();
+    const released = new Set<HostSlot>();
     for (const slot of this.slots.values()) {
       let removed = false;
       for (const [key, claim] of slot.claims) {
         if (claim.connection !== connection) continue;
-        if (this.options.logicalClientRouting && slot.record) {
-          void slot.record.transport.send(stampLogicalClientFrame(JSON.stringify({ jsonrpc: "2.0", method: "runtime/client/disconnect" }), key)).catch(() => undefined);
-        }
         slot.claims.delete(key);
         removed = true;
       }
-      if (removed && slot.claims.size === 0) void this.stopSlot(slot, false);
+      if (removed) released.add(slot);
     }
+    for (const [clientId, hostId] of clients) {
+      if ([...this.connections].some(other => other.hasLogicalClient(clientId))) continue;
+      const record = this.slots.get(hostId)?.record;
+      if (!record || !this.options.logicalClientRouting) continue;
+      void record.transport.send(stampLogicalClientFrame(
+        JSON.stringify({ jsonrpc: "2.0", method: "runtime/client/disconnect" }), clientId)).catch(() => undefined);
+    }
+    for (const slot of released) if (slot.claims.size === 0) void this.stopSlot(slot, false);
   }
 
   async handle(connection: AppHostServerConnection, message: RendererToAppHostMessage): Promise<unknown> {
@@ -277,6 +287,7 @@ export class AppHostServer {
       if (record.transport.status.state !== "open") throw lostHostConnection(record.transport.status);
       claim.generation = record.generation;
       connection.rememberLease(hostId, leaseId, record.generation);
+      connection.rememberLogicalClient(key, hostId);
       return record;
     } catch (cause) {
       if (slot.claims.get(key) === claim) slot.claims.delete(key);
@@ -429,6 +440,7 @@ export class AppHostServer {
     try {
       if (this.options.logicalClientRouting && record) {
         await record.transport.send(stampLogicalClientFrame(JSON.stringify({ jsonrpc: "2.0", method: "runtime/client/disconnect" }), key));
+        connection.forgetLogicalClient(key);
       }
     } finally {
       // A late notification cannot remove a successor claim. stopSlot rechecks
@@ -495,6 +507,7 @@ interface OwnedLease {
 
 export class AppHostServerConnection {
   private readonly leases = new Map<string, OwnedLease>();
+  private readonly logicalClients = new Map<string, string>();
   private readonly unsubscribePort: () => void;
   private readonly receiveOperations = new Map<string, Promise<void>>();
   private ready = false;
@@ -561,6 +574,7 @@ export class AppHostServerConnection {
     this.unsubscribePort();
     this.port.close();
     this.leases.clear();
+    this.logicalClients.clear();
   }
 
   post(message: AppHostToRendererMessage): void {
@@ -574,6 +588,24 @@ export class AppHostServerConnection {
   forgetLease(hostId: string, leaseId: string, generation: number): void {
     const key = `${hostId}\0${leaseId}`;
     if (this.leases.get(key)?.generation === generation) this.leases.delete(key);
+  }
+
+  rememberLogicalClient(clientId: string, hostId: string): void {
+    this.logicalClients.set(clientId, hostId);
+  }
+
+  forgetLogicalClient(clientId: string): void {
+    this.logicalClients.delete(clientId);
+  }
+
+  hasLogicalClient(clientId: string): boolean {
+    return this.logicalClients.has(clientId);
+  }
+
+  takeLogicalClients(): Map<string, string> {
+    const result = new Map(this.logicalClients);
+    this.logicalClients.clear();
+    return result;
   }
 
   forgetHost(hostId: string, generation: number): void {

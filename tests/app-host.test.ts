@@ -513,6 +513,58 @@ test("process-owned Host keeps an admitted Turn alive across a lost Renderer and
   assert.equal(physical.closeCount, 1);
 });
 
+test("closing a Renderer does not disconnect a logical client still active on another connection", async () => {
+  const physical = new TestTransport();
+  const server = new AppHostServer({ logicalClientRouting: true, physicalHostLifetime: "server", createTransport: () => physical });
+  const firstPorts = createPortPair(), secondPorts = createPortPair();
+  const firstConnection = server.accept(firstPorts.host, "first-renderer");
+  const secondConnection = server.accept(secondPorts.host, "second-renderer");
+  const firstClient = new MessagePortAppHostClient(firstPorts.browser, "first-renderer");
+  await firstClient.waitUntilReady();
+  await firstClient.connectHost("local-codex", "shared-lease");
+  const key = [...(server as unknown as { slots: Map<string, { claims: Map<string, unknown> }> }).slots.get("local-codex")!.claims.keys()][0]!;
+  secondConnection.rememberLogicalClient(key, "local-codex");
+  try {
+    firstConnection.close();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(physical.sent.filter(frame => JSON.parse(frame).method === "runtime/client/disconnect").length, 0,
+      "the surviving connection still owns this logical client");
+    secondConnection.close();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(physical.sent.filter(frame => JSON.parse(frame).method === "runtime/client/disconnect").length, 1,
+      "the last connection releases the logical client");
+  } finally { firstClient.close(); firstConnection.close(); secondConnection.close(); await server.close(); }
+});
+
+test("a failed explicit logical disconnect is retried when its Renderer WebSocket closes", async () => {
+  class FailingDisconnectTransport extends TestTransport {
+    attempts = 0;
+    override async send(frame: string): Promise<void> {
+      if (JSON.parse(frame).method === "runtime/client/disconnect") {
+        this.attempts += 1;
+        throw new Error("synthetic logical disconnect failure");
+      }
+      return super.send(frame);
+    }
+  }
+  const physical = new FailingDisconnectTransport();
+  const server = new AppHostServer({ logicalClientRouting: true, physicalHostLifetime: "server", createTransport: () => physical });
+  const ports = createPortPair(), connection = server.accept(ports.host, "disconnect-retry");
+  const client = new MessagePortAppHostClient(ports.browser, "disconnect-retry");
+  await client.waitUntilReady();
+  const host = await client.connectHost("local-codex", "retry-lease");
+  try {
+    await assert.rejects(client.disconnectHost("local-codex", "retry-lease", host.generation), /synthetic logical disconnect failure/);
+    assert.equal(physical.attempts, 1);
+    const slot = (server as unknown as { slots: Map<string, { claims: Map<string, unknown> }> }).slots.get("local-codex");
+    assert.equal(slot?.claims.size, 0, "the local claim is released even when notification fails");
+    connection.close();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(physical.attempts, 2, "the closing Renderer retries the retained logical client once");
+    assert.equal(physical.closeCount, 0, "a process-owned Host survives Renderer closure");
+  } finally { client.close(); connection.close(); await server.close(); }
+});
+
 test("closing one Renderer during shared startup cannot tear down another Renderer claim", async () => {
   const firstPorts = createPortPair();
   const secondPorts = createPortPair();

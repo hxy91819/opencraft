@@ -4,10 +4,10 @@ import { createServer } from 'node:http';
 import { mkdtemp, mkdir, readFile, readlink, writeFile, rm, symlink, rename, cp } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createManagedWebServer } from "../scripts/web-deployment/server.mjs";
-import { createExecutionDeployment, coreHealth } from "../scripts/server-deployment/execution.mjs";
+import { computeExecutionHash, createExecutionDeployment, coreHealth } from "../scripts/server-deployment/execution.mjs";
 import { parseWebUpdateStatus } from "../packages/web-update-protocol/src/index.mjs";
 import { releaseFixture } from "./web-deployment-fixture.mjs";
 import { packageWebServer } from "../scripts/package-web-server.mjs";
@@ -105,6 +105,12 @@ test('server update commits both versions, restores execution after failure and 
     assert.equal(typeof plugin.apply, 'function');
     await open();
     assert.equal((await status()).execution.version, '1.0.0');
+    // This legacy scenario owns restart and rollback behavior. Make the installed
+    // backend hash differ from every candidate so those paths remain exercised;
+    // same-digest pointer switches have their own focused regression test.
+    const initialRoot = resolve(state, await readlink(link));
+    await writeFile(join(initialRoot, 'execution/daemon.cjs'),
+      `${await readFile(join(initialRoot, 'execution/daemon.cjs'), 'utf8')}\n// synthetic backend boundary\n`);
     failReadiness = true;
     const readinessFailure = await install('1.1.0');
     assert.equal(readinessFailure.job.phase, 'failed');
@@ -255,4 +261,108 @@ test('execution health retains identity, budgets dependent checks and fences poi
     const observing=observeExecutionHealth({version:'1',buildId:'one',core:async()=>{started++;await both;return{};},dsh:async()=>{started++;await both;return{};}});
     assert.equal(started,2,'dependency observations start concurrently');releaseDependency();assert.equal((await observing).ok,true);
   }finally{server.closeAllConnections();await new Promise(done=>server.close(done));await rm(root,{recursive:true,force:true});}
+});
+
+test('execution runtime hash ignores web metadata and changes with backend payload', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'opencraft-execution-hash-'));
+  try {
+    await mkdir(join(root, 'execution/nested'), { recursive: true });
+    await mkdir(join(root, 'web'));
+    const buildOne = '20261022040000-aaaaaaaaaaaa', buildTwo = '20261022050000-bbbbbbbbbbbb';
+    const revisionOne = '1'.repeat(40), revisionTwo = '2'.repeat(40);
+    await writeFile(join(root, 'execution/gateway.mjs'), `gateway-one build=${buildOne} revision=${revisionOne}`);
+    await writeFile(join(root, 'execution/nested/daemon.cjs'), `daemon-one build=${buildOne} revision=${revisionOne}`);
+    await writeFile(join(root, 'package.json'), JSON.stringify({ version: '1.0.0', opencraftWeb: { buildId: buildOne } }));
+    await writeFile(join(root, 'web/version.json'), JSON.stringify({ buildId: buildOne, sourceRevision: revisionOne }));
+    const first = await computeExecutionHash(root);
+    assert.match(first, /^[a-f0-9]{64}$/);
+    // A web-only rebuild rewrites the embedded release identity in every bundle.
+    await writeFile(join(root, 'package.json'), JSON.stringify({ version: '1.1.0', opencraftWeb: { buildId: buildTwo } }));
+    await writeFile(join(root, 'web/version.json'), JSON.stringify({ buildId: buildTwo, sourceRevision: revisionTwo }));
+    await writeFile(join(root, 'execution/gateway.mjs'), `gateway-one build=${buildTwo} revision=${revisionTwo}`);
+    await writeFile(join(root, 'execution/nested/daemon.cjs'), `daemon-one build=${buildTwo} revision=${revisionTwo}`);
+    assert.equal(await computeExecutionHash(root), first, 'web-only manifests and embedded identities do not force a backend restart');
+    await writeFile(join(root, 'execution/nested/daemon.cjs'), 'daemon-two');
+    assert.notEqual(await computeExecutionHash(root), first, 'backend payload changes alter the digest');
+    await rm(join(root, 'execution'), { recursive: true, force: true });
+    assert.equal(await computeExecutionHash(root), null, 'a legacy release without an execution payload cannot match');
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('web-only execution updates switch the pointer without restarting an unchanged backend', { timeout: 180_000 }, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'opencraft-execution-hash-apply-'));
+  const core = createServer((request, response) => {
+    assert.equal(request.headers.authorization, 'Bearer synthetic-hash-token');
+    response.end(JSON.stringify({ protocolVersion: 1, pid: 11, codexPid: 12 }));
+  });
+  let health;
+  try {
+    const webRoot = join(root, 'web'); await mkdir(webRoot);
+    await writeFile(join(webRoot, 'index.html'), '<html><head></head><body>fixture</body></html>');
+    await writeFile(join(webRoot, 'version.json'), JSON.stringify({ buildId: 'web-one' }));
+    const packed = await packageWebServer({ version: '1.0.0', webRoot, output: join(root, 'packed'), execution: true });
+    const firstRoot = packed.packageRoot;
+    const secondRoot = join(root, 'release-two'); await cp(firstRoot, secondRoot, { recursive: true });
+    const thirdRoot = join(root, 'release-three'); await cp(firstRoot, thirdRoot, { recursive: true });
+    for (const [target, version, buildId] of [[secondRoot, '1.1.0', 'web-two'], [thirdRoot, '1.2.0', 'web-three']]) {
+      const manifest = JSON.parse(await readFile(join(target, 'package.json'), 'utf8'));
+      manifest.version = version; manifest.opencraftWeb = { ...manifest.opencraftWeb, buildId };
+      await writeFile(join(target, 'package.json'), JSON.stringify(manifest));
+      // Simulate the web build embedding its new identity into the gateway bundle.
+      const gateway = join(target, 'execution/gateway.mjs');
+      await writeFile(gateway, (await readFile(gateway, 'utf8')).replaceAll('web-one', buildId));
+    }
+    const changedGateway = join(thirdRoot, 'execution/gateway.mjs');
+    await writeFile(changedGateway, `${await readFile(changedGateway, 'utf8')}\n// synthetic backend change\n`);
+    assert.notEqual(await computeExecutionHash(thirdRoot), await computeExecutionHash(firstRoot));
+
+    const state = join(root, 'state'); await mkdir(state);
+    const link = join(state, 'execution-current');
+    const tokenPath = join(root, 'token'); await writeFile(tokenPath, 'synthetic-hash-token');
+    const endpoint = join(root, 'core.sock'); await new Promise(done => core.listen(endpoint, done));
+    health = createServer(async (_request, response) => {
+      const manifest = JSON.parse(await readFile(join(await readlink(link), 'package.json'), 'utf8'));
+      response.end(JSON.stringify({ ok: true, version: manifest.version, buildId: manifest.opencraftWeb.buildId,
+        core: { pid: 11, codexPid: 12 } }));
+    });
+    await new Promise(done => health.listen(0, '127.0.0.1', done));
+    let restarts = 0;
+    const execution = createExecutionDeployment({ link, unit: 'execution.service', coreUnit: 'core.service', coreEndpoint: endpoint, tokenPath,
+      healthUrl: `http://127.0.0.1:${health.address().port}/health`, timeout: 500,
+      validate: async () => {}, prepareAccess: async () => {}, restart: async () => { restarts += 1; } });
+
+    await execution.apply({ releaseRoot: firstRoot, version: '1.0.0', buildId: 'web-one' });
+    assert.equal(restarts, 1, 'first deployment still starts the backend');
+    assert.equal(await readlink(link), firstRoot);
+
+    await execution.apply({ releaseRoot: secondRoot, version: '1.1.0', buildId: 'web-two' });
+    assert.equal(restarts, 1, 'identical backend payload does not restart the gateway');
+    assert.equal(await readlink(link), secondRoot, 'the web pointer still advances');
+
+    await execution.apply({ releaseRoot: thirdRoot, version: '1.2.0', buildId: 'web-three' });
+    assert.equal(restarts, 2, 'a changed backend payload restarts the gateway');
+
+    await execution.apply({ releaseRoot: secondRoot, version: '1.1.0', buildId: 'web-two' });
+    assert.equal(restarts, 3, 'cross-runtime rollback restarts as well');
+  } finally {
+    if (health) { health.closeAllConnections(); await new Promise(done => health.close(done)); }
+    core.closeAllConnections(); await new Promise(done => core.close(done));
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('headless execution identity follows the current release pointer', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'opencraft-release-pointer-'));
+  try {
+    const { readCurrentReleaseManifest } = await import('../scripts/server-deployment/headless-gateway-application.mjs');
+    const first = join(root, 'release-one'), second = join(root, 'release-two');
+    await mkdir(first); await mkdir(second);
+    await writeFile(join(first, 'package.json'), JSON.stringify({ version: '1.0.0', opencraftWeb: { buildId: 'one' } }));
+    await writeFile(join(second, 'package.json'), JSON.stringify({ version: '1.1.0', opencraftWeb: { buildId: 'two' } }));
+    const link = join(root, 'execution-current'); await symlink(first, link);
+    assert.deepEqual(await readCurrentReleaseManifest(first, join(link, 'execution/gateway.mjs')), { version: '1.0.0', opencraftWeb: { buildId: 'one' } });
+    await rm(link); await symlink(second, link);
+    assert.deepEqual(await readCurrentReleaseManifest(first, join(link, 'execution/gateway.mjs')), { version: '1.1.0', opencraftWeb: { buildId: 'two' } });
+    assert.deepEqual(await readCurrentReleaseManifest(first, '/tmp/unrelated-runner.mjs'), { version: '1.0.0', opencraftWeb: { buildId: 'one' } });
+  } finally { await rm(root, { recursive: true, force: true }); }
 });

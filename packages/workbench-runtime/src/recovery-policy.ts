@@ -55,6 +55,9 @@ export class ConversationRecoveryOwner {
   constructor(private readonly input: {
     hostId: string; clock: RecoveryClock;
     delaysMs?: readonly number[]; concurrency?: number;
+    /** Default history backoff spreads reconnect storms; test schedules stay exact. */
+    jitter?: boolean;
+    random?: () => number;
     changed?(): void;
     log?(event: Readonly<Record<string, string | number>>): void;
   }) {}
@@ -183,7 +186,9 @@ export class ConversationRecoveryOwner {
         this.stage("history-failed", { demand, durationMs: this.now() - started });
         this.observe("failed", key, { error });
         if (work.attempt < 3 && work.task.retryable(error)) {
-          const delayMs = (this.input.delaysMs ?? delays)[Math.min(work.attempt++, 6)] ?? 5_000;
+          const schedule = this.input.delaysMs;
+          const base = (schedule ?? delays)[Math.min(work.attempt++, 6)] ?? 5_000;
+          const delayMs = this.jitteredDelay(base, schedule === undefined);
           this.observe("backoff", key, { retryAt: this.now() + delayMs });
           this.stage("history-backoff", { demand, delayMs, attempt: this.getProgress(key)!.attempt });
           const ticket = ++work.retryTicket;
@@ -198,6 +203,11 @@ export class ConversationRecoveryOwner {
         this.settle();
       });
     }
+  }
+  private jitteredDelay(delayMs: number, useDefaultSchedule: boolean): number {
+    if (!useDefaultSchedule || this.input.jitter === false) return delayMs;
+    const random = Math.min(1, Math.max(0, this.input.random?.() ?? Math.random()));
+    return Math.max(1, Math.round(delayMs * (0.8 + random * 0.4)));
   }
   dispose() { this.disposed = true; this.invalidate(); }
 }

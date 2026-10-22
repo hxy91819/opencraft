@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import type { ThreadListResponse } from "@opencraft/appserver-protocol/generated/v2";
-import { readHostThreadCatalog } from "./host-thread-catalog";
+import { isHostThreadCatalogUnavailableError, readHostThreadCatalog } from "./host-thread-catalog";
 import { sidebarThreadCatalogQueryKey } from "./thread-catalog-query";
 import { retryQuery } from "./workbench-application-services";
 
 type CatalogQuery = Omit<Parameters<typeof readHostThreadCatalog>[0], "signal" | "onInitialPage"> & {
   readonly enabled: boolean;
   readonly queryKey: ReturnType<typeof sidebarThreadCatalogQueryKey>;
+}
+
+/** A closed or not-yet-readable connection cannot become readable by waiting
+ * through the ordinary query backoff. The connection owner drives recovery. */
+export function retryHostThreadCatalogQuery(failureCount: number, error: unknown): boolean {
+  return isHostThreadCatalogUnavailableError(error) ? false : retryQuery(failureCount, error);
 }
 
 /** First-page placeholders belong to this observer, never to the complete
@@ -62,7 +68,7 @@ export function useHostThreadCatalogQueries(inputs: readonly CatalogQuery[]) {
         }
       },
       staleTime: 30_000,
-      retry: retryQuery,
+      retry: retryHostThreadCatalogQuery,
     };
   }) });
 }
