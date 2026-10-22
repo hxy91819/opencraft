@@ -3406,3 +3406,11 @@ Unchanged native metering metadata is idempotent at the persistence boundary: re
 
 
 Dedicated metering store v2 adds a thread/date index so filtered thread/turn reads seek the selected thread before its date range. This changes query planning without changing allocation, snapshot revisions, query authorization or the former Host schema. The managed database migration and complete target validator own index creation; repeated opens do not recreate it. Thread/turn-filtered team reductions materialize their selected turn set before grouping, preventing grouped plans from bypassing the thread index; unfiltered projection reads retain their original path.
+
+
+The bounded native usage replay reports each oversized line once through
+`onOversizedLine(mayContainFact, bytes)`. This observation cannot invent a usage
+gap: ordinary output remains a skipped non-fact, possible facts retain the
+existing missing-source reconciliation, and the committed cursor resumes after
+the complete line. The observer has one typed call shape, never a second
+object-shaped compatibility invocation.
