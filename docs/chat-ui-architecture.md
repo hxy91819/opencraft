@@ -3343,3 +3343,14 @@ clipboard write complete, then reports success only after the write resolves.
 A failure uses the same error owner, and a late completion after unmount removes
 the pending notice without reviving feedback. Menu closure does not cancel the
 operation; the existing per-thread busy guard prevents duplicate submissions.
+
+## Inherited Fast status in compact input
+
+Read-only Side Chat model status follows the child execution snapshot, including
+Fast. In the empty, unfocused touch layout, the metadata group is hidden and the
+shared collapsed Fast slot preserves that status. Expanded and desktop layouts
+use the metadata group, leaving exactly one visible Fast indicator. Enabled Fast
+uses the shared LightningIcon `filled` variant; an SVG parent fill cannot override
+the glyph's explicit path fill. Folding keeps the original editor and read-only
+submission still strips local selection overrides. The existing model-hydration
+smoke covers both layouts and actual light/dark appearance preferences.
