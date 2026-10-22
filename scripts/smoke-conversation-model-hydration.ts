@@ -14,7 +14,9 @@ import {OpenCraftComposer} from '@opencraft/composer-editor';
 import {projectComposerModelChoices} from '@opencraft/workbench-runtime';
 import {OPENCRAFT_SCOPED_MODEL_CATALOG_EXTENSION} from '@opencraft/appserver-protocol';
 import {ApplicationRuntimeContext,ConversationViewRuntimeContext,useComposerCatalog} from '/apps/workbench-web/src/runtime/appserver-runtime-context.tsx';
+import {initializeAppearanceTheme,setThemePreference} from '/apps/workbench-web/src/appearance-theme.ts';
 import '/apps/workbench-web/src/styles/app.scss';
+initializeAppearanceTheme();
 const noop=()=>()=>{},client=new QueryClient(),pending=new Map(),calls=[],counts={defaults:0,account:0};
 const model=(id,name)=>({id,model:id,displayName:name,isDefault:true,hidden:false,description:'',defaultReasoningEffort:'low',supportedReasoningEfforts:['low','medium','high'].map(reasoningEffort=>({reasoningEffort,description:''})),serviceTiers:[{id:'fast',name:'Fast',description:''}]});
 const alpha=model('alpha','Alpha model'),beta=model('beta','Beta model');
@@ -24,7 +26,7 @@ const accountSnapshot={contribution:account},hostSnapshot={hostId:'fixture',phas
 const runtime={subscribe:noop,getSnapshot:()=>hostSnapshot,resources:{host:{getInitializeResult:()=>({capabilities:{extensions:{[OPENCRAFT_SCOPED_MODEL_CATALOG_EXTENSION]:{}}}})},composerCatalog:{listModels:params=>{calls.push(params);return new Promise((resolve,reject)=>pending.set(params.threadId+':'+params.cursor,{resolve,reject}))},listPermissionProfiles:async()=>({data:[]}),readNewThreadDefaults:async()=>{counts.defaults++;return {model:'wrong',effort:'low'}}}}};
 const controllers=new Map();function controller(id){if(!controllers.has(id))controllers.set(id,createComposerController({type:'existing-thread',key:{hostId:'fixture',threadId:id}},{now:Date.now,createId:()=>crypto.randomUUID()}));return controllers.get(id)}
 const selections={a:{model:'alpha',effort:'high',serviceTier:'fast'},b:{model:'alpha',effort:'medium'},c:{model:'beta',effort:null},unknown:{}};
-window.fixture={calls,counts,client,alpha,beta,pending,intents:[],resolve:(key,data,nextCursor=null)=>pending.get(key).resolve({data,nextCursor}),reject:key=>pending.get(key).reject(Error('offline')),controller};
+window.fixture={calls,counts,client,alpha,beta,pending,theme:setThemePreference,intents:[],resolve:(key,data,nextCursor=null)=>pending.get(key).resolve({data,nextCursor}),reject:key=>pending.get(key).reject(Error('offline')),controller};
 function Catalog({id}){const [readOnly,setReadOnly]=useState(false);window.fixture.setReadOnly=setReadOnly;const catalog=useComposerCatalog('/fixture',id);window.fixture.catalog=catalog;return <OpenCraftComposer controller={controller(id)} modelDisplayOnly={readOnly} shortcutCommands={[{name:'side',description:'Open side chat'}]} effectiveSelections={selections[id]} selectionCatalog={{models:projectComposerModelChoices(catalog.models),displayModels:projectComposerModelChoices(catalog.displayModels),permissionProfiles:[],isFetching:catalog.isFetching,modelError:catalog.modelError?.message}} onSubmit={intent=>{window.fixture.intents.push(intent);return false}} onCancel={()=>{}}/>}
 function App(){const [id,setId]=useState('a');window.fixture.switch=setId;return <QueryClientProvider client={client}><ApplicationRuntimeContext.Provider value={application}><ConversationViewRuntimeContext.Provider value={{runtime}}><main style={{padding:24,paddingTop:220,maxWidth:800}} data-thread={id}><Catalog id={id}/></main></ConversationViewRuntimeContext.Provider></ApplicationRuntimeContext.Provider></QueryClientProvider>}
 createIntlTestRoot(document.getElementById('root')).render(<App/>);`;
@@ -62,6 +64,22 @@ try{
   const inherited=page.locator('.opencraft-composer-mode--inherited');await inherited.waitFor();assert.match(await inherited.innerText(),/Alpha model/);assert.match(await inherited.innerText(),/High/,'inherited effort ignores stale draft choices');assert.equal(await inherited.locator('.opencraft-composer-mode__fast').count(),1,'inherited Fast ignores stale explicit off');assert.equal(await page.locator('.opencraft-composer-model-quick').count(),0);
   await editor.fill('Side chat draft');await page.getByRole('button',{name:'Send message',exact:true}).click();await page.waitForFunction(()=>(window as any).fixture.intents.length===3);const inheritedIntent=await page.evaluate(()=>(window as any).fixture.intents[2].selections);assert.equal(inheritedIntent.model,undefined);assert.equal(inheritedIntent.effort,undefined);assert.equal(inheritedIntent.serviceTier,undefined);
   await switchTo('unknown');assert.doesNotMatch(await inherited.innerText(),/Alpha|Beta|High|Medium|Low/);assert.equal(await inherited.locator('.opencraft-composer-mode__fast').count(),0,'unknown inherited metadata cannot invent Fast');await switchTo('a');assert.match(await inherited.innerText(),/Alpha model/);assert.equal(await editor.innerText(),'Side chat draft');
+  // Side Chat presents the execution snapshot read-only. Its idle touch row
+  // hides the metadata group, so the shared collapsed slot must retain Fast.
+  await page.evaluate(touch=>{document.documentElement.dataset.uiDensity=touch?'touch':'compact';document.documentElement.dataset.touchNewera='on';(window as any).fixture.setReadOnly(true)},touch);
+  const editorNode=await editor.elementHandle();
+  const visibleFast=()=>page.locator('[aria-label="Fast"]:visible');
+  const assertFilled=async()=>{assert.equal(await visibleFast().count(),1,'exactly one visible execution Fast status');assert.notEqual(await visibleFast().locator('path').evaluate(el=>getComputedStyle(el).fill),'none','active Fast uses the shared filled glyph')};
+  for(const theme of ['light','dark']){
+   await page.evaluate(theme=>(window as any).fixture.theme(theme),theme);await page.waitForFunction(theme=>document.documentElement.dataset.theme===theme,theme);
+   await editor.fill('Side draft');if(touch)await editor.tap();else await editor.click();
+   await inherited.waitFor({state:'visible'});assert.match(await inherited.innerText(),/Alpha model/,'read-only model follows execution, not stale local override');assert.match(await inherited.innerText(),/High/);assert.equal(await page.locator('.opencraft-composer-mode--intelligence').count(),0,'read-only status never opens a model picker');await assertFilled();
+   await editor.fill('');if(touch)await page.locator('main').tap({position:{x:5,y:5}});else await page.locator('main').click({position:{x:5,y:5}});
+   await page.waitForFunction(()=>{const el=document.querySelector('.opencraft-composer-stack') as HTMLElement;return el.dataset.composerEmpty==='true'&&el.dataset.composerEditing==='false'});await assertFilled();assert.equal(await editorNode!.evaluate(el=>el===document.querySelector('.opencraft-composer-editor')),true,'folding keeps the original editor');
+   assert.equal(await page.locator('.opencraft-composer-collapsed-fast').isVisible(),touch,'the compact Fast slot only replaces metadata in the touch idle layout');
+   await page.screenshot({path:'.local/model-hydration/'+(touch?'touch':'desktop')+'-readonly-idle-'+theme+'.png'});
+  }
+  await editor.fill('Side draft');if(touch)await editor.tap();else await editor.click();const before=await page.evaluate(()=>(window as any).fixture.intents.length);await page.getByRole('button',{name:'Send message',exact:true}).click();await page.waitForFunction(before=>(window as any).fixture.intents.length===before+1,before);assert.deepEqual(await page.evaluate(()=>(window as any).fixture.intents.at(-1).selections),{},'read-only submit strips stale selection overrides');assert.equal(await editor.innerText(),'Side draft','rejected submit retains the draft');
   const counts=await page.evaluate(()=>(window as any).fixture.counts);assert.deepEqual(counts,{defaults:0,account:0},'historical views never request new conversation defaults');assert.deepEqual(errors,[]);await page.screenshot({path:'.local/model-hydration/'+(touch?'touch':'desktop')+'.png'});results.push({touch,counts,passed:true});await context.close();
  }
  await writeFile('.local/model-hydration/results.json',JSON.stringify(results,null,2));console.log('PASS real catalog hook and Composer: cold/partial/error/late loads, A/B scopes, retained draft, unknown effort, Fast, desktop and touch');
