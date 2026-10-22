@@ -148,7 +148,10 @@ try {
   catalog=page.locator('.scheduled-tasks-page');
   await catalog.getByText("每周汇总", { exact: true }).waitFor();
   assert.equal(await catalog.locator('.scheduled-tasks-page__group').count(), 4);
-  assert.equal(await catalog.getByRole('button', { name: '刷新', exact: true }).count(), 1, 'refresh has one page-wide owner');
+  assert.equal(await catalog.locator('.scheduled-tasks-page__header').getByRole('button', { name: '刷新', exact: true }).count(), 0, 'refresh leaves the page header');
+  assert.equal(await catalog.locator('.scheduled-tasks-page__group-heading').getByRole('button', { name: '刷新', exact: true }).count(), 4, 'each server heading exposes the same catalog refresh');
+  assert.equal(await catalog.getByText('已连接', {exact:true}).count(), 0, 'healthy connectivity is not repeated');
+  assert.ok((await catalog.getByRole('button', { name: '刷新', exact: true }).allTextContents()).every(text=>!text.trim()), 'refresh uses only an icon');
   assert.equal(await catalog.locator('.settings-control-group,.settings-control-notice').count(), 0, 'catalog has no nested settings cards');
   await catalog.locator('[data-state="paused"]').first().getByText('任务已暂停', {exact:true}).waitFor();
   await catalog.getByText('暂停期间不会自动执行，可在「管理任务」中恢复。', {exact:true}).first().waitFor();
@@ -202,7 +205,7 @@ try {
   const keyboard=await browser.newPage({viewport:{width:1000,height:900}});
   await keyboard.goto(url);await keyboard.locator('body[data-ready="true"]').waitFor({timeout:90_000});
   const keyboardCatalog=keyboard.locator('.scheduled-tasks-page');await keyboardCatalog.locator('.scheduled-tasks-page__destination').first().waitFor();
-  await keyboardCatalog.getByRole('button',{name:'刷新',exact:true}).focus();await keyboard.keyboard.press('Tab');
+  await keyboardCatalog.getByRole('button',{name:'刷新',exact:true}).first().focus();await keyboard.keyboard.press('Tab');
   assert.equal(await keyboardCatalog.locator('.scheduled-tasks-page__destination').first().evaluate(el=>document.activeElement===el),true);
   const focusStyle=await keyboardCatalog.locator('.scheduled-tasks-page__destination').first().evaluate(el=>({style:getComputedStyle(el).outlineStyle,width:getComputedStyle(el).outlineWidth}));
   assert.notEqual(focusStyle.style,'none');assert.ok(parseFloat(focusStyle.width)>0);
