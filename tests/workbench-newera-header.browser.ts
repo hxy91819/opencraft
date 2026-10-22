@@ -54,15 +54,30 @@ try {
  await page.locator('[data-scroll]').evaluate((e:HTMLElement)=>e.scrollTop=220);assert.ok(await page.locator('[data-scroll]').evaluate(e=>e.scrollTop)>200);
  await page.screenshot({path:output+'/'+width+'-'+theme+'.png'});
  if(width===390&&theme==='light'){
-  const diagnostic=await page.addStyleTag({content:'.main-content-top-fade{visibility:hidden!important}[data-scroll]{background:repeating-linear-gradient(90deg,#1268df 0 7px,#ffc54f 7px 14px,#d73b78 14px 21px,#fff 21px 28px)!important}'});
-  await page.waitForTimeout(100);
+  const diagnostic=await page.addStyleTag({content:'.main-content-top-fade{visibility:hidden!important}[data-scroll]{position:relative!important}[data-optical-digits]{position:absolute;inset:0 0 auto;height:1800px;background:white;color:#171717;font:22px/48px system-ui;text-align:right;word-spacing:12px;pointer-events:none}'});
+  await page.locator('[data-scroll]').evaluate(e=>{const digits=document.createElement('div');digits.dataset.opticalDigits='';digits.innerHTML=Array.from({length:38},(_,i)=>'<div>'+Array.from({length:7},(_,j)=>(i*7+j)%31+1).join(' ')+'</div>').join('');e.append(digits)});
+  const lens=group.locator('.ui-liquid-glass');
+  const originalMap=await lens.locator('feImage').getAttribute('href');
+  const frames:Buffer[]=[];
+  for(let step=0;step<18;step++){
+   await page.locator('[data-scroll]').evaluate((e:HTMLElement,top)=>e.scrollTop=top,160+step*7);
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   frames.push(await group.screenshot({path:output+'/scroll-'+String(step).padStart(2,'0')+'.png',animations:'allow'}));
+   assert.equal(await lens.locator('feImage').getAttribute('href'),originalMap,'scroll must not rebuild the geometry lookup');
+  }
+  assert.ok(frames.slice(1).every((frame,i)=>!frame.equals(frames[i]!)),'every scroll position must update live transmitted pixels');
   const refracted=await group.screenshot({path:output+'/lens-refraction.png'});
-  const lens=group.locator('.ui-liquid-glass');const originalStyle=await lens.getAttribute('style');
-  await lens.evaluate((e:HTMLElement)=>e.style.setProperty('--material-liquid-lens','blur(2px) saturate(1.25)'));
+  await lens.locator('feDisplacementMap').evaluate(e=>e.setAttribute('scale','0'));
   const flat=await group.screenshot({path:output+'/lens-flat-comparison.png'});
-  assert.ok(!refracted.equals(flat),'lens displacement must change actual composited pixels');
-  await lens.evaluate((e:HTMLElement,style:string|null)=>{if(style===null)e.removeAttribute('style');else e.setAttribute('style',style)},originalStyle);
+  assert.ok(!refracted.equals(flat),'curved lookup must change actual composited pixels at equal scattering');
+  await lens.locator('feDisplacementMap').evaluate(e=>e.setAttribute('scale','24'));
+  await lens.locator('feFlood').evaluate(e=>e.setAttribute('flood-opacity','0'));
+  const unadapted=await group.screenshot({path:output+'/lens-no-adaptation.png'});
+  assert.ok(!refracted.equals(unadapted),'live local-detail adaptation must affect rendered pixels');
+  await lens.locator('feFlood').evaluate(e=>e.setAttribute('flood-opacity','.65'));
+  await page.locator('[data-optical-digits]').evaluate(e=>e.remove());
   await diagnostic.evaluate(e=>e.remove());
+  evidence.push({continuousOptics:{frames:frames.length,unchangedGeometry:true,refractionComparison:true,localDetailComparison:true}});
  }
 
  if(width===390){
