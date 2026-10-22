@@ -366,6 +366,13 @@ retryable service-restart close. Late target resolution and backend frames canno
 allocate or publish into a retired incarnation. The Host does not silently swap
 backend sockets: DSH Thread attachments belong to the old physical connection.
 
+Identical initialize and catalog reads may share an in-flight operation only
+among logical clients on the same frontend connection. Its backend RPC and
+cancellation belong to that connection. Independent frontend connections keep
+independent reads, so closing one cannot fail another connection's handshake or
+catalog. Completion or failure removes the in-flight entry; subsequent reads
+start fresh. This sharing never applies to execution mutations.
+
 The existing client connection owner reconnects and negotiates capabilities;
 Thread recovery then issues Resume, restores its history boundary and reattaches
 notifications before marking that Thread authoritative. Host readiness and Thread

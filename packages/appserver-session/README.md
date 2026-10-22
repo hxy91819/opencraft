@@ -20,3 +20,8 @@ Public services:
 Every plugin declares Cordis `inject` dependencies. Identity and history-policy
 fields remain Coordinator-owned, so an extension cannot change `threadId` or
 silently disable Tail hydration through `requestOverrides`.
+
+Recovery checkpoints are hints validated against the current response before
+hydration. An explicit null checkpoint suppresses a stale initial checkpoint.
+When a provider confirms unchanged history, recovery preserves the current
+immutable transcript and pagination rather than loading that history again.

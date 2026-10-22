@@ -1570,7 +1570,9 @@ test("provider unchanged recovery preserves the immutable transcript across conn
   try {
     const first = await h.runtime.resume.resume({ threadId: "thread-one" });
     options.historyRecovery = { checkpoint: { epoch: "provider-history", nextSeq: 4 }, mode: "unchanged" };
-    options.initialTurnsPage = { data: [], nextCursor: null };
+    // Force the old path to request a full Turn page; unchanged recovery must not use it.
+    options.initialTurnsPage = null;
+    const turnsBefore = h.requests.filter(request => request.method === "thread/turns/list").length;
     await h.transport.close();
     await h.client.connect({ clientInfo: { name: "test", version: "1" } });
     const next = await h.runtime.resume.resume({ threadId: "thread-one", force: true });
@@ -1578,6 +1580,26 @@ test("provider unchanged recovery preserves the immutable transcript across conn
     assert.notEqual(next.connectionGeneration, first.connectionGeneration);
     assert.equal(next.historyCheckpoint?.epoch, "provider-history");
     assert.equal(next.execution.approvalPolicy, "on-request");
+    assert.equal(h.requests.filter(request => request.method === "thread/turns/list").length, turnsBefore,
+      "unchanged recovery must not rebuild the full Turn history");
+    const resumes = h.requests.filter(request => request.method === "thread/resume");
+    assert.deepEqual(resumes.at(-1)?.params.historyCheckpoint, { epoch: "provider-history", nextSeq: 4 });
+  } finally { await h.close(); }
+});
+
+test("an explicitly suppressed history checkpoint is not sent on reconnect", async () => {
+  const options: HarnessOptions = { historyMode: "paginated", initialTurnsPage: {
+    data: [{ id: "stable", status: "completed", itemsView: "full", items: [{ id: "answer", type: "agentMessage", text: "unchanged" }] }], nextCursor: null,
+  }, historyRecovery: { checkpoint: { epoch: "provider-history", nextSeq: 4 }, mode: "replace" } };
+  const h = await createHarness(options);
+  try {
+    await h.runtime.resume.resume({ threadId: "thread-one" });
+    await h.transport.close();
+    await h.client.connect({ clientInfo: { name: "test", version: "1" } });
+    await h.runtime.resume.resume({ threadId: "thread-one", force: true, historyCheckpoint: null });
+    const request = h.requests.filter(entry => entry.method === "thread/resume").at(-1)!;
+    assert.equal("historyCheckpoint" in request.params, false, "a non-authoritative or active reconnect must not offer its checkpoint");
+    assert.equal(request.params.historyCheckpoint, undefined);
   } finally { await h.close(); }
 });
 

@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import test from "node:test";
 import { HostRuntimeRegistry, type AppServerWorkbenchRuntime, type HostConnectionProfile } from "@opencraft/workbench-runtime";
 import type { SshConnectionView } from "@opencraft/app-host-protocol";
-import { canDisplayHostThreadCatalog, canReadHostThreadCatalog, managedHostCatalogSignature, readHostThreadCatalog, type ManagedHostCatalogSnapshot } from "../apps/workbench-web/src/runtime/host-thread-catalog.js";
+import { canDisplayHostThreadCatalog, canReadHostThreadCatalog, HostThreadCatalogUnavailableError, managedHostCatalogSignature, readHostThreadCatalog, type ManagedHostCatalogSnapshot } from "../apps/workbench-web/src/runtime/host-thread-catalog.js";
+import { retryHostThreadCatalogQuery } from "../apps/workbench-web/src/runtime/use-host-thread-catalog-queries.js";
 
 function deferred() { let resolve!: () => void; const promise = new Promise<void>(r => { resolve = r; }); return { promise, resolve }; }
 const profile: HostConnectionProfile = {
@@ -290,4 +292,65 @@ test("cancelled or revoked first replies never expose private first-page rows", 
       assert.deepEqual(progress, []); assert.deepEqual(h.calls, ["connect", "thread/list"]);
     } finally { await h.registry.dispose(); }
   }
+});
+
+test("connection preconditions do not enter the query retry backoff", () => {
+  const unavailable = new HostThreadCatalogUnavailableError();
+  assert.equal(retryHostThreadCatalogQuery(0, unavailable), false);
+  assert.equal(retryHostThreadCatalogQuery(0, Object.assign(new Error("cross-realm"), { code: unavailable.code })), false);
+  assert.equal(retryHostThreadCatalogQuery(0, new Error("transient")), true);
+  assert.equal(retryHostThreadCatalogQuery(3, new Error("transient")), false);
+});
+
+test("unreadable preconditions emit no catalog operation and a later-page failure preserves first-page success", async () => {
+  const catalogUrl = new URL("../apps/workbench-web/src/runtime/host-thread-catalog.ts", import.meta.url).href;
+  const observabilityUrl = new URL("../apps/workbench-web/src/runtime/observability.ts", import.meta.url).href;
+  const source = `
+    const document = Object.assign(new EventTarget(), { visibilityState: "visible", querySelector: () => null });
+    const window = new EventTarget();
+    Object.assign(globalThis, { document, window, PerformanceObserver: class { static supportedEntryTypes = []; } });
+    Object.defineProperty(globalThis, "performance", { configurable: true, value: {
+      now: () => 10, timeOrigin: Date.now() - 10, getEntriesByType: () => [{ startTime: 0, type: "navigate" }],
+    } });
+    const events = [];
+    globalThis.fetch = async (url, options) => {
+      if (String(url).endsWith("/capabilities")) return { ok: true, json: async () => ({ telemetry: true, available: false }) };
+      for (const event of JSON.parse(options.body).events) events.push(event);
+      return { ok: true };
+    };
+    const observation = await import(${JSON.stringify(observabilityUrl)});
+    const controller = new AbortController();
+    await observation.createObservabilityExtension().activate({ signal: controller.signal });
+    await new Promise(resolve => setTimeout(resolve, 25));
+    events.length = 0;
+    const catalog = await import(${JSON.stringify(catalogUrl)});
+    const profile = { hostId: "fixture", displayName: "Fixture", providerId: "fixture", providerConfig: {}, providerConfigVersion: 1,
+      hostKind: "local", enabled: true, autoConnect: true, includeInSidebar: true, revision: 1, credentialRef: null,
+      transportEndpoint: null, executionLocation: "Fixture", workspaceBrowseRoots: [] };
+    await catalog.readHostThreadCatalog({ profile, currentProfile: () => undefined, management: null,
+      registry: { peekRuntime: () => null, ensureConnected: async () => { throw new Error("must not connect"); } } })
+      .then(() => { throw new Error("expected a precondition failure"); }, () => {});
+    await new Promise(resolve => setTimeout(resolve, 25));
+    const precondition = events.filter(event => event.kind === "operation" && String(event.operationType).startsWith("catalog_"));
+    if (precondition.length !== 0) throw new Error("precondition emitted catalog operations: " + JSON.stringify(precondition));
+    let page = 0;
+    const runtime = { getSnapshot: () => ({ phase: "ready" }), resources: { threads: { list: async () => {
+      if (++page === 1) return { data: [{ id: "first" }], nextCursor: "next" };
+      throw new Error("later page unavailable");
+    } } } };
+    await catalog.readHostThreadCatalog({ profile, currentProfile: () => profile, management: null,
+      registry: { peekRuntime: () => runtime, ensureConnected: async () => runtime } })
+      .then(() => { throw new Error("expected a later page failure"); }, () => {});
+    await new Promise(resolve => setTimeout(resolve, 100));
+    const first = events.filter(event => event.operationType === "catalog_first").map(event => event.outcome);
+    const complete = events.filter(event => event.operationType === "catalog_complete").map(event => event.outcome);
+    if (JSON.stringify(first) !== JSON.stringify(["started", "ok"])) throw new Error("catalog_first outcomes: " + JSON.stringify(first));
+    if (JSON.stringify(complete) !== JSON.stringify(["started", "failed"])) throw new Error("catalog_complete outcomes: " + JSON.stringify(complete));
+    controller.abort();
+    console.log("catalog observation policy passed");
+  `;
+  const stdout = await new Promise<string>((resolve, reject) => execFile(process.execPath,
+    ["--import", "tsx", "--input-type=module", "-e", source],
+    (error, output, stderr) => error ? reject(Object.assign(error, { stdout: output, stderr })) : resolve(output)));
+  assert.match(stdout, /catalog observation policy passed/);
 });

@@ -94,7 +94,11 @@ export class DaemonJsonLineChannel {
     if (this.closed) return;
     this.closed = true;
     this.detach();
+    // end() only starts the FIN handshake. Probes and short-lived readiness
+    // connections would otherwise retain their file descriptor and socket
+    // state until the kernel or peer completes it.
     this.socket.end();
+    this.socket.destroy();
     this.messageListeners.clear();
     this.closeListeners.clear();
   }

@@ -46,6 +46,10 @@ const core = new CodexCoreControlClient(coreEndpoint, (await readFile(tokenPath,
 // Readiness traverses the deployed daemon IPC and core, without initializing DSH.
 await core.health(AbortSignal.timeout(5000));
 const readiness = await daemon.connectAppHost('gateway-readiness');
+// Probes must not allocate a daemon connection every five seconds. The
+// readiness connection already proved the deployed daemon IPC and storage
+// snapshot; close it and retain that immutable summary for /health.
+const storage = readiness.storage;
 readiness.close();
 let stopping = false;
 const server = createServer(async (request, response) => {
@@ -54,10 +58,8 @@ const server = createServer(async (request, response) => {
   if (stopping) { response.writeHead(503); response.end('{}'); return; }
   if (request.url !== '/health') { response.writeHead(404); response.end('{}'); return; }
   try {
-    const connection = await daemon.connectAppHost('gateway-health');
-    connection.close();
     const health = await core.health(AbortSignal.timeout(5000));
-    response.end(JSON.stringify({ ok: true, version: manifest.version, buildId: manifest.opencraftWeb.buildId, core: health, storage: connection.storage }));
+    response.end(JSON.stringify({ ok: true, version: manifest.version, buildId: manifest.opencraftWeb.buildId, core: health, storage }));
   } catch { response.writeHead(503); response.end(JSON.stringify({ ok: false })); }
 });
 const sockets = new WebSocketServer({ noServer: true });
@@ -132,13 +134,17 @@ sockets.on("connection", (socket, hostId) => {
   socket.on("message", (data, isBinary) => {
     if (isBinary) { socket.close(1003, "JSON-RPC text required"); return; }
     const frame = data.toString();
-    queue = queue.then(async () => {
+    const next = queue.then(async () => {
       await ready;
       if (!closed) await transport.send(frame);
     }).catch((error) => {
       if (!closed) console.error(`[appserver-gateway] ${id}:`, error);
       close();
     });
+    queue = next;
+    // Retaining every completed promise keeps their closures reachable for the
+    // life of a long-lived WebSocket. Truncate the chain once it is idle.
+    void next.finally(() => { if (queue === next) queue = Promise.resolve(); });
   });
 });
 

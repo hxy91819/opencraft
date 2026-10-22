@@ -10,6 +10,7 @@ function fixture(changed = () => {}) {
   const owner = new ConnectionLifecycleOwner<object>({
     clock: { now: () => now, setTimeout(run, delay) { const id = ++seq; timers.set(id, { run, delay }); return id; },
       clearTimeout(id) { timers.delete(id as number); } },
+    delaysMs: [500, 1_000, 2_000, 5_000, 15_000, 30_000, 60_000],
     run: attempt => new Promise(resolve => runs.push({ resolve, signal: attempt.signal })),
     valid: () => true, invalidate: () => { invalidations++; }, changed,
     usable: () => {}, manual: () => false, backoff: (_, ms) => backoffs.push(ms),
@@ -72,4 +73,32 @@ test("deadline settles callers and revokes hung I/O; dispose remains terminal", 
   assert.equal(f.runs[0]!.signal.aborted, true);
   f.owner.dispose(); f.runs[0]!.resolve({}); await tick();
   assert.equal(f.owner.snapshot.phase, "disposed"); assert.equal(f.timers.size, 0);
+});
+
+test("default reconnect backoff adds bounded jitter while explicit test schedules stay exact", async () => {
+  const scheduled: number[] = [];
+  const delays: number[] = [];
+  let sequence = 0;
+  const owner = new ConnectionLifecycleOwner<object>({
+    clock: { setTimeout(run, delay) { scheduled.push(delay); return ++sequence; }, clearTimeout() {} },
+    run: async () => { throw new Error("synthetic loss"); },
+    valid: () => true, invalidate() {}, changed() {}, usable() {}, manual: () => false,
+    backoff: (_, delay) => delays.push(delay),
+    jitter: true, random: () => 0,
+  });
+  try {
+    await assert.rejects(owner.connect(), /synthetic loss/);
+    assert.deepEqual(scheduled.filter(delay => delay !== 60_000), [400]);
+    assert.deepEqual(delays, [400]);
+  } finally { owner.dispose(); }
+  const upper = new ConnectionLifecycleOwner<object>({
+    clock: { setTimeout(run, delay) { scheduled.push(delay); return ++sequence; }, clearTimeout() {} },
+    run: async () => { throw new Error("synthetic loss"); },
+    valid: () => true, invalidate() {}, changed() {}, usable() {}, manual: () => false,
+    backoff() {}, jitter: true, random: () => 1,
+  });
+  try {
+    await assert.rejects(upper.connect(), /synthetic loss/);
+    assert.equal(scheduled.filter(delay => delay !== 60_000).at(-1), 600);
+  } finally { upper.dispose(); }
 });

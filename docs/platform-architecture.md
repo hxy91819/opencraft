@@ -395,6 +395,12 @@ ID tombstone: a completed request or an earlier connection cannot suppress a
 new request after ID reuse. These delivery rules do not replay a mutation or
 terminate the underlying server execution.
 
+Default connection and history retry delays use bounded 0.8–1.2 jitter to
+spread reconnect bursts. Explicit test clocks or schedules retain exact delays.
+Catalog reads rejected by connection preconditions create neither an observed
+catalog operation nor query retry backoff. A failure on a later page preserves
+the successful first-page observation and already available catalog data.
+
 Short successful connections do not reset retry history: readiness must remain
 continuous for 60s. Visible foreground/online recovery hints can advance an
 already scheduled retry, at most once per five seconds per Host; they retain

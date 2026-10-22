@@ -930,6 +930,42 @@ test("last viewer leaving preserves background turns and queued work until the H
   }
 });
 
+test("a closed client releases its thread subscriptions and native Codex context", async () => {
+  const root = await mkdtemp(join(tmpdir(), "opencraft-codex-disconnect-release-"));
+  const frames: Array<Record<string, unknown>> = [];
+  const adapter = createRoutingAdapter(root, frames, 0, undefined, 10);
+  const threadId = "codex-thread-1";
+  let sequence = 0;
+  const request = async (clientId: string, method: string, params: Record<string, unknown>) => {
+    const id = `disconnect-${++sequence}`;
+    await adapter.send(JSON.stringify({ id, method, params, [LOGICAL_CLIENT_FIELD]: clientId }));
+    return waitFor(frames, frame => frame.id === id);
+  };
+  try {
+    await adapter.connect();
+    await initializeClient(adapter, frames, "client-a");
+    await initializeClient(adapter, frames, "client-b");
+    await request("client-a", "thread/start", { cwd: root });
+    await waitFor(frames, frame => frame.id === 900 && frame.method === "item/tool/requestUserInput");
+    await adapter.send(JSON.stringify({ id: 900, result: { answers: {} }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
+    await waitFor(frames, frame => frame.method === "serverRequest/resolved");
+    assert.deepEqual((await request("client-a", "test/emitThreadNotification", { threadId })).result, { nativeSubscribed: true });
+    await adapter.send(JSON.stringify({ method: "runtime/client/disconnect", [LOGICAL_CLIENT_FIELD]: "client-a" }));
+    let released = false;
+    for (let attempt = 0; attempt < 40; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 10));
+      const probe = await request("client-b", "test/emitThreadNotification", { threadId });
+      if ((probe.result as { nativeSubscribed?: boolean }).nativeSubscribed === false) { released = true; break; }
+    }
+    assert.equal(released, true, "the disconnected client no longer retains the native Thread subscription");
+    assert.equal(frames.some(frame => frame[LOGICAL_CLIENT_FIELD] === "client-a"
+      && frame.method === "thread/started"), true, "the prior subscription remains observable history");
+  } finally {
+    await adapter.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("definitive Codex steer rejection releases the Host claim without losing the queued item", async () => {
   const root = await mkdtemp(join(tmpdir(), "opencraft-codex-host-reject-"));
   const frames: Array<Record<string, unknown>> = [];

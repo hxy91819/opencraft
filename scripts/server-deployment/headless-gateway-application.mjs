@@ -1,5 +1,5 @@
 import { readFile, stat } from 'node:fs/promises';
-import { resolve, join, isAbsolute } from 'node:path';
+import { basename, dirname, resolve, join, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { startHeadlessServer, parseHeadlessArguments } from '../headless-application.mjs';
 import { coreHealth } from './execution.mjs';
@@ -17,6 +17,16 @@ export async function observeExecutionHealth({ version, buildId, core, dsh }) {
     dependencies: { core: coreReady ? 'ready' : 'unavailable', dsh: dsh ? dshReady ? 'ready' : 'unavailable' : 'disabled' } };
 }
 
+/** The stable execution pointer preserves its identity while web-only releases
+ * switch. Read the manifest through that pointer for every health observation. */
+export async function readCurrentReleaseManifest(releaseRoot, executable = process.argv[1]) {
+  const pointerRoot = typeof executable === 'string' && isAbsolute(executable)
+    && basename(dirname(executable)) === 'execution'
+    ? dirname(dirname(executable)) : releaseRoot;
+  const value = JSON.parse(await readFile(join(pointerRoot, 'package.json'), 'utf8'));
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid release manifest');
+  return value;
+}
 function required(name) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing ${name}`);
@@ -56,10 +66,13 @@ export async function runHeadlessGateway({ parseArguments = parseHeadlessArgumen
     dshCapabilityPlugin: join(releaseRoot, 'execution/dsh-capability-plugin.mjs'),
     codexExecutable: required('OPENCRAFT_CODEX_EXECUTABLE'),
     codexCoreEndpoint: endpoint, codexCoreAuthToken: token,
-    getExecutionHealth: () => observeExecutionHealth({ version: manifest.version,
-      buildId: manifest.opencraftWeb.buildId, core: health,
-      ...(dshDescriptor ? { dsh: () => readDshHostIdentity(dshDescriptor) } : {}),
-    }),
+    getExecutionHealth: async () => {
+      const current = await readCurrentReleaseManifest(releaseRoot);
+      return observeExecutionHealth({ version: typeof current.version === 'string' ? current.version : null,
+        buildId: typeof current.opencraftWeb?.buildId === 'string' ? current.opencraftWeb.buildId : null, core: health,
+        ...(dshDescriptor ? { dsh: () => readDshHostIdentity(dshDescriptor) } : {}),
+      });
+    },
   });
   console.log(`[opencraft headless] ${app.url}`);
   let stopping = false;

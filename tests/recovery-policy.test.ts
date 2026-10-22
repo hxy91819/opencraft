@@ -2,15 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { ConversationRecoveryOwner, type RecoveryDemand } from "../packages/workbench-runtime/src/recovery-policy";
 const tick = () => new Promise<void>(resolve => setImmediate(resolve));
-function fixture() {
+function fixture(options: { jitter?: boolean; random?: () => number; delaysMs?: readonly number[] } = {}) {
  let now = 0, seq = 0;
- const timers = new Map<number, { at: number; run(): void }>();
+ const timers = new Map<number, { at: number; delay: number; run(): void }>();
  const events: Record<string, string | number>[] = [];
  const owner = new ConversationRecoveryOwner({hostId:"test", clock: {
   now: () => now,
-  setTimeout(run, delay) { const id = ++seq; timers.set(id, {at:now+delay,run}); return id; },
+  setTimeout(run, delay) { const id = ++seq; timers.set(id, {at:now+delay,delay,run}); return id; },
   clearTimeout(id) { timers.delete(id as number); },
- }, log:event=>events.push({...event})});
+ }, delaysMs: 'delaysMs' in options ? options.delaysMs : [500,1_000,2_000,5_000,15_000,30_000,60_000],
+ jitter: options.jitter, random: options.random, log:event=>events.push({...event})});
  const advance = async (ms: number) => { now+=ms; for(const [id,t] of [...timers]) if(t.at<=now){timers.delete(id);t.run();} await tick(); };
  return {owner,events,advance,timers,};
 }
@@ -138,4 +139,16 @@ test("a new explicit recovery after terminal failure has its own correlation and
  assert.equal(current.recoveryId,f.events.filter(e=>e.stage==='history-started').at(-1)?.recoveryId);
  assert.equal(current.attempt,1);assert.equal(current.lastFailure,undefined);
  release();await retry;f.owner.dispose();
+});
+
+test("default history backoff is jittered within 0.8-1.2 while test schedules stay exact", async () => {
+ const f=fixture({delaysMs:undefined,jitter:true,random:()=>0});
+ const key={};
+ const done=f.owner.recover({key,demand:()=>"visible" as const,retryable:()=>true,run:async()=>{throw Error('timeout');}});
+ await tick();
+ assert.deepEqual([...f.timers.values()].map(timer=>timer.delay),[400]);
+ await f.advance(400);
+ assert.deepEqual([...f.timers.values()].map(timer=>timer.delay),[800]);
+ f.owner.dispose();
+ await done.catch(()=>{});
 });
