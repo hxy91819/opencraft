@@ -2024,3 +2024,16 @@ previously measured size remains authoritative. Metadata and contribution rows
 retain natural layout. Focused rows and rows with open menus retain ordinary
 rendering so focus rings and overlays remain reachable. Native scrolling,
 keyboard reveal, destination selection and drafts keep their existing owners.
+
+
+## Touch navigation glass groups
+
+Touch Newera conversation chrome uses a leading circular sidebar control and one
+trailing capsule for the existing conversation menu and preview action. The two
+trailing targets remain independent, with no divider or nested glass. Other
+routes/densities keep their existing presentation. Shell owns placement and safe
+areas; the design system owns LiquidGlassBackdrop, semantic material tokens and
+opaque accessibility fallbacks. A supported live backdrop lens uses a small
+geometry-dependent map updated on resize; it never captures content or runs a
+scroll/frame loop. Unsupported lens engines retain tint, softened transmission
+and curved highlights. Icons, focus rings and portalled menus are unfiltered.

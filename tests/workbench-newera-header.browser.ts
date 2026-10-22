@@ -35,8 +35,16 @@ try {
  const controls=page.locator('.app-shell-header__window-controls button:visible, .app-shell-header__end-actions button:visible, .app-shell-touch-sidebar-toggle button:visible');
  assert.equal(await controls.count(),3,'sidebar, menu and preview');assert.equal(await page.locator('.thread-header-title').isVisible(),false);assert.equal(await page.locator('.app-shell-header__right-panel-toggle').last().isVisible(),true);
  const bounds=await controls.evaluateAll(es=>es.map(e=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return{x:r.x,y:r.y,width:r.width,height:r.height,filter:s.backdropFilter,shadow:s.boxShadow}}));
- for(const b of bounds){assert.ok(b.width>=44&&b.height>=44,JSON.stringify({width,bounds}));assert.ok(b.x>=12&&b.x+b.width<=width-12&&b.y>=0);assert.notEqual(b.filter,'none');const layers=b.shadow.split(/,(?![^()]*\))/);assert.ok(layers.length>0&&layers.every((layer:string)=>layer.includes('inset')),'floating glass must not cast an outer shadow: '+b.shadow)}
+ for(const b of bounds){assert.ok(b.width>=44&&b.height>=44,JSON.stringify({width,bounds}));assert.ok(b.x>=12&&b.x+b.width<=width-12&&b.y>=0);assert.equal(b.filter,'none','glyph/action planes must not filter their content')}
  assert.ok(bounds.some(b=>b.x>width-90),'menu on trailing edge');
+ const lenses=page.locator('.app-shell-header .ui-liquid-glass:visible, .app-shell-touch-sidebar-toggle .ui-liquid-glass:visible');
+ assert.equal(await lenses.count(),2,'one circular lens and one shared trailing lens');
+ const group=page.locator('.app-shell-header__end-slot .app-shell-header__action-group');
+ assert.equal(await group.locator('button').count(),2);
+ const optics=await lenses.evaluateAll(es=>es.map(e=>{const b=e.getBoundingClientRect(),s=getComputedStyle(e,'::before');return {width:b.width,height:b.height,filter:s.backdropFilter,rim:s.boxShadow,map:!!e.querySelector('feDisplacementMap')}}));
+ for(const lens of optics){assert.ok(lens.width>=44&&lens.height>=44);assert.notEqual(lens.filter,'none');assert.notEqual(lens.rim,'none');}
+ assert.ok(optics.some(lens=>lens.width>lens.height*1.8),'trailing actions share one capsule');
+
  const fade=await page.locator('.main-content-top-fade').evaluate(e=>{const s=getComputedStyle(e);return{display:s.display,opacity:s.opacity,pointer:s.pointerEvents,background:s.backgroundImage}});assert.equal(await page.locator('.main-content-frame').evaluate(e=>getComputedStyle(e).marginTop),'0px');assert.equal(fade.display,'block');assert.equal(fade.opacity,'1');assert.equal(fade.pointer,'none');
  await page.getByLabel('Draft').fill('Retained draft');await page.evaluate(()=>{(window as any).editor=document.querySelector('input')});
  const trigger=page.getByRole('button',{name:'Conversation actions',exact:true});await page.getByRole('button',{name:'Open preview panel',exact:true}).click();
@@ -45,14 +53,33 @@ try {
  await page.getByRole('button',{name:'Show sidebar',exact:true}).click();await page.waitForTimeout(450);await page.getByRole('button',{name:width<640?'Close sidebar':'Hide sidebar',exact:true}).click();await page.waitForTimeout(450);
  await page.locator('[data-scroll]').evaluate((e:HTMLElement)=>e.scrollTop=220);assert.ok(await page.locator('[data-scroll]').evaluate(e=>e.scrollTop)>200);
  await page.screenshot({path:output+'/'+width+'-'+theme+'.png'});
- if(width===390){await page.emulateMedia({forcedColors:'active'});assert.equal(await trigger.evaluate(e=>getComputedStyle(e).backdropFilter),'none');await page.emulateMedia({forcedColors:'none'});}
+ if(width===390&&theme==='light'){
+  const diagnostic=await page.addStyleTag({content:'.main-content-top-fade{visibility:hidden!important}[data-scroll]{background:repeating-linear-gradient(90deg,#1268df 0 7px,#ffc54f 7px 14px,#d73b78 14px 21px,#fff 21px 28px)!important}'});
+  await page.waitForTimeout(100);
+  const refracted=await group.screenshot({path:output+'/lens-refraction.png'});
+  const lens=group.locator('.ui-liquid-glass');const originalStyle=await lens.getAttribute('style');
+  await lens.evaluate((e:HTMLElement)=>e.style.setProperty('--material-liquid-lens','blur(2px) saturate(1.25)'));
+  const flat=await group.screenshot({path:output+'/lens-flat-comparison.png'});
+  assert.ok(!refracted.equals(flat),'lens displacement must change actual composited pixels');
+  await lens.evaluate((e:HTMLElement,style:string|null)=>{if(style===null)e.removeAttribute('style');else e.setAttribute('style',style)},originalStyle);
+  await diagnostic.evaluate(e=>e.remove());
+ }
+
+ if(width===390){
+  const cdp=await context.newCDPSession(page);
+  await cdp.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-transparency',value:'reduce'}]});
+  assert.ok((await lenses.evaluateAll(es=>es.map(e=>getComputedStyle(e,'::before').backdropFilter))).every(v=>v==='none'));
+  await cdp.send('Emulation.setEmulatedMedia',{features:[]});await cdp.detach();
+ }
+
+ if(width===390){await page.emulateMedia({forcedColors:'active'});assert.ok((await lenses.evaluateAll(es=>es.map(e=>getComputedStyle(e,'::before').backdropFilter))).every(v=>v==='none'));await page.emulateMedia({forcedColors:'none'});}
 
  await page.evaluate(()=>document.documentElement.dataset.touchNewera='off');assert.equal(await page.locator('.thread-header-title').isVisible(),true);assert.equal(await page.locator('.app-shell-header__right-panel-toggle').last().isVisible(),true);
  await trigger.click();assert.equal(await page.getByRole('menuitem',{name:'Open preview panel',exact:true}).count(),0);await page.keyboard.press('Escape');
  await page.evaluate(()=>{document.documentElement.dataset.uiDensity='compact';document.documentElement.dataset.touchNewera='on'});await page.waitForTimeout(100);assert.equal(await page.locator('.thread-header-title').isVisible(),true);
  await page.evaluate(()=>{document.documentElement.dataset.uiDensity='touch';(window as any).fixture.setConversation(false)});await page.waitForTimeout(100);assert.equal(await page.locator('.thread-header-title').isVisible(),true);
  assert.equal(await page.evaluate(()=>(window as any).editor===document.querySelector('input')),true);assert.equal(await page.getByLabel('Draft').inputValue(),'Retained draft');assert.deepEqual(errors,[]);
- evidence.push({width,theme,bounds,fade,errors});await context.close();
+ evidence.push({width,theme,bounds,optics,fade,errors});await context.close();
  }
  console.log(JSON.stringify({ok:true,evidence}));await writeFile(output+'/result.json',JSON.stringify({ok:true,evidence},null,2));
 }finally{await browser?.close();await vite.close()}

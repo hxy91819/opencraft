@@ -1175,6 +1175,12 @@ html[data-opencraft-window-type="browser"] .main-content-top-fade {
   container-type: inline-size;
 }
 
+.app-shell-header__action-group {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
 .app-shell-header__end-actions {
   display: flex;
   height: 100%;
@@ -12409,8 +12415,9 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 
   // Wide touch layouts portal this existing control above drawer motion.
   .app-shell-touch-sidebar-toggle .app-shell-conversation-sidebar-toggle {
-    @include mobile-glass.surface($floating: true);
-    border-radius: var(--radius-full);
+    @include material.liquid;
+    width: var(--size-material-liquid-control);
+    height: var(--size-material-liquid-control);
   }
 
   .app-shell-root .app-shell-header[data-app-shell-conversation-header="true"] {
@@ -12421,8 +12428,13 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
       --window-controls-padding-start: max(var(--spacing-token-safe-header-left), var(--shell-mobile-safe-left, 0px), calc(var(--spacing) * 3));
     }
     .app-shell-header__end-actions {
-      gap: calc(var(--spacing) * 2);
       padding-right: max(var(--spacing-token-safe-header-right), var(--shell-mobile-safe-right, 0px), calc(var(--spacing) * 3));
+    }
+    .app-shell-header__action-group {
+      @include material.liquid;
+      height: var(--size-material-liquid-control);
+      gap: var(--gap-material-liquid-group);
+      padding: var(--padding-material-liquid-group);
     }
     .app-shell-header__context-surface,
     .application-brand,
@@ -12431,10 +12443,14 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
     }
     .app-shell-header__window-controls-rail[data-navigation-brand] { width: max-content; }
     .chrome-button {
-      @include mobile-glass.surface($floating: true);
       width: var(--size-shell-header-action-mobile);
       height: var(--size-shell-header-action-mobile);
       border-radius: var(--radius-full);
+    }
+    .app-shell-conversation-sidebar-toggle {
+      @include material.liquid;
+      width: var(--size-material-liquid-control);
+      height: var(--size-material-liquid-control);
     }
   }
 

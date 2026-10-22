@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
+    "./liquid-glass": "./src/liquid-glass.tsx",
     "./progress": "./src/progress.tsx",
     "./discrete-slider": "./src/discrete-slider.tsx"
   },

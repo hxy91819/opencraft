@@ -449,3 +449,16 @@ remain separate from material. A material update does not implement a usage
 backend, historical trace or session dashboard.
 
 Release material checks must exercise the minified CSS through the same real consumers. Keep prefixed backdrop-filter before the standard declaration so CSS optimization preserves both browser contracts.
+
+
+## Touch navigation glass groups
+
+Touch Newera conversation chrome uses a leading circular sidebar control and one
+trailing capsule for the existing conversation menu and preview action. The two
+trailing targets remain independent, with no divider or nested glass. Other
+routes/densities keep their existing presentation. Shell owns placement and safe
+areas; the design system owns LiquidGlassBackdrop, semantic material tokens and
+opaque accessibility fallbacks. A supported live backdrop lens uses a small
+geometry-dependent map updated on resize; it never captures content or runs a
+scroll/frame loop. Unsupported lens engines retain tint, softened transmission
+and curved highlights. Icons, focus rings and portalled menus are unfiltered.

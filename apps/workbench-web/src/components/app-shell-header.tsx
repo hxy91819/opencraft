@@ -1,3 +1,4 @@
+import { LiquidGlassBackdrop } from "@opencraft/design-system-web/liquid-glass";
 import {
   ArrowLeft,
   ArrowRight,
@@ -85,7 +86,7 @@ export function AppShellNavigationControls({
 
   const controls = {
     "sidebar-toggle": (
-      <SidebarToggleButton key="sidebar-toggle" className={conversationHeader ? "chrome-button no-drag app-shell-conversation-sidebar-toggle" : undefined} stationary={hostRole === "persistent" && presentation?.sidebarControlsInSidebar && !presentation.mobileSidebar} open={sidebarOpen} hostRole={hostRole} onToggle={toggleSidebar} />
+      <SidebarToggleButton liquidGlass={conversationHeader} key="sidebar-toggle" className={conversationHeader ? "chrome-button no-drag app-shell-conversation-sidebar-toggle" : undefined} stationary={hostRole === "persistent" && presentation?.sidebarControlsInSidebar && !presentation.mobileSidebar} open={sidebarOpen} hostRole={hostRole} onToggle={toggleSidebar} />
     ),
     "new-task": (
       <button
@@ -305,12 +306,12 @@ export function AppShellHeader({
           className="app-shell-header__end-measure"
         >
           {showRightPanelAction || headerAction ? (
-            <div className="app-shell-header__end-actions">
+            <div className="app-shell-header__end-actions"><div className="app-shell-header__action-group">
               {headerAction ? Array.from({ length: headerActionCount }, (_, index) => <span key={index} className="chrome-button" />) : null}
               {showRightPanelAction ? <span className="chrome-button app-shell-header__right-panel-toggle">
                 <RightPanelToggleIcon panelOpen={rightPanelOpen} />
               </span> : null}
-            </div>
+            </div></div>
           ) : null}
         </div>
         <div
@@ -346,6 +347,8 @@ export function AppShellHeader({
           }}
         >
           <div className="app-shell-header__end-actions no-drag">
+            <div className="app-shell-header__action-group">
+            {conversationHeader ? <LiquidGlassBackdrop /> : null}
             {headerAction}
             {showRightPanelAction ? (
               <button
@@ -361,6 +364,7 @@ export function AppShellHeader({
                 <RightPanelToggleIcon panelOpen={rightPanelOpen} />
               </button>
             ) : null}
+            </div>
           </div>
         </motion.div>
       </div>

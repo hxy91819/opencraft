@@ -1,3 +1,4 @@
+import { LiquidGlassBackdrop } from "@opencraft/design-system-web/liquid-glass";
 import { shortcutLabel, shortcutAria } from "../workbench-shortcuts";
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -6,9 +7,10 @@ import { SidebarToggleIcon } from "./sidebar-toggle-icon";
 import { useChromeActionFocusRef } from "./use-chrome-action-focus";
 
 /** One visual/action contract for the sidebar and its collapsed entrance. */
-export function SidebarToggleButton({ open, onToggle, hostRole, stationary = false, className = "chrome-button no-drag" }: {
+export function SidebarToggleButton({ open, onToggle, hostRole, stationary = false, liquidGlass = false, className = "chrome-button no-drag" }: {
   open: boolean;
   stationary?: boolean;
+  liquidGlass?: boolean;
   onToggle(): void;
   hostRole: "persistent" | "transient";
   className?: string;
@@ -44,6 +46,7 @@ export function SidebarToggleButton({ open, onToggle, hostRole, stationary = fal
     data-app-shell-sidebar-trigger="true" data-chrome-action-id="sidebar-toggle"
     data-sidebar-toggle-stationary={stationary || undefined}
     data-chrome-action-host-role={hostRole} onClick={onToggle}>
+    {liquidGlass ? <LiquidGlassBackdrop /> : null}
     <SidebarToggleIcon sidebarOpen={open} />
   </button>;
   if (!stationary) return button;
