@@ -2628,3 +2628,4 @@ projecting the current history owner's loading state without changing geometry.
 The indicator never overlays message text or controls and respects reduced motion.
 Short conversations, restored reading anchors and both scroll policies share this
 surface; loading feedback does not introduce a second scroll controller.
+AI follow-up cards separate static, selectable title/decision/material/state/time/Owner from a persistent action footer. Only native action buttons are clickable or receive pointer/focus feedback: quiet View details and primary Open chat; a single primary View details when no navigable link exists. No outer or body click handler, nested button, whole-body hover fill, misleading external-detail arrow or missing-link action placeholder. Multiple chats retain the original accessible menu and exact resolver; this overrides whole-card opening only in AI follow-up.
