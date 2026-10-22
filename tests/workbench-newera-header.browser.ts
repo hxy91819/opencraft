@@ -42,7 +42,7 @@ try {
  const group=page.locator('.app-shell-header__end-slot .app-shell-header__action-group');
  assert.equal(await group.locator('button').count(),2);
  const optics=await lenses.evaluateAll(es=>es.map(e=>{const b=e.getBoundingClientRect(),s=getComputedStyle(e,'::before');return {width:b.width,height:b.height,filter:s.backdropFilter,rim:s.boxShadow,map:!!e.querySelector('feDisplacementMap')}}));
- for(const lens of optics){assert.ok(lens.width>=44&&lens.height>=44);assert.notEqual(lens.filter,'none');assert.equal(lens.rim,'none');}
+ for(const lens of optics){assert.ok(lens.width>=44&&lens.height>=44);assert.notEqual(lens.filter,'none');assert.notEqual(lens.rim,'none');}
  assert.ok(optics.some(lens=>lens.width>lens.height*1.8),'trailing actions share one capsule');
 
  const fade=await page.locator('.main-content-top-fade').evaluate(e=>{const s=getComputedStyle(e);return{display:s.display,opacity:s.opacity,pointer:s.pointerEvents,background:s.backgroundImage}});assert.equal(await page.locator('.main-content-frame').evaluate(e=>getComputedStyle(e).marginTop),'0px');assert.equal(fade.display,'block');assert.equal(fade.opacity,'1');assert.equal(fade.pointer,'none');
@@ -103,7 +103,7 @@ try {
  const fallbackLenses=fallbackPage.locator('.app-shell-header .ui-liquid-glass:visible, .app-shell-touch-sidebar-toggle .ui-liquid-glass:visible');
  const fallback=await fallbackLenses.evaluateAll(es=>es.map(e=>({map:!!e.querySelector('feImage'),filter:getComputedStyle(e,'::before').backdropFilter,shadow:getComputedStyle(e).boxShadow,rim:getComputedStyle(e,'::before').boxShadow})));
  assert.equal(fallback.length,2);assert.ok(fallback.every(e=>!e.map&&e.filter.includes('blur(4px)')&&!e.filter.includes('url(')),'syntax-only URL engines must retain the working CSS fallback');
- assert.ok(fallback.every(e=>e.shadow==='none'&&e.rim==='none'),'CSS approximation must not paint a raised outer shadow or perimeter');
+ assert.ok(fallback.every(e=>e.shadow!=='none'&&e.rim!=='none'),'CSS approximation keeps directional edge light and a soft contact shadow');
  await fallbackPage.screenshot({path:output+'/syntax-only-engine-fallback.png'});evidence.push({simulatedPrefixedEngineFallback:fallback});await fallbackContext.close();
  console.log(JSON.stringify({ok:true,evidence}));await writeFile(output+'/result.json',JSON.stringify({ok:true,evidence},null,2));
 }finally{await browser?.close();await vite.close()}

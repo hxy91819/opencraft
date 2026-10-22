@@ -370,8 +370,12 @@
   --material-liquid-background: var(--color-background-elevated-primary-opaque);
   --material-liquid-filter: none;
   --material-liquid-reflection: none;
-  --material-liquid-rim: none;
-  --material-liquid-shadow: none;
+  // Directional light and shade give the edge thickness without a uniform ring.
+  --material-liquid-rim: inset .5px .75px .75px rgb(255 255 255 / 32%),
+    inset -.5px -.5px 1px rgb(0 0 0 / 6%);
+  // A short contact shadow, kept neutral in both appearances.
+  --material-liquid-shadow: 0 2px 8px -2px rgb(0 0 0 / 8%),
+    0 .5px 1.5px rgb(0 0 0 / 4%);
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   :root {
