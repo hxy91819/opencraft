@@ -71,6 +71,19 @@ function Demo() {
   const [turn, setTurn] = useState<TimelineSourceTurn>({ id: "turn", status: "streaming", items: [reasoning("codex")] });
   probe.update = (action: string, selectedEngine = engine) => {
     setRevision(value => value + 1);
+    if (action.startsWith("reading-panels-")) {
+      const mode = action.slice("reading-panels-".length);
+      if (mode === "reset" || mode === "running") { restore = null; setGeneration(value => value + 1); }
+      const running = mode === "running" || mode === "running-grow";
+      const plan = "# Reading plan\n\n" + Array.from({ length: 24 }, (_, i) => `- Step ${i + 1}: Preserve reading choices.`).join("\n");
+      setTurn({ id: "turn", status: running ? "streaming" : "complete", items: [
+        { id: "reading-image-a", type: "imageView", payload: { path: mode === "grow" ? "/work/refreshed.png" : "/work/image.png" } },
+        { id: "reading-boundary", type: "agentMessage", payload: { text: "Reading boundary", phase: "final_answer", delivery: "async" } },
+        { id: "reading-image-b", type: "imageView", payload: { path: "/work/image.png" } },
+        { id: "reading-plan", type: "plan", payload: { text: plan + (mode.endsWith("grow") ? "\n\nUpdated reading plan" : "") } },
+        ...(running ? [] : [{ id: "reading-answer", type: "agentMessage", payload: { text: "Reading complete", phase: "final_answer" } }]),
+      ] }); return;
+    }
     if (action.startsWith("turn-entry-")) {
       const mode = action.slice("turn-entry-".length);
       setTurnEntry(true);

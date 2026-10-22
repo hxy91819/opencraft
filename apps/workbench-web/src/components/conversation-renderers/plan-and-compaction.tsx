@@ -18,7 +18,7 @@ import {
   useState,
 } from "react";
 import { ConversationDocumentContext } from "../conversation/document-context";
-import { CadencedShimmer } from "./activity/activity-disclosure";
+import { CadencedShimmer, useActivityOpen } from "./activity/activity-disclosure";
 import { ActivitySummaryRow } from "./activity/activity-summary-row";
 import { AssistantCopyButton } from "./activity/command-and-review-renderers";
 
@@ -29,7 +29,8 @@ export function PlanBlock({
 }) {
   const intl = useIntl();
   const document = useContext(ConversationDocumentContext);
-  const [collapsed, setCollapsed] = useState(!block.completed);
+  const [expanded, setExpanded] = useActivityOpen(false, block.completed, JSON.stringify(["plan", block.id]));
+  const collapsed = !expanded;
   const reducedMotion = useReducedMotion();
   const canCopy = block.completed && block.text.trim().length > 0;
   const download = () => {
@@ -68,7 +69,7 @@ export function PlanBlock({
               collapsed ? "Expand plan summary" : "Collapse plan summary"
             }
             aria-expanded={!collapsed}
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => setExpanded(collapsed)}
             type="button"
           >
             <ChevronDown
@@ -100,7 +101,7 @@ export function PlanBlock({
         />
         {collapsed ? (
           <div className="thread-plan__expand">
-            <button type="button" onClick={() => setCollapsed(false)}>
+            <button type="button" onClick={() => setExpanded(true)}>
               Expand plan
             </button>
           </div>
