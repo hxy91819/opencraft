@@ -15,6 +15,8 @@ import { DshExecutionAuthority } from "../apps/local-agent-host/src/dsh-executio
 import { CodexHostStateDatabase } from "../apps/opencraft-daemon/src/codex-host-state-database.js";
 import { CodexMessageSenders } from "../apps/opencraft-daemon/src/codex-message-senders.js";
 import { SshConnectionStore } from "../apps/opencraft-daemon/src/ssh-connection-store.js";
+import { createAppServerWorkbenchRuntime } from "../packages/workbench-runtime/src/appserver-runtime.js";
+import { WebSocketTransport } from "../packages/appserver-transport-websocket/src/websocket-transport.js";
 
 test("Host storage failure neither listens nor starts the engine", async () => {
   const directory = await mkdtemp(join(tmpdir(), "oc-host-storage-failure-"));
@@ -150,7 +152,7 @@ test("local Agent Host resolves a missing Draft cwd to a Projectless ~/OpenCraft
   }
 });
 
-async function fakeDsh() {
+async function fakeDsh(options: { home?: string } = {}) {
   const responses: Array<Record<string, any>> = [];
   const streams = new Map<WebSocket, string>();
   const calls: Array<{ method: string; payload: Record<string, unknown> }> = [];
@@ -184,7 +186,7 @@ async function fakeDsh() {
     calls.push({ method: envelope.method, payload: envelope.payload });
     let value: unknown = {};
     if (envelope.method === "host.describe") value = {
-      home: "/home/tester",
+      home: options.home ?? "/home/tester",
       cwd: "/workspace/demo",
       version: "0.0.1-test",
       provider: "deepseek",
@@ -831,4 +833,38 @@ test("local Agent Host exposes generic runtime settings without leaking DSH meth
     await host.close();
     await dsh.close();
   }
+});
+
+test("local Agent Host advertises and persists DSH pins before a session is opened", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "opencraft-host-pins-"));
+  const pinHome = join(directory, "dsh-home");
+  await mkdir(pinHome, { recursive: true });
+  const open = async () => {
+    const dsh = await fakeDsh({ home: pinHome });
+    const host = await startLocalAgentHost({ dshUrl: dsh.url });
+    const runtime = createAppServerWorkbenchRuntime({ hostId: "local-dsh-pins", autoReconnect: false,
+      createTransport: () => new WebSocketTransport(host.websocketUrl) });
+    return { dsh, host, runtime };
+  };
+  let stack = await open();
+  try {
+    await stack.runtime.connect();
+    let page = await stack.runtime.resources.threads.list();
+    assert.equal(page.data.find(row => row.id === "s1")?.id, "s1");
+    assert.equal(stack.runtime.resources.threads.capabilities!("s1").pin, true);
+    await stack.runtime.resources.threads.setPinned!("s1", true);
+    page = await stack.runtime.resources.threads.list();
+    assert.equal(page.data.find(row => row.id === "s1")?.pinned, true);
+    assert.deepEqual(JSON.parse(await readFile(join(pinHome, "thread-pins.json"), "utf8")), { version: 1, threadIds: ["s1"] });
+    assert.equal(stack.dsh.calls.some(call => ["session.prompt", "session.create", "session.history"].includes(call.method)), false);
+  } finally { await stack.runtime.dispose(); await stack.host.close(); await stack.dsh.close(); }
+  stack = await open();
+  try {
+    await stack.runtime.connect();
+    const page = await stack.runtime.resources.threads.list();
+    assert.equal(page.data.find(row => row.id === "s1")?.pinned, true);
+    await stack.runtime.resources.threads.setPinned!("s1", false);
+    const cleared = await stack.runtime.resources.threads.list();
+    assert.notEqual(cleared.data.find(row => row.id === "s1")?.pinned, true);
+  } finally { await stack.runtime.dispose(); await stack.host.close(); await stack.dsh.close(); await rm(directory, { recursive: true, force: true }); }
 });

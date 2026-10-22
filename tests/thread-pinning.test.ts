@@ -2,6 +2,13 @@ import assert from "node:assert/strict";
 
 import test from "node:test";
 
+import { createServer } from "node:http";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { WebSocketServer } from "ws";
+
 import { parseThreadPinsSnapshot, supportsThreadPinDiscovery } from "@opencraft/appserver-protocol";
 
 import { ThreadPinningResource } from "../packages/workbench-runtime/src/thread-pinning-resource";
@@ -12,9 +19,17 @@ import { changesThreadCatalog } from "../apps/workbench-web/src/runtime/thread-c
 
 import { MemoryTransport } from "@opencraft/appserver-transport-memory";
 
+import { WebSocketTransport } from "../packages/appserver-transport-websocket/src/websocket-transport";
+
 import { createAppServerWorkbenchRuntime } from "@opencraft/workbench-runtime";
 
 import { CodexEngineAdapter } from "../apps/opencraft-daemon/src/codex-engine-adapter";
+
+import { DshAppServerAdapter } from "../apps/local-agent-host/src/dsh-appserver-adapter";
+
+import { startEngineHost } from "../apps/local-agent-host/src/engine-host";
+
+import { PiEngine } from "../plugins/pi-engine/src/index";
 
 import { LOGICAL_CLIENT_FIELD } from "@opencraft/app-host-protocol";
 
@@ -231,4 +246,188 @@ test("SSH broker adapts pin RPCs to native metadata rather than forwarding the e
     assert.equal(native.some(method => method.startsWith("opencraft/thread-pins/")), false);
     assert.equal(native.some(method => ["thread/resume", "thread/start"].includes(method)), false);
   } finally { await adapter.close(); }
+});
+
+
+test("DSH advertises and persists ordered pins without opening sessions", async () => {
+  const home = await mkdtemp(join(tmpdir(), "opencraft-dsh-pins-"));
+  const summaries = [
+    { sessionId: "s1", updatedAt: 1_788_000_000_000, running: false, blank: false, cwd: "/workspace/demo", projections: { asOfSeq: 1, values: { title: "One" } } },
+    { sessionId: "s2", updatedAt: 1_788_000_000_100, running: false, blank: false, cwd: "/workspace/demo", projections: { asOfSeq: 1, values: { title: "Two" } } },
+    { sessionId: "blank", updatedAt: 1_788_000_000_200, running: false, blank: true, cwd: "/workspace/demo" },
+  ];
+  const calls: string[] = [];
+  const client = {
+    async call(method: string) {
+      calls.push(method);
+      if (method === "host.describe") return { home };
+      if (method === "session.list") return { items: summaries };
+      throw new Error(`Unexpected DSH method ${method}`);
+    },
+    stream(_path: string, _onFrame: unknown, signal: AbortSignal, onOpen?: () => void) {
+      onOpen?.();
+      return new Promise<void>(resolve => signal.addEventListener("abort", () => resolve(), { once: true }));
+    },
+  };
+  const open = async () => {
+    const adapter = new DshAppServerAdapter(client as any);
+    const initialized = await adapter.dispatch("initialize", {}) as any;
+    return { adapter, initialized };
+  };
+  const first = await open();
+  try {
+    assert.deepEqual(first.initialized.capabilities.extensions["opencraft/thread-pins"], { version: 1 });
+    assert.equal(first.initialized.capabilities.extensions["opencraft/thread-lifecycle"].pin, true);
+    assert.deepEqual(await first.adapter.dispatch("opencraft/thread-pins/list", {}), { supported: true, data: [] });
+    await assert.rejects(first.adapter.dispatch("opencraft/thread-pins/set", { threadId: "", pinned: true }));
+    await assert.rejects(first.adapter.dispatch("opencraft/thread-pins/set", { threadId: "s1", pinned: "yes" }));
+    await assert.rejects(first.adapter.dispatch("opencraft/thread-pins/set", { threadId: "missing", pinned: true }), /Unknown DSH session/);
+    await first.adapter.dispatch("opencraft/thread-pins/set", { threadId: "s2", pinned: true });
+    await first.adapter.dispatch("opencraft/thread-pins/set", { threadId: "s1", pinned: true });
+    await first.adapter.dispatch("opencraft/thread-pins/set", { threadId: "blank", pinned: true });
+    let page = await first.adapter.dispatch("opencraft/thread-pins/list", {}) as any;
+    assert.deepEqual(page.data.map((row: any) => row.id), ["s2", "s1"]);
+    await first.adapter.dispatch("opencraft/thread-pins/set", { threadId: "s2", pinned: false });
+    page = await first.adapter.dispatch("opencraft/thread-pins/list", {}) as any;
+    assert.deepEqual(page.data.map((row: any) => row.id), ["s1"]);
+    assert.equal(calls.filter(method => method === "host.describe").length, 1);
+    assert.equal(calls.some(method => ["session.history", "session.prompt", "session.create"].includes(method)), false);
+  } finally { first.adapter.close(); }
+  const stored = JSON.parse(await readFile(join(home, "thread-pins.json"), "utf8"));
+  assert.equal(stored.version, 1);
+  assert.deepEqual(stored.threadIds.filter((id: string) => id !== "blank"), ["s1"]);
+  const second = await open();
+  try {
+    const page = await second.adapter.dispatch("opencraft/thread-pins/list", {}) as any;
+    assert.deepEqual(page.data.map((row: any) => row.id), ["s1"]);
+    await second.adapter.dispatch("opencraft/thread-pins/set", { threadId: "s2", pinned: true });
+    const reordered = await second.adapter.dispatch("opencraft/thread-pins/list", {}) as any;
+    assert.deepEqual(reordered.data.map((row: any) => row.id), ["s1", "s2"]);
+  } finally { second.adapter.close(); await rm(home, { recursive: true, force: true }); }
+});
+
+
+test("Pi advertises and persists pins without opening a durable session", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "opencraft-pi-pins-"));
+  const one = "pi_11111111-1111-4111-8111-111111111111";
+  const two = "pi_22222222-2222-4222-8222-222222222222";
+  const temporary = "pi_33333333-3333-4333-8333-333333333333";
+  const record = (id: string, extra: Record<string, unknown> = {}) => ({
+    format: "pi-durable-1", id, cwd: directory, model: "pi:faux:one", name: null, preview: `Chat ${id}`,
+    createdAt: 1, updatedAt: 1, archived: false, tools: [], ...extra,
+  });
+  await writeFile(join(directory, `${one}.json`), JSON.stringify(record(one)));
+  await writeFile(join(directory, `${two}.json`), JSON.stringify(record(two)));
+  await writeFile(join(directory, `${temporary}.json`), JSON.stringify(record(temporary, { ephemeral: true })));
+  const owner = { notify() {}, async request() { throw new Error("Unexpected tool"); } };
+  const engine = new PiEngine({ directory, cwd: directory, models: {} as any });
+  try {
+    assert.equal(engine.extensions["opencraft/thread-lifecycle"].pin, true);
+    assert.deepEqual(await engine.request("opencraft/thread-pins/list", {}, owner), { supported: true, data: [] });
+    await assert.rejects(engine.request("opencraft/thread-pins/set", { threadId: temporary, pinned: true }, owner), /Temporary/);
+    await assert.rejects(engine.request("opencraft/thread-pins/set", { threadId: "", pinned: true }, owner));
+    await assert.rejects(engine.request("opencraft/thread-pins/set", { threadId: one, pinned: 1 }, owner));
+    await engine.request("opencraft/thread-pins/set", { threadId: two, pinned: true }, owner);
+    await engine.request("opencraft/thread-pins/set", { threadId: one, pinned: true }, owner);
+    assert.deepEqual((await engine.request("opencraft/thread-pins/list", {}, owner)).data.map((row: any) => row.id), [two, one]);
+  } finally { await engine.close(); }
+  const reopened = new PiEngine({ directory, cwd: directory, models: {} as any });
+  try {
+    assert.deepEqual((await reopened.request("opencraft/thread-pins/list", {}, owner)).data.map((row: any) => row.id), [two, one]);
+    await reopened.request("opencraft/thread-pins/set", { threadId: one, pinned: false }, owner);
+    assert.deepEqual((await reopened.request("opencraft/thread-pins/list", {}, owner)).data.map((row: any) => row.id), [two]);
+  } finally { await reopened.close(); await rm(directory, { recursive: true, force: true }); }
+});
+
+
+async function legacyPinBackend(thread: Record<string, unknown>) {
+  const server = createServer();
+  const sockets = new WebSocketServer({ server });
+  const state = { pinned: false };
+  sockets.on("connection", socket => socket.on("message", data => {
+    const frame = JSON.parse(String(data)) as { id?: number; method?: string; params?: Record<string, any> };
+    if (frame.id === undefined || frame.method === undefined) return;
+    let result: unknown;
+    switch (frame.method) {
+      case "initialize": result = { codexHome: "/tmp", capabilities: { extensions: {
+        "opencraft/thread-lifecycle": { version: 1, rename: true, archive: true, pin: true },
+        "opencraft/thread-pins": { version: 1 },
+      } } }; break;
+      case "thread/list": result = { data: [thread], nextCursor: null }; break;
+      case "opencraft/thread-pins/list": result = { supported: true, data: state.pinned ? [thread] : [] }; break;
+      case "opencraft/thread-pins/set": state.pinned = frame.params?.pinned === true; result = { pinned: state.pinned }; break;
+      default: result = {};
+    }
+    socket.send(JSON.stringify({ jsonrpc: "2.0", id: frame.id, result, [LOGICAL_CLIENT_FIELD]: frame[LOGICAL_CLIENT_FIELD] }));
+  }));
+  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  return {
+    url: `ws://127.0.0.1:${address.port}`,
+    state,
+    async close() {
+      for (const socket of sockets.clients) socket.terminate();
+      await new Promise<void>(resolve => sockets.close(() => resolve()));
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    },
+  };
+}
+
+
+test("engine host advertises and routes pins for DSH and Pi without opening either", { timeout: 20_000 }, async () => {
+  const root = await mkdtemp(join(tmpdir(), "opencraft-engine-pins-"));
+  const piDirectory = join(root, "pi");
+  const piThread = "pi_44444444-4444-4444-8444-444444444444";
+  const legacyThread = { id: "dsh-thread", name: "DSH chat", preview: "DSH chat", cwd: "/tmp", createdAt: 1, updatedAt: 1_788_000_000_000, modelProvider: "dsh", status: { type: "idle" }, turns: [] };
+  const legacy = await legacyPinBackend(legacyThread);
+  const piRecord = (id: string, updatedAt: number) => ({
+    format: "pi-durable-1", id, cwd: piDirectory, model: "pi:faux:one", name: `Pi ${id}`, preview: `Pi ${id}`,
+    createdAt: 1, updatedAt, archived: false, tools: [],
+  });
+  await mkdir(piDirectory);
+  await writeFile(join(piDirectory, `${piThread}.json`), JSON.stringify(piRecord(piThread, 1_788_000_000_100)));
+  const startLegacy = async () => ({ websocketUrl: legacy.url, async close() {} });
+  let host: Awaited<ReturnType<typeof startEngineHost>> | undefined;
+  let runtime: ReturnType<typeof createAppServerWorkbenchRuntime> | undefined;
+  const connectRuntime = async () => {
+    runtime = createAppServerWorkbenchRuntime({ hostId: "engine-host-pins", autoReconnect: false,
+      createTransport: () => new WebSocketTransport(host!.websocketUrl) });
+    await runtime.connect();
+    return runtime;
+  };
+  try {
+    host = await startEngineHost({ providers: [new PiEngine({ directory: piDirectory, cwd: piDirectory, models: {} as any })],
+      defaultEngine: "dsh", legacy: { id: "dsh", label: "DSH", start: startLegacy } });
+    let current = await connectRuntime();
+    let page = await current.resources.threads.list();
+    assert.deepEqual(page.data.map(row => row.id).sort(), ["dsh-thread", piThread]);
+    assert.equal(current.resources.threads.capabilities!("dsh-thread").pin, true);
+    assert.equal(current.resources.threads.capabilities!(piThread).pin, true);
+    await current.resources.threads.setPinned!("dsh-thread", true);
+    await current.resources.threads.setPinned!(piThread, true);
+    page = await current.resources.threads.list();
+    assert.deepEqual(page.data.filter(row => row.pinned === true).map(row => row.id).sort(), ["dsh-thread", piThread]);
+    assert.equal(legacy.state.pinned, true);
+    assert.equal(JSON.parse(await readFile(join(piDirectory, `${piThread}.json`), "utf8")).pinned, true);
+    await current.resources.threads.setPinned!(piThread, false);
+    page = await current.resources.threads.list();
+    assert.deepEqual(page.data.filter(row => row.pinned === true).map(row => row.id), ["dsh-thread"]);
+    await current.resources.threads.setPinned!(piThread, true);
+    await current.dispose();
+    runtime = undefined;
+    await host.close();
+    host = undefined;
+
+    host = await startEngineHost({ providers: [new PiEngine({ directory: piDirectory, cwd: piDirectory, models: {} as any })],
+      defaultEngine: "dsh", legacy: { id: "dsh", label: "DSH", start: startLegacy } });
+    current = await connectRuntime();
+    page = await current.resources.threads.list();
+    assert.deepEqual(page.data.filter(row => row.pinned === true).map(row => row.id).sort(), ["dsh-thread", piThread]);
+  } finally {
+    await runtime?.dispose();
+    await host?.close();
+    await legacy.close();
+    await rm(root, { recursive: true, force: true });
+  }
 });

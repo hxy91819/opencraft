@@ -20,7 +20,7 @@ interface Session {
   format: "pi-durable-1"; id: string; cwd: string; model: string; name: string | null; preview: string;
   createdAt: number; updatedAt: number; archived: boolean; projectId?: string | null; pendingRecovery?: boolean; tools: Value[];
   threadSource?: Value | null; sessionStartSource?: Value | string | null;
-  ephemeral?: boolean; forkedFromId?: string; inherited?: PiForkContext;
+  ephemeral?: boolean; forkedFromId?: string; inherited?: PiForkContext; pinned?: boolean; pinnedAt?: number;
   native?: PiDurableSession; starting?: Promise<PiDurableSession>; owner?: EngineClient; lease?: AbortController;
   active?: Value; turns?: Value[]; snapshot?: PiSnapshot; effort?: string; failed?: boolean;
 }
@@ -49,7 +49,7 @@ export class PiEngine {
   readonly threadPrefix = "pi_";
   readonly modelPrefix = "pi:";
   readonly extensions = Object.freeze({
-    "opencraft/thread-lifecycle": { version: 1, fork: false, ephemeralFork: true, ephemeral: true, injectItems: true, rename: true, archive: true, unsubscribe: true, pin: false },
+    "opencraft/thread-lifecycle": { version: 1, fork: false, ephemeralFork: true, ephemeral: true, injectItems: true, rename: true, archive: true, unsubscribe: true, pin: true },
     "opencraft/host-capabilities": { version: 1 },
     "opencraft/scoped-model-catalog": { version: 1 },
     "opencraft/resume-history": { version: 1, mode: "legacy" },
@@ -270,6 +270,29 @@ export class PiEngine {
     }
     return { native, model };
   }
+  private pinCatalog(): Value {
+    return { supported: true, data: [...this.sessions.values()]
+      .filter(session => session.pinned === true && !session.ephemeral && !session.archived)
+      .sort((left, right) => (left.pinnedAt ?? 0) - (right.pinnedAt ?? 0) || left.id.localeCompare(right.id))
+      .map(session => this.thread(session)) };
+  }
+  private async setPinned(params: Value): Promise<Value> {
+    if (typeof params.threadId !== "string" || params.threadId.length === 0) throw new Error("Invalid thread pin target");
+    if (typeof params.pinned !== "boolean") throw new Error("Invalid thread pin state");
+    const session = await this.session(params.threadId);
+    if (session.ephemeral) throw new Error("Temporary Pi threads cannot be pinned");
+    if (params.pinned) {
+      if (session.pinned !== true) {
+        const latest = [...this.sessions.values()].reduce((latest, entry) => Math.max(latest, entry.pinnedAt ?? 0), 0);
+        session.pinned = true; session.pinnedAt = Math.max(Date.now(), latest + 1);
+        await this.save(session);
+      }
+    } else if (session.pinned === true) {
+      delete session.pinned; delete session.pinnedAt;
+      await this.save(session);
+    }
+    return { pinned: params.pinned };
+  }
   request(method: string, params: Value, client: EngineClient): Promise<any> {
     const key = typeof params.threadId === "string" ? params.threadId : method.startsWith("config/") ? "config" : undefined;
     if (key === undefined) return this.handle(method, params, client);
@@ -280,6 +303,8 @@ export class PiEngine {
   }
   private async handle(method: string, params: Value, client: EngineClient): Promise<any> {
     await this.load(); if (this.closed) throw new Error("Pi engine is closed");
+    if (method === "opencraft/thread-pins/list") return this.pinCatalog();
+    if (method === "opencraft/thread-pins/set") return this.setPinned(params);
     if (["config/read", "config/batchWrite", "thread/start", "thread/fork", "thread/resume", "turn/start"].includes(method)) await this.options.configuration?.synchronize();
     if (method === "config/read") {
       const saved = await this.defaults();

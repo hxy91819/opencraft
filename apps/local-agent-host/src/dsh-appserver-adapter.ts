@@ -5,7 +5,7 @@ import { projectedHistoryHeadCursors, projectedItemsPage, projectedTurnsPage } f
 import { homedir } from "node:os";
 import { historyCursor, historyBoundary, readTurnWindow } from "./dsh-history-window.js";
 import { readFile } from "node:fs/promises";
-import { basename, extname } from "node:path";
+import { basename, extname, join } from "node:path";
 
 import { DshClient, DshClientError, type DshEvent, type DshHistoryEntry } from "./dsh-client.js";
 import { RuntimeProviderService, type RuntimeModelInfoReader } from "./runtime-provider-service.js";
@@ -32,7 +32,10 @@ import {
   OPENCRAFT_THREAD_QUEUE_EXTENSION,
   OPENCRAFT_THREAD_LIFECYCLE_EXTENSION,
   OPENCRAFT_THREAD_GOAL_EXTENSION,
+  OPENCRAFT_THREAD_PINS_EXTENSION,
+  OPENCRAFT_THREAD_PINS_CAPABILITY,
 } from "@opencraft/appserver-protocol";
+import { ThreadPinStore } from "./thread-pin-store.js";
 import type { RuntimeProviderApplyParams, RuntimeModelsDiscoverParams, RuntimeProviderSetEnabledParams, RuntimeModelMutationParams, RuntimeModelsListResponse } from "@opencraft/appserver-protocol";
 
 type RecordValue = Record<string, unknown>;
@@ -929,6 +932,21 @@ export class DshAppServerAdapter {
     return this.sessionModels(sessionId);
   }
 
+  private pinStore: ThreadPinStore | null = null;
+  private pinFile: string | null = null;
+  private bindPinHome(home: string): void {
+    const file = join(home.length > 0 ? home : homedir(), "thread-pins.json");
+    if (this.pinFile === file) return;
+    this.pinFile = file;
+    this.pinStore = new ThreadPinStore(file);
+  }
+  private async pins(): Promise<ThreadPinStore> {
+    if (this.pinStore !== null) return this.pinStore;
+    const host = await this.client.call<RecordValue>("host.describe");
+    this.bindPinHome(string(host.home, homedir()));
+    return this.pinStore!;
+  }
+
   private async summariesList(): Promise<DshSessionSummary[]> {
     const value = await this.client.call<{ items: DshSessionSummary[] }>("session.list");
     const items = value.items.map(summary => ({ ...summary, ephemeral: this.summaries.get(summary.sessionId)?.ephemeral ?? summary.ephemeral }));
@@ -1374,15 +1392,18 @@ export class DshAppServerAdapter {
       }
       case "initialize": {
         const host = await this.client.call<RecordValue>("host.describe");
+        const home = string(host.home, homedir());
+        this.bindPinHome(home);
         await this.startStreams();
         return {
-          codexHome: string(host.home, homedir()),
+          codexHome: home,
           platformFamily: "unix",
           platformOs: process.platform,
           userAgent: "opencraft-daemon/0.1.0",
           capabilities: {
             extensions: {
-              [OPENCRAFT_THREAD_LIFECYCLE_EXTENSION]: { version: 1, fork: this.threadEngine !== null, ephemeral: this.threadEngine !== null, injectItems: this.threadEngine !== null, rename: true, archive: true, unsubscribe: true },
+              [OPENCRAFT_THREAD_LIFECYCLE_EXTENSION]: { version: 1, fork: this.threadEngine !== null, ephemeral: this.threadEngine !== null, injectItems: this.threadEngine !== null, rename: true, archive: true, unsubscribe: true, pin: true },
+              [OPENCRAFT_THREAD_PINS_EXTENSION]: OPENCRAFT_THREAD_PINS_CAPABILITY,
               [OPENCRAFT_THREAD_GOAL_EXTENSION]: { version: 1, read: true, write: !!this.threadEngine?.goal, usageAccounting: false },
               ...(this.hostCapabilities ? { "opencraft/host-capabilities": { version: 1 } } : {}),
               "opencraft/loopback-http": { version: 1 },
@@ -1398,6 +1419,25 @@ export class DshAppServerAdapter {
             },
           },
         };
+      }
+      case "opencraft/thread-pins/list": {
+        const threadIds = await (await this.pins()).list();
+        const pinned = new Set(threadIds);
+        const known = new Map((await this.summariesList())
+          .filter(entry => !entry.blank && pinned.has(entry.sessionId))
+          .map(entry => [entry.sessionId, entry]));
+        return { supported: true, data: threadIds.flatMap(id => {
+          const summary = known.get(id);
+          return summary === undefined ? [] : [makeThread(summary)];
+        }) };
+      }
+      case "opencraft/thread-pins/set": {
+        const threadId = value.threadId;
+        if (typeof threadId !== "string" || threadId.length === 0) throw new Error("Invalid thread pin target");
+        if (typeof value.pinned !== "boolean") throw new Error("Invalid thread pin state");
+        await this.summary(threadId);
+        await (await this.pins()).set(threadId, value.pinned);
+        return { pinned: value.pinned };
       }
       case "thread/list": {
         const all = (await this.summariesList()).filter((entry) => !entry.blank).map((entry) => makeThread(entry));
