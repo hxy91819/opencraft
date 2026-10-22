@@ -2611,3 +2611,11 @@ copyable technical details. Existing recovery owners, cold-state presentation,
 authority, outbox and command replay remain unchanged. The Application keeps its
 Composer and transcript mounted. `tests/conversation-recovery.test.tsx` checks
 quiet automatic retry and actionable failures.
+## Account display identity
+
+Codex account rows, details, action labels, confirmations and error text share
+`maskCodexAccountIdentity`. Keep the final two Unicode characters of the mailbox
+local part visible (all available characters for shorter names). Keep its first
+character only when more than three characters exist; mask the middle and retain
+the existing private-domain masking. Presentation never changes Host identity or
+credentials. The existing Codex reset-credit smoke covers these consumers.
