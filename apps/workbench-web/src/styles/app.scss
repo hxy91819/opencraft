@@ -6499,6 +6499,12 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 }
 
 
+// A clock cannot be visible through an otherwise transparent action lane.
+.thread-user-message__actions:has(time),
+.thread-message-actions:has(time) {
+  @include controls.touch-input { opacity: 1; }
+}
+
 // Touch clocks are readable before interaction. Desktop hover/focus still owns
 // disclosure; both keep the same time metadata and slot geometry.
 .thread-user-message__actions time,
