@@ -2558,3 +2558,9 @@ Task-list paragraph detection still owns grid activation and checkbox spacing.
 Non-checkbox children keep column two independently of that detection, because
 grid placement is inert outside a grid. No DOM, event, layout owner or preview
 lifetime change is needed.
+
+Queue row leading content is compact: the reorder hit area begins one spacing
+unit from the row edge and immediately precedes the independent sender slot.
+Keep the existing desktop/touch hit widths and row heights; only preview and
+trailing actions retain their normal text separation. Reducing leading whitespace
+must not put the photo inside the drag activator or overlap its target.

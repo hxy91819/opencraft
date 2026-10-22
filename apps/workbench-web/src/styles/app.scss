@@ -9034,8 +9034,9 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
   min-height: var(--height-composer-queue-row);
   grid-template-columns: 34px 20px minmax(0, 1fr) auto;
   align-items: center;
-  gap: calc(var(--spacing) * 2);
+  column-gap: 0;
   padding: var(--padding-composer-rail-row);
+  padding-inline-start: var(--spacing);
   border-radius: 8px;
   color: var(--color-text-secondary);
   font: var(--typography-body-font);
@@ -9155,6 +9156,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 
 .opencraft-composer-queue-item__preview {
   min-width: 0;
+  margin-inline-start: calc(var(--spacing) * 2);
   overflow: hidden;
   color: inherit;
   text-overflow: ellipsis;
@@ -9195,6 +9197,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 
 .opencraft-composer-queue-item__actions {
   display: flex;
+  margin-inline-start: calc(var(--spacing) * 2);
   align-items: center;
   gap: 1px;
 
