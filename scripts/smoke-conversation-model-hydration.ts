@@ -18,7 +18,7 @@ import {initializeAppearanceTheme,setThemePreference} from '/apps/workbench-web/
 import '/apps/workbench-web/src/styles/app.scss';
 initializeAppearanceTheme();
 const noop=()=>()=>{},client=new QueryClient(),pending=new Map(),calls=[],counts={defaults:0,account:0};
-const model=(id,name)=>({id,model:id,displayName:name,isDefault:true,hidden:false,description:'',defaultReasoningEffort:'low',supportedReasoningEfforts:['low','medium','high'].map(reasoningEffort=>({reasoningEffort,description:''})),serviceTiers:[{id:'fast',name:'Fast',description:''}]});
+const model=(id,name)=>({id,model:id,displayName:name,isDefault:true,hidden:false,description:'',defaultReasoningEffort:'low',supportedReasoningEfforts:['low','medium','high'].map(reasoningEffort=>({reasoningEffort,description:''})),serviceTiers:[{id:'fast',name:'Fast',description:''},{id:'priority',name:'FAST',description:'Host-specific fast tier'}]});
 const alpha=model('alpha','Alpha model'),beta=model('beta','Beta model');
 const account={id:'fixture-account',subscribe:noop,getSnapshot:()=>({readStateScope:'fixture',phase:'ready'}),modelDefaults:{read:async()=>{counts.account++;return {revision:0,selection:{model:'wrong',effort:'low'}}}}};
 const application={threadAttention:{subscribe:noop,getScope:()=> 'fixture'},displayContinuity:{subscribe:noop,getScope:()=> 'fixture'},platformAccounts:{subscribe:noop,getSnapshot:()=>accountSnapshot}};
@@ -27,7 +27,7 @@ const runtime={subscribe:noop,getSnapshot:()=>hostSnapshot,resources:{host:{getI
 const controllers=new Map();function controller(id){if(!controllers.has(id))controllers.set(id,createComposerController({type:'existing-thread',key:{hostId:'fixture',threadId:id}},{now:Date.now,createId:()=>crypto.randomUUID()}));return controllers.get(id)}
 const selections={a:{model:'alpha',effort:'high',serviceTier:'fast'},b:{model:'alpha',effort:'medium'},c:{model:'beta',effort:null},unknown:{}};
 window.fixture={calls,counts,client,alpha,beta,pending,theme:setThemePreference,intents:[],resolve:(key,data,nextCursor=null)=>pending.get(key).resolve({data,nextCursor}),reject:key=>pending.get(key).reject(Error('offline')),controller};
-function Catalog({id}){const [readOnly,setReadOnly]=useState(false);window.fixture.setReadOnly=setReadOnly;const catalog=useComposerCatalog('/fixture',id);window.fixture.catalog=catalog;return <OpenCraftComposer controller={controller(id)} modelDisplayOnly={readOnly} shortcutCommands={[{name:'side',description:'Open side chat'}]} effectiveSelections={selections[id]} selectionCatalog={{models:projectComposerModelChoices(catalog.models),displayModels:projectComposerModelChoices(catalog.displayModels),permissionProfiles:[],isFetching:catalog.isFetching,modelError:catalog.modelError?.message}} onSubmit={intent=>{window.fixture.intents.push(intent);return false}} onCancel={()=>{}}/>}
+function Catalog({id}){const [readOnly,setReadOnly]=useState(false);window.fixture.setReadOnly=setReadOnly;const [effectiveTier,setEffectiveTier]=useState(undefined);window.fixture.setEffectiveTier=setEffectiveTier;const catalog=useComposerCatalog('/fixture',id);window.fixture.catalog=catalog;return <OpenCraftComposer controller={controller(id)} modelDisplayOnly={readOnly} shortcutCommands={[{name:'side',description:'Open side chat'}]} effectiveSelections={effectiveTier===undefined?selections[id]:{...selections[id],serviceTier:effectiveTier}} selectionCatalog={{models:projectComposerModelChoices(catalog.models),displayModels:projectComposerModelChoices(catalog.displayModels),permissionProfiles:[],isFetching:catalog.isFetching,modelError:catalog.modelError?.message}} onSubmit={intent=>{window.fixture.intents.push(intent);return false}} onCancel={()=>{}}/>}
 function App(){const [id,setId]=useState('a');window.fixture.switch=setId;return <QueryClientProvider client={client}><ApplicationRuntimeContext.Provider value={application}><ConversationViewRuntimeContext.Provider value={{runtime}}><main style={{padding:24,paddingTop:220,maxWidth:800}} data-thread={id}><Catalog id={id}/></main></ConversationViewRuntimeContext.Provider></ApplicationRuntimeContext.Provider></QueryClientProvider>}
 createIntlTestRoot(document.getElementById('root')).render(<App/>);`;
 const optimizeDeps = createWorkbenchWebConfig({mode:'development',command:'serve'},{pluginBranding:false}).optimizeDeps;
@@ -73,6 +73,17 @@ try{
   for(const theme of ['light','dark']){
    await page.evaluate(theme=>(window as any).fixture.theme(theme),theme);await page.waitForFunction(theme=>document.documentElement.dataset.theme===theme,theme);
    await editor.fill('Side draft');if(touch)await editor.tap();else await editor.click();
+   // Host tier IDs are opaque. Inherited status uses the same selected-tier
+   // metadata as the editable picker, while stale draft intent stays powerless.
+   await page.evaluate(()=>(window as any).fixture.controller('a').dispatch({type:'set-selections',patch:{serviceTier:'fast'}}));
+   await page.evaluate(()=>(window as any).fixture.setEffectiveTier('priority'));
+   await page.screenshot({path:'.local/model-hydration/'+(touch?'touch':'desktop')+'-readonly-host-fast-'+theme+'.png'});
+   assert.equal(await visibleFast().count(),1,'Host tier priority named FAST retains inherited Fast status');await assertFilled();
+   assert.equal(await editorNode!.evaluate(el=>el===document.querySelector('.opencraft-composer-editor')),true);
+   assert.equal(await editor.innerText(),'Side draft','Host metadata changes retain the draft');
+   await page.evaluate(()=>(window as any).fixture.setEffectiveTier(null));
+   assert.equal(await visibleFast().count(),0,'a stale local Fast choice cannot override the effective off snapshot');
+   await page.evaluate(()=>(window as any).fixture.setEffectiveTier('fast'));
    await inherited.waitFor({state:'visible'});assert.match(await inherited.innerText(),/Alpha model/,'read-only model follows execution, not stale local override');assert.match(await inherited.innerText(),/High/);assert.equal(await page.locator('.opencraft-composer-mode--intelligence').count(),0,'read-only status never opens a model picker');await assertFilled();
    await editor.fill('');if(touch)await page.locator('main').tap({position:{x:5,y:5}});else await page.locator('main').click({position:{x:5,y:5}});
    await page.waitForFunction(()=>{const el=document.querySelector('.opencraft-composer-stack') as HTMLElement;return el.dataset.composerEmpty==='true'&&el.dataset.composerEditing==='false'});await assertFilled();assert.equal(await editorNode!.evaluate(el=>el===document.querySelector('.opencraft-composer-editor')),true,'folding keeps the original editor');

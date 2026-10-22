@@ -1054,8 +1054,9 @@ export const OpenCraftComposer = forwardRef<
   ) ?? null : null;
   const requestedServiceTier = composerSnapshot.draft.selections.serviceTier !== undefined
     ? composerSnapshot.draft.selections.serviceTier : effectiveSelections?.serviceTier;
-  const displayFast = modelDisplayOnly ? effectiveSelections?.serviceTier === "fast" : existingConversation
-    ? requestedServiceTier === "fast" || !!displayModel?.serviceTiers?.some(tier => tier.id === requestedServiceTier && tier.name.toLowerCase() === "fast")
+  const displayServiceTier = modelDisplayOnly ? effectiveSelections?.serviceTier : requestedServiceTier;
+  const displayFast = modelDisplayOnly || existingConversation
+    ? displayServiceTier === "fast" || !!displayModel?.serviceTiers?.some(tier => tier.id === displayServiceTier && tier.name.toLowerCase() === "fast")
     : undefined;
   const selectedServiceTier = selectedModel?.serviceTiers?.some(tier => tier.id === requestedServiceTier)
     ? requestedServiceTier ?? null : null;

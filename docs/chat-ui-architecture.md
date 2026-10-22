@@ -3354,3 +3354,8 @@ uses the shared LightningIcon `filled` variant; an SVG parent fill cannot overri
 the glyph's explicit path fill. Folding keeps the original editor and read-only
 submission still strips local selection overrides. The existing model-hydration
 smoke covers both layouts and actual light/dark appearance preferences.
+
+Inherited Fast status uses the effective execution tier and the same selected-tier
+metadata as the editable model status. Host tier IDs are opaque: a declared
+tier named Fast keeps its indicator even when its ID differs. A retained local
+draft choice cannot enable Fast when the effective read-only snapshot is off.
