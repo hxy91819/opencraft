@@ -4,7 +4,7 @@ import { AppServerClientError, JsonRpcAppServerClient } from "@opencraft/appserv
 import { MemoryTransport } from "@opencraft/appserver-transport-memory";
 import { encodeJsonRpcMessage, isJsonRpcRequest, parseJsonRpcMessage, type AppServerInitializeResponse } from "@opencraft/appserver-protocol";
 
-const initializeResponse: AppServerInitializeResponse = { codexHome: "/tmp/codex-home", platformFamily: "unix", platformOs: "linux", userAgent: "owned-preparation-test/1" };
+const initializeResponse: AppServerInitializeResponse = { codexHome: "/tmp/preparation-fixture", platformFamily: "unix", platformOs: "linux", userAgent: "owned-preparation-test/1" };
 const initializeParams = { clientInfo: { name: "preparation-tests", version: "1" }, capabilities: { experimentalApi: true } } as const;
 
 test("context preparation extends only matching admission requests and cannot renew the absolute deadline", async () => {

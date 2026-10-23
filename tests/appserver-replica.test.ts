@@ -795,7 +795,7 @@ test("V4 Replica sync, mutate and live entry cross the AppServer JSON-RPC bounda
         peer.send(encodeJsonRpcMessage({
           id: request.id,
           result: {
-            codexHome: "/tmp/codex",
+            codexHome: "/tmp/appserver-replica-fixture",
             platformFamily: "unix",
             platformOs: "linux",
             userAgent: "replica-wire-test/1",
@@ -840,7 +840,7 @@ test("V4 Replica sync, mutate and live entry cross the AppServer JSON-RPC bounda
 });
 
 test("AppServer V3 adapter emits adjacent View revisions and snapshots every continuity break", async () => {
-  const threadId = "thread-codex";
+  const threadId = "thread-fixture";
   let current: ThreadView = {
     ...createEmptyThreadView("local", threadId),
     revision: 5,
@@ -859,7 +859,7 @@ test("AppServer V3 adapter emits adjacent View revisions and snapshots every con
   const storage = new MemoryReplicaStorage();
   const replica = new ReplicaClient({
     scope: source.scope,
-    storageKey: "codex-adapter",
+    storageKey: "appserver-adapter",
     storage,
   });
   await replica.synchronize(source);

@@ -133,7 +133,7 @@ not dependencies of the formal release gate.
 
 The same gate also builds the current Headless Web release and serves its
 compressed production assets through the managed static worker, with a loopback
-AppHost supplying synthetic Codex-compatible read responses (40ms per RPC).
+AppHost supplying synthetic AppServer read responses (40ms per RPC).
 `smoke-session-cold-open.ts` supplies four additional scenarios: desktop and
 narrow, each with no display cache or with previously persisted display history.
 Each has one excluded warmup and ten measured navigations. Width/CPU profiles

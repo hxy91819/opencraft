@@ -290,7 +290,7 @@ test("replica approval prompts retain the reason and network destination without
   }
 });
 
-test("pending command approval derives one Codex-compatible provisional Activity and authority replaces it", () => {
+test("pending command approval derives one provisional Activity and authority replaces it", () => {
   const pending = threadView({
     turns: [{ id: "turn-one", status: "inProgress", items: [] }],
     pendingInteractions: [
@@ -713,7 +713,7 @@ test("Guardian auto-reviews attach to target tools and keep unmatched failures s
   }
 });
 
-test("commandExecution commandActions become stable Codex activity rows sharing source identity and reviews", () => {
+test("commandExecution commandActions become stable activity rows sharing source identity and reviews", () => {
   const replica = new FakeReplica(
     threadView({
       turns: [

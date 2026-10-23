@@ -23,7 +23,7 @@ import { NdjsonReporter } from "../apps/appserver-lab/src/reporter";
 import { runLabCommand } from "../apps/appserver-lab/src/scenarios";
 
 const initializeResponse: AppServerInitializeResponse = {
-  codexHome: "/tmp/codex",
+  codexHome: "/tmp/appserver-lab-fixture",
   platformFamily: "unix",
   platformOs: "linux",
   userAgent: "appserver-lab-test/1",
