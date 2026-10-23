@@ -22,9 +22,12 @@ Examples:
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import math
+import os
+import platform
 import re
 import shutil
 import stat
@@ -33,7 +36,7 @@ import sys
 import tempfile
 import time
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 from urllib.request import Request, urlopen
 from pathlib import Path
 from typing import Any, Sequence
@@ -414,6 +417,121 @@ def npm_smoke(args: argparse.Namespace) -> None:
     print(f"npm smoke ok: installed={exact} elapsed={time.monotonic() - started:.1f}s")
 
 
+OIDC_CLAIM_ALLOWLIST = (
+    "iss", "aud", "repository", "repository_id", "repository_owner_id",
+    "job_workflow_ref", "ref", "environment", "sub",
+)
+JWT_SHAPE = re.compile(r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_.-]*$")
+JWTISH_SPAN = re.compile(r"[A-Za-z0-9_-]{24,}\.[A-Za-z0-9_-]{10,}(?:\.[A-Za-z0-9_.-]*)?")
+
+
+def _redact_secrets_text(text: str) -> str:
+    """Drop credential shapes from any printed string. JWTs first, then bearer forms."""
+    redacted = JWTISH_SPAN.sub("[redacted]", text)
+    redacted = redacted.replace("Bearer ", "Bearer [redacted] ")
+    return redacted
+
+
+def _decode_checked_id_token(id_token: str) -> dict[str, Any]:
+    if not JWT_SHAPE.fullmatch(id_token) or id_token.count(".") != 2:
+        raise ReleaseError("GitHub OIDC mint did not return a JWT-shaped id token")
+    payload = id_token.split(".")[1]
+    payload += "=" * (-len(payload) % 4)
+    try:
+        claims = json.loads(base64.urlsafe_b64decode(payload))
+    except (ValueError, json.JSONDecodeError) as exc:
+        raise ReleaseError("GitHub OIDC payload did not decode") from exc
+    if not isinstance(claims, dict):
+        raise ReleaseError("GitHub OIDC payload did not decode to an object")
+    return claims
+
+
+def _mint_github_id_token(registry: str, npm_version: str) -> str:
+    request_url = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_URL")
+    request_token = os.environ.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+    if not request_url or not request_token:
+        raise ReleaseError("OIDC probe requires ACTIONS_ID_TOKEN_REQUEST_URL and ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+    audience = f"npm:{urlsplit(registry).hostname}"
+    mint_url = request_url + ("&" if "?" in request_url else "?") + "audience=" + quote(audience, safe="")
+    mint_request = Request(mint_url, headers={
+        "Accept": "application/json",
+        "Authorization": f"Bearer {request_token}",
+        "User-Agent": f"npm/{npm_version} node/v{platform.python_version()} {sys.platform} x64 workspaces/false ci/github-actions",
+    })
+    try:
+        with urlopen(mint_request, timeout=15) as response:
+            mint_body = json.load(response)
+    except HTTPError as exc:
+        raise ReleaseError(f"GitHub OIDC mint failed: HTTP {exc.code}") from exc
+    except (URLError, OSError) as exc:
+        raise ReleaseError(f"GitHub OIDC mint unreachable: {exc}") from exc
+    id_token = mint_body.get("value") if isinstance(mint_body, dict) else None
+    if not isinstance(id_token, str) or not id_token:
+        raise ReleaseError("GitHub OIDC mint returned no id token")
+    return id_token
+
+
+def oidc_probe(args: argparse.Namespace) -> None:
+    """One trusted-publisher exchange attempt under the caller's job identity.
+
+    Mints the same audience-scoped OIDC token the pinned npm CLI exchanges and
+    repeats the exchange verbatim (npa-escaped package path, npm-command and
+    npm-auth-type headers). Only an allowlist is printed: fixed claims, the
+    HTTP code, the registry's structured error fields and request identifiers.
+    Minted and issued tokens, full response bodies and authentication headers
+    are never printed, written or handed to another step. Nothing publishes.
+    """
+    id_token = _mint_github_id_token(args.registry, args.npm_version)
+    claims = _decode_checked_id_token(id_token)
+    for key in OIDC_CLAIM_ALLOWLIST:
+        if key in claims:
+            value = claims[key]
+            text = value if isinstance(value, str) else json.dumps(value)
+            print(f"claim {key}: {_redact_secrets_text(text)}")
+    escaped = args.package.replace("/", "%2f")
+    exchange_url = f"{args.registry.rstrip('/')}/-/npm/v1/oidc/token/exchange/package/{escaped}"
+    exchange_request = Request(exchange_url, method="POST", headers={
+        "Authorization": f"Bearer {id_token}",
+        "npm-command": "publish",
+        "npm-auth-type": "web",
+        "Accept": "*/*",
+        "User-Agent": f"npm/{args.npm_version} node/v{platform.python_version()} {sys.platform} x64 workspaces/false ci/github-actions",
+    })
+    try:
+        with urlopen(exchange_request, timeout=15) as response:
+            status, headers = response.status, response.headers
+            payload = json.load(response)
+    except HTTPError as exc:
+        status, headers = exc.code, exc.headers
+        try:
+            payload = json.loads(exc.read().decode(errors="replace"))
+        except (ValueError, OSError):
+            payload = None
+        finally:
+            exc.close()
+    except (URLError, OSError) as exc:
+        raise ReleaseError(f"npm OIDC exchange unreachable: {exc}") from exc
+    print(f"exchange HTTP status: {status}")
+    for header in ("npm-request-id", "cf-ray"):
+        value = headers.get(header) if headers is not None else None
+        if isinstance(value, str) and value:
+            print(f"{header}: {_redact_secrets_text(value)}")
+    issued = isinstance(payload, dict) and isinstance(payload.get("token"), str) and bool(payload["token"])
+    if issued:
+        print("exchange verdict: token issued (withheld)")
+        return
+    fields: dict[str, str] = {}
+    if isinstance(payload, dict):
+        for key in ("code", "error", "message", "error_code"):
+            value = payload.get(key)
+            if isinstance(value, str) and value:
+                fields[key] = _redact_secrets_text(value[:300])
+    if fields:
+        print("exchange verdict: no token issued; registry fields:", json.dumps(fields, ensure_ascii=False))
+    else:
+        print("exchange verdict: no token issued; body withheld")
+
+
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(
         description="Secure release kit v1: common validators and the implemented npm adapter.",
@@ -498,6 +616,12 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--dist-tag", default="latest")
     command.add_argument("--npm", default="npm")
     command.set_defaults(handler=npm_publish)
+
+    command = commands.add_parser("oidc-probe", help="One trusted-publisher exchange verdict under the job identity, without publishing.")
+    command.add_argument("--package", required=True, help="Published package name; its slash is npa-escaped for the exchange path.")
+    command.add_argument("--registry", default="https://registry.npmjs.org/")
+    command.add_argument("--npm-version", default="11.18.0", help="Pinned CLI version mirrored in the User-Agent and mint audience policy.")
+    command.set_defaults(handler=oidc_probe)
     return root
 
 
