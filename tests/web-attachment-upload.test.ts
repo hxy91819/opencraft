@@ -60,12 +60,12 @@ test("Web AppHost uploads binary files through the advertised 32 MiB staging lim
     await new Promise<void>((resolve, reject) => { socket.once("open", resolve); socket.once("error", reject); });
     socket.send(JSON.stringify({ type: "hello", protocolVersion: 2, rendererId: "upload-client" }));
     await waitFor(frame => frame.type === "ready");
-    socket.send(JSON.stringify({ type: "host/connect", requestId: "connect", hostId: "local-codex", leaseId: "upload-lease" }));
+    socket.send(JSON.stringify({ type: "host/connect", requestId: "connect", hostId: "upload-host", leaseId: "upload-lease" }));
     const connected = await waitFor(frame => frame.type === "response" && frame.requestId === "connect");
     assert.equal(connected.ok, true);
     const rpc = async (id: string, params: unknown) => {
       socket.send(JSON.stringify({
-        type: "host/send", requestId: `send-${id}`, hostId: "local-codex", leaseId: "upload-lease",
+        type: "host/send", requestId: `send-${id}`, hostId: "upload-host", leaseId: "upload-lease",
         generation: connected.result.generation,
         frame: JSON.stringify({ jsonrpc: "2.0", id, method: "attachment/stage", params }),
       }));

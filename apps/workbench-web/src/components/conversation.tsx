@@ -264,8 +264,8 @@ function UserMessageTimelineRenderer({ block }: TimelineBlockRendererProps) {
 function TextTimelineRenderer({ block, richText }: TimelineBlockRendererProps) {
   const documentContext = useContext(ConversationDocumentContext);
   if (block.type !== "text") return null;
-  // Codex serializes the question titles/options into AgentMessage.content as
-  // a plain-text fallback. The cards below own that same content on Web.
+  // Question titles/options can also appear in the plain-text fallback.
+  // The cards below own that same content on Web.
   const showText = (block.asyncQuestions?.length ?? 0) === 0;
   return <>
     {showText && (richText

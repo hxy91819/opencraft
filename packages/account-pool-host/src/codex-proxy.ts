@@ -6,7 +6,7 @@ import type {
   AccountPoolStore,
 } from "./store.js";
 import type { AccountCredentialRefreshReason } from "./oauth-refresh.js";
-import { CODEX_POOL_MAX_REQUEST_BYTES } from "./request-limits.js";
+import { ACCOUNT_POOL_MAX_REQUEST_BYTES } from "./request-limits.js";
 import { Agent, fetch as undiciFetch } from "undici";
 
 const HOST_TOKEN_HEADER = "x-opencraft-account-pool-token";
@@ -229,7 +229,7 @@ export class CodexAccountPoolProxy {
     const hostId = this.store.authenticateHostToken(request.headers.get(HOST_TOKEN_HEADER) ?? "");
     if (hostId === null) return new Response(null, { status: 401 });
     const body = request.method === "GET" ? new Uint8Array() : new Uint8Array(await request.arrayBuffer());
-    if (body.byteLength > CODEX_POOL_MAX_REQUEST_BYTES) return Response.json({ error: { message: "Request too large" } }, { status: 413 });
+    if (body.byteLength > ACCOUNT_POOL_MAX_REQUEST_BYTES) return Response.json({ error: { message: "Request too large" } }, { status: 413 });
     let identity = affinity(request, body);
     // Images carry the native turn ID instead of the Responses thread metadata.
     // Never admit an image as a new, unrelated pooled conversation.

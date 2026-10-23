@@ -34,7 +34,7 @@ function createClient(
   };
 }
 
-test("fuzzy file search keeps one Codex session across query updates", async () => {
+test("fuzzy file search keeps one AppServer session across query updates", async () => {
   const requests: RecordedRequest[] = [];
   const { client, emit } = createClient(async (method, params) => {
     requests.push({ method, params });

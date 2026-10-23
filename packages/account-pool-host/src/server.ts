@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
 import type { CodexAccountPoolProxy } from "./codex-proxy.js";
-import { CODEX_POOL_MAX_REQUEST_BYTES } from "./request-limits.js";
+import { ACCOUNT_POOL_MAX_REQUEST_BYTES } from "./request-limits.js";
 
 function requestHeaders(request: IncomingMessage): Headers {
   const headers = new Headers();
@@ -23,7 +23,7 @@ async function requestBody(request: IncomingMessage): Promise<Buffer> {
     if (oversized) continue;
     const chunk = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
     size += chunk.byteLength;
-    if (size > CODEX_POOL_MAX_REQUEST_BYTES) {
+    if (size > ACCOUNT_POOL_MAX_REQUEST_BYTES) {
       oversized = true;
       chunks.length = 0;
       continue;

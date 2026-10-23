@@ -50,7 +50,7 @@ function isSessionNotFound(error: unknown): boolean {
 }
 
 /**
- * Host-scoped implementation of Codex's reusable fuzzy-file search channel.
+ * Host-scoped implementation of the reusable AppServer fuzzy-file search channel.
  * New AppServers receive start/update/stop. Older servers are detected once
  * and use the legacy one-shot method without changing Composer semantics.
  */

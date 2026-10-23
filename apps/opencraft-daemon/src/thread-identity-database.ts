@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { openManagedDatabase, createSchemaValidator, type DatabaseOutcome } from "@opencraft/sqlite-node";
 import type { DatabaseSync } from "node:sqlite";
 
-/** New Hub-only owner. Existing Codex ledgers/files stay at their original owner and versions. */
+/** Hub-only owner. Existing Host ledgers/files stay at their original owner and versions. */
 export const THREAD_IDENTITY_SCHEMA = `
 CREATE TABLE message_senders (
   thread_id TEXT NOT NULL, client_message_id TEXT NOT NULL,

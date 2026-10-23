@@ -48,10 +48,10 @@ try {
       };
       await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
       const ready = wait('ready'); socket.send(JSON.stringify({type:'hello',protocolVersion:2,rendererId:'file-upload-probe'})); await ready;
-      const connected = wait('connect'); socket.send(JSON.stringify({type:'host/connect',requestId:'connect',hostId:'local-codex',leaseId:'upload'})); generation = (await connected).generation;
+      const connected = wait('connect'); socket.send(JSON.stringify({type:'host/connect',requestId:'connect',hostId:'upload-host',leaseId:'upload'})); generation = (await connected).generation;
       const rpc = async (method, params) => {
         const requestId = 'rpc-' + (++id); const response = wait(requestId);
-        socket.send(JSON.stringify({type:'host/send',requestId:'send-'+id,hostId:'local-codex',leaseId:'upload',generation,frame:JSON.stringify({jsonrpc:'2.0',id:requestId,method,params})}));
+        socket.send(JSON.stringify({type:'host/send',requestId:'send-'+id,hostId:'upload-host',leaseId:'upload',generation,frame:JSON.stringify({jsonrpc:'2.0',id:requestId,method,params})}));
         return response;
       };
       const controller = new AbortController();

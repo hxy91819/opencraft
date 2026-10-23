@@ -94,9 +94,8 @@ export function parseThreadLifecycleCapability(value: unknown): OpenCraftThreadL
 /**
  * Host extension for catalogs whose contents are owned by a Thread/session.
  *
- * Codex catalogs are normally Host-wide. Runtimes such as Hermes can attach a
- * different provider configuration to each profile and live session, so a
- * model picker must name the Thread whose catalog it is requesting.
+ * A Thread/session can have its own provider configuration, so a model picker
+ * must name the Thread whose catalog it is requesting.
  */
 export const OPENCRAFT_SCOPED_MODEL_CATALOG_EXTENSION =
   "opencraft/scoped-model-catalog";

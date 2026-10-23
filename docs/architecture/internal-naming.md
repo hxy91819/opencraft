@@ -13,7 +13,7 @@ The retained engine classes are reviewed separately in [class naming](class-nami
 | Account Settings styles | `engine-account*` and `engine-device-login*` in [engine-accounts.scss](../../apps/workbench-web/src/styles/engine-accounts.scss). The current consumer still manages actual Codex accounts. |
 | Setup interactions | `setup-step` response/block and `interaction:setup-step` projection input. Web and Expo consume the same model and interaction broker. |
 | File citations | `file-citation` document directive, compiled from native citation syntax and consumed by Web and Native renderers. Raw citation text is unchanged. |
-| Replica compatibility identities | `appserver-thread:<hostId>:<threadId>` and `appserver-v3:<hostId>:<generation>` identify local V3 projections, including non-Codex Hosts. They are not native Thread IDs or durable V4 journal cursors. |
+| Replica compatibility identities | `appserver-thread:<hostId>:<threadId>` and `appserver-v3:<hostId>:<generation>` identify local V3 projections across Hosts. They are not native Thread IDs or durable V4 journal cursors. |
 | User-message projection | `UserMessageSemantics`, `deriveUserMessageSemantics`, `extractLastUserRequest`, `stripGoalDirective`, `normalizeTurnUserMessages` and `userMessageCompareKey`. |
 | Message metadata | `projectThreadMessageResult` / `projectThreadMessageNotification` and `projectThreadAttachmentResult` / `projectThreadAttachmentNotification`; consumers import their canonical modules directly. |
 | Thread-tool presentation | `ThreadToolNavigationTarget`, `threadToolNavigationTarget` and `thread-tools.ts`; presenters use `thread-tools` / `settings-tools` names and `thread-tool:` summary keys. |
