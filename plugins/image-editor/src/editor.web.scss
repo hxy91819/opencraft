@@ -23,9 +23,9 @@
   &__text-entry {
     @include typography.role(mobile-input);
     position: absolute; transform: translate(-50%, -50%) scale(var(--image-text-scale)); box-sizing: border-box;
-    margin: 0; padding: max(var(--spacing), calc((44px / var(--image-text-scale) - 1.2em * var(--image-text-lines)) / 2)) var(--spacing); min-height: calc(44px / var(--image-text-scale)); max-height: 100%;
+    margin: 0; padding: max(var(--spacing), calc((44px / var(--image-text-scale) - var(--typography-mobile-input-line-height) * var(--image-text-lines)) / 2)) var(--spacing); min-height: calc(44px / var(--image-text-scale)); max-height: 100%;
     border: 1px dashed var(--color-border-focus); border-radius: var(--radius-sm);
-    background: transparent; font-family: sans-serif; font-size: 16px; font-weight: 600; line-height: 1.2;
+    background: transparent;
     text-align: center; text-shadow: 0 1px 1px #000000, 0 -1px 1px #000000, 1px 0 1px #000000, -1px 0 1px #000000;
     resize: none; touch-action: auto; user-select: text;
     &:focus-visible { @include controls.focus-indicator; }

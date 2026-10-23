@@ -2,6 +2,7 @@ import type { ImageEditorProps } from "@opencraft/extension-react";
 import { useIntl } from "@opencraft/i18n/react";
 import { CheckIcon, CloseIcon, EditIcon, ImageCropIcon, ImageFitIcon, ImageMosaicIcon, ImageRedoIcon, ImageStickerIcon, ImageTextIcon, ImageUndoIcon, RotateIcon } from "@opencraft/design-system-web/action-icons";
 import { flushSync } from "react-dom";
+import { typographyRole } from "@opencraft/design-system/typography";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { commitEdit, emptyHistory, exportImage, paintEdit, renderDocument, selectionRect, stepHistory, type ImageEdit, type Point, type Rect } from "./document";
 import { stickerPreview, stickers, type Sticker } from "./stickers";
@@ -12,6 +13,7 @@ type Tool = "pen" | "sticker" | "text" | "crop" | "mosaic";
 type TextDraft = { readonly point: Point; readonly text: string };
 type Brush = Extract<ImageEdit, { type: "pen" | "mosaic" }>;
 const colors = ["#ffffff", "#111827", "#ef4444", "#facc15", "#22c55e", "#3b82f6"];
+const textInputMetrics = typographyRole("mobileInput", "web");
 const tools = [{ id: "pen", Icon: EditIcon }, { id: "sticker", Icon: ImageStickerIcon }, { id: "text", Icon: ImageTextIcon }, { id: "crop", Icon: ImageCropIcon }, { id: "mosaic", Icon: ImageMosaicIcon }] as const;
 
 export default function ImageEditor({ source, name, onCancel, onComplete }: ImageEditorProps) {
@@ -74,9 +76,12 @@ export default function ImageEditor({ source, name, onCancel, onComplete }: Imag
   const cancelGesture = () => { stroke.current = null; cropStart.current = null; placement.current = null; setCrop(null); scheduleDraw(); };
   const takeText = (): Extract<ImageEdit, { type: "text" }> | null => {
     const draft = pendingText.current;
+    const input = textInput.current;
+    const style = input ? getComputedStyle(input) : null;
     updateText(null);
-    if (!draft?.text.trim() || !scene) return null;
-    return { type: "text", text: draft.text.trim(), point: draft.point, size: textSize * Math.min(scene.width, scene.height) / 500, color };
+    if (!draft?.text.trim() || !scene || !style) return null;
+    return { type: "text", text: draft.text.trim(), point: draft.point, size: textSize * Math.min(scene.width, scene.height) / 500, color,
+      format: { family: style.fontFamily, weight: style.fontWeight, leading: parseFloat(style.lineHeight) / parseFloat(style.fontSize) } };
   };
   const applyText = () => { if (composing.current) return; const edit = takeText(); if (edit) commit(edit); };
   const changeTool = (next: Tool) => { if (composing.current) return; applyText(); cancelGesture(); setTool(next); };
@@ -130,7 +135,7 @@ export default function ImageEditor({ source, name, onCancel, onComplete }: Imag
   };
   const scale = scene ? Math.min(viewport.width / scene.width, viewport.height / scene.height, 1) : 0;
   const { view, reset: resetView, handlers: touchHandlers } = useTouchViewport(viewport.width, viewport.height, (scene?.width ?? 0) * scale, (scene?.height ?? 0) * scale, `${scene?.width}x${scene?.height}`, cancelGesture);
-  const textScale = scene ? textSize * Math.min(scene.width, scene.height) / 500 * scale / 16 : 1;
+  const textScale = scene ? textSize * Math.min(scene.width, scene.height) / 500 * scale / textInputMetrics.fontSize : 1;
   const canUndo = history.cursor > 0 || !!textDraft?.text.trim(), canRedo = history.cursor < history.edits.length;
   const gestureActive = () => stroke.current !== null || cropStart.current !== null || placement.current !== null;
   return <section className="image-editor" aria-label={`${m("edit")}: ${name}`} aria-busy={busy} onKeyDown={event => {

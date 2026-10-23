@@ -251,11 +251,28 @@ try {
       assert.deepEqual(await pixel(.5, .25), ink, "resize preserves committed ink");
       await draftPage.setViewportSize({ width: 390, height: 844 }); await settle();
     }
+    const inputFormat = await textEntry.evaluate(node => { const style = getComputedStyle(node); return { family: style.fontFamily, weight: style.fontWeight, leading: parseFloat(style.lineHeight) / parseFloat(style.fontSize) }; });
+    await draftPage.evaluate(() => {
+      (window as any).imageTextPaints = [];
+      CanvasRenderingContext2D.prototype.fillText = new Proxy(CanvasRenderingContext2D.prototype.fillText, { apply(target, ctx, args) {
+        (window as any).imageTextPaints.push({ text: args[0], x: args[1], y: args[2], font: ctx.font });
+        return Reflect.apply(target, ctx, args);
+      } });
+    });
     const beforeText = await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL());
     await draftPage.getByRole("button", { name: "Apply text", exact: true }).click(); await settle();
     assert.equal(await textEntry.count(), 0);
     const afterText = await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL());
     assert.notEqual(afterText, beforeText, "inline text commits pixels");
+    const textPresentation = await draftPage.evaluate(format => {
+      const lines = (window as any).imageTextPaints.filter((p: any) => p.text === "直接标注" || p.text === "Second line").slice(-2);
+      const size = Number(lines[0]?.font.match(/([\d.]+)px/)?.[1]);
+      const context = document.createElement("canvas").getContext("2d")!;
+      context.font = `${format.weight} ${size}px ${format.family}`;
+      return { count: lines.length, fontMatches: lines.every((p: any) => p.font === context.font), spacing: lines[1]?.y - lines[0]?.y, expectedSpacing: size * format.leading };
+    }, inputFormat);
+    assert.equal(textPresentation.count, 2); assert.equal(textPresentation.fontMatches, true, "canvas retains the actual native input font");
+    assert.ok(Math.abs(textPresentation.spacing - textPresentation.expectedSpacing) < .01, "multiline export retains input leading");
     await draftPage.getByRole("button", { name: "Undo", exact: true }).click(); await settle();
     assert.equal(await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL()), beforeText, "whole text is one undo step");
     await draftPage.getByRole("button", { name: "Redo", exact: true }).click(); await settle();
