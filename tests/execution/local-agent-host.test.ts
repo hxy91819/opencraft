@@ -565,12 +565,70 @@ test("local Agent Host applies the selected DSH model before opening a real even
         input: [{ type: "text", text: "hello", text_elements: [] }],
       });
       assert.equal(turn.turn.id, "dsh-turn-s-new-1");
-      assert.equal(dsh.calls.filter((call) => call.method === "session.selectModel").length, 2);
+      // thread/start's route equals the engine's current default (which carries
+      // the saved reasoning effort), so only the explicit per-turn effort
+      // re-select reaches the engine.
+      const selects = dsh.calls.filter((call) => call.method === "session.selectModel");
+      assert.equal(selects.length, 1);
       assert.deepEqual(
         dsh.calls.findLast((call) => call.method === "session.selectModel")?.payload,
         { sessionId: "s-new", provider: "deepseek", model: "deepseek-v4-flash", reasoningEffort: "high" },
       );
       assert.equal(dsh.calls.find((call) => call.method === "session.prompt")?.payload.mode, "queue");
+      // An effortless same-route turn keeps the session's selected thinking
+      // level instead of re-sending a route-only selection that would reset it.
+      // (The fixture keeps the first turn live, so the skip is proven by the
+      // separate config-defaults test below whose thread/start performs no
+      // session.selectModel RPC at all.)
+    } finally {
+      socket.close();
+    }
+  } finally {
+    await host.close();
+    await dsh.close();
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test("local Agent Host serves Codex-compatible config defaults with reasoning effort", async () => {
+  const workspace = await mkdtemp(join(tmpdir(), "opencraft-config-workspace-"));
+  const dsh = await fakeDsh();
+  const host = await startLocalAgentHost({ dshUrl: dsh.url, token: "config-token" });
+  try {
+    const socket = await connect(host.websocketUrl);
+    try {
+      await request(socket, 60, "initialize", {});
+      const config = await request(socket, 61, "config/read", { includeLayers: false });
+      assert.equal(config.config.model, "dsh-model:deepseek:deepseek-v4-flash");
+      assert.equal(config.config.model_reasoning_effort, "high");
+      assert.equal(config.layers, null);
+      const started = await request(socket, 62, "thread/start", { cwd: workspace });
+      assert.equal(started.model, "dsh-model:deepseek:deepseek-v4-flash");
+      assert.equal(started.reasoningEffort, "high");
+      // The saved default reasoning effort reaches the engine at creation: the
+      // start re-select carries the level instead of a route-only payload.
+      assert.equal(dsh.calls.filter((call) => call.method === "session.selectModel").length, 1);
+      assert.deepEqual(dsh.calls.find((call) => call.method === "session.selectModel")?.payload, {
+        sessionId: started.thread.id, provider: "deepseek", model: "deepseek-v4-flash", reasoningEffort: "high",
+      });
+      await request(socket, 63, "config/batchWrite", {
+        edits: [
+          { keyPath: "model", value: "dsh-model:deepseek:deepseek-v4-flash", mergeStrategy: "replace" },
+          { keyPath: "model_reasoning_effort", value: "high", mergeStrategy: "replace" },
+        ],
+      });
+      const mutate = dsh.calls.findLast((call) => call.method === "settings.mutate");
+      assert.equal(mutate?.payload?.ns, "agent-default-model");
+      assert.deepEqual(mutate?.payload?.ops, [
+        { op: "set", path: ["provider"], value: "deepseek" },
+        { op: "set", path: ["model"], value: "deepseek-v4-flash" },
+        { op: "unset", path: ["reasoningEffort"] },
+        { op: "set", path: ["reasoningEffort"], value: "high" },
+      ]);
+      await assert.rejects(request(socket, 64, "config/batchWrite", {
+        edits: [{ keyPath: "model_reasoning_effort", value: "ultra", mergeStrategy: "replace" }],
+      }));
+      assert.equal(dsh.calls.filter((call) => call.method === "settings.mutate").length, 1);
     } finally {
       socket.close();
     }

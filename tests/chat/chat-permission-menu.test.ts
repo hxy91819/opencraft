@@ -1,7 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { hasPermissionProfileChoices } from "../../packages/composer-editor/src/composer-editor.js";
+import { registerHooks } from "node:module";
+
+// This Node suite renders markup; browser styles are exercised by smoke tests.
+const styles = registerHooks({
+  load(url, context, nextLoad) {
+    return /\.(?:css|scss)$/u.test(new URL(url).pathname)
+      ? { format: "module", source: "export default {};", shortCircuit: true }
+      : nextLoad(url, context);
+  },
+});
+const { hasPermissionProfileChoices } = await import("../../packages/composer-editor/src/composer-editor.js");
+styles.deregister();
 
 const source = readFileSync(new URL("../../packages/composer-editor/src/composer-editor.tsx", import.meta.url), "utf8");
 const menu = source.slice(source.indexOf('aria-label={permissionsLabel}'), source.indexOf('<div ref={footerLayout.endRef}'));
