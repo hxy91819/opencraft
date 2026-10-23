@@ -42,7 +42,7 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   page.on('websocket', socket => sockets.push(new URL(socket.url()).pathname));
   for (const [id, prefix] of [['lighthouse', '/servers/lighthouse'], ['join', '']] as const) {
-    await page.goto(fixture.origin + prefix + '/settings/vela.headless-model-services');
+    await page.goto(fixture.origin + prefix + '/settings/opencraft.headless-model-services');
     await page.waitForFunction(async id => (await indexedDB.databases()).some(d => d.name?.includes('server:' + id + ':') && d.name.includes('host-connections')), id);
     await page.locator('[data-action-id]').first().waitFor();
     // Change the existing durable recipe exactly as a browser that used the

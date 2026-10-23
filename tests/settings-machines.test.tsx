@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { IntlProvider } from "react-intl";
+import { IntlProvider, useIntl } from "react-intl";
 import { build } from "esbuild";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -14,7 +14,7 @@ import messages from "../apps/workbench-web/src/i18n/locales/zh-CN.json";
 
 const identity = { machineId: "12345678-1234-4123-8123-123456789abc", name: "我的服务器", platform: "linux" as const };
 function profile(hostId: string, agent: string): HostConnectionProfile {
-  return { hostId, agent, machineIdentity: identity, displayName: hostId, providerId: "vela.builtin-agents", providerConfig: { url: `ws://server/${hostId}?token=secret` }, providerConfigVersion: 1, hostKind: "local", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: null, transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: [], revision: 0 };
+  return { hostId, agent, machineIdentity: identity, displayName: hostId, providerId: "opencraft.builtin-agents", providerConfig: { url: `ws://server/${hostId}?token=secret` }, providerConfigVersion: 1, hostKind: "local", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: null, transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: [], revision: 0 };
 }
 
 test("settings render machine ownership, cold/failed connections, first-level navigation history and localized sidebar labels", async context => {
@@ -82,12 +82,17 @@ test("settings render machine ownership, cold/failed connections, first-level na
   const englishSidebar = renderToStaticMarkup(<IntlProvider locale="en" defaultLocale="en">{sidebar}</IntlProvider>);
   assert.match(englishSidebar, /aria-label="Bots"/); assert.match(englishSidebar, />Bots</); assert.match(englishSidebar, /aria-label="Create Bot"/);
   assert.match(render(<NavigationContent config={{ actions: [], account: null, onOpenSettings: onSectionChange }} surface="applications" onInvoke={onSectionChange} />), /aria-label="应用"/);
-  const botNavigation = <NavigationContent config={{ actions: [{ id: "vela.bot-management.navigation", title: "Bots", icon: "bot", active: false, onInvoke: () => {} }], account: null, onOpenSettings: () => {} }} surface="applications" compact onInvoke={() => {}} />;
+  // Extensions resolve contribution messages before handing actions to Shell.
+  function BotNavigationFixture() {
+    const intl = useIntl();
+    return <NavigationContent config={{ actions: [{ id: "opencraft.bot-management.navigation", title: intl.formatMessage({ id: "sidebar.bots", defaultMessage: "Bots" }), icon: "bot", active: false, onInvoke: () => {} }], account: null, onOpenSettings: () => {} }} surface="applications" compact onInvoke={() => {}} />;
+  }
+  const botNavigation = <BotNavigationFixture />;
   assert.match(render(botNavigation), /aria-label="机器人"/);
   assert.doesNotMatch(render(botNavigation), />Bots</);
   assert.match(renderToStaticMarkup(<IntlProvider locale="en" defaultLocale="en">{botNavigation}</IntlProvider>), /aria-label="Bots"/);
-  const modelId = "vela.builtin-agents.model-services";
-  const codexId = "vela.builtin-agents.codex-accounts";
+  const modelId = "opencraft.builtin-agents.model-services";
+  const codexId = "opencraft.builtin-agents.codex-accounts";
   const snapshot = { settingsPages: [
     { contribution: { ...pages[0], id: modelId } },
     { contribution: { ...pages[1], id: codexId } },

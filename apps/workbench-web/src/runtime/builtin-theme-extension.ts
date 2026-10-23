@@ -4,7 +4,7 @@ import type { OpenCraftExtensionDefinition } from "@opencraft/extension-contract
 export const BuiltinThemePackExtension: OpenCraftExtensionDefinition = {
   manifest: {
     manifestVersion: 1,
-    id: "vela.theme-pack",
+    id: "opencraft.theme-pack",
     name: "OpenCraft Theme Pack",
     description: "Optional semantic palettes for the OpenCraft workbench.",
     version: "1.0.0",
@@ -15,7 +15,7 @@ export const BuiltinThemePackExtension: OpenCraftExtensionDefinition = {
   },
   activate(api) {
     api.themes.register({
-      id: "vela.theme-pack.paper",
+      id: "opencraft.theme-pack.paper",
       label: "Paper",
       description: "A warmer, softer work surface with consistent light and dark contrast.",
       palettes: {

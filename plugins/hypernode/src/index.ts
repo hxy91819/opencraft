@@ -39,7 +39,7 @@ function validateConfig(value: HostConnectionJson): HyperNodeConnectionConfig {
 }
 
 export const HyperNodeHostConnectionProvider: HostConnectionProvider = Object.freeze({
-  id: "vela.hypernode",
+  id: "opencraft.hypernode",
   label: "HyperNode",
   targets: ["web", "electron"] as const,
   configVersion: 1,
@@ -73,7 +73,7 @@ export function createHyperNodeExtension(options: HyperNodeExtensionOptions): Tr
   return {
     manifest: {
       manifestVersion: 1,
-      id: "vela.hypernode",
+      id: "opencraft.hypernode",
       name: "HyperNode",
       description: "Connects OpenCraft to the optional HyperNode AppServer host.",
       version: "0.1.0",

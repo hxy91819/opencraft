@@ -145,7 +145,7 @@ export function SettingsNavigation({
   const internalDeveloperMode = useInternalDeveloperMode();
   const [managementQuery, setManagementQuery] = useState("");
   const extensionPages = useSettingsExtensionPages(extensionContributions, currentPlatform());
-  const runPages = ["vela.builtin-agents.model-services", "vela.builtin-agents.codex-accounts"]
+  const runPages = ["opencraft.builtin-agents.model-services", "opencraft.builtin-agents.codex-accounts"]
     .flatMap(id => extensionPages.filter(page => page.id === id && page.targetHostId !== undefined
       && profiles.some(profile => profile.enabled && profile.hostId === page.targetHostId)));
   const selectedRunPage = runPages.some(page => page.id === section);

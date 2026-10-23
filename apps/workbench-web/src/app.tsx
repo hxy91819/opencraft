@@ -1303,8 +1303,8 @@ export function App({
           await hostCatalog.selectHost(group.hostId, group.hostId === snapshot.hostId ? undefined : { model: model.value, effort: model.defaultEffort, serviceTier });
           if (group.hostId !== snapshot.hostId) composerCatalog.rememberModelDefaults?.({ model: model.value, effort: model.defaultEffort, serviceTier }, group.hostId);
         },
-        manage: hostCatalog.extensionContributions.getSnapshot().settingsPages.some(page => page.contribution.targetHostId === group.hostId && page.contribution.id === (group.hostId === "local" ? "vela.builtin-agents.model-services" : "vela.builtin-agents.codex-accounts"))
-          ? () => hostCatalog.navigation.openSettings(group.hostId === "local" ? "vela.builtin-agents.model-services" : "vela.builtin-agents.codex-accounts") : undefined,
+        manage: hostCatalog.extensionContributions.getSnapshot().settingsPages.some(page => page.contribution.targetHostId === group.hostId && page.contribution.id === (group.hostId === "local" ? "opencraft.builtin-agents.model-services" : "opencraft.builtin-agents.codex-accounts"))
+          ? () => hostCatalog.navigation.openSettings(group.hostId === "local" ? "opencraft.builtin-agents.model-services" : "opencraft.builtin-agents.codex-accounts") : undefined,
       })),
       retryModels: composerCatalog.retryModels,
       permissionProfileError:

@@ -43,5 +43,5 @@ export const EMBEDDED_CORE_CHAT_PRESENTATION: WorkbenchPresentationPolicy =
     panelActions: Object.freeze(["vela.browser.new-tab"]),
     filePreviewOnly: true,
     connectorLauncher: false,
-    composerActions: Object.freeze(["vela.voice-input.toggle"]),
+    composerActions: Object.freeze(["opencraft.voice-input.toggle"]),
   });

@@ -76,8 +76,8 @@ for (const hostless of [true, false]) test(`${hostless ? "hostless" : "connected
     assert.deepEqual(nav.getSnapshot().applicationRoute, { kind: "extension-view", viewId: "opencraft.server-connections.ssh-view", resourceUri: "opaque://keep/resource" });
     nav.openSettings("third-party.headless-codex.ssh");
     assert.equal(nav.getSnapshot().url, "/settings/third-party.headless-codex.ssh");
-    nav.openSettings("vela.builtin-agents.codex-accounts");
-    assert.equal(nav.getSnapshot().url, "/settings/vela.builtin-agents.codex-accounts");
+    nav.openSettings("opencraft.builtin-agents.codex-accounts");
+    assert.equal(nav.getSnapshot().url, "/settings/opencraft.builtin-agents.codex-accounts");
     nav.openSettings("vela.headless-codex.ssh");
     assert.equal(nav.getSnapshot().url, "/settings/opencraft.server-connections.ssh");
   } finally { nav.dispose(); }

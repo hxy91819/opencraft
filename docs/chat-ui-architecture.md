@@ -1701,7 +1701,7 @@ in-place streaming, completion, prepended history and View restoration. The
 browser fixture uses synthetic engine text; it does not claim paid-provider
 execution, hidden reasoning availability or iPhone OS acceptance.
 
-The embedded canvas permits the existing `vela.voice-input.toggle` Composer
+The embedded canvas permits the existing `opencraft.voice-input.toggle` Composer
 action. Dictation uses the platform speech provider and the same transient input
 transaction as the full Workbench; no microphone starts until user interaction.
 Unsupported browsers retain the provider's disabled-state explanation.

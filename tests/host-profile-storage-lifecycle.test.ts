@@ -7,7 +7,7 @@ import { IndexedDbHostConnectionProfileStore } from "../apps/workbench-web/src/r
 import type { HostConnectionProfile } from "@opencraft/workbench-runtime";
 
 const profile: HostConnectionProfile = {
-  hostId: "saved-host", displayName: "Saved server", providerId: "vela.websocket",
+  hostId: "saved-host", displayName: "Saved server", providerId: "opencraft.websocket",
   providerConfig: { url: "wss://saved.example/appserver" }, providerConfigVersion: 1,
   hostKind: "durable", enabled: true, autoConnect: false, includeInSidebar: true,
   credentialRef: null, transportEndpoint: null, executionLocation: "Saved server",

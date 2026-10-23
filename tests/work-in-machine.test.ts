@@ -15,7 +15,7 @@ import { machineRole } from "../apps/workbench-web/src/runtime/work-in-presentat
 
 const machine = { machineId: "12345678-1234-4123-8123-123456789abc", name: "build-machine", platform: "macos" as const };
 export function profile(hostId: string, identity: typeof machine | null = machine): HostConnectionProfile {
-  return { hostId, machineIdentity: identity, agent: hostId.includes("codex") ? "Codex" : "OpenCraft", displayName: hostId, providerId: "vela.builtin-agents", providerConfig: {}, providerConfigVersion: 1, hostKind: "local", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: null, transportEndpoint: "same.example", executionLocation: null, workspaceBrowseRoots: ["/default"], revision: 0 };
+  return { hostId, machineIdentity: identity, agent: hostId.includes("codex") ? "Codex" : "OpenCraft", displayName: hostId, providerId: "opencraft.builtin-agents", providerConfig: {}, providerConfigVersion: 1, hostKind: "local", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: null, transportEndpoint: "same.example", executionLocation: null, workspaceBrowseRoots: ["/default"], revision: 0 };
 }
 
 test("daemon identity survives restart and is shared by multiple Host leases without starting engines", async () => {
@@ -46,7 +46,7 @@ test("old Hosts and malformed responses remain unknown rather than blocking conn
 
 test("reported IDs group engines, physical address and labels do not; cloud stays separate", () => {
   const a = profile("local"), b = profile("local-codex"), c = profile("other", { ...machine, machineId: "22345678-1234-4123-8123-123456789abc" });
-  const unknown = { ...profile("unknown", null), providerId: "opencraft.ssh", hostKind: "remote-ssh" as const }, unknown2 = { ...profile("unknown2", null), providerId: "vela.websocket", hostKind: "remote-control" as const }, cloud = { ...profile("cloud"), enabled: false };
+  const unknown = { ...profile("unknown", null), providerId: "opencraft.ssh", hostKind: "remote-ssh" as const }, unknown2 = { ...profile("unknown2", null), providerId: "opencraft.websocket", hostKind: "remote-control" as const }, cloud = { ...profile("cloud"), enabled: false };
   const entry: EnvironmentEntry = { id: "cloud", sourceId: "lightvela", name: "cloud", location: "region", profile: cloud, connectable: true,
     resource: { providerId: "lightvela", phase: "suspended", rawPhase: "stopped", message: null, capabilities: { suspend: false, resume: true, remove: true } } };
   const groups = groupWorkInMachines([unknown, cloud, a, unknown2, b, c], [entry]);
@@ -64,7 +64,7 @@ test("This Mac/This computer belongs only to the desktop's builtin daemon", () =
   assert.equal(workInMachineName(group, "web", labels), machine.name);
   const linux = groupWorkInMachines([{ ...profile("local"), machineIdentity: { ...machine, platform: "linux" } }])[0]!;
   assert.equal(workInMachineName(linux, "electron", labels), "这台电脑");
-  const remote = groupWorkInMachines([{ ...profile("remote"), providerId: "vela.websocket" }])[0]!;
+  const remote = groupWorkInMachines([{ ...profile("remote"), providerId: "opencraft.websocket" }])[0]!;
   assert.equal(workInMachineName(remote, "electron", labels), machine.name);
 });
 
@@ -132,7 +132,7 @@ test("machine icons distinguish desktop local, daemon servers and cloud resource
   const local = groupWorkInMachines([profile("local")])[0]!;
   assert.equal(machineRole(local, "electron"), "local");
   assert.equal(machineRole(local, "web"), "server");
-  const remote = groupWorkInMachines([{ ...profile("remote"), providerId: "vela.websocket" }])[0]!;
+  const remote = groupWorkInMachines([{ ...profile("remote"), providerId: "opencraft.websocket" }])[0]!;
   assert.equal(machineRole(remote, "electron"), "server");
   assert.equal(machineRole({ ...local, cloud: true }, "electron"), "cloud");
   assert.equal(machineRole({ ...local, cloud: true }, "web"), "cloud");

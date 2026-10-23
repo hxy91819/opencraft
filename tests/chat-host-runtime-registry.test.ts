@@ -256,7 +256,7 @@ test("Host profile boundary separates transport provider from semantic Host kind
   const profile = normalizeHostConnectionProfile({
     hostId: "host:one",
     displayName: "One",
-    providerId: "vela.websocket",
+    providerId: "opencraft.websocket",
     providerConfig: { url: "wss://one.example/appserver" },
     providerConfigVersion: 1,
     hostKind: "durable",
@@ -269,7 +269,7 @@ test("Host profile boundary separates transport provider from semantic Host kind
     workspaceBrowseRoots: ["/workspace", "/workspace"],
     revision: 0,
   });
-  assert.equal(profile.providerId, "vela.websocket");
+  assert.equal(profile.providerId, "opencraft.websocket");
   assert.equal(profile.hostKind, "durable");
   assert.deepEqual(profile.workspaceBrowseRoots, ["/workspace"]);
   assert.throws(() => normalizeHostConnectionProfile({ ...profile, providerConfig: { bad: Infinity } }), /non-finite/u);
