@@ -45,7 +45,7 @@ GitHub `opencraft-app/opencraft` 是目标核心上游，产品身份来源、�
 | Android 内测、正式 APK，或 iOS 测试 IPA | 先读 [手机端路线](apps/workbench-expo/README.md#手机端路线) 和 [构建矩阵](docs/build-matrix.md)；按目标选择签名、包名及验证步骤 |
 | Android 备案资料或临时局域网下载 | [Android 正式 APK](apps/workbench-expo/README.md#android-release-apk)；从最终 APK 核对包名、签名证书和文件摘要，只开放 APK 下载路径 |
 | 承载当前代理的 headless 预览服务切换或重启 | [opencraft-self-hosted-preview](.agents/skills/opencraft-self-hosted-preview/SKILL.md)；由独立服务完成切换与回退，重连后核对实际进程 |
-| 下游产品 Agent Console 共享实现 | [历史与消费契约](UPSTREAM_HISTORY.md)；同步边界由下游产品工作区维护 |
+| 下游产品 Agent Console 共享实现 | [历史与消费契约](docs/upstream-history.md)；同步边界由下游产品工作区维护 |
 | Web、Expo、Electron 构建与交付 | [build-matrix](docs/build-matrix.md) |
 | 公共 npm 发布、Web 更新部署 | [Web 发布与部署](docs/web-deployment.md#公共-npm-发布流程)，含包名、Trusted Publisher、精确归档与验收约定 |
 | 从源码打包替换服务器本地 Web | [本地替换指引](docs/web-local-deployment.md)；先核对 `.local/README.md` 中的实际部署信息 |
@@ -76,7 +76,7 @@ GitHub `opencraft-app/opencraft` 是目标核心上游，产品身份来源、�
 - 协议变化必须同时检查声明、生成类型、Host/provider adapter、持久化/恢复、失败语义和兼容测试。共享 TypeScript 能编译不等于已部署 Host 兼容。
 - 内建 UI Preferences 统一消费 `UiPreferencesRuntime`；插件的个人本地呈现偏好可消费可选 `api.localPreferences`，由平台隔离产品/插件/账号与激活生命周期、插件持有 schema；不代替业务文档 CAS 或共享账号 authority。React 不直接选择 localStorage、IndexedDB、SQLite 或远端存储。scope、adapter、CAS 和正式 key 以 [UI preference authority](docs/platform-architecture.md#ui-preference-authority) 为准。
 - Desktop 路径必须消费 [Directory identity charter](docs/architecture/product-identity.md#directory-identity-charter) 的唯一 resolver：生产数据根不得含 `vela`，旧 `@vela/*` 只允许作为幂等迁移输入；Main/Daemon/DSH 显式使用 runtime cwd，Thread workspace cwd 必须来自 Project/Thread，禁止回退 `process.cwd()`。
-- Hermes 的 Console 适配源码和生成工具属于下游产品，不是独立核心的安装或默认检查依赖。下游产品工作区持有机械生成层；不得直接编辑，须修改其前端真源后运行该产品的同步及只读漂移检查，连同 `UPSTREAM.json` 提交。详见 [历史与消费契约](UPSTREAM_HISTORY.md)。
+- Hermes 的 Console 适配源码和生成工具属于下游产品，不是独立核心的安装或默认检查依赖。下游产品工作区持有机械生成层；不得直接编辑，须修改其前端真源后运行该产品的同步及只读漂移检查，连同 `UPSTREAM.json` 提交。详见 [历史与消费契约](docs/upstream-history.md)。
 - SQLite 表结构变更只在该库 owner 的 migrations 列表追加连续 version N+1；不得改写已发布迁移的 SQL 原文、名称或版本。生命周期与恢复契约见 [sqlite-lifecycle](docs/sqlite-lifecycle.md)。
 - OpenCraft 自有 SQLite 的新增运行时 `CREATE TABLE` / `ALTER TABLE` 只由迁移执行；业务初始化与恢复不得另建表或按列探测补结构。测试 fixture 与下述保留的上游镜像不作为升级 authority。
 - 所有 OpenCraft 自有 SQLite 库必须经 `openManagedDatabase` 打开并暴露 outcome；owner 负责独占生命周期、关闭和处置摘要，不得吞掉迁移失败后继续宣称 ready。

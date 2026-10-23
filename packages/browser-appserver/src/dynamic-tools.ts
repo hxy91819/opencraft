@@ -5,7 +5,7 @@ import type {
   DynamicToolSpec,
 } from "@opencraft/appserver-protocol/generated/v2";
 
-export const OPENCRAFT_BROWSER_EXTENSION = "vela/browser-use";
+export const OPENCRAFT_BROWSER_EXTENSION = "opencraft/browser-use";
 
 export const OPENCRAFT_BROWSER_CAPABILITY = Object.freeze({
   version: 1,
@@ -84,18 +84,18 @@ const browserUseSchema = Object.freeze({
 export const OPENCRAFT_BROWSER_DYNAMIC_TOOLS: readonly DynamicToolSpec[] = Object.freeze([
   {
     type: "namespace",
-    name: "vela_app",
+    name: "opencraft_app",
     description: "OpenCraft application presentation tools.",
     tools: [{
       type: "function",
-      name: "open_in_vela",
+      name: "open_in_opencraft",
       description: "Open or focus a browser page in OpenCraft. This does not inspect or verify it.",
       inputSchema: openInOpenCraftSchema,
     }],
   },
   {
     type: "namespace",
-    name: "vela_browser",
+    name: "opencraft_browser",
     description: "Read and operate OpenCraft's in-app browser.",
     tools: [
       {
@@ -173,16 +173,20 @@ async function executeBrowserTool(
   hostId: string,
   params: DynamicToolCallParams,
 ): Promise<DynamicToolCallResponse | null> {
+  const open = (params.namespace === "opencraft_app" && params.tool === "open_in_opencraft")
+    || (params.namespace === "vela_app" && params.tool === "open_in_vela");
+  const browser = params.namespace === "opencraft_browser" || params.namespace === "vela_browser";
+  if (!open && !(browser && (params.tool === "get_tab_context" || params.tool === "browser_use"))) return null;
   const argumentsValue = record(params.arguments);
   if (argumentsValue === null) return textResponse("Browser tool arguments must be an object", false);
   try {
-    if (params.namespace === "vela_app" && params.tool === "open_in_vela") {
+    if (open) {
       return textResponse(await host.open(contextOf(hostId, params), argumentsValue));
     }
-    if (params.namespace === "vela_browser" && params.tool === "get_tab_context") {
+    if (browser && params.tool === "get_tab_context") {
       return textResponse(await host.getTabContext(contextOf(hostId, params), argumentsValue));
     }
-    if (params.namespace === "vela_browser" && params.tool === "browser_use") {
+    if (browser && params.tool === "browser_use") {
       const result = await host.browserUse(contextOf(hostId, params), argumentsValue);
       const image = record(result);
       if (image?.["screenshot"] === true && typeof image["imageUrl"] === "string")

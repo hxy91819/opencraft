@@ -45,6 +45,9 @@ for the affected boundary rather than inventing another migration harness.
 
 ## Develop and validate
 
+Follow the [repository layout](docs/repository-layout.md) when adding files. Keep
+task-specific plans and findings with their topic rather than at the root.
+
 Read [AGENTS.md](AGENTS.md) for ownership and [the build matrix](docs/build-matrix.md)
 for the target platform. Use the pinned Node version in `.nvmrc` and `npm ci` in
 your own checkout. Run checks relevant to the changed contract; describe actual
@@ -83,11 +86,12 @@ an explicit migration proposal. Current host compatibility is API **1**, not a
 version-range resolver.
 
 Original contributions use Apache-2.0. Preserve third-party notices and record
-source provenance for imported/adapted material. Existing inventory entries are
-retained; the owner has removed source cleanup from the migration prerequisites.
-Run `node scripts/check-source-provenance.mjs` after changing that inventory.
-Do not include credentials, account data, local logs or
-private worktree paths in commits or reports.
+source provenance for imported/adapted material in the owning integration's
+source records and license notices. Describe imported material, its license and
+any notice changes in the pull request; repository publication does not establish
+redistribution rights. Follow [SECURITY.md](SECURITY.md) for the actual repository
+checks. Do not include credentials, account data, local logs or private worktree
+paths in commits or reports.
 
 For releases, use the repository's
 [release skill](.agents/skills/opencraft-release/SKILL.md) and exact-artifact
