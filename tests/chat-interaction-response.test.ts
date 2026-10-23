@@ -228,13 +228,13 @@ test("Codex onboarding dynamic tools retain their tool-specific response models"
     },
   } satisfies PendingInteraction;
   assert.deepEqual(createInteractionResponse(role, { type: "submit-setup-role", action: "submit", selectedRoles: ["engineering"] }), {
-    type: "setup-codex-step", requestId: "request-1", step: "role", action: "submit", selectedRoles: ["engineering"],
+    type: "setup-step", requestId: "request-1", step: "role", action: "submit", selectedRoles: ["engineering"],
   });
   assert.throws(() => createInteractionResponse(role, { type: "submit-setup-task", action: "skip", answers: {} }), /matching response/);
 
   const task = { ...role, params: { ...role.params, callId: "task", arguments: { step: "task" } } } satisfies PendingInteraction;
   assert.deepEqual(createInteractionResponse(task, { type: "submit-setup-task", action: "submit", answers: { first_task: ["Fix tests"] } }), {
-    type: "setup-codex-step", requestId: "request-1", step: "task", action: "submit",
+    type: "setup-step", requestId: "request-1", step: "task", action: "submit",
     answers: { first_task: { answers: ["Fix tests"] } },
   });
 });

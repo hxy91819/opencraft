@@ -134,14 +134,14 @@ export type InteractionResponse =
       readonly freeformAnswer: string | null;
     }
   | {
-      readonly type: "setup-codex-step";
+      readonly type: "setup-step";
       readonly requestId: string;
       readonly step: "role";
       readonly action: "submit" | "skip" | "dismiss";
       readonly selectedRoles: readonly string[];
     }
   | {
-      readonly type: "setup-codex-step";
+      readonly type: "setup-step";
       readonly requestId: string;
       readonly step: "task";
       readonly action: "submit" | "skip" | "dismiss";
@@ -150,7 +150,7 @@ export type InteractionResponse =
       >;
     }
   | {
-      readonly type: "setup-codex-step";
+      readonly type: "setup-step";
       readonly requestId: string;
       readonly step: "context";
       readonly action: "continue" | "skip" | "dismiss";

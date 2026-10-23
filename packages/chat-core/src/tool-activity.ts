@@ -8,7 +8,7 @@ import type {
   ToolCallTimelineBlock,
 } from "./timeline";
 import { deriveSubagentActivityPresentation, subagentInlineStatusLabel } from "./subagent-activity";
-import { isCodexAppThreadTool, threadHandoffToolResult } from "./codex-app-tools";
+import { isCodexAppThreadTool, threadHandoffToolResult } from "./thread-tools";
 import { parseSkillPath } from "./skill-path";
 import { formatDuration } from "./format-duration";
 
@@ -702,25 +702,25 @@ function threadOperationRole(block: ToolCallTimelineBlock): "transfer" | "poll" 
   return "change";
 }
 
-function codexAppSummaryKey(block: ToolCallTimelineBlock): string {
+function threadToolSummaryKey(block: ToolCallTimelineBlock): string {
   const input = object(block.input);
   if (block.name === "handoff_thread") {
-    return `codex_app:handoff_thread:${nonEmptyString(input?.threadId) ?? nonEmptyString(input?.thread_id) ?? ""}:${nonEmptyString(input?.destinationHostId) ?? nonEmptyString(input?.destination_host_id) ?? ""}`;
+    return `thread-tool:handoff_thread:${nonEmptyString(input?.threadId) ?? nonEmptyString(input?.thread_id) ?? ""}:${nonEmptyString(input?.destinationHostId) ?? nonEmptyString(input?.destination_host_id) ?? ""}`;
   }
   if (block.name === "get_handoff_status") {
-    return `codex_app:get_handoff_status:${nonEmptyString(input?.operationId) ?? nonEmptyString(input?.operation_id) ?? ""}`;
+    return `thread-tool:get_handoff_status:${nonEmptyString(input?.operationId) ?? nonEmptyString(input?.operation_id) ?? ""}`;
   }
   if (block.name === "fork_thread" || block.name === "create_thread") {
     const variant = nonEmptyString(input?.worktreeName)
       ?? nonEmptyString(input?.worktree_name)
       ?? nonEmptyString(input?.cwd)
       ?? "default";
-    return `codex_app:${block.name}:${variant}`;
+    return `thread-tool:${block.name}:${variant}`;
   }
-  return `codex_app:${block.name}`;
+  return `thread-tool:${block.name}`;
 }
 
-function codexAppToolArgumentsValid(block: ToolCallTimelineBlock): boolean {
+function threadToolArgumentsValid(block: ToolCallTimelineBlock): boolean {
   const input = object(block.input);
   if (block.name === "fork_thread") {
     if (input === null) return false;
@@ -743,13 +743,13 @@ function codexAppToolArgumentsValid(block: ToolCallTimelineBlock): boolean {
   return true;
 }
 
-function createCodexAppPresenter(): ToolActivityPresenter {
+function createThreadToolPresenter(): ToolActivityPresenter {
   return {
-    name: "codex-app-tools",
+    name: "thread-tools",
     priority: 100,
     matches: isCodexAppThreadTool,
     present(block, state) {
-      if (!codexAppToolArgumentsValid(block)) return null;
+      if (!threadToolArgumentsValid(block)) return null;
       const role = threadOperationRole(block);
       const input = object(block.input);
       const hasWorktree = block.name === "fork_thread"
@@ -777,7 +777,7 @@ function createCodexAppPresenter(): ToolActivityPresenter {
         icon: "agent",
         summary,
         detail: block.errorMessage,
-        summaryKey: codexAppSummaryKey(block),
+        summaryKey: threadToolSummaryKey(block),
         continuesLiveActivityBetweenCalls: role === "inspect" && effectiveState !== "failed" && effectiveState !== "interrupted",
         summaryOnlyInConversationGroup: role === "poll" && effectiveState !== "failed" && effectiveState !== "interrupted",
       };
@@ -785,9 +785,9 @@ function createCodexAppPresenter(): ToolActivityPresenter {
   };
 }
 
-function createCodexSettingsPresenter(): ToolActivityPresenter {
+function createSettingsToolPresenter(): ToolActivityPresenter {
   return {
-    name: "codex-settings-tools",
+    name: "settings-tools",
     priority: 110,
     matches: (block) => block.kind === "dynamic"
       && block.namespace === "codex_app"
@@ -804,7 +804,7 @@ function createCodexSettingsPresenter(): ToolActivityPresenter {
           : "Read settings";
       return {
         ...toolPresentationBase(block, state),
-        ...genericFields(`codex_app:${block.name}`),
+        ...genericFields(`thread-tool:${block.name}`),
         grouping: "groupable",
         icon: "wrench",
         summary,
@@ -923,9 +923,9 @@ function createHiddenSystemDynamicToolPresenter(): ToolActivityPresenter {
 export function createDefaultToolActivityPresenterRegistry(): ToolActivityPresenterRegistry {
   const registry = new ToolActivityPresenterRegistry();
   registry.register(createHiddenSystemDynamicToolPresenter());
-  registry.register(createCodexSettingsPresenter());
+  registry.register(createSettingsToolPresenter());
   registry.register(createChromeTabContextPresenter());
-  registry.register(createCodexAppPresenter());
+  registry.register(createThreadToolPresenter());
   registry.register(createClockSleepPresenter());
   registry.register(createDshHarnessPresenter());
   return registry;

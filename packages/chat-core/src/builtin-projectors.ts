@@ -21,7 +21,7 @@ import type {
   WebMcpToolSurfaceCall,
 } from "./timeline";
 import { summarizeTurnDiff } from "./turn-diff";
-import { deriveCodexUserMessageSemantics } from "./user-message";
+import { deriveUserMessageSemantics } from "./user-message";
 import { parseRealtimeDelegation, realtimeDelegationHandoffId } from "./realtime-transcript";
 import {
   TimelineProjectorRegistry,
@@ -297,7 +297,7 @@ function userMessageText(content: readonly UserMessageContentPart[]): string {
 function userMessageDisplayText(source: RecordValue, content: readonly UserMessageContentPart[], attachments: readonly UserMessageAttachment[], rawMessage: string): string {
   return string(source.displayMessage)
     ?? (attachments.length === 0 && content.length === 1 ? displayAsyncQuestionReply(rawMessage) : null)
-    ?? deriveCodexUserMessageSemantics(rawMessage).message;
+    ?? deriveUserMessageSemantics(rawMessage).message;
 }
 
 /** Shared visible text for message summaries; hidden context and attachments stay out. */
@@ -333,7 +333,7 @@ function userMessageMetadata(
   context: TimelineProjectionContext,
   rawMessage = userMessageText(content),
 ) {
-  const semantics = deriveCodexUserMessageSemantics(rawMessage);
+  const semantics = deriveUserMessageSemantics(rawMessage);
   const explicitSentAtMs = number(source.sentAtMs) ?? number(source.createdAtMs);
   const leadingUserMessage = context.itemIndex === firstUserMessageIndex(context);
   const hookBlocked = leadingUserMessage && (context.turn.hookStats?.blockedSources.length ?? 0) > 0;
@@ -1162,13 +1162,14 @@ export function createBuiltinTimelineProjectors(): readonly TimelineItemProjecto
         anchors: [{ type: "request", id: requestId }],
       };
     }),
-    simpleProjector("setup-codex-step", ["interaction:setup-codex-step"], (item, source) => {
+    // Accept old read-model input; all newly projected blocks use the owned type.
+    simpleProjector("setup-step", ["interaction:setup-step", "interaction:setup-codex-step"], (item, source) => {
       const requestId = string(source.requestId) ?? item.id;
       const step = source.step === "task" || source.step === "context" ? source.step : "role";
       return {
         lane: "interaction",
         block: {
-          ...blockBase(item, "setup-codex-step"),
+          ...blockBase(item, "setup-step"),
           requestId,
           targetItemId: string(source.itemId),
           method: "item/tool/call",

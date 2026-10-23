@@ -18,7 +18,7 @@ const NativeBuiltinRenderers = Object.assign(function NativeBuiltinRenderers(ctx
     ctx.chatNodeRenderers.register({ name: "native-link", priority: 0, kinds: ["link"], component: createNativeLinkRenderer(ctx.chatResourcePolicies) }),
     ctx.chatNodeRenderers.register({ name: "native-reference", priority: 0, kinds: ["reference"], component: createNativeReferenceRenderer(ctx.chatResourcePolicies) }),
     ctx.chatNodeRenderers.register({ name: "native-image", priority: 0, kinds: ["image"], component: createNativeImageRenderer(ctx.chatResourcePolicies) }),
-    ctx.chatDirectives.register({ name: "codex-file-citation", priority: 0, component: createNativeFileCitationRenderer(ctx.chatResourcePolicies) }),
+    ctx.chatDirectives.register({ name: "file-citation", priority: 0, component: createNativeFileCitationRenderer(ctx.chatResourcePolicies) }),
     registerStandardChatResourcePolicy(ctx.chatResourcePolicies, "native-standard-url"),
   ];
   ctx.effect(() => () => remove.reverse().forEach((dispose) => dispose()));

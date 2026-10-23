@@ -44,7 +44,7 @@ try {
   const web = await browser.newPage();
   await web.addInitScript("window.__name=value=>value;");
   await web.goto(url);
-  const code = web.locator(".codex-device-login__code strong");
+  const code = web.locator(".engine-device-login__code strong");
   await code.waitFor();
   await web.evaluate(() => Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true }));
   if (headed) {

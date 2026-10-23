@@ -9,7 +9,7 @@ export function chatFileCitationPresentation(node: ChatDocumentDirectiveNode): {
   readonly label: string;
   readonly target: string;
 } | null {
-  if (node.name !== "codex-file-citation") return null;
+  if (node.name !== "file-citation") return null;
   const path = node.attributes.path?.trim() ?? "";
   if (path.length === 0) return null;
   const start = node.attributes.line_range_start ?? node.attributes.lineRangeStart;

@@ -17,7 +17,7 @@ export function inspectActivityStyle(source, file = "fixture.scss") {
     for (let p = node.parent; p && p.type !== "root"; p = p.parent) selector = `${p.selector ?? ""} ${selector}`;
     return selector;
   };
-  const summarySelector = /thread-(?:activity-item__(?:header|summary)\b|compaction\b|thinking-placeholder\b|subagent-activity__(?:toggle|status)\b|codex-app-tool-row\b)/;
+  const summarySelector = /thread-(?:activity-item__(?:header|summary)\b|compaction\b|thinking-placeholder\b|subagent-activity__(?:toggle|status)\b|tool-row\b)/;
   const tree = scss.parse(source);
   tree.walkDecls(decl => {
     const selector = selectors(decl);

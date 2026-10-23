@@ -32,7 +32,7 @@ function contentParts(value: unknown): readonly unknown[] {
   return value == null ? [] : Array.isArray(value) ? value : [value];
 }
 
-export function codexUserMessageCompareKey(value: unknown): UserMessageCompareKey {
+export function userMessageCompareKey(value: unknown): UserMessageCompareKey {
   if (typeof value === "string") return { rawText: value, imageCount: 0 };
   const text: string[] = [];
   let imageCount = 0;
@@ -55,8 +55,8 @@ function clientOf(data: RecordValue): string | null {
 }
 
 function equalInput(left: unknown, right: unknown): boolean {
-  const a = codexUserMessageCompareKey(left);
-  const b = codexUserMessageCompareKey(right);
+  const a = userMessageCompareKey(left);
+  const b = userMessageCompareKey(right);
   return a.rawText === b.rawText && a.imageCount === b.imageCount;
 }
 
@@ -168,7 +168,7 @@ function localMessage(item: TimelineSourceItem, server?: TimelineSourceItem): Ti
   } };
 }
 
-export function normalizeCodexTurnUserMessages(turn: TimelineSourceTurn): TimelineSourceTurn {
+export function normalizeTurnUserMessages(turn: TimelineSourceTurn): TimelineSourceTurn {
   const params = record(turn.params);
   const canonical = params.input != null && !(Array.isArray(params.input) && params.input.length === 0);
   const client = string(params.clientUserMessageId) ?? string(params.clientId);

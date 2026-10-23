@@ -54,11 +54,11 @@ export function projectThreadViewForReplica(
 }
 
 export function threadViewReplicaScope(hostId: string, threadId: string): string {
-  return `codex-thread:${hostId}:${threadId}`;
+  return `appserver-thread:${hostId}:${threadId}`;
 }
 
 function threadViewEpoch(view: ThreadView): string {
-  return `codex-v3:${view.hostId}:${view.connectionGeneration}`;
+  return `appserver-v3:${view.hostId}:${view.connectionGeneration}`;
 }
 
 function measuredProjection(view: ThreadView, cache: WeakMap<object, ReplicaJsonValue>, onProjection?: (durationMs: number) => void) {

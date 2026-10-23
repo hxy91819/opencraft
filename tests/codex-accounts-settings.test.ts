@@ -47,14 +47,14 @@ test("Codex reset credits render authoritative totals, zero, and unknown for old
 });
 
 test("Codex account row shares touch-safe hover and a reachable actions target", () => {
-  const styles = readFileSync(new URL("../apps/workbench-web/src/styles/codex-accounts.scss", import.meta.url), "utf8");
+  const styles = readFileSync(new URL("../apps/workbench-web/src/styles/engine-accounts.scss", import.meta.url), "utf8");
   const settings = readFileSync(new URL("../apps/workbench-web/src/styles/settings-panel.scss", import.meta.url), "utf8");
   const interaction = readFileSync(new URL("../packages/design-system/src/interaction-mixins.web.scss", import.meta.url), "utf8");
   const controls = readFileSync(new URL("../packages/design-system/src/controls.web.scss", import.meta.url), "utf8");
   const menu = readFileSync(new URL("../packages/design-system/src/menu.web.scss", import.meta.url), "utf8");
-  assert.match(styles, /\.codex-account__row\s*\{[\s\S]*?@include controls\.hover-capable/u);
+  assert.match(styles, /\.engine-account__row\s*\{[\s\S]*?@include controls\.hover-capable/u);
   assert.doesNotMatch(styles, /&:hover,\s*&:focus-within\s*\{\s*background/u);
-  assert.match(styles, /:root\[data-touch-interaction\] \.settings-icon-button\.codex-account__menu-trigger\s*\{\s*opacity: 1;/u);
+  assert.match(styles, /:root\[data-touch-interaction\] \.settings-icon-button\.engine-account__menu-trigger\s*\{\s*opacity: 1;/u);
   assert.match(settings, /@media \(any-pointer: coarse\), \(hover: none\)[\s\S]*?\.settings-control-button\.settings-icon-button\s*\{ width: 44px; height: 44px; \}/u);
   assert.match(interaction, /@mixin hover-capable\s*\{\s*@media \(any-hover: hover\) and \(any-pointer: fine\)[\s\S]*?:root:not\(\[data-touch-interaction\]\) &/u);
   assert.match(menu, /@include controls\.hover-capable/u);
@@ -90,10 +90,10 @@ test("Codex account Settings renders only redacted account state and device code
   const render = () => renderToStaticMarkup(createElement(View, {} as any));
   assert.match(render(), /u\*\*\*er@e\*\*\*\.com/);
   assert.doesNotMatch(render(), /user@example\.com/);
-  assert.match(render(), /codex-account__plan[^>]*>Pro/);
-  assert.match(render(), /codex-account__status-copy[^>]*>可用/);
+  assert.match(render(), /engine-account__plan[^>]*>Pro/);
+  assert.match(render(), /engine-account__status-copy[^>]*>可用/);
   assert.match(render(), /<small>5H<\/small><strong>25%<\/strong><time[^>]*dateTime="2026-09-26T10:00:00\.000Z"[^>]*>/);
-  assert.match(render(), /<small>7D<\/small><strong>50%<\/strong><span class="codex-account__reset">重置未知<\/span>/);
+  assert.match(render(), /<small>7D<\/small><strong>50%<\/strong><span class="engine-account__reset">重置未知<\/span>/);
   assert.match(render(), /添加账户/);
   assert.equal([...render().matchAll(/>添加账户</gu)].length, 1);
   assert.doesNotMatch(render(), /settings-control-row/);

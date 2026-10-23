@@ -205,7 +205,7 @@ export function createV3ConversationNavigationSource(
 
   const generation = (): string | null => {
     const view = config.port.getView();
-    return view === null ? null : `codex-v3:${view.hostId}:${view.historyCheckpoint ? `${view.historyCheckpoint.epoch}:${view.historyCheckpoint.nextSeq}` : view.connectionGeneration}`;
+    return view === null ? null : `appserver-v3:${view.hostId}:${view.historyCheckpoint ? `${view.historyCheckpoint.epoch}:${view.historyCheckpoint.nextSeq}` : view.connectionGeneration}`;
   };
 
   const anchors = (): readonly ConversationNavigationAnchor[] => {

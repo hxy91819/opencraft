@@ -86,7 +86,7 @@ The AppServer V3 compatibility path uses View hydration rather than server-side
 - reconnect marks mounted conversations `needs_resume`.
 
 `createThreadViewReplicaSource` therefore uses
-`codex-v3:<hostId>:<connectionGeneration>` as a compatibility epoch. Adjacent
+`appserver-v3:<hostId>:<connectionGeneration>` as a compatibility epoch. Adjacent
 local View revisions can feed the common ReplicaClient reader shape. They are
 not V4 Authority sequence numbers. A missed revision or generation change
 forces a snapshot because Codex has no retained server Journal to replay.

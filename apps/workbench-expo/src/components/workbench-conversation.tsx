@@ -9,7 +9,7 @@ import {
   skillReadPresentation,
   type ConversationDetailLevel,
   createDefaultToolActivityPresenterRegistry,
-  codexAppThreadNavigationTarget,
+  threadToolNavigationTarget,
   createdThreadToolResult,
   createMcpElicitationDraft,
   createUserInputQuestionDrafts,
@@ -767,13 +767,13 @@ function NativeCreatedThreadToolCard({ result }: {
   );
 }
 
-function NativeCodexAppThreadToolRow({ block, presentation }: {
+function NativeThreadToolRow({ block, presentation }: {
   readonly block: Extract<TimelineBlock, { type: "tool-call" }>;
   readonly presentation: ToolActivityPresentation;
 }) {
   const { theme } = useWorkbenchTheme();
   const openThread = useContext(NativeThreadNavigationContext);
-  const target = codexAppThreadNavigationTarget(block);
+  const target = threadToolNavigationTarget(block);
   const canOpen = target !== null && openThread !== null;
   const handoff = threadHandoffToolResult(block);
   const handoffSteps = useMemo(() => handoff === null ? [] : visibleThreadHandoffSteps(handoff), [handoff]);
@@ -785,10 +785,10 @@ function NativeCodexAppThreadToolRow({ block, presentation }: {
           accessibilityRole="button"
           accessibilityState={{ expanded: handoffOpen }}
           onPress={() => setHandoffOpen(!handoffOpen)}
-          style={styles.codexAppToolRow}
+          style={styles.threadToolRow}
         >
           <Bot color={theme.color.icon.secondary} size={theme.metrics.control.icon} strokeWidth={1.8} />
-          <NativeCadencedText active={presentation.state === "running"} numberOfLines={1} style={styles.codexAppToolTitle}>{presentation.summary}</NativeCadencedText>
+          <NativeCadencedText active={presentation.state === "running"} numberOfLines={1} style={styles.threadToolTitle}>{presentation.summary}</NativeCadencedText>
           <ChevronRight color={theme.color.icon.tertiary} size={theme.metrics.control.iconSmall} style={handoffOpen ? styles.chevronOpen : undefined} />
         </InteractiveSurface>
         {handoffOpen ? <View style={styles.handoffSteps}>
@@ -812,7 +812,7 @@ function NativeCodexAppThreadToolRow({ block, presentation }: {
   }
   const content = <>
     <Bot color={theme.color.icon.secondary} size={theme.metrics.control.icon} strokeWidth={1.8} />
-    <NativeCadencedText active={presentation.state === "running"} numberOfLines={1} style={styles.codexAppToolTitle}>{presentation.summary}</NativeCadencedText>
+    <NativeCadencedText active={presentation.state === "running"} numberOfLines={1} style={styles.threadToolTitle}>{presentation.summary}</NativeCadencedText>
   </>;
   return canOpen ? (
     <InteractiveSurface
@@ -821,9 +821,9 @@ function NativeCodexAppThreadToolRow({ block, presentation }: {
       onPress={() => {
         if (target !== null) openThread?.(target.threadId, target.displayName);
       }}
-      style={styles.codexAppToolRow}
+      style={styles.threadToolRow}
     >{content}</InteractiveSurface>
-  ) : <View style={styles.codexAppToolRow}>{content}</View>;
+  ) : <View style={styles.threadToolRow}>{content}</View>;
 }
 
 function NativeInspectedImage({ path, blockId, index }: { readonly path: string; readonly blockId: string; readonly index: number }) {
@@ -924,7 +924,7 @@ function ToolCallBlock({ block }: { readonly block: Extract<TimelineBlock, { typ
     : hostIcon;
   if (createdThread !== null && !hasCustomContent) return <NativeCreatedThreadToolCard result={createdThread} />;
   if (isCodexAppThreadTool(block) && !hasCustomContent) {
-    return <NativeCodexAppThreadToolRow block={block} presentation={presentation} />;
+    return <NativeThreadToolRow block={block} presentation={presentation} />;
   }
   return (
     <>
@@ -1324,12 +1324,12 @@ function NativeOptionPickerBlock({ block }: { block: Extract<TimelineBlock, { ty
   );
 }
 
-function NativeSetupStepBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-codex-step" }> }) {
+function NativeSetupStepBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-step" }> }) {
   if (block.step === "context") return <NativeSetupContextPickerBlock block={block} />;
   return block.step === "role" ? <NativeSetupRolePickerBlock block={block} /> : <NativeSetupTaskPickerBlock block={block} />;
 }
 
-function NativeSetupRolePickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-codex-step" }> }) {
+function NativeSetupRolePickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-step" }> }) {
   const respond = useContext(NativeInteractionContext);
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -1349,7 +1349,7 @@ function NativeSetupRolePickerBlock({ block }: { block: Extract<TimelineBlock, {
   </View>;
 }
 
-function NativeSetupTaskPickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-codex-step" }> }) {
+function NativeSetupTaskPickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-step" }> }) {
   const respond = useContext(NativeInteractionContext);
   const [selected, setSelected] = useState<string | null>(null);
   const [other, setOther] = useState("");
@@ -1369,7 +1369,7 @@ function NativeSetupTaskPickerBlock({ block }: { block: Extract<TimelineBlock, {
   </View>;
 }
 
-function NativeSetupContextPickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-codex-step" | "setup-context-picker" }> }) {
+function NativeSetupContextPickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-step" | "setup-context-picker" }> }) {
   const respond = useContext(NativeInteractionContext);
   const catalog = useContext(NativeSetupContextCatalog);
   const [selected, setSelected] = useState<readonly string[]>(() => catalog.sources.filter((source) => source.connected).map((source) => source.id));
@@ -1619,7 +1619,7 @@ export function WorkbenchPendingInteractionPanel({
                 ? <NativeQuestionBlock block={block} />
                 : block.type === "option-picker"
                   ? <NativeOptionPickerBlock block={block} />
-                  : block.type === "setup-codex-step"
+                  : block.type === "setup-step"
                     ? <NativeSetupStepBlock block={block} />
                     : block.type === "setup-context-picker"
                       ? <NativeSetupContextPickerBlock block={block} />
@@ -1633,7 +1633,7 @@ export function WorkbenchPendingInteractionPanel({
 }
 
 function NativeInteractionTimelineStatus({ block }: { readonly block: AttachedInteractionTimelineBlock }) {
-  if (block.type === "question" || block.type === "option-picker" || block.type === "setup-codex-step" || block.type === "setup-context-picker") return null;
+  if (block.type === "question" || block.type === "option-picker" || block.type === "setup-step" || block.type === "setup-context-picker") return null;
   if (block.state === "pending") {
     return <View accessibilityLiveRegion="polite" style={styles.awaitingApproval}><NativeCadencedText active style={styles.awaitingApprovalText}>Awaiting approval</NativeCadencedText></View>;
   }
@@ -2279,8 +2279,8 @@ const styles = StyleSheet.create((theme) => ({
   createdThreadTitle: { color: theme.color.text.primary, ...theme.platformTypography.label, fontWeight: typographyRole("sidebarSection", "native").fontWeight },
   createdThreadAction: { flexDirection: "row", alignItems: "center", gap: theme.spacing[1] },
   createdThreadActionText: { color: theme.color.text.tertiary, ...theme.platformTypography.sidebarMeta },
-  codexAppToolRow: { minHeight: theme.metrics.toolbar.touchTarget, maxWidth: "100%", flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: theme.spacing[2], paddingHorizontal: theme.spacing[1], borderRadius: theme.radii.sm },
-  codexAppToolTitle: { minWidth: 0, flexShrink: 1, color: theme.color.text.tertiary, ...theme.platformTypography.label },
+  threadToolRow: { minHeight: theme.metrics.toolbar.touchTarget, maxWidth: "100%", flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: theme.spacing[2], paddingHorizontal: theme.spacing[1], borderRadius: theme.radii.sm },
+  threadToolTitle: { minWidth: 0, flexShrink: 1, color: theme.color.text.tertiary, ...theme.platformTypography.label },
   handoffTool: { gap: theme.spacing[1] },
   handoffSteps: { gap: theme.spacing[2], paddingLeft: theme.spacing[5], paddingBottom: theme.spacing[1] },
   handoffStep: { minHeight: 22, flexDirection: "row", alignItems: "center", gap: theme.spacing[2] },

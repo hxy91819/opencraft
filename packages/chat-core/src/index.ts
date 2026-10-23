@@ -4,7 +4,7 @@ export * from "./conversation-presentation";
 export * from "./agent-activity";
 export * from "./approval-request";
 export * from "./builtin-projectors";
-export * from "./codex-app-tools";
+export * from "./thread-tools";
 export * from "./automatic-approval-review";
 export * from "./async-questions";
 export * from "./automation-update";

@@ -2,18 +2,18 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { DatabaseSync } from "node:sqlite";
 import { openManagedDatabase, createSchemaValidator, type DatabaseOutcome } from "@opencraft/sqlite-node";
-import { CODEX_HOST_TOKEN_USAGE } from "./token-usage-schema.js";
-import { CODEX_HOST_TOKEN_USAGE_RUNTIME } from "./token-usage-runtime-schema.js";
-import { CODEX_HOST_TOKEN_USAGE_COUNTERS } from "./token-usage-counter-schema.js";
-import { CODEX_HOST_TOKEN_USAGE_QUERY } from "./token-usage-query-schema.js";
-import { CODEX_HOST_TOKEN_USAGE_ATTEMPTS } from "./token-usage-attempt-schema.js";
-import { CODEX_HOST_TOKEN_USAGE_ACTORS } from "./token-usage-actor-schema.js";
-import { CODEX_HOST_TOKEN_USAGE_FROZEN } from "./token-usage-frozen-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE } from "./token-usage-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_RUNTIME } from "./token-usage-runtime-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_COUNTERS } from "./token-usage-counter-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_QUERY } from "./token-usage-query-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_ATTEMPTS } from "./token-usage-attempt-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_ACTORS } from "./token-usage-actor-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_FROZEN } from "./token-usage-frozen-schema.js";
 
 // The published Host migrations remain unchanged. This new physical owner has
 // its own version axis and copies only metering data from the former owner.
-const SCHEMA = CODEX_HOST_TOKEN_USAGE + CODEX_HOST_TOKEN_USAGE_RUNTIME + CODEX_HOST_TOKEN_USAGE_COUNTERS
-  + CODEX_HOST_TOKEN_USAGE_QUERY + CODEX_HOST_TOKEN_USAGE_ATTEMPTS + CODEX_HOST_TOKEN_USAGE_ACTORS + CODEX_HOST_TOKEN_USAGE_FROZEN + `
+const SCHEMA = OPENCRAFT_HOST_TOKEN_USAGE + OPENCRAFT_HOST_TOKEN_USAGE_RUNTIME + OPENCRAFT_HOST_TOKEN_USAGE_COUNTERS
+  + OPENCRAFT_HOST_TOKEN_USAGE_QUERY + OPENCRAFT_HOST_TOKEN_USAGE_ATTEMPTS + OPENCRAFT_HOST_TOKEN_USAGE_ACTORS + OPENCRAFT_HOST_TOKEN_USAGE_FROZEN + `
 CREATE TABLE token_usage_legacy_import (
   singleton INTEGER PRIMARY KEY CHECK(singleton=1), legacy_revision_json TEXT NOT NULL
 ) STRICT;

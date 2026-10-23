@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { DatabaseSync } from "node:sqlite";
 import { openManagedDatabase, SqliteLifecycleError } from "@opencraft/sqlite-node";
-import { OpenCraftHostStateDatabase, CODEX_HOST_STATE_MIGRATIONS, CODEX_HOST_STATE_BASELINE, CODEX_HOST_BOT_STATE, CODEX_HOST_IOA_CREATORS, CODEX_HOST_SENDER_ORIGINS } from "../apps/opencraft-daemon/src/opencraft-host-state-database";
+import { OpenCraftHostStateDatabase, OPENCRAFT_HOST_STATE_MIGRATIONS, OPENCRAFT_HOST_STATE_BASELINE, OPENCRAFT_HOST_BOT_STATE, OPENCRAFT_HOST_IOA_CREATORS, OPENCRAFT_HOST_SENDER_ORIGINS } from "../apps/opencraft-daemon/src/opencraft-host-state-database";
 import { DurableThreadCatalog } from "../apps/opencraft-daemon/src/durable-thread-catalog";
 
 const row = (id: string, updatedAt: number, name = id) => ({ id, cwd: "/fixture", updatedAt, createdAt: 1, recencyAt: null, name,
@@ -22,10 +22,10 @@ test("v4 to v5 migration preserves every existing row and checksum history; tamp
   const root = await mkdtemp(join(tmpdir(), "oc-catalog-upgrade-")), path = join(root, "codex-host-queue.sqlite");
   try {
     const { database: old } = openManagedDatabase({ path, migrations: [
-      {version: 1, name: "codex-host-state", sql: CODEX_HOST_STATE_BASELINE},
-      {version: 2, name: "codex-bot-state", sql: CODEX_HOST_BOT_STATE},
-      {version: 3, name: "ioa-thread-creators", sql: CODEX_HOST_IOA_CREATORS},
-      {version: 4, name: "message-sender-origins", sql: CODEX_HOST_SENDER_ORIGINS},
+      {version: 1, name: "codex-host-state", sql: OPENCRAFT_HOST_STATE_BASELINE},
+      {version: 2, name: "codex-bot-state", sql: OPENCRAFT_HOST_BOT_STATE},
+      {version: 3, name: "ioa-thread-creators", sql: OPENCRAFT_HOST_IOA_CREATORS},
+      {version: 4, name: "message-sender-origins", sql: OPENCRAFT_HOST_SENDER_ORIGINS},
     ] });
     old.exec(`INSERT INTO message_senders VALUES('t','m','{"kind":"employee","loginName":"alice"}',1);
       INSERT INTO ioa_thread_creators VALUES('t','alice'); INSERT INTO ioa_message_presence VALUES('t','m','alice');
@@ -38,7 +38,7 @@ test("v4 to v5 migration preserves every existing row and checksum history; tamp
     assert.equal(owner.outcome.status, "migrated"); assert.ok(owner.outcome.backupPath); assert.deepEqual(owner.outcome.movedAsidePaths, []);
     assert.deepEqual(tables.map(table => owner.database.prepare(`SELECT * FROM ${table}`).all()), before);
     assert.deepEqual(owner.database.prepare("SELECT * FROM schema_migrations WHERE version<=4 ORDER BY version").all(), history);
-    assert.equal(owner.database.prepare("SELECT MAX(version) AS n FROM schema_migrations").get()?.n, CODEX_HOST_STATE_MIGRATIONS.at(-1)!.version);
+    assert.equal(owner.database.prepare("SELECT MAX(version) AS n FROM schema_migrations").get()?.n, OPENCRAFT_HOST_STATE_MIGRATIONS.at(-1)!.version);
     owner.close(); owner = new OpenCraftHostStateDatabase(root); assert.equal(owner.outcome.status, "up-to-date"); owner.close();
     const tamper = new DatabaseSync(path); tamper.exec("UPDATE schema_migrations SET checksum='tampered' WHERE version=4"); tamper.close();
     assert.throws(() => new OpenCraftHostStateDatabase(root), e => e instanceof SqliteLifecycleError && e.kind === "history-mismatch");

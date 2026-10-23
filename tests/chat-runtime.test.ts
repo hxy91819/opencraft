@@ -24,7 +24,7 @@ class FakeReplica implements ConversationReplicaReader {
     this.value = {
       revision: 1,
       storageKey: "fixture",
-      scope: "codex-thread:local:thread-one",
+      scope: "appserver-thread:local:thread-one",
       phase: authoritative ? "live" : "painted",
       authoritative,
       epoch: "epoch-one",
@@ -1033,14 +1033,14 @@ test("Conversation Runtime projects every Codex onboarding tool without capturin
       .filter(
         (block) =>
           block.type === "question" ||
-          block.type === "setup-codex-step" ||
+          block.type === "setup-step" ||
           block.type === "setup-context-picker",
       );
     assert.deepEqual(
       interactions.map((block) => block.type),
       [
         "question",
-        "setup-codex-step",
+        "setup-step",
         "setup-context-picker",
         "setup-context-picker",
       ],

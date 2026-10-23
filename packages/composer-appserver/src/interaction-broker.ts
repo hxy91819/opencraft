@@ -138,7 +138,7 @@ function responseResult(
           freeformAnswer: response.freeformAnswer,
         });
       }
-      if (response.type === "setup-codex-step" && (pending.interaction.params as { readonly tool?: unknown }).tool === "setup_codex_step") {
+      if (response.type === "setup-step" && (pending.interaction.params as { readonly tool?: unknown }).tool === "setup_codex_step") {
         const args = (pending.interaction.params as { readonly arguments?: unknown }).arguments;
         if (!isRecord(args) || args.step !== response.step) break;
         if (response.step === "role") return dynamicToolContent({

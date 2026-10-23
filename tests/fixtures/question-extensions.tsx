@@ -51,7 +51,7 @@ function Demo() {
   useEffect(() => { if (!mounted) { setGeneration(value => value + 1); setMounted(true); } }, [mounted]);
   (window as any).questionFixture = {
     showSetup: (kind: "role" | "task" | "context") => {
-      const next = { id: `setup-${kind}`, type: kind === "context" ? "setup-context-picker" : "setup-codex-step", step: kind,
+      const next = { id: `setup-${kind}`, type: kind === "context" ? "setup-context-picker" : "setup-step", step: kind,
         requestId: `setup-${kind}-${setupSequence.current++}`, sourceItemIds: [], method: "item/tool/call", state: "pending" };
       lastBlock.current = next; setCurrent(next); return next.requestId;
     },

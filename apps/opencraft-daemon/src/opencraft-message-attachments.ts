@@ -4,7 +4,7 @@ import { openManagedDatabase, createSchemaValidator, createMissingLegacyObjects,
 
 import type { AttachmentRef } from "@opencraft/appserver-protocol";
 
-export const CODEX_MESSAGE_ATTACHMENTS_BASELINE = `
+export const OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE = `
 CREATE TABLE codex_message_attachments (
         thread_id TEXT NOT NULL,
         client_message_id TEXT NOT NULL,
@@ -24,8 +24,8 @@ export class OpenCraftMessageAttachments {
 
   constructor(dataDirectory: string) {
     const path = join(dataDirectory, "codex-message-attachments.sqlite");
-    const managed = openManagedDatabase({ path, legacyPolicy: "reject-unknown", validateSchema: createSchemaValidator(CODEX_MESSAGE_ATTACHMENTS_BASELINE), migrations: [{ version: 1, name: "codex-message-attachments", sql: CODEX_MESSAGE_ATTACHMENTS_BASELINE }],
-      legacyMigration: createMissingLegacyObjects(CODEX_MESSAGE_ATTACHMENTS_BASELINE) });
+    const managed = openManagedDatabase({ path, legacyPolicy: "reject-unknown", validateSchema: createSchemaValidator(OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE), migrations: [{ version: 1, name: "codex-message-attachments", sql: OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE }],
+      legacyMigration: createMissingLegacyObjects(OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE) });
     this.db = managed.database;
     this.outcome = managed.outcome;
   }

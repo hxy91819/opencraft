@@ -247,7 +247,7 @@ test("file citations and mentions share the same display target on Web and Nativ
   const citation: Extract<ChatDocumentNode, { kind: "directive" }> = {
     ...base,
     kind: "directive",
-    name: "codex-file-citation",
+    name: "file-citation",
     attributes: { path: "src/docs/readme.md", line_range_start: "12", line_range_end: "18" },
     raw: "【src/docs/readme.md†L12-L18】",
   };

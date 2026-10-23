@@ -79,7 +79,7 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.theme === 'light');
   await codex.getByRole('button', { name: 'Codex', exact: true }).click();
   await codex.getByRole('button', { name: 'Codex 账户', exact: true }).click();
-  await page.locator('.codex-account-list').waitFor();
+  await page.locator('.engine-account-list').waitFor();
   assert.match(await page.locator('header[aria-label="配置所属执行端"]').innerText(), /Codex/);
   await codex.getByRole('button', { name: 'Codex', exact: true }).click();
   await page.setViewportSize({ width: 1000, height: 800 });

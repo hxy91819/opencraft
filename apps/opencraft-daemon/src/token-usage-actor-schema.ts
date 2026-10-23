@@ -1,5 +1,5 @@
 /** v11: rebuildable actor/day aggregates; authoritative allocations are unchanged. */
-export const CODEX_HOST_TOKEN_USAGE_ACTORS = `
+export const OPENCRAFT_HOST_TOKEN_USAGE_ACTORS = `
 CREATE TABLE token_usage_actor_daily (
  server_id TEXT NOT NULL, actor_id TEXT NOT NULL, day TEXT NOT NULL,
  model_filter INTEGER NOT NULL CHECK(model_filter IN (0,1)), model_key TEXT NOT NULL,

@@ -1,5 +1,5 @@
 /** v10: delivery attempts are metadata, never proof of native admission. */
-export const CODEX_HOST_TOKEN_USAGE_ATTEMPTS = `
+export const OPENCRAFT_HOST_TOKEN_USAGE_ATTEMPTS = `
 CREATE TABLE token_usage_attempts (
  server_id TEXT NOT NULL, attempt_id TEXT NOT NULL, thread_id TEXT NOT NULL,
  input_id TEXT NOT NULL, mode TEXT NOT NULL CHECK(mode IN ('start','steer')),

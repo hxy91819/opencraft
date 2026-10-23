@@ -4,7 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdtemp, rm, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { OpenCraftHostStateDatabase, CODEX_HOST_STATE_BASELINE, CODEX_HOST_BOT_STATE } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { OpenCraftHostStateDatabase, OPENCRAFT_HOST_STATE_BASELINE, OPENCRAFT_HOST_BOT_STATE } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
 
 async function fixture(run: (directory: string) => Promise<void>) {
   const root = await mkdtemp(join(tmpdir(), "oc-bot-owner-"));
@@ -18,7 +18,7 @@ const layouts = [
 for (const [index, columns] of layouts.entries()) test(`known deployed Bot layout ${index} preserves rooms, receipts and slots`, async () => fixture(async root => {
   const path = join(root, "codex-host-queue.sqlite");
   const old = new DatabaseSync(path);
-  old.exec(CODEX_HOST_STATE_BASELINE + CODEX_HOST_BOT_STATE.replace(/CREATE TABLE codex_bot_rooms \([\s\S]*?\);/, `CREATE TABLE codex_bot_rooms (${columns});`));
+  old.exec(OPENCRAFT_HOST_STATE_BASELINE + OPENCRAFT_HOST_BOT_STATE.replace(/CREATE TABLE codex_bot_rooms \([\s\S]*?\);/, `CREATE TABLE codex_bot_rooms (${columns});`));
   old.prepare("INSERT INTO codex_bot_rooms(thread_id,created_ms) VALUES (?,?)").run("room", 42);
   if (index) old.exec("UPDATE codex_bot_rooms SET native_thread_id='native',cwd='/synthetic',draft=1");
   old.exec("INSERT INTO codex_bot_commands VALUES ('send:room:pending','fp',NULL); INSERT INTO codex_bot_message_slots VALUES('room','turn','agentMessage',0,'item');");
@@ -45,14 +45,14 @@ for (const [index, columns] of layouts.entries()) test(`known deployed Bot layou
 
 test("unknown Bot schema remains rejected without moving user data", async () => fixture(async root => {
   const path = join(root, "codex-host-queue.sqlite"), db = new DatabaseSync(path);
-  db.exec(CODEX_HOST_STATE_BASELINE + CODEX_HOST_BOT_STATE + "CREATE INDEX unknown_room_policy ON codex_bot_rooms(cwd)"); db.close();
+  db.exec(OPENCRAFT_HOST_STATE_BASELINE + OPENCRAFT_HOST_BOT_STATE + "CREATE INDEX unknown_room_policy ON codex_bot_rooms(cwd)"); db.close();
   assert.throws(() => new OpenCraftHostStateDatabase(root), (e: any) => e.kind === "unsupported-legacy");
   assert.ok(!(await readdir(root)).some(name => name.includes(".legacy-")));
 }));
 
 test("known room conversion failure rolls back records and leaves a pre-write snapshot", async t => fixture(async root => {
   const path = join(root, "codex-host-queue.sqlite"), db = new DatabaseSync(path);
-  db.exec(CODEX_HOST_STATE_BASELINE + CODEX_HOST_BOT_STATE.replace(/CREATE TABLE codex_bot_rooms \([\s\S]*?\);/, `CREATE TABLE codex_bot_rooms (${layouts[0]});`));
+  db.exec(OPENCRAFT_HOST_STATE_BASELINE + OPENCRAFT_HOST_BOT_STATE.replace(/CREATE TABLE codex_bot_rooms \([\s\S]*?\);/, `CREATE TABLE codex_bot_rooms (${layouts[0]});`));
   db.exec("INSERT INTO codex_bot_rooms VALUES('room',42)"); db.close();
   const original = DatabaseSync.prototype.exec;
   const mock = t.mock.method(DatabaseSync.prototype, "exec", function (this: DatabaseSync, sql: string) {

@@ -78,12 +78,12 @@ function relativeDate(value: number | null): string {
 function QuotaSlot({ window }: { readonly window: CodexAccountView["limitWindows"][number] }) {
   const percentage = window.utilization === null ? null : Math.round(window.utilization * 100);
   const tone = percentage === null ? "unknown" : percentage >= 90 ? "danger" : percentage >= 75 ? "warning" : "neutral";
-  return <span className="codex-account__quota" data-tone={tone}>
+  return <span className="engine-account__quota" data-tone={tone}>
     <small>{windowLabel(window.windowMinutes, window.slot)}</small>
     <strong>{percentage === null ? "—" : `${percentage}%`}</strong>
     {window.resetAt === null
-      ? <span className="codex-account__reset">重置未知</span>
-      : <time className="codex-account__reset" dateTime={new Date(window.resetAt).toISOString()} aria-label={`${windowLabel(window.windowMinutes, window.slot)} 额度于 ${formatDate(window.resetAt)} 重置`}>重置 {formatQuotaReset(window.resetAt)}</time>}
+      ? <span className="engine-account__reset">重置未知</span>
+      : <time className="engine-account__reset" dateTime={new Date(window.resetAt).toISOString()} aria-label={`${windowLabel(window.windowMinutes, window.slot)} 额度于 ${formatDate(window.resetAt)} 重置`}>重置 {formatQuotaReset(window.resetAt)}</time>}
   </span>;
 }
 
@@ -99,27 +99,27 @@ function AccountActionsMenu({ account, index, total, pending, onMove, onRefresh,
 }) {
   return <DropdownMenu.Root modal={false}>
     <DropdownMenu.Trigger asChild>
-      <SettingsIconButton className="codex-account__menu-trigger" label={`${maskCodexAccountIdentity(account.label)} 的操作`} disabled={pending}>
+      <SettingsIconButton className="engine-account__menu-trigger" label={`${maskCodexAccountIdentity(account.label)} 的操作`} disabled={pending}>
         <MoreHorizontal size={16} />
       </SettingsIconButton>
     </DropdownMenu.Trigger>
     <DropdownMenu.Portal>
-      <DropdownMenu.Content className="codex-account-menu" align="end" sideOffset={5} collisionPadding={12}>
-        <DropdownMenu.Item className="codex-account-menu__item" disabled={pending} onSelect={onToggle}>
+      <DropdownMenu.Content className="engine-account-menu" align="end" sideOffset={5} collisionPadding={12}>
+        <DropdownMenu.Item className="engine-account-menu__item" disabled={pending} onSelect={onToggle}>
           {account.enabled ? <X size={15} /> : <Check size={15} />}
           {account.enabled ? "停用账户" : "启用账户"}
         </DropdownMenu.Item>
-        <DropdownMenu.Item className="codex-account-menu__item" disabled={pending || index === 0} onSelect={() => onMove(-1)}>
+        <DropdownMenu.Item className="engine-account-menu__item" disabled={pending || index === 0} onSelect={() => onMove(-1)}>
           <ArrowUp size={15} />上移
         </DropdownMenu.Item>
-        <DropdownMenu.Item className="codex-account-menu__item" disabled={pending || index === total - 1} onSelect={() => onMove(1)}>
+        <DropdownMenu.Item className="engine-account-menu__item" disabled={pending || index === total - 1} onSelect={() => onMove(1)}>
           <ArrowDown size={15} />下移
         </DropdownMenu.Item>
-        <DropdownMenu.Item className="codex-account-menu__item" disabled={pending || !account.enabled} onSelect={onRefresh}>
+        <DropdownMenu.Item className="engine-account-menu__item" disabled={pending || !account.enabled} onSelect={onRefresh}>
           <RefreshCw size={15} />刷新用量
         </DropdownMenu.Item>
-        <DropdownMenu.Separator className="codex-account-menu__separator" />
-        <DropdownMenu.Item className="codex-account-menu__item codex-account-menu__item--danger" disabled={pending} onSelect={onRemove}>
+        <DropdownMenu.Separator className="engine-account-menu__separator" />
+        <DropdownMenu.Item className="engine-account-menu__item engine-account-menu__item--danger" disabled={pending} onSelect={onRemove}>
           <Trash2 size={15} />移除账户
         </DropdownMenu.Item>
       </DropdownMenu.Content>
@@ -156,33 +156,33 @@ function AccountRow({ account, index, total, service, credentialLocation }: {
     run("order", () => service.reorder(order));
   };
   return <>
-    <article className="codex-account" data-enabled={account.enabled} data-status={account.status} aria-busy={pending !== null}>
-      <div className="codex-account__row">
-        <button className="codex-account__disclosure" type="button" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded(value => !value)}>
-          <span className="codex-account__status-dot" aria-hidden="true" />
-          <span className="codex-account__identity">
-            <span className="codex-account__name-line">
+    <article className="engine-account" data-enabled={account.enabled} data-status={account.status} aria-busy={pending !== null}>
+      <div className="engine-account__row">
+        <button className="engine-account__disclosure" type="button" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded(value => !value)}>
+          <span className="engine-account__status-dot" aria-hidden="true" />
+          <span className="engine-account__identity">
+            <span className="engine-account__name-line">
               <strong>{maskCodexAccountIdentity(account.label)}</strong>
-              <span className="codex-account__plan">{planLabel(account)}</span>
+              <span className="engine-account__plan">{planLabel(account)}</span>
             </span>
-            <span className="codex-account__status-copy">
+            <span className="engine-account__status-copy">
               {account.credentialConfigured ? accountStatusLabel(account.status) : "凭据不可用"}
               <span aria-hidden="true">·</span>
               {relativeDate(account.lastUsedAt)}
               {pending === "refresh" ? <><span aria-hidden="true">·</span>正在刷新…</> : null}
             </span>
           </span>
-          <span className="codex-account__quotas" aria-label="额度使用情况">
-            {account.limitWindows.length === 0 ? <span className="codex-account__quota" data-tone="unknown"><small>额度</small><strong>—</strong></span>
+          <span className="engine-account__quotas" aria-label="额度使用情况">
+            {account.limitWindows.length === 0 ? <span className="engine-account__quota" data-tone="unknown"><small>额度</small><strong>—</strong></span>
               : account.limitWindows.map(window => <QuotaSlot key={window.slot} window={window} />)}
-            <span className="codex-account__quota codex-account__reset-credits" data-tone={resetCredits === null ? "unknown" : "normal"}
+            <span className="engine-account__quota engine-account__reset-credits" data-tone={resetCredits === null ? "unknown" : "normal"}
               title={resetCredits === null ? "服务端尚未报告重置券数量" : `上次确认：${formatDate(resetCredits.observedAt)}；查看数量不会使用重置券`}>
               <small>重置券</small>
               <strong>{resetCredits === null ? "—" : `${resetCredits.availableCount} 张`}</strong>
-              <span className="codex-account__reset">{resetCredits === null ? "未报告" : "剩余"}</span>
+              <span className="engine-account__reset">{resetCredits === null ? "未报告" : "剩余"}</span>
             </span>
           </span>
-          <ChevronRight className="codex-account__chevron" size={16} aria-hidden="true" />
+          <ChevronRight className="engine-account__chevron" size={16} aria-hidden="true" />
         </button>
         <AccountActionsMenu
           account={account}
@@ -195,8 +195,8 @@ function AccountRow({ account, index, total, service, credentialLocation }: {
           onRemove={() => setConfirming(true)}
         />
       </div>
-      {error ? <div className="codex-account__error" role="alert">{maskCodexAccountIdentity(error)}</div> : null}
-      {expanded ? <div className="codex-account__details" id={detailsId}>
+      {error ? <div className="engine-account__error" role="alert">{maskCodexAccountIdentity(error)}</div> : null}
+      {expanded ? <div className="engine-account__details" id={detailsId}>
         <dl>
           <div><dt>登录身份</dt><dd>{maskCodexAccountIdentity(account.email ?? account.label)}</dd></div>
           <div><dt>使用顺序</dt><dd>第 {index + 1} 位</dd></div>
@@ -211,8 +211,8 @@ function AccountRow({ account, index, total, service, credentialLocation }: {
     </article>
     <AlertDialog.Root open={confirming} onOpenChange={setConfirming}>
       <AlertDialog.Portal>
-        <AlertDialog.Overlay className="codex-account-dialog__overlay" />
-        <AlertDialog.Content className="codex-account-dialog codex-account-dialog--compact">
+        <AlertDialog.Overlay className="engine-account-dialog__overlay" />
+        <AlertDialog.Content className="engine-account-dialog engine-account-dialog--compact">
           <AlertDialog.Title>移除 Codex 账户？</AlertDialog.Title>
           <AlertDialog.Description>将删除“{maskCodexAccountIdentity(account.label)}”在{credentialLocation}保存的 OAuth 凭据和账户池绑定。现有会话记录不会删除。</AlertDialog.Description>
           <footer>
@@ -240,12 +240,12 @@ function AddAccountMenu({ disabled, starting, importing, onSignIn, onImport, all
       </SettingsButton>
     </DropdownMenu.Trigger>
     <DropdownMenu.Portal>
-      <DropdownMenu.Content className="codex-account-menu codex-account-menu--add" align="end" sideOffset={5} collisionPadding={12}>
-        <DropdownMenu.Item className="codex-account-menu__item codex-account-menu__item--descriptive" disabled={disabled} onSelect={onSignIn}>
+      <DropdownMenu.Content className="engine-account-menu engine-account-menu--add" align="end" sideOffset={5} collisionPadding={12}>
+        <DropdownMenu.Item className="engine-account-menu__item engine-account-menu__item--descriptive" disabled={disabled} onSelect={onSignIn}>
           <UserRound size={16} />
           <span><strong>{starting ? "正在启动登录…" : "在浏览器中登录"}</strong><small>使用 ChatGPT 设备码添加账户</small></span>
         </DropdownMenu.Item>
-        {allowImport ? <DropdownMenu.Item className="codex-account-menu__item codex-account-menu__item--descriptive" disabled={disabled} onSelect={onImport}>
+        {allowImport ? <DropdownMenu.Item className="engine-account-menu__item engine-account-menu__item--descriptive" disabled={disabled} onSelect={onImport}>
           <Download size={16} />
           <span><strong>{importing ? "正在导入…" : "导入本机 Codex 登录"}</strong><small>复制此设备已有的 Codex 登录</small></span>
         </DropdownMenu.Item> : null}
@@ -260,16 +260,16 @@ export function CodexDeviceLoginContent({ login, canceling, onCancel }: {
   readonly onCancel: () => void;
 }) {
   return <>
-    <header className="codex-account-dialog__header">
-      <span className="codex-account-dialog__icon" aria-hidden="true"><UserRound size={18} /></span>
+    <header className="engine-account-dialog__header">
+      <span className="engine-account-dialog__icon" aria-hidden="true"><UserRound size={18} /></span>
       <div><Dialog.Title>登录 ChatGPT</Dialog.Title><Dialog.Description>在系统浏览器中完成授权，OpenCraft 会自动接收结果。</Dialog.Description></div>
       <Dialog.Close asChild><SettingsIconButton label="关闭登录" disabled={canceling}><X size={17} /></SettingsIconButton></Dialog.Close>
     </header>
-    <div className="codex-device-login">
-      <span className="codex-device-login__eyebrow">设备验证码</span>
-      <div className="codex-device-login__code"><strong>{login.userCode}</strong><SettingsCopyButton value={login.userCode} label="复制" successLabel="已复制" errorLabel="复制失败，请手动选中验证码复制" /></div>
+    <div className="engine-device-login">
+      <span className="engine-device-login__eyebrow">设备验证码</span>
+      <div className="engine-device-login__code"><strong>{login.userCode}</strong><SettingsCopyButton value={login.userCode} label="复制" successLabel="已复制" errorLabel="复制失败，请手动选中验证码复制" /></div>
       <p>验证码将在 {formatDate(login.expiresAt)} 失效。</p>
-      <div className="codex-device-login__waiting" role="status"><span aria-hidden="true" />正在等待浏览器授权…</div>
+      <div className="engine-device-login__waiting" role="status"><span aria-hidden="true" />正在等待浏览器授权…</div>
     </div>
     <footer>
       <SettingsButton variant="quiet" disabled={canceling} onClick={onCancel}>{canceling ? "正在取消…" : "取消"}</SettingsButton>
@@ -289,8 +289,8 @@ function DeviceLoginDialog({ login, service }: { readonly login: CodexDeviceLogi
   };
   return <Dialog.Root open={login !== null} onOpenChange={open => { if (!open && login !== null) cancel(); }}>
     <Dialog.Portal>
-      <Dialog.Overlay className="codex-account-dialog__overlay" />
-      {login === null ? null : <Dialog.Content className="codex-account-dialog" onEscapeKeyDown={event => { if (canceling) event.preventDefault(); }}>
+      <Dialog.Overlay className="engine-account-dialog__overlay" />
+      {login === null ? null : <Dialog.Content className="engine-account-dialog" onEscapeKeyDown={event => { if (canceling) event.preventDefault(); }}>
         <CodexDeviceLoginContent login={login} canceling={canceling} onCancel={cancel} />
       </Dialog.Content>}
     </Dialog.Portal>
@@ -339,17 +339,17 @@ export function createCodexAccountsView(service: CodexAccountsService, options: 
       title="Codex 账户"
       actions={<SettingsIconButton label="刷新账户" disabled={snapshot.phase === "loading"} onClick={() => void service.refresh()}><RefreshCw size={16} /></SettingsIconButton>}
     >
-      <div className="codex-accounts-page">
+      <div className="engine-accounts-page">
         {snapshot.error ? <SettingsNotice tone="error">{snapshot.phase === "error" ? `账户读取失败：${maskCodexAccountIdentity(snapshot.error)}。请点击右上角刷新重试。` : maskCodexAccountIdentity(snapshot.error)}</SettingsNotice> : null}
         <SettingsSection
           title="ChatGPT 账户"
           description="多个账户按顺序使用；已有会话在账户可用时保持绑定。"
           action={snapshot.accounts.length === 0 ? undefined : <AddAccountMenu disabled={busy} starting={starting} importing={importing} onSignIn={start} onImport={importLocal} allowImport={allowImport} />}
         >
-          <SettingsGroup className="codex-account-list" aria-label="Codex 账户列表">
-            {snapshot.phase === "loading" && snapshot.accounts.length === 0 ? <div className="codex-account-list__state" role="status"><RefreshCw size={16} />正在读取账户…</div> : null}
-            {snapshot.phase === "ready" && snapshot.accounts.length === 0 ? <div className="codex-account-list__empty">
-              <span className="codex-account-list__empty-icon" aria-hidden="true"><UserRound size={18} /></span>
+          <SettingsGroup className="engine-account-list" aria-label="Codex 账户列表">
+            {snapshot.phase === "loading" && snapshot.accounts.length === 0 ? <div className="engine-account-list__state" role="status"><RefreshCw size={16} />正在读取账户…</div> : null}
+            {snapshot.phase === "ready" && snapshot.accounts.length === 0 ? <div className="engine-account-list__empty">
+              <span className="engine-account-list__empty-icon" aria-hidden="true"><UserRound size={18} /></span>
               <div><strong>还没有 Codex 账户</strong><p>添加 ChatGPT 账户后，Codex 会按可用额度自动选择并保持会话绑定。</p></div>
               <AddAccountMenu disabled={busy} starting={starting} importing={importing} onSignIn={start} onImport={importLocal} allowImport={allowImport} />
             </div> : null}

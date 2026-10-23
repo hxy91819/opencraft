@@ -56,3 +56,6 @@ The rename changes TypeScript symbols and internal module paths. It preserves:
 The remaining engine-specific names describe actual integrations. Future generic
 implementations should obtain their own owner and verified capability contract;
 renaming a native adapter alone cannot establish engine independence.
+
+Owned CSS, model discriminators, projection helpers and compatibility inputs
+follow the [internal naming contract](internal-naming.md).

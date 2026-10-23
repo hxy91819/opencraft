@@ -1,4 +1,4 @@
-import { projectCodexMessageResult, projectCodexMessageNotification } from "./codex-message-projection.js";
+import { projectThreadMessageResult, projectThreadMessageNotification } from "./thread-message-projection.js";
 import type { AttachmentRef } from "@opencraft/appserver-protocol";
 
 type Value = Record<string, unknown>;
@@ -30,9 +30,9 @@ function withAttachments(value: Value, refs: readonly AttachmentRef[]): Value {
   };
 }
 
-export function projectCodexAttachmentResult(reader: MessageAttachmentReader, method: string, params: Value, result: unknown): unknown {
-  return projectCodexMessageResult((threadId, clientId, value) => withAttachments(value, reader.list(threadId, clientId)), method, params, result);
+export function projectThreadAttachmentResult(reader: MessageAttachmentReader, method: string, params: Value, result: unknown): unknown {
+  return projectThreadMessageResult((threadId, clientId, value) => withAttachments(value, reader.list(threadId, clientId)), method, params, result);
 }
-export function projectCodexAttachmentNotification(reader: MessageAttachmentReader, message: Value): Value {
-  return projectCodexMessageNotification((threadId, clientId, value) => withAttachments(value, reader.list(threadId, clientId)), message);
+export function projectThreadAttachmentNotification(reader: MessageAttachmentReader, message: Value): Value {
+  return projectThreadMessageNotification((threadId, clientId, value) => withAttachments(value, reader.list(threadId, clientId)), message);
 }

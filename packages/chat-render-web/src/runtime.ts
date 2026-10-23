@@ -70,7 +70,7 @@ const WebBuiltinRenderers = Object.assign(function WebBuiltinRenderers(ctx: Cont
       component: createImageRenderer(ctx.chatResourcePolicies),
     }),
     ctx.chatDirectives.register({
-      name: "codex-file-citation",
+      name: "file-citation",
       priority: 0,
       component: createFileCitationRenderer(ctx.chatResourcePolicies),
     }),

@@ -1,6 +1,6 @@
 import { CheckIcon as Check, ChevronRightIcon as ChevronRight, LoadingRingIcon as LoaderCircle, CloseIcon as X } from "@opencraft/design-system-web/action-icons";
 import {
-  codexAppThreadNavigationTarget, createdThreadToolResult,
+  threadToolNavigationTarget, createdThreadToolResult,
   deriveSubagentActivityGroupPresentation, deriveSubagentActivityPresentation,
   extractToolCallContentParts, formatThreadHandoffStepLabel, isCodexAppThreadTool,
   threadHandoffToolResult, visibleThreadHandoffSteps, subagentInlineStatusLabel,
@@ -153,7 +153,7 @@ function ThreadTool({ block }: { block: Tool }) {
   const navigation = useContext(SubagentNavigationContext);
   const [open, setOpen] = useActivityOpen(presentation.state === "running", false, `thread-handoff:${block.id}`);
   const created = createdThreadToolResult(block);
-  const target = codexAppThreadNavigationTarget(block);
+  const target = threadToolNavigationTarget(block);
   const handoff = threadHandoffToolResult(block);
   if (created !== null) return <button type="button" className="thread-created-thread-card" aria-label="Open chat"
     disabled={navigation.open === null} onClick={() => navigation.open?.(created.threadId, created.title)}>
@@ -178,9 +178,9 @@ function ThreadTool({ block }: { block: Tool }) {
   }
   const summary = <ActivityRowContent icon={activityIcon(presentation.icon)} summary={presentation.summary}
     running={presentation.state === "running"} />;
-  return target !== null ? <button type="button" className="thread-codex-app-tool-row thread-activity-item__header is-interactive" aria-label="Open chat"
+  return target !== null ? <button type="button" className="thread-tool-row thread-activity-item__header is-interactive" aria-label="Open chat"
     disabled={navigation.open === null} onClick={() => navigation.open?.(target.threadId, target.displayName)}>{summary}</button>
-    : <div className="thread-codex-app-tool-row thread-activity-item__header">{summary}</div>;
+    : <div className="thread-tool-row thread-activity-item__header">{summary}</div>;
 }
 
 export function ToolCallBlock({ block }: { block: Tool }) {

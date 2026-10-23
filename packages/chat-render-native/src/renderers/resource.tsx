@@ -112,7 +112,7 @@ export function createNativeReferenceRenderer(resources: ChatResourcePolicyServi
 }
 
 function NativeFileCitationRenderer({ node, context, resources }: NativeResourceRendererProps) {
-  if (node.kind !== "directive" || node.name !== "codex-file-citation") return null;
+  if (node.kind !== "directive" || node.name !== "file-citation") return null;
   const presentation = chatFileCitationPresentation(node);
   if (presentation === null) return <Text>{node.raw}</Text>;
   const decision = resources.resolve(presentation.target, context);
