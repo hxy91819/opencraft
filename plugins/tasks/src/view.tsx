@@ -112,7 +112,7 @@ const words = {
   event_deleted: ["删除了事项", "Deleted the item"],
   event_restored: ["恢复了事项", "Restored the item"],
   event_progress: ["记录了进展", "Reported progress"],
-  tasks: ["团队任务", "Team tasks"],
+  tasks: ["看板", "Board"],
   conversationOverview: ["协同会话统计", "Conversation stats"],
   searchTasks: ["搜索任务…", "Search tasks…"],
   assignee: ["负责人", "Assignee"],

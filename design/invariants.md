@@ -2653,3 +2653,9 @@ through the shared coarse-pointer/no-hover/current-touch policy. Desktop pointer
 clocks remain hidden at rest and reveal on existing message hover/focus. Keep
 time metadata, slot geometry, history cache and action-button availability;
 elapsed work duration is separate.
+
+### Board navigation copy
+
+The Tasks application uses “看板” (English: “Board”) for its navigation label,
+collapsed rail tooltip and main page heading. Board, list and follow-up remain
+views within the same application; task actions keep their task terminology.
