@@ -97,7 +97,10 @@ export class AppServerBotConversationService extends Service {
 
   capability(hostId: string): BotConversationsCapability | null {
     const extensions = this.clients.get(hostId)?.initializeResult?.capabilities?.extensions;
-    return capabilityFrom(extensions?.[OPENCRAFT_BOT_CONVERSATIONS_EXTENSION]);
+    if (extensions === undefined || extensions === null) return null;
+    const value = Object.hasOwn(extensions, OPENCRAFT_BOT_CONVERSATIONS_EXTENSION)
+      ? extensions[OPENCRAFT_BOT_CONVERSATIONS_EXTENSION] : extensions["vela/bot-conversations"];
+    return capabilityFrom(value);
   }
 
   supports(hostId: string): boolean {

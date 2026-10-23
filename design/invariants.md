@@ -2740,3 +2740,20 @@ Task summary navigation requires a real receiver/agent/state thread identity; pr
 ### Document reading controls
 
 Legacy Word uses the same retained read-only preview identity, with local Worker/WASM and font disposal. CSV cell selection, column widths, find query and full multiline contents belong to that retained view; theme/locale switches do not reset them. Table bytes are never coerced or edited. Host-opened Office links admit only HTTP(S) without credentials; document fragments stay inside their own root, all other protocols are inert. Locale projection updates labels in place; diagrams keep the packaged offline sandbox. Known preview failures use actionable localized messages in the existing failure area and preserve download/retry.
+
+## Optional image editor transaction
+
+- The fullscreen draft image modal owns focus, portal and background input isolation.
+  Its optional editor is a plugin View, never another Composer or draft owner.
+- Plugin header/footer controls use shared typography, controls and semantic theme
+  tokens; media content colors belong to the edited image. Tools remain reachable
+  on narrow touch layouts. Done is primary; Cancel and Undo/Redo are secondary.
+- Cancel changes nothing. Done only replaces the initiating attachment after checking
+  active draft, attachment/source identity. Neither path submits a message. Crops,
+  quarter turns and strokes share one undo/redo history; source pixels stay immutable
+  within the editor. Pixelation is composited into the exported image.
+
+- Image editing is touch-first: a second finger cancels unfinished ink/crop/placement; pinch/pan changes only viewport, with no editing until all fingers release. Undo/export use native document pixels. Keyboard resize preserves the same editing transaction and keeps tools in the visual viewport.
+
+
+Image annotation text is entered at the tapped image position with a native multiline textarea for caret, selection and IME. It remains a local pending operation until confirmed or a tool/save action commits it once; Escape discards only pending text. View resize keeps native image coordinates and text. The input consumes shared touch typography; its resolved font and line spacing stay with the local text operation so canvas replay and export match the input. Normal editing shows tools without permanent instructions or a filename; accessible names and error feedback remain. Image editor interface glyphs use shared original artwork, including the pixel mosaic; sticker content previews are not interface artwork.

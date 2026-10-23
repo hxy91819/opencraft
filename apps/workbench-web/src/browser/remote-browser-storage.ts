@@ -1,11 +1,18 @@
 import type { BrowserMetadataStorage, RemoteBrowserCatalog } from './desktop-browser-storage';
 import { serverStorageKey, serverUrl } from '../runtime/server-context';
+import { browserMetadataKeys, readBrowserMetadataValue } from '@opencraft/workbench-runtime/browser-metadata-identity';
 
-const keys: Record<string, string> = {
-  'vela.browser-pages.v1': 'pages', 'vela.browser-tabs.v1': 'tabs',
-  'opencraft.remote-browser-storage.v1': 'storage',
-  [serverStorageKey('vela.conversation-bindings.v1')]: 'bindings',
-};
+const identity = (key: string) => key;
+const remoteStorageKey = 'opencraft.remote-browser-storage.v1';
+const entries = [
+  [browserMetadataKeys.pages, 'pages', identity],
+  [browserMetadataKeys.tabs, 'tabs', identity],
+  [remoteStorageKey, 'storage', serverStorageKey],
+  [browserMetadataKeys.bindings, 'bindings', serverStorageKey],
+] as const;
+// The remote surface uses a stable API key; only its former local copy is scoped.
+const apiKey = (key: string, scope: (key: string) => string) => key === remoteStorageKey ? key : scope(key);
+const keys: Record<string, string> = Object.fromEntries(entries.map(([key, field, scope]) => [apiKey(key, scope), field]));
 /** Synchronous projection for existing tab owners; the authenticated Server is
  * the durable owner. Revision checks reject concurrent replacement by another
  * client. This contains browser metadata, never webpage editor contents. */
@@ -30,10 +37,10 @@ export class RemoteBrowserStorage implements BrowserMetadataStorage {
       // These records carry no authority; the Server still scopes every tab
       // partition/command to the authenticated owner.
       if (state.revision === 0 && Object.keys(state.values).length === 0) {
-        for (const [key] of Object.entries(keys)) {
+        for (const [key, , scope] of entries) {
           let legacy: string | null = null;
-          try { legacy = localStorage.getItem(key === 'opencraft.remote-browser-storage.v1' ? serverStorageKey(key) : key); } catch {}
-          if (legacy !== null) storage.setItem(key, legacy);
+          try { legacy = readBrowserMetadataValue(localStorage, key, scope); } catch {}
+          if (legacy !== null) storage.setItem(apiKey(key, scope), legacy);
         }
         await storage.flush();
       }

@@ -130,6 +130,7 @@ export interface AppServerHostCatalog {
   readonly threadBadges: ThreadBadgeContributionRegistry;
   readonly threadListGrouping: ThreadListGroupingContributionRegistry;
   readonly identityAvatars: IdentityAvatarContributionRegistry;
+  readonly imageEditors?: import("./image-editor-contributions").ImageEditorContributionRegistry;
   readonly composerActionRenderers: ComposerActionRendererRegistry;
   readonly botDirectory: AppServerBotDirectory;
   readonly sidebarLayout: SidebarLayoutStore;
@@ -443,6 +444,7 @@ export interface WebWorkbenchApplicationBase {
   readonly threadBadges: ThreadBadgeContributionRegistry;
   readonly threadListGrouping: ThreadListGroupingContributionRegistry;
   readonly identityAvatars: IdentityAvatarContributionRegistry;
+  readonly imageEditors?: import("./image-editor-contributions").ImageEditorContributionRegistry;
   readonly composerActionRenderers: ComposerActionRendererRegistry;
   readonly botDirectory: AppServerBotDirectory;
   readonly sidebarLayout: SidebarLayoutStore;

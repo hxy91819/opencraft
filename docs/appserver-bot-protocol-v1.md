@@ -2,7 +2,7 @@
 
 Status: **implementation baseline**  
 Wire protocol: **JSON-RPC 2.0 over WebSocket**  
-Extension identifier: **`vela/bot-conversations`**  
+Extension identifier: **`opencraft/bot-conversations`**
 Version: **1**
 
 This document freezes the first implementable Bot and group-chat protocol for
@@ -125,7 +125,7 @@ The client advertises support through the existing `initialize` request:
     "clientInfo": { "name": "opencraft-workbench", "version": "0.1.0" },
     "capabilities": {
       "extensions": {
-        "vela/bot-conversations": { "version": 1 }
+        "opencraft/bot-conversations": { "version": 1 }
       }
     }
   }
@@ -142,7 +142,7 @@ The initialize result gains an optional `capabilities.extensions` field:
     "serverInfo": { "name": "opencraft-appserver", "version": "0.1.0" },
     "capabilities": {
       "extensions": {
-        "vela/bot-conversations": {
+        "opencraft/bot-conversations": {
           "version": 1,
           "topologies": ["direct", "group"],
           "features": {
@@ -1207,3 +1207,8 @@ An implementation is not V1-compliant until all of these pass:
 
 These can be added as negotiated extensions without changing the V1 command
 words or entity identities.
+
+Clients accept the exact former capability identifier for older Hosts when the
+current identifier is absent. A present current declaration is authoritative; an
+invalid current version never falls back to a valid older declaration. Generic
+`bot/*` methods and conversation identities are unchanged.

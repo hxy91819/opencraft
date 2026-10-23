@@ -64,8 +64,8 @@ test("Activity metadata owns project copy while serverOrigin retains Server prov
 });
 
 test("Server origin identity is independent from mutable label, Hub route and activity state", () => {
-  const first = threadServerOrigin({ serverId: "lightvela-hermes", label: "Hermes Cloud" });
-  const renamed = threadServerOrigin({ serverId: "lightvela-hermes", label: "Hermes" });
+  const first = threadServerOrigin({ serverId: "fixture-hermes-cloud", label: "Hermes Cloud" });
+  const renamed = threadServerOrigin({ serverId: "fixture-hermes-cloud", label: "Hermes" });
   assert.equal(first.serverId, renamed.serverId);
   assert.notEqual(first.serverId, threadServerOrigin({ serverId: "other-server", label: "Hermes" }).serverId);
   assert.throws(() => threadServerOrigin({ serverId: " ", label: "Local" }), /Server ID/u);

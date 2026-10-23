@@ -1,9 +1,15 @@
-# hemesclient
+# Hermes AppServer bridge
 
 `hemesclient` is a small, self-contained Bun binary that exposes an AppServer-compatible
 WebSocket endpoint while using Hermes Agent's JSON-RPC gateway as the authoritative backend.
 It connects to the real `/api/ws` transport and keeps Hermes' durable session id separate from
 the live id returned by `session.resume`.
+
+This optional Bun application lives in `apps/bridges/hermes/` and has its own
+package manifest and lockfile. Run its install and build commands from that
+directory. It is nested below `apps/bridges/` so the root `apps/*` npm workspace
+does not install or build it. The existing package name and compiled binary
+remain `hemesclient`.
 
 Implemented AppServer methods:
 
@@ -28,8 +34,10 @@ turn. Image-only turns and image history survive the AppServer projection.
 
 ## Build
 
+From this directory, install the separately locked dependencies and build:
+
 ```bash
-npm install
+npm ci
 npm run typecheck
 npm test
 npm run build
@@ -57,8 +65,9 @@ For a local loopback Hermes server, the bridge discovers its ephemeral dashboard
 from the local bootstrap page and uses it only on the `/api/ws` upgrade. A token can also be
 supplied explicitly for controlled deployments; it is never included in AppServer frames or logs.
 
-On this machine the services are `hermes-gateway.service`, `hermes-serve.service`, and
-`hemesclient.service`; all three are enabled for boot.
+The bridge needs a reachable Hermes gateway. Service installation, process
+supervision and boot configuration belong to the deployment; cloning or building
+this directory does not install or enable system services.
 
 The adapter deliberately owns two identities: the durable Hermes session id is exposed as the
 AppServer thread id, while Hermes' short live `session_id` is private transport state. Async

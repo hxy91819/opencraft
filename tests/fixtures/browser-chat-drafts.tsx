@@ -33,7 +33,7 @@ const service = {
 const source = new AppServerBotConversationSource(service as unknown as AppServerBotConversationService);
 const View = createBotChatView(source, {
   drafts: new BrowserComposerDrafts(window.localStorage, "fixture.bot-drafts"),
-  resolver: { async resolve() { return createConversationKey("fixture", "a"); } },
+  resolver: { async resolve() { throw new Error("Conversation fixtures require their explicit saved identity"); } },
 });
 const locale = new LocaleRuntime([]);
 await locale.update({ ideLocale: "en-US" });
@@ -43,7 +43,9 @@ let navigate = (_room: string) => {};
 function Probe() {
   const [room, setRoom] = useState("a"); navigate = setRoom;
   const host = { platform: "web", activeHostId: "fixture", replaceViewResource() {} } as ExtensionSettingsViewProps["host"];
-  return <View host={host} activation={{ viewId: "draft-fixture", resourceUri: botConversationResourceUri(createConversationKey("fixture", room)) }}
+  return <View host={host} activation={{ viewId: "draft-fixture", resourceUri: new URLSearchParams(location.search).get("legacy") === "true"
+      ? botConversationResourceUri(createConversationKey("fixture", room)).replace("opencraft-bot:", "vela-bot:")
+      : botConversationResourceUri(createConversationKey("fixture", room)) }}
     contribution={{ id: "draft-fixture", title: "Bot", viewType: "draft-fixture" }} />;
 }
 createRoot(document.getElementById("root")!).render(<IntlRuntimeProvider runtime={locale}><Probe /></IntlRuntimeProvider>);

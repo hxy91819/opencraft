@@ -11,6 +11,7 @@ const vite = await createServer({
   logLevel: "error",
   esbuild: { jsx: "automatic" },
   resolve: { dedupe: ["react", "react-dom"] },
+  optimizeDeps: { entries: ["tests/fixtures/sent-image-preview.tsx"] },
   cacheDir: "node_modules/.vite-sent-image-preview-smoke",
   server: { host: "127.0.0.1", port: 0 },
   plugins: [{
@@ -137,6 +138,7 @@ try {
     assert.equal(await preview.locator("img").getAttribute("alt"), "portrait.svg");
     await draftPage.keyboard.press("Escape");
     await preview.waitFor({ state: "detached" });
+    await draftPage.waitForFunction(el => el === el.getRootNode().activeElement, await editor.elementHandle(), { timeout: 3000 });
     assert(await editor.evaluate(el => el === (window as any).previewEditor && el === el.getRootNode().activeElement), "pointer dismissal returns to the original editor");
     assert.deepEqual(await draftPage.evaluate(() => (window as any).imagePreviewFixture.controller.getSnapshot().draft.document), before);
     assert.equal(await editor.evaluate(el => (el.getRootNode() as ShadowRoot).getSelection()?.anchorOffset), selectionOffset);
@@ -174,6 +176,146 @@ try {
     await draftPage.evaluate(() => (window as any).imagePreviewFixture.controller.dispatch({ type: "clear" }));
     await preview.waitFor({ state: "detached" });
     assert.equal(await draftPage.evaluate(() => (window as any).imagePreviewFixture.submissions), 0);
+    // Browser-only editing uses the actual plugin View and Composer replacement port.
+    const stripes = Array.from({ length: 640 }, (_, x) => `<rect x="${x}" width="1" height="480" fill="${x % 2 ? "#eef2f8" : "#223344"}"/>`).join("");
+    await addFiles([{ name: "editable.svg", mimeType: "image/svg+xml", buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480">${stripes}</svg>`) }]);
+    await triggers.first().click();
+    await draftPage.getByRole("button", { name: "Edit image", exact: true }).click();
+    const canvas = draftPage.getByLabel("Image editing canvas", { exact: true });
+    await canvas.waitFor();
+    await draftPage.waitForFunction(() => {
+      const c = document.getElementById("host")?.shadowRoot?.querySelector<HTMLCanvasElement>(".image-editor canvas");
+      return c && c.width === 640 && c.getBoundingClientRect().width > 0;
+    });
+    const brush = async (from: number[], to: number[]) => {
+      const bounds = (await canvas.boundingBox())!;
+      const a = [bounds.x + bounds.width * from[0]!, bounds.y + bounds.height * from[1]!];
+      const b = [bounds.x + bounds.width * to[0]!, bounds.y + bounds.height * to[1]!];
+      if (touchMode) {
+        const session = await context.newCDPSession(draftPage);
+        await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: a[0], y: a[1], id: 1 }] });
+        for (let i = 1; i <= 8; i++) await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: a[0]! + (b[0]! - a[0]!) * i / 8, y: a[1]! + (b[1]! - a[1]!) * i / 8, id: 1 }] });
+        await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }); await session.detach();
+      } else { await draftPage.mouse.move(a[0]!, a[1]!); await draftPage.mouse.down(); await draftPage.mouse.move(b[0]!, b[1]!, { steps: 8 }); await draftPage.mouse.up(); }
+      await draftPage.waitForTimeout(80);
+    };
+    const settle = () => draftPage.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    const pixel = (x: number, y: number) => canvas.evaluate((node, p) => Array.from((node as HTMLCanvasElement).getContext("2d")!.getImageData(Math.floor((node as HTMLCanvasElement).width * p[0]!), Math.floor((node as HTMLCanvasElement).height * p[1]!), 1, 1).data), [x, y]);
+    if (touchMode) {
+      const session = await context.newCDPSession(draftPage), box = (await canvas.boundingBox())!;
+      const x = box.x + box.width / 2, y = box.y + box.height / 2;
+      const touch = async (type: string, points: number[][]) => { await session.send("Input.dispatchTouchEvent", { type, touchPoints: points.map(([px, py], index) => ({ x: px, y: py, id: index + 1 })) }); await draftPage.waitForTimeout(30); };
+      const original = await pixel(.5, .5);
+      await touch("touchStart", [[x - 35, y]]);
+      await touch("touchMove", [[x, y]]);
+      await touch("touchStart", [[x, y], [x + 60, y]]);
+      await touch("touchMove", [[x - 60, y - 20], [x + 90, y + 20]]);
+      await touch("touchEnd", [[x - 60, y - 20]]);
+      await touch("touchMove", [[x - 30, y - 20]]);
+      await touch("touchEnd", []);
+      assert.deepEqual(await pixel(.5, .5), original, "second finger cancels in-progress ink and remaining finger cannot draw");
+      assert(await draftPage.getByRole("button", { name: "Undo", exact: true }).isDisabled(), "pinch/pan does not create editing history");
+      const view = await draftPage.locator(".image-editor__image").evaluate(node => { const matrix = new DOMMatrixReadOnly(getComputedStyle(node).transform); return { zoom: matrix.a, x: matrix.e }; });
+      assert(view.zoom > 2 && view.x !== 0, "real two-finger input zooms and pans the editor");
+      await brush([.5, .4], [.6, .4]);
+      assert((await pixel(.55, .4))[0]! > 200, "zoomed drawing uses native image coordinates");
+      await draftPage.getByRole("button", { name: "Undo", exact: true }).click(); await settle();
+      await draftPage.getByRole("button", { name: "Fit image", exact: true }).click();
+      await session.detach();
+    }
+    await brush([.2, .25], [.8, .25]);
+    const ink = await pixel(.5, .25); assert(ink[0]! > 200 && ink[1]! < 100, "pen changes actual pixels");
+    await draftPage.getByRole("button", { name: "Undo", exact: true }).click(); await settle();
+    assert.notDeepEqual(await pixel(.5, .25), ink, "undo restores source pixels");
+    await draftPage.getByRole("button", { name: "Redo", exact: true }).click(); await settle(); assert.deepEqual(await pixel(.5, .25), ink);
+    await draftPage.getByRole("button", { name: "Text", exact: true }).click();
+    assert.equal(await draftPage.getByRole("textbox", { name: "Text", exact: true }).count(), 0, "text entry starts at an image position, not in toolbar");
+    assert.equal(await draftPage.locator(".image-editor__feedback").count(), 0, "no permanent instructions");
+    assert.equal(await draftPage.locator(".image-editor__name").count(), 0, "no filename chrome");
+    await brush([.5, .5], [.5, .5]);
+    const textEntry = draftPage.getByRole("textbox", { name: "Text", exact: true });
+    assert(await textEntry.evaluate(node => node.closest(".image-editor__image") !== null && node === (node.getRootNode() as Document | ShadowRoot).activeElement), "tap focuses image-local native text entry");
+    await textEntry.fill("直接标注\nSecond line");
+    await textEntry.dispatchEvent("compositionstart", { data: "文" });
+    await draftPage.getByRole("button", { name: "Apply text", exact: true }).click();
+    assert.equal(await textEntry.count(), 1, "composition does not submit partial text");
+    await textEntry.press("Escape");
+    assert.equal(await textEntry.count(), 1, "IME Escape does not close annotation or editor");
+    await textEntry.dispatchEvent("compositionend", { data: "文" });
+    if (touchMode) {
+      await draftPage.setViewportSize({ width: 390, height: 520 });
+      await settle();
+      const done = (await draftPage.getByRole("button", { name: "Done", exact: true }).boundingBox())!;
+      assert(done.y + done.height <= 520, "tools remain reachable when mobile viewport shrinks for keyboard");
+      assert.equal(await draftPage.getByRole("textbox", { name: "Text", exact: true }).inputValue(), "直接标注\nSecond line", "resize preserves text input");
+      assert.deepEqual(await pixel(.5, .25), ink, "resize preserves committed ink");
+      await draftPage.setViewportSize({ width: 390, height: 844 }); await settle();
+    }
+    const inputFormat = await textEntry.evaluate(node => { const style = getComputedStyle(node); return { family: style.fontFamily, weight: style.fontWeight, leading: parseFloat(style.lineHeight) / parseFloat(style.fontSize) }; });
+    await draftPage.evaluate(() => {
+      (window as any).imageTextPaints = [];
+      CanvasRenderingContext2D.prototype.fillText = new Proxy(CanvasRenderingContext2D.prototype.fillText, { apply(target, ctx, args) {
+        (window as any).imageTextPaints.push({ text: args[0], x: args[1], y: args[2], font: ctx.font });
+        return Reflect.apply(target, ctx, args);
+      } });
+    });
+    const beforeText = await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL());
+    await draftPage.getByRole("button", { name: "Apply text", exact: true }).click(); await settle();
+    assert.equal(await textEntry.count(), 0);
+    const afterText = await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL());
+    assert.notEqual(afterText, beforeText, "inline text commits pixels");
+    const textPresentation = await draftPage.evaluate(format => {
+      const lines = (window as any).imageTextPaints.filter((p: any) => p.text === "直接标注" || p.text === "Second line").slice(-2);
+      const size = Number(lines[0]?.font.match(/([\d.]+)px/)?.[1]);
+      const context = document.createElement("canvas").getContext("2d")!;
+      context.font = `${format.weight} ${size}px ${format.family}`;
+      return { count: lines.length, fontMatches: lines.every((p: any) => p.font === context.font), spacing: lines[1]?.y - lines[0]?.y, expectedSpacing: size * format.leading };
+    }, inputFormat);
+    assert.equal(textPresentation.count, 2); assert.equal(textPresentation.fontMatches, true, "canvas retains the actual native input font");
+    assert.ok(Math.abs(textPresentation.spacing - textPresentation.expectedSpacing) < .01, "multiline export retains input leading");
+    await draftPage.getByRole("button", { name: "Undo", exact: true }).click(); await settle();
+    assert.equal(await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL()), beforeText, "whole text is one undo step");
+    await draftPage.getByRole("button", { name: "Redo", exact: true }).click(); await settle();
+    assert.equal(await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL()), afterText);
+    await brush([.5, .7], [.5, .7]); await textEntry.fill("Discard this"); await textEntry.press("Escape");
+    assert.equal(await textEntry.count(), 0); assert.equal(await draftPage.locator(".image-editor").count(), 1, "Escape discards text only");
+    assert.equal(await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL()), afterText);
+    await brush([.5, .7], [.5, .7]); await textEntry.fill("Pending IME"); await textEntry.dispatchEvent("compositionstart", { data: "文" });
+    await draftPage.getByRole("button", { name: "Discard text", exact: true }).click();
+    assert.equal(await textEntry.count(), 0);
+    await brush([.5, .7], [.5, .7]); await textEntry.fill("New text after cancelled IME");
+    await draftPage.getByRole("button", { name: "Apply text", exact: true }).click(); await settle();
+    assert.equal(await textEntry.count(), 0, "discarded IME cannot lock the next text operation");
+    await draftPage.getByRole("button", { name: "Undo", exact: true }).click(); await settle();
+    assert.equal(await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL()), afterText);
+    await draftPage.getByRole("button", { name: "Undo", exact: true }).click(); await settle();
+    await draftPage.getByRole("button", { name: "Sticker", exact: true }).click(); await draftPage.getByRole("button", { name: "👍", exact: true }).click(); await brush([.3, .65], [.3, .65]);
+    assert.equal(await draftPage.getByRole("button", { name: "Redo", exact: true }).isDisabled(), true, "new action retires redo branch");
+    assert.equal(await draftPage.getByRole("button", { name: "Mosaic", exact: true }).locator('[data-action-glyph="image-mosaic"]').count(), 1, "shared mosaic artwork");
+    await draftPage.getByRole("button", { name: "Mosaic", exact: true }).click();
+    const originalPixel = await pixel(.5, .75); await brush([.2, .75], [.8, .75]);
+    assert.notDeepEqual(await pixel(.5, .75), originalPixel, "mosaic changes source pixels");
+    await draftPage.screenshot({ path: `${output}/editor-${touchMode ? "touch" : "mouse"}-${mode}.png` });
+    await draftPage.getByRole("button", { name: "Crop", exact: true }).click(); await brush([.1, .1], [.9, .9]);
+    await draftPage.getByRole("button", { name: "Apply crop", exact: true }).click(); await settle();
+    const cropSize = await canvas.evaluate(node => [(node as HTMLCanvasElement).width, (node as HTMLCanvasElement).height]);
+    assert(Math.abs(cropSize[0]! - 512) <= 2 && Math.abs(cropSize[1]! - 384) <= 2);
+    await draftPage.getByRole("button", { name: "Rotate clockwise", exact: true }).click();
+    await draftPage.getByRole("button", { name: "Undo", exact: true }).click(); await settle();
+    assert.deepEqual(await canvas.evaluate(node => [(node as HTMLCanvasElement).width, (node as HTMLCanvasElement).height]), cropSize);
+    await draftPage.getByRole("button", { name: "Redo", exact: true }).click(); await settle();
+    await draftPage.getByRole("button", { name: "Done", exact: true }).click(); await draftPage.locator(".opencraft-composer-image-preview").waitFor({ state: "hidden" });
+    const result = await draftPage.evaluate(async () => {
+      const f = (window as any).imagePreviewFixture, file = f.files.at(-1), bitmap = await createImageBitmap(file);
+      const result = { type: file.type, name: file.name, width: bitmap.width, height: bitmap.height, attachments: f.controller.getSnapshot().draft.attachments.length, submissions: f.submissions }; bitmap.close(); return result;
+    });
+    assert.equal(result.type, "image/png"); assert.equal(result.name, "editable-edited.png"); assert.equal(result.attachments, 1); assert.equal(result.submissions, 0);
+    assert.equal(result.width, cropSize[1]); assert.equal(result.height, cropSize[0]);
+    // A cancelled session keeps attachment identity/URI/name and document intact.
+    const saved = await draftPage.evaluate(() => (window as any).imagePreviewFixture.controller.getSnapshot().draft);
+    await triggers.first().click(); await draftPage.getByRole("button", { name: "Edit image", exact: true }).click(); await canvas.waitFor();
+    await brush([.2, .2], [.8, .2]); await draftPage.getByRole("button", { name: "Cancel", exact: true }).click();
+    assert.deepEqual(await draftPage.evaluate(() => (window as any).imagePreviewFixture.controller.getSnapshot().draft), saved);
     assert.deepEqual(draftErrors, []);
     await context.close();
     console.log("composer preview", touchMode ? "touch" : "desktop", mode, "passed");

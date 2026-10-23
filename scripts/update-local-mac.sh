@@ -84,7 +84,7 @@ rsync -az \
   --exclude='.git/' \
   --exclude='node_modules/' \
   --exclude='.runtime/' \
-  --exclude='hemesclient/' \
+  --exclude='apps/bridges/hermes/' \
   --exclude='releases/' \
   --exclude='release/' \
   --exclude='dist/' \

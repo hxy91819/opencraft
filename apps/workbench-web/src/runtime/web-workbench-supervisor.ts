@@ -15,6 +15,7 @@ import { createApplicationDisposer, disposeOwnedSteps } from "./application-disp
 import { BrowserThreadAttention } from "./browser-thread-attention";
 import { BrowserTurnNotifications } from "./browser-turn-notifications";
 import { FixedHostProfileStore } from "./fixed-host-profile-store";
+import { ImageEditorContributionRegistry } from "./image-editor-contributions";
 import { IdentityAvatarContributionRegistry } from "./identity-avatar-contributions";
 import { LocalAccountPreferences } from "./local-account-preferences";
 import { ThreadBadgeContributionRegistry } from "./thread-badge-contributions";
@@ -228,6 +229,7 @@ export async function createWebWorkbenchApplicationSupervisor(
     await authenticationFlowFiber;
     const authenticationFlows = cordis.authenticationFlows;
     const composerActionRenderers = new ComposerActionRendererRegistry();
+    const imageEditors = new ImageEditorContributionRegistry();
     const platform = currentWorkbenchPlatform();
     const websiteConfig = platform === "web" ? parseWebDeploymentConfig(
         document.getElementById("opencraft-deployment-config")?.textContent ?? null,
@@ -298,6 +300,7 @@ export async function createWebWorkbenchApplicationSupervisor(
         threadParticipation: threadParticipation.createAdapter(),
         threadListGrouping: threadListGrouping.createAdapter(),
         identityAvatar: identityAvatars.createAdapter(),
+        imageEditor: imageEditors.createAdapter(),
         [AUTHENTICATION_PROVIDER_CHANNEL]: authenticationProviderAdapter(cordis.authentication),
         composerActionRenderer: createComposerActionRendererContributionAdapter(composerActionRenderers),
       },
@@ -417,6 +420,11 @@ export async function createWebWorkbenchApplicationSupervisor(
         });
       }, ["opencraft.tasks.board"]);
     }
+    await loadPresentationExtension("opencraft.image-editor", async signal => {
+      const { createImageEditorExtension } = await import("@opencraft/plugin-image-editor");
+      signal?.throwIfAborted();
+      return createImageEditorExtension();
+    });
     await loadPresentationExtension("opencraft.voice-input", async signal => {
       const createVoiceInputExtension = (
         await import("@opencraft/plugin-voice-input/runtime-entry")
@@ -690,6 +698,7 @@ export async function createWebWorkbenchApplicationSupervisor(
       threadListGrouping,
       identityAvatars,
       composerActionRenderers,
+      imageEditors,
       botDirectory,
       sidebarLayout,
       hostProfiles,
@@ -1186,6 +1195,7 @@ export async function createWebWorkbenchApplicationSupervisor(
     threadListGrouping,
     identityAvatars,
     composerActionRenderers,
+    imageEditors,
     botDirectory,
     sidebarLayout,
     displayContinuity,
