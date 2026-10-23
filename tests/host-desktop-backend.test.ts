@@ -28,7 +28,7 @@ function fixture(origin = "http://127.0.0.1:10000", transport = "same-origin-loo
           ...(overrides ? { renewable: overrides.renewable } : {}) } } : {} } }) },
       protocol: { request: async (method: string, params: unknown) => { calls.push({ method, params }); return method === OPENCRAFT_DESKTOP_ATTACH ? respond() : {}; } },
     } } as unknown as AppServerWorkbenchRuntime;
-  const registry = new HostRuntimeRegistry([{ descriptor: { hostId: "transport-alias", label: "Fixture", kind: "codex",
+  const registry = new HostRuntimeRegistry([{ descriptor: { hostId: "transport-alias", label: "Fixture", kind: "local",
     transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: [] }, createRuntime: () => runtime }]);
   registry.getRuntime("transport-alias");
   // Socket address belongs to this adapter, not noVNC module loading. Open the

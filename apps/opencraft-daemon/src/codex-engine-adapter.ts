@@ -391,10 +391,10 @@ export class CodexEngineAdapter implements DuplexTransport {
 
   get storageOutcomes(): readonly { name: string; outcome: DatabaseOutcome }[] {
     return [
-      ...(this.hostState ? [{ name: "codex-host-state", outcome: this.hostState.outcome }] : []),
+      ...(this.hostState ? [{ name: "opencraft-host-state", outcome: this.hostState.outcome }] : []),
       ...(this.tokenUsageState ? [{ name: "token-usage", outcome: this.tokenUsageState.outcome }] : []),
       ...(this.schedules ? [{ name: "conversation-schedules", outcome: this.schedules.outcome }] : []),
-      ...(this.messageAttachments ? [{ name: "codex-message-attachments", outcome: this.messageAttachments.outcome }] : []),
+      ...(this.messageAttachments ? [{ name: "opencraft-message-attachments", outcome: this.messageAttachments.outcome }] : []),
       ...(this.tasks?.outcome ? [{ name: "tasks", outcome: this.tasks.outcome }] : []),
       ...(this.poolStore ? [{ name: "account-pool", outcome: this.poolStore.outcome }] : []),
     ];

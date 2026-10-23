@@ -22,8 +22,8 @@ declare const SMOKE_WORKSPACE_ROOT: string;
 // Workbench runtime, Codex Thread, Host authority and native framebuffer.
 const appHost = connectWebSocketAppHost();
 const registry = new HostRuntimeRegistry([{ descriptor: { hostId: "local-codex", label: "Local",
-  kind: "codex", transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: [] },
-  createRuntime: () => createAppServerWorkbenchRuntime({ hostId: "local-codex", hostKind: "codex",
+  kind: "local", transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: [] },
+  createRuntime: () => createAppServerWorkbenchRuntime({ hostId: "local-codex", hostKind: "local",
     createTransport: () => appHost.createTransport("local-codex"), autoReconnect: false }) }]);
 const bindings = createConversationBindingStore();
 let viewingConnections = 0;

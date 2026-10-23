@@ -14,7 +14,7 @@ import "../../apps/workbench-web/src/styles/app.scss";
 import { BrowserHeadlessConnectors, connectorApprovals } from "../../apps/workbench-web/src/runtime/headless-connectors";
 const remote = await BrowserHeadlessConnectors.open();
 const ctx = new Context(), fiber = ctx.plugin(AuthenticationService); await fiber;
-const bindings = createConversationBindingStore(), scopeId = asConversationScopeId("library-scope"), hostId = asHostId("local-codex");
+const bindings = createConversationBindingStore(), scopeId = asConversationScopeId("library-scope"), hostId = asHostId("connector-host");
 bindings.register(scopeId, hostId); bindings.bind(scopeId, createConversationKey(hostId, "library-thread"));
 const approvals = connectorApprovals(remote), runtime = new ConnectorRuntime(ctx.authentication, 30000, { approvals });
 const manager = await ConnectorManager.open(runtime, ctx.authentication, bindings, await openConnectorConfigurationStore(), async () => { throw new Error("Headless must not acquire a browser execution client"); }, remote);

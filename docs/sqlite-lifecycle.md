@@ -435,3 +435,36 @@ For an actual correction, stop the collector first and replace `--dry-run` with
 uses the dedicated metering owner and canonical ledger correction path; it does
 not import or modify the former queue database. Existing native rollout formats,
 published migrations and storage compatibility names remain unchanged.
+
+
+### Owned live table names
+
+Host-state v13 renames the live queue, catalog and catalog-sync tables to
+`opencraft_host_queue`, `opencraft_thread_catalog` and `opencraft_catalog_sync`.
+Message-attachment v2 uses `opencraft_message_attachments`. Their explicit indices
+use the same prefix. OpenCraft owns these tables; native Codex protocols and
+native queue import formats are unchanged. Storage diagnostics use
+`opencraft-host-state` and `opencraft-message-attachments`, scoped by Host.
+
+These are appended migrations. Published Host-state v1–v12 and attachment v1 SQL,
+names and checksums remain unchanged, as do dormant historical Bot tables. The
+managed owner backs up the previous database, applies the rename transactionally,
+validates the resulting schema, and preserves records and prior ledger entries.
+Known unledgered upgrade inputs follow the same canonical result; unknown schemas
+remain rejected. Failed migrations roll back, and checksum mismatches refuse
+opening. Reopening the upgraded owner does not repeat the migration.
+
+The files still use `codex-host-queue.sqlite` and
+`codex-message-attachments.sqlite`. Renaming these paths requires a separate file
+transition covering conflicting paths, exclusive ownership, WAL/SHM and metering
+backfill; this table migration does not implement that transition. An older
+managed binary rejects the new migration version. Code rollback therefore
+requires the compatible owner or an explicit restoration of the pre-upgrade
+backup under the [backup and recovery procedure](#备份与恢复), accounting for any
+writes made after that backup; simply starting an older binary is not a data
+rollback.
+
+`tests/owned-host-storage-names.test.ts` covers populated ledgered and unledgered
+upgrades, preservation of every business table, old ledger/checksum retention,
+pre-upgrade backup contents, repeat opening, failure after a partial rename,
+retry, refusal by older readers, and both old and new checksum tampering.

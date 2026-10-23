@@ -179,8 +179,8 @@ if (process.argv[2] === 'core') {
     assert.equal(initialHealth.ok, true);
     assert.deepEqual(Object.fromEntries(initialHealth.storage.map((item: any) => [item.name, item.status])), {
       'session-routing': 'migrated', threads: 'adopted', executions: 'fresh',
-      'host-documents': 'fresh', 'managed-connectors': 'adopted', tasks: 'fresh', 'codex-host-state': 'fresh', 'conversation-schedules': 'fresh',
-      'codex-message-attachments': 'fresh', 'actor-collaboration': 'fresh', actors: 'fresh', 'ssh-connections': 'fresh',
+      'host-documents': 'fresh', 'managed-connectors': 'adopted', tasks: 'fresh', 'opencraft-host-state': 'fresh', 'conversation-schedules': 'fresh',
+      'opencraft-message-attachments': 'fresh', 'actor-collaboration': 'fresh', actors: 'fresh', 'ssh-connections': 'fresh',
     });
     const backupFiles = (await readdir(join(state, 'agent'))).filter(name => name.includes('.pre-v1-'));
     const movedAsideFiles = (await readdir(join(state, 'agent'))).filter(name => name.includes('.legacy-'));

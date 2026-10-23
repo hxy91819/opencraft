@@ -27,10 +27,10 @@ test("failed deferred engine initialization releases its App Host claim; a fresh
   const app = new MessagePortAppHostClient(channel.port2 as any, "retry-test");
   await app.waitUntilReady();
   try {
-    const failed = new JsonRpcAppServerClient({ hostId: "local-codex", transport: app.createTransport("local-codex"), requestTimeoutMs: 1000 });
+    const failed = new JsonRpcAppServerClient({ hostId: "deferred-host", transport: app.createTransport("deferred-host"), requestTimeoutMs: 1000 });
     await assert.rejects(failed.connect({ clientInfo: { name: "test", version: "1" } }));
     await failed.close();
-    const retry = new JsonRpcAppServerClient({ hostId: "local-codex", transport: app.createTransport("local-codex"), requestTimeoutMs: 1000 });
+    const retry = new JsonRpcAppServerClient({ hostId: "deferred-host", transport: app.createTransport("deferred-host"), requestTimeoutMs: 1000 });
     assert.equal((await retry.connect({ clientInfo: { name: "test", version: "1" } })).userAgent, "fixture");
     assert.equal(starts, 2);
     assert.equal(closes, 1);

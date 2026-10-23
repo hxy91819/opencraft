@@ -62,7 +62,7 @@ test("partial legacy shared DB failure rolls back and keeps source and pre-write
     const read = new DatabaseSync(path, { readOnly: true });
     assert.equal(read.prepare("SELECT client_message_id FROM message_senders").get()?.client_message_id, "m");
     assert.equal(read.prepare("SELECT name FROM sqlite_master WHERE name='schema_migrations'").get(), undefined); read.close();
-    assert.ok((await readdir(root)).some(name => name.includes(".pre-v12-")));
+    assert.ok((await readdir(root)).some(name => name.includes(".pre-v13-")));
     assert.ok(!(await readdir(root)).some(name => name.includes(".legacy-")));
     const retry = new OpenCraftHostStateDatabase(root); assert.equal(retry.outcome.status, "migrated"); retry.close();
   } finally { await rm(root, { recursive: true, force: true }); }
@@ -78,9 +78,9 @@ test("attachment legacy index completion retains actual refs and rejects rewritt
     store = new OpenCraftMessageAttachments(root); assert.equal(store.outcome.status, "up-to-date"); store.close();
     const tamper = new DatabaseSync(path); tamper.exec("UPDATE schema_migrations SET checksum='wrong'"); tamper.close();
     assert.throws(() => new OpenCraftMessageAttachments(root), fault("history-mismatch"));
-    const newer = new DatabaseSync(path); newer.exec("UPDATE schema_migrations SET version=99"); newer.close();
+    const newer = new DatabaseSync(path); newer.exec("UPDATE schema_migrations SET version=99 WHERE version=2"); newer.close();
     assert.throws(() => new OpenCraftMessageAttachments(root), fault("newer-schema"));
-    const read = new DatabaseSync(path); assert.equal(read.prepare("SELECT attachment_id FROM codex_message_attachments").get()?.attachment_id, "a"); read.close();
+    const read = new DatabaseSync(path); assert.equal(read.prepare("SELECT attachment_id FROM opencraft_message_attachments").get()?.attachment_id, "a"); read.close();
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
@@ -91,7 +91,7 @@ test("published Tasks v1 SQL/hash and linked rows remain unchanged; configured s
     old.prepare("INSERT INTO schema_migrations VALUES(1,'tasks-rows',?,1)").run(hash(legacyTasksSql));
     old.prepare("INSERT INTO tasks VALUES(?,?,?,?,?,?,?,?,?,?,?)").run("t", "Retained", "body", "in_progress", "server", "project", 8, 6, 1, 2, null);
     old.prepare("INSERT INTO task_conversations VALUES(?,?,?,?)").run("t", "server", "thread", 3); old.close();
-    const store = new TasksSqliteStore(path); assert.equal(store.outcome.status, "up-to-date");
+    const store = new TasksSqliteStore(path); assert.equal(store.outcome.status, "migrated");
     assert.equal(store.read("t").revision, 6); assert.equal(store.forConversation("server", "thread").tasks[0].title, "Retained"); store.close();
     const tamper = new DatabaseSync(path); tamper.exec("UPDATE schema_migrations SET checksum='bad'"); tamper.close();
     assert.throws(() => openLocalAgentStorage({ dataDirectory: root }), e => e instanceof SqliteLifecycleError && e.kind === "history-mismatch" && /tasks/.test(e.message));
@@ -182,7 +182,7 @@ test("required Codex state failure prevents native process/open status; unused T
   try {
     const state=new OpenCraftHostStateDatabase(root);new OpenCraftMessageSenders(state.database).record("t","m",null);state.close();
     const bad=new DatabaseSync(join(root,"codex-host-queue.sqlite"));bad.exec("UPDATE schema_migrations SET version=99 WHERE version=2");bad.close();
-    // Private Codex Tasks is unopened until a consumer actually uses the feature.
+    // Private Host Tasks is unopened until a consumer actually uses the feature.
     const tasks=new DatabaseSync(join(root,"tasks.sqlite"));tasks.exec("CREATE TABLE unused_feature(value TEXT)");tasks.close();
     const adapter=new CodexEngineAdapter({executable:"unused",runtimeDirectory:root,dataDirectory:root,nativeCodexHomeDirectory:join(root,"native"),spawnAppServer:()=>{spawned++;throw new Error("unexpected spawn");}});
     await assert.rejects(adapter.connect(),fault("newer-schema"));

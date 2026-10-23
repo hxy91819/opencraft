@@ -337,7 +337,7 @@ test("daemon wire keeps the old five-name projection and exposes complete scoped
   const root=await mkdtemp(join(tmpdir(),"oc-summary-compat-")),endpoint=join(root,"daemon.sock"),token="synthetic-"+"x".repeat(48);
   const appHost=new AppHostServer({createTransport:()=>new TestTransport()});
   const rows=["session-routing","threads","executions","host-documents","managed-connectors","tasks"].map(name=>({name,status:"fresh" as const,appliedVersion:1,movedAside:false}));
-  const storage=[...rows,{hostId:"local-codex",name:"codex-host-state",status:"adopted" as const,appliedVersion:1,movedAside:false}];
+  const storage=[...rows,{hostId:"local-codex",name:"opencraft-host-state",status:"adopted" as const,appliedVersion:1,movedAside:false}];
   const server=await startOpenCraftDaemonServer({endpoint,authToken:token,appHost,storage});
   try {
     let ready: Extract<DaemonServerMessage,{type:"daemon/ready"}> | undefined;

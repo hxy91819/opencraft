@@ -217,7 +217,7 @@
     "smoke:server-self-upgrade": "OPENCRAFT_SERVER_SMOKE_SYSTEMD=1 OPENCRAFT_SERVER_SMOKE_SELF_UPGRADE=1 tsx scripts/smoke-server-updates.ts",
     "smoke:server-updates:systemd": "OPENCRAFT_SERVER_SMOKE_SYSTEMD=1 tsx scripts/smoke-server-updates.ts",
     "smoke:server-updates": "tsx scripts/smoke-server-updates.ts",
-    "test:codex-core": "tsx --test tests/codex-core.test.ts tests/opencraft-host-state-database.test.ts tests/token-usage-model-backfill.test.ts tests/token-usage-backfill-cli.test.ts",
+    "test:codex-core": "tsx --test tests/owned-host-storage-names.test.ts tests/opencraft-message-attachments.test.ts tests/codex-core.test.ts tests/opencraft-host-state-database.test.ts tests/token-usage-model-backfill.test.ts tests/token-usage-backfill-cli.test.ts",
     "test:sqlite-node": "tsx --test tests/sqlite-node.test.ts",
     "test:typography": "tsx --test tests/typography-system.test.ts tests/ui-typography-harness.test.ts tests/conversation-activity-visual.test.ts",
     "smoke:typography": "tsx scripts/smoke-typography.ts",

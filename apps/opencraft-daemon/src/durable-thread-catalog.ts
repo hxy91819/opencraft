@@ -26,7 +26,7 @@ export class DurableThreadCatalog {
     changed(): void;
     observed?(threadIds: readonly string[]): void;
   }, readonly now = Date.now, readonly intervalMs = 60_000) {
-    this.#revision = Number(database.prepare("SELECT MAX(revision) AS revision FROM codex_thread_catalog").get()?.revision ?? 0);
+    this.#revision = Number(database.prepare("SELECT MAX(revision) AS revision FROM opencraft_thread_catalog").get()?.revision ?? 0);
   }
   /** Preserve native semantics for advanced filters and native cursors. */
   supports(params: Record<string, unknown>): boolean {
@@ -57,7 +57,7 @@ export class DurableThreadCatalog {
         anchor = { updatedAt: parsed[1], id: parsed[2] };
       } catch { throw new Error("Invalid catalog cursor"); }
     }
-    const rows = this.database.prepare(`SELECT metadata_json,updated_at,thread_id FROM codex_thread_catalog
+    const rows = this.database.prepare(`SELECT metadata_json,updated_at,thread_id FROM opencraft_thread_catalog
       WHERE archived=? AND deleted=0 ${anchor ? "AND (updated_at < ? OR (updated_at = ? AND thread_id > ?))" : ""}
       ORDER BY updated_at DESC,thread_id ASC LIMIT ?`).all(archived, ...(anchor ? [anchor.updatedAt, anchor.updatedAt, anchor.id] : []), limit + 1);
     const more = rows.length > limit; rows.length = Math.min(rows.length, limit);
@@ -66,7 +66,7 @@ export class DurableThreadCatalog {
       nextCursor: more && last ? cursorPrefix + JSON.stringify([archived, last.updated_at, last.thread_id]) : null,
       backwardsCursor: null, catalog: { lastSuccessAt: sync?.last_success_ms ?? null, state: sync?.state ?? "syncing" } };
   }
-  #state(archived: number): Sync | undefined { return this.database.prepare("SELECT * FROM codex_catalog_sync WHERE archived=?").get(archived) as Sync | undefined; }
+  #state(archived: number): Sync | undefined { return this.database.prepare("SELECT * FROM opencraft_catalog_sync WHERE archived=?").get(archived) as Sync | undefined; }
   refresh(): Promise<void> {
     if (this.#closed) return Promise.reject(new Error("Catalog closed"));
     if (this.#job) return this.#job;
@@ -85,7 +85,7 @@ export class DurableThreadCatalog {
       if (this.#closed) return;
       const previous = this.#state(archived), startedRevision = this.#revision;
       const full = !previous?.last_full_ms || this.now() - previous.last_full_ms > 3_600_000;
-      this.database.prepare(`INSERT INTO codex_catalog_sync(archived,state) VALUES(?,'syncing')
+      this.database.prepare(`INSERT INTO opencraft_catalog_sync(archived,state) VALUES(?,'syncing')
         ON CONFLICT(archived) DO UPDATE SET state='syncing'`).run(archived);
       try {
         const seen = new Set<string>(), cursors = new Set<string>();
@@ -112,26 +112,26 @@ export class DurableThreadCatalog {
         try {
           for (const row of staged) this.#put(row, archived, startedRevision);
           if (full) {
-            const rows = this.database.prepare("SELECT thread_id FROM codex_thread_catalog WHERE archived=? AND revision<=? AND deleted=0").all(archived, startedRevision);
-            for (const row of rows) if (!seen.has(String(row.thread_id))) this.database.prepare("UPDATE codex_thread_catalog SET deleted=1,revision=? WHERE thread_id=?").run(++this.#revision, row.thread_id);
+            const rows = this.database.prepare("SELECT thread_id FROM opencraft_thread_catalog WHERE archived=? AND revision<=? AND deleted=0").all(archived, startedRevision);
+            for (const row of rows) if (!seen.has(String(row.thread_id))) this.database.prepare("UPDATE opencraft_thread_catalog SET deleted=1,revision=? WHERE thread_id=?").run(++this.#revision, row.thread_id);
           }
-          this.database.prepare("UPDATE codex_catalog_sync SET last_success_ms=?,watermark=?,last_full_ms=?,state='ready' WHERE archived=?")
+          this.database.prepare("UPDATE opencraft_catalog_sync SET last_success_ms=?,watermark=?,last_full_ms=?,state='ready' WHERE archived=?")
             .run(this.now(), watermark, full ? this.now() : previous?.last_full_ms ?? null, archived);
           this.database.exec("RELEASE catalog_sync");
         } catch (error) { this.database.exec("ROLLBACK TO catalog_sync; RELEASE catalog_sync"); throw error; }
-        this.port.observed?.(this.database.prepare("SELECT thread_id FROM codex_thread_catalog WHERE deleted=0").all().map(row => String(row.thread_id)));
+        this.port.observed?.(this.database.prepare("SELECT thread_id FROM opencraft_thread_catalog WHERE deleted=0").all().map(row => String(row.thread_id)));
       } catch {
         if (this.#closed) return;
-        this.database.prepare("UPDATE codex_catalog_sync SET state='error' WHERE archived=?").run(archived); failed = true;
+        this.database.prepare("UPDATE opencraft_catalog_sync SET state='error' WHERE archived=?").run(archived); failed = true;
       }
     }
     if (!this.#closed) this.port.changed();
     if (failed) throw new Error("Remote catalog refresh failed");
   }
   #put(row: Thread, archived: number, fence?: number): void {
-    const old = this.database.prepare("SELECT revision FROM codex_thread_catalog WHERE thread_id=?").get(row.id);
+    const old = this.database.prepare("SELECT revision FROM opencraft_thread_catalog WHERE thread_id=?").get(row.id);
     if (fence !== undefined && old && Number(old.revision) > fence) return;
-    this.database.prepare(`INSERT INTO codex_thread_catalog VALUES(?,?,?,?,?,?,0) ON CONFLICT(thread_id) DO UPDATE SET
+    this.database.prepare(`INSERT INTO opencraft_thread_catalog VALUES(?,?,?,?,?,?,0) ON CONFLICT(thread_id) DO UPDATE SET
       metadata_json=excluded.metadata_json,updated_at=excluded.updated_at,archived=excluded.archived,
       observed_at_ms=excluded.observed_at_ms,revision=excluded.revision,deleted=0`)
       .run(row.id, JSON.stringify(row), row.recencyAt ?? row.updatedAt, archived, this.now(), ++this.#revision);
@@ -144,14 +144,14 @@ export class DurableThreadCatalog {
     const input = object(params), output = object(result);
     const row = metadata(output.thread ?? input.thread);
     if (row) {
-      const old = this.database.prepare("SELECT archived FROM codex_thread_catalog WHERE thread_id=?").get(row.id);
+      const old = this.database.prepare("SELECT archived FROM opencraft_thread_catalog WHERE thread_id=?").get(row.id);
       this.#put(row, Number(old?.archived ?? 0));
     }
     const id = row?.id ?? input.threadId;
     if (typeof id !== "string" || !id) return;
-    const stored = this.database.prepare("SELECT metadata_json,archived FROM codex_thread_catalog WHERE thread_id=?").get(id);
+    const stored = this.database.prepare("SELECT metadata_json,archived FROM opencraft_thread_catalog WHERE thread_id=?").get(id);
     if (method === "thread/delete" || method === "thread/deleted") {
-      this.database.prepare(`INSERT INTO codex_thread_catalog VALUES(?,'{}',0,0,?,?,1)
+      this.database.prepare(`INSERT INTO opencraft_thread_catalog VALUES(?,'{}',0,0,?,?,1)
         ON CONFLICT(thread_id) DO UPDATE SET deleted=1,revision=excluded.revision`).run(id, this.now(), ++this.#revision);
       this.port.changed();
       return;

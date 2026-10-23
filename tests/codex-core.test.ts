@@ -204,7 +204,7 @@ test("Headless core mode retains overlay stores, sender and unique owner across 
     const a = await f.adapter(true);
     const initialized = await a.rpc("a", "initialize");
     assert.equal(initialized.capabilities.extensions["vela/bot-conversations"], undefined);
-    assert.ok(a.engine.storageOutcomes.some(row => row.name === "codex-host-state" && row.outcome.appliedVersion === 12));
+    assert.ok(a.engine.storageOutcomes.some(row => row.name === "opencraft-host-state" && row.outcome.appliedVersion === 13));
     assert.ok(!a.engine.storageOutcomes.some(row => row.name === "account-pool"), "core is the sole account owner");
     const { thread } = await a.rpc("a", "thread/start", { cwd: "/synthetic" });
     const sendId = "verified-send";
@@ -240,7 +240,7 @@ test("Headless overlay restart restores active queue subscription, dispatches on
     await delay(50); await a.engine.close();
     const { OpenCraftHostStateDatabase } = await import("../apps/opencraft-daemon/src/opencraft-host-state-database.js");
     const owner = new OpenCraftHostStateDatabase(f.options.dataDirectory);
-    owner.database.prepare("UPDATE codex_host_queue SET state='unknown',target_turn_id='unknown' WHERE client_id='unconfirmed'").run(); owner.close();
+    owner.database.prepare("UPDATE opencraft_host_queue SET state='unknown',target_turn_id='unknown' WHERE client_id='unconfirmed'").run(); owner.close();
     const b = await f.adapter(true); await b.rpc("b", "initialize");
     for (let n = 0; n < 200 && (await b.rpc("b", "fixture/subscribers", { threadId: thread.id })).count === 0; n++) await delay(10);
     assert.equal((await b.rpc("b", "fixture/subscribers", { threadId: thread.id })).count, 1);
@@ -258,7 +258,7 @@ test("Headless overlay restart restores active queue subscription, dispatches on
     assert.equal(pending.steering[0].clientUserMessageId, "unconfirmed");
     const { DatabaseSync } = await import("node:sqlite");
     const read = new DatabaseSync(join(f.options.dataDirectory, "codex-host-queue.sqlite"), { readOnly: true });
-    assert.equal(read.prepare("SELECT state FROM codex_host_queue WHERE client_id='unconfirmed'").get()?.state, "unknown"); read.close();
+    assert.equal(read.prepare("SELECT state FROM opencraft_host_queue WHERE client_id='unconfirmed'").get()?.state, "unknown"); read.close();
     assert.equal((await b.rpc("b", "thread/read", { threadId: unknown.thread.id, includeTurns: true })).thread.turns.length, 1);
   } finally { await f.close(); }
 });
