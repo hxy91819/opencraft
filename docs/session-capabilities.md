@@ -79,11 +79,32 @@ lease without withdrawing Host tools. DSH's native registry is reconciled at the
 existing idle execution boundary; Pi uses its native registry replacement.
 Neither adapter persists the Host catalog as browser-owned capabilities.
 
-The present IM execution authority routes to local Codex. Native Pi/DSH
-capability ports are implemented and independently testable; adding IM admission
-to those engines still requires their conversation execution/queue adapter. This
-service does not claim that merely injecting a tool expands existing IM routing
-or conversation permissions.
+Headless IM execution supports existing durable Codex, Pi and DSH conversations.
+Canonical server/thread identity selects each native input port; browser Host IDs
+are presentation addresses and never replace the server identity. Pi uses native
+submission receipts and DSH uses its existing Host execution journal. Busy inputs
+remain admitted in Collaboration until native admission is possible. An explicit
+safe deferral can return to accepted; uncertain transfers remain unknown and are
+never automatically replayed. Pi/DSH reject steer before any native input.
+
+An independent DSH Host consumes the same capability service over Remote MCP.
+The gateway atomically publishes an owned private `session-capabilities.json`
+endpoint descriptor beside the existing signing key. The same-uid Host signs a
+single canonical session credential, refreshes its catalog before execution, and
+rediscovers the endpoint on each operation. Gateway absence clears its cached Host
+declarations; invocations and input authorization fail closed. No capability
+provider or credential authority moves into DSH. The read-only `/admission`
+endpoint checks an exact admitted input ID against current Collaboration authority
+for the signed server/thread. DSH checks it after native model preparation and
+immediately before `session.prompt`.
+
+The independent Host's private `/host-inputs` HTTP lane requires its existing
+owned descriptor token and rejects browser Origin requests. It is not forwarded
+by the WebSocket browser proxy. Older Hosts explicitly defer without attempting
+native input and need a separate drained Host upgrade; a gateway update alone
+does not upgrade their execution owner. Host inputs preserve the live browser
+contribution and its reply owner; browser disconnection revokes only those tools.
+Actor run bindings and conversation delegation source remain Codex-scoped.
 
 ## IM reply provider
 

@@ -1,4 +1,7 @@
 import { nodeObserver } from "../../../packages/observability-contract/node.mjs";
+import { dshHostInputs } from "./dsh-host-inputs.js";
+import { handleHostInput } from "./host-input-http.js";
+import type { DshExecutionOwner } from "./dsh-execution-authority.js";
 import { serializeHistoryReply } from "@opencraft/appserver-client";
 import { fileRequest } from "./host-resources.js";
 import { ConversationSchedules, ScheduleFault } from "@opencraft/host-schedules";
@@ -105,6 +108,7 @@ export async function startLocalAgentHost(options: {
   readonly token?: string;
   readonly dshUrl?: string;
   readonly sessionCapabilities?: import("@opencraft/session-capabilities").SessionCapabilityPort;
+  readonly authorizeHostInput?: (threadId: string, inputId: string) => boolean | Promise<boolean>;
   readonly dshExecutable?: string;
   readonly dshRepository?: string;
   /** Stable operational cwd for packaged Daemon/DSH processes; never a Thread workspace. */
@@ -327,12 +331,16 @@ export async function startLocalAgentHost(options: {
   const prepareThreadExecution = async (threadId: string) => {
     await adapter.activateThread(threadId);
     await skillRefresh.ensureFresh();
+    await options.sessionCapabilities?.refresh?.(threadId);
     const expected = capabilities.list(threadId).length;
     if (expected > 0) {
       if (!capabilityLink) throw new Error("This host cannot register engine capabilities");
       verifyDshCapabilityRegistration(expected, await capabilityLink.register(threadId));
     }
   };
+  const hostInputOwner: DshExecutionOwner = { connectionId: "opencraft-host-input", identity: { id: "opencraft-host-input", username: "Host input" } };
+  capabilities.allowHostExecution(hostInputOwner);
+  const inputs = dshHostInputs(adapter, authority, lifecycle, prepareThreadExecution, hostInputOwner);
   const scheduleDirectory = options.dataDirectory ?? await mkdtemp(join(tmpdir(), "opencraft-schedules-"));
   if (!options.dataDirectory) cleanup.push(() => rm(scheduleDirectory, { recursive: true, force: true }));
   const schedules = new ConversationSchedules(scheduleDirectory,
@@ -438,9 +446,12 @@ export async function startLocalAgentHost(options: {
     const url = new URL(request.url ?? "/", "http://127.0.0.1");
     response.setHeader("cache-control", "no-store");
     response.setHeader("content-type", "application/json; charset=utf-8");
+    if (url.pathname === "/host-inputs") {
+      void handleHostInput(request, response, token, inputs, options.authorizeHostInput); return;
+    }
     if (url.pathname === "/health") {
       response.statusCode = engineStatus === "ready" ? 200 : 503;
-      response.end(`${JSON.stringify({ ok: engineStatus === "ready", engine: "dsh", pid: process.pid, enginePid: supervisor.processId, status: engineStatus, storage: storageSummaries })}\n`);
+      response.end(`${JSON.stringify({ ok: engineStatus === "ready", engine: "dsh", pid: process.pid, enginePid: supervisor.processId, status: engineStatus, hostInputs: 1, storage: storageSummaries })}\n`);
       return;
     }
     response.statusCode = 404;
@@ -748,6 +759,7 @@ export async function startLocalAgentHost(options: {
   const websocketUrl = `ws://127.0.0.1:${address.port}/rpc?token=${encodeURIComponent(token)}`;
   return {
     websocketUrl,
+    inputs,
     get storageOutcomes() { return storageSummaries; },
     get dshUrl() { return client.baseUrl; },
     get engineProcessId() { return supervisor.processId; },

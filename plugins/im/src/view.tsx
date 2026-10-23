@@ -343,7 +343,7 @@ export function createImView(controller: ImController) {
       [unlinkSender, setUnlinkSender] = useState(""),
       [conversationQuery, setConversationQuery] = useState(""),
       [conversationChoices, setConversationChoices] = useState<
-        { reference: string; title: string }[]
+        { reference: string; title: string; engine?: string }[]
       >([]),
       [conversationCursor, setConversationCursor] = useState<string | null>(
         null,
@@ -352,7 +352,7 @@ export function createImView(controller: ImController) {
       run("conversations", async () => {
         const owner = selected;
         const value = await client.request<{
-          conversations: { reference: string; title: string }[];
+          conversations: { reference: string; title: string; engine?: string }[];
           nextCursor: string | null;
         }>({
           action: "conversations",
@@ -972,9 +972,9 @@ export function createImView(controller: ImController) {
                                     onClick={() =>
                                       void Promise.resolve(
                                         props.host.openConversation?.(
-                                          target!.serverId === document.serverId
+                                          document.servers?.find(server => server.serverId === target!.serverId)?.hostId ?? (target!.serverId === document.serverId
                                             ? document.workbenchHostId
-                                            : target!.serverId,
+                                            : target!.serverId),
                                           target!.threadId,
                                         ),
                                       ).catch(report)
@@ -1091,6 +1091,7 @@ export function createImView(controller: ImController) {
                         <SettingsListItem
                           key={c.reference}
                           label={c.title}
+                          description={c.engine}
                           actions={
                             <Button
                               onClick={() => {
