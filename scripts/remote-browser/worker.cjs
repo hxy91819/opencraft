@@ -32,7 +32,7 @@ function deviceProfile(input = {}) {
   if (!deviceProfiles.has(profile)) throw new Error('Invalid device profile');
   return profile;
 }
-const configuration = p => ({ navigation: navigation(p), width: p.width, height: p.height, dpr: 1, deviceProfile: p.deviceProfile, codec: 'avc1.42E028', nativeCopy: p.clipboard?.available() === true, nativeIme: p.ime?.available() === true, multiTouch: true });
+const configuration = p => ({ navigation: navigation(p), width: p.width, height: p.height, zoom: Math.round(p.window.webContents.getZoomFactor() * 100), dpr: 1, deviceProfile: p.deviceProfile, codec: 'avc1.42E028', nativeCopy: p.clipboard?.available() === true, nativeIme: p.ime?.available() === true, multiTouch: true });
 function userAgent(p, profile) {
   const chrome = process.versions.chrome;
   if (profile === 'iphone') return 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
@@ -269,6 +269,7 @@ async function automation(p, method, input) {
 }
 async function command(message) {
   const { page: id, method, input = {} } = message;
+  if (method === 'inventory') return [...pages.values()].map(p => ({ id: p.id, ...configuration(p) }));
   if (method === 'create') return createPage(id, input);
   if (method === 'close') { closePage(id); return; }
   const p = pages.get(id); if (!p) throw new Error('Browser page closed');
