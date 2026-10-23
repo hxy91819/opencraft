@@ -97,9 +97,9 @@ test("external runtime files retain core ambient browser declarations", async ()
   const temporary = await mkdtemp(path.join(tmpdir(), "opencraft-browser-ambient-"));
   const root = path.join(temporary, "core");
   try {
-    await mkdir(root);
-    await writeFile(path.join(root, "tsconfig.browser-compatibility.json"), JSON.stringify({
-      compilerOptions: { lib: ["ESNext", "DOM"], strict: true, noEmit: true }, include: ["browser.d.ts"],
+    await mkdir(path.join(root, "config"), { recursive: true });
+    await writeFile(path.join(root, "config/tsconfig.browser-compatibility.json"), JSON.stringify({
+      compilerOptions: { lib: ["ESNext", "DOM"], strict: true, noEmit: true }, include: ["../browser.d.ts"],
     }));
     await writeFile(path.join(root, "browser.d.ts"), "declare const browserOnlyMap: Map<string, number>;");
     await writeFile(path.join(temporary, "product.ts"), "browserOnlyMap.values().map(x => x);");

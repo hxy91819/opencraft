@@ -1,7 +1,7 @@
 import { ESLint } from "eslint";
 import path from "node:path";
 import ts from "typescript";
-import browserConfig from "../eslint.browser.config.mjs";
+import browserConfig from "../config/eslint.browser.config.mjs";
 import { isBareModuleSpecifier, isExternalWorkspaceSource } from "./workspace-dependencies.mjs";
 
 /** Only the last real bundle's local runtime modules are linted. No downstream
@@ -26,10 +26,10 @@ export async function checkBrowserCompatibility(root, files) {
   }
   // Preserve one ESNext/DOM type universe even for external products with a
   // narrower tsconfig. Their runtime source must not lose typed API rejection.
-  const configFile = path.join(root, "tsconfig.browser-compatibility.json");
+  const configFile = path.join(root, "config/tsconfig.browser-compatibility.json");
   const config = ts.readConfigFile(configFile, ts.sys.readFile);
   if (config.error) throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, "\n"));
-  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, root, {}, configFile);
+  const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(configFile), {}, configFile);
   if (parsed.errors.length) throw new Error(parsed.errors.map(error => ts.flattenDiagnosticMessageText(error.messageText, "\n")).join("\n"));
   const host = ts.createCompilerHost(parsed.options);
   const moduleCache = ts.createModuleResolutionCache(root,
