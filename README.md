@@ -140,6 +140,9 @@ The renderer is semantic React/TypeScript and SCSS. It shares the same renderer 
 
 ## Workspace
 
+See the [repository layout](docs/repository-layout.md) for documentation, tooling,
+build inputs and task records.
+
 - `apps/workbench-web`: React DOM + Vite renderer for browser and Electron.
 - `apps/workbench-electron`: Electron main/preload host without a second UI.
 - `apps/workbench-expo`: Expo Router host for native and Expo Web.

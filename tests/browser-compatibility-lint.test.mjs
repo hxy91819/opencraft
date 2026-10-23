@@ -5,14 +5,14 @@ import { fileURLToPath } from "node:url";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import browserConfig from "../eslint.browser.config.mjs";
+import browserConfig from "../config/eslint.browser.config.mjs";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 // lintText simulates changing editor buffers; CI's immutable Program assumes
 // on-disk source and would otherwise bind these snippets to the real file.
 const eslint = new ESLint({ cwd: root, allowInlineConfig: false,
-  overrideConfigFile: `${root}eslint.browser.config.mjs`,
-  overrideConfig: { languageOptions: { parserOptions: { disallowAutomaticSingleRunInference: true } } },
+  overrideConfigFile: true,
+  overrideConfig: [...browserConfig, { languageOptions: { parserOptions: { disallowAutomaticSingleRunInference: true } } }],
 });
 // Use the real browser TS project, including its transitive ESNext declarations.
 const filePath = `${root}apps/workbench-web/src/browser/browser-workbench-coordinator.ts`;
