@@ -375,7 +375,7 @@ test("skills are a typed host resource and skills/changed is an invalidation sig
 test("Composer catalog reads and writes AppServer-owned new-thread model defaults", async () => {
   const harness = createHarness();
   const runtime = createAppServerWorkbenchRuntime({
-    hostId: "local-codex",
+    hostId: "fixture-host",
     transport: harness.transport,
     autoReconnect: false,
   });
@@ -386,7 +386,7 @@ test("Composer catalog reads and writes AppServer-owned new-thread model default
       { model: "gpt-5.6", effort: "high", serviceTier: null },
     );
     await runtime.resources.composerCatalog.writeNewThreadDefaults({
-      model: "gpt-5.6-codex",
+      model: "configured-model",
       effort: "xhigh",
     });
     const read = harness.requests.find((request) => request.method === "config/read");
@@ -394,7 +394,7 @@ test("Composer catalog reads and writes AppServer-owned new-thread model default
     const write = harness.requests.find((request) => request.method === "config/batchWrite");
     assert.deepEqual(write?.params, {
       edits: [
-        { keyPath: "model", value: "gpt-5.6-codex", mergeStrategy: "replace" },
+        { keyPath: "model", value: "configured-model", mergeStrategy: "replace" },
         { keyPath: "model_reasoning_effort", value: "xhigh", mergeStrategy: "replace" },
       ],
     });
@@ -445,15 +445,15 @@ test("Draft Thread creation returns identity without starting or stealing a View
 test("a first-Turn durable Host does not return a promotable Thread before turn/start is accepted", async () => {
   const harness = createHarness(true, false, [], false, undefined, false, false, true);
   const runtime = createAppServerWorkbenchRuntime({
-    hostId: "local-codex",
+    hostId: "fixture-host",
     transport: harness.transport,
     autoReconnect: false,
   });
   const drafts = createConversationScopeRegistry({
     initialDraft: {
-      draftId: "client-new-thread:codex-first-turn",
+      draftId: "client-new-thread:durable-first-turn",
       execution: {
-        hostId: "local-codex",
+        hostId: "fixture-host",
         workspace: { cwd: "/workspace", runtimeWorkspaceRoots: ["/workspace"] },
       },
     },
@@ -484,18 +484,18 @@ test("a first-Turn durable Host does not return a promotable Thread before turn/
 });
 
 
-test("a rejected first Turn never publishes a promotable Codex Thread receipt", async () => {
+test("a rejected first Turn never publishes a promotable Thread receipt", async () => {
   const harness = createHarness(false, false, [], false, undefined, false, false, true, true);
   const runtime = createAppServerWorkbenchRuntime({
-    hostId: "local-codex",
+    hostId: "fixture-host",
     transport: harness.transport,
     autoReconnect: false,
   });
   const drafts = createConversationScopeRegistry({
     initialDraft: {
-      draftId: "client-new-thread:codex-rejected",
+      draftId: "client-new-thread:durable-rejected",
       execution: {
-        hostId: "local-codex",
+        hostId: "fixture-host",
         workspace: { cwd: "/workspace", runtimeWorkspaceRoots: ["/workspace"] },
       },
     },

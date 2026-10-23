@@ -65,7 +65,7 @@ export function createHarness(
   delayResume = false,
   historyTurns: readonly unknown[] = [],
   delayUnsubscribe = false,
-  models: readonly Record<string, unknown>[] = [{ id: "codex", model: "codex", isDefault: true, inputModalities: ["text"], supportedReasoningEfforts: [{reasoningEffort:"medium",description:"Medium"}], defaultReasoningEffort:"medium" }],
+  models: readonly Record<string, unknown>[] = [{ id: "fixture-model", model: "fixture-model", isDefault: true, inputModalities: ["text"], supportedReasoningEfforts: [{reasoningEffort:"medium",description:"Medium"}], defaultReasoningEffort:"medium" }],
   declareResumeHistory: boolean | "message-window" = false,
   delayCapabilityRegistration = false,
   firstTurnDurability = false,
@@ -134,7 +134,7 @@ export function createHarness(
       } else if (message.method === "thread/fork") {
         const ephemeral = (message.params as { ephemeral?: boolean }).ephemeral === true;
         const respond = () => send({ thread: { ...fixtureThread(ephemeral ? "thread-fork-ephemeral" : "thread-fork"), forkedFromId: "thread-created", ephemeral },
-          model: "codex", modelProvider: "openai", cwd: "/workspace", approvalPolicy: "on-request", approvalsReviewer: "user",
+          model: "fixture-model", modelProvider: "openai", cwd: "/workspace", approvalPolicy: "on-request", approvalsReviewer: "user",
           sandbox: { type: "workspaceWrite", writableRoots: ["/workspace"] }, runtimeWorkspaceRoots: ["/workspace"],
         });
         if (holdFork) releaseFork = respond;
@@ -154,7 +154,7 @@ export function createHarness(
         const threadId = (message.params as { threadId?: string }).threadId ?? "thread-created";
         const respond = () => send({
           thread: fixtureThread(threadId),
-          model: "codex",
+          model: "fixture-model",
           modelProvider: "openai",
           serviceTier: "default",
           reasoningEffort: "medium",
