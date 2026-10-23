@@ -71,6 +71,17 @@ function Demo() {
   const [turn, setTurn] = useState<TimelineSourceTurn>({ id: "turn", status: "streaming", items: [reasoning("codex")] });
   probe.update = (action: string, selectedEngine = engine) => {
     setRevision(value => value + 1);
+    if (action.startsWith("late-body-")) {
+      const mode = action.slice("late-body-".length);
+      if (mode === "reset") { restore = null; setGeneration(value => value + 1); }
+      const diff = mode === "reset" || mode === "remove" ? "" : "@@ -1 +1,3 @@\n-before\n+one\n+two\n+three\n";
+      setTurn({ id: "turn", status: "streaming", items: [
+        { id: "late-patch", type: "fileChange", payload: { status: "running", changes: [
+          { path: "/work/late.ts", kind: "modify", diff },
+        ] } },
+        { id: "late-boundary", type: "agentMessage", payload: { text: "Following visible paragraph", phase: "commentary" } },
+      ] }); return;
+    }
     if (action.startsWith("reading-panels-")) {
       const mode = action.slice("reading-panels-".length);
       if (mode === "reset" || mode === "running") { restore = null; setGeneration(value => value + 1); }

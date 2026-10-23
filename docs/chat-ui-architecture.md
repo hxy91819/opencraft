@@ -3360,3 +3360,10 @@ Inherited Fast status uses the effective execution tier and the same selected-ti
 metadata as the editable model status. Host tier IDs are opaque: a declared
 tier named Fast keeps its indicator even when its ID differs. A retained local
 draft choice cannot enable Fast when the effective read-only snapshot is off.
+
+### Details arriving in a mounted activity row
+
+The activity disclosure binds its measurement observer whenever its actual body
+mounts, including a diff that arrives after an initially empty file record.
+Removing that body releases the old observer; a later body binds a new one.
+The existing row, expansion intent, motion and viewport reflow owner remain.

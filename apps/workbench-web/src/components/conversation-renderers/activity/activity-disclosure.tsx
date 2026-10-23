@@ -104,7 +104,7 @@ export function ActivityDisclosure({
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [bodyMounted]);
+  }, [bodyMounted, hasBody]);
   return (
     <div className="thread-activity-item" data-conversation-row="activity" data-body-variant={bodyVariant} data-open={open || undefined} data-status={status}>
       <OverlayDisclosureTrigger
