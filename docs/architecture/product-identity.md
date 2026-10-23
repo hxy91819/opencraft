@@ -114,10 +114,15 @@ the intact legacy profile. Explicit `--user-data-dir` profiles skip migration.
 Migration occurs only when a rebuilt application is installed and launched;
 building source alone never moves a machine's profile.
 
-Existing `vela.*` plugin/View/host IDs and `vela-bot:` resource URIs remain
-opaque compatibility identities. Database identities and product storage
-partitions remain with their storage owners; source naming changes do not
-implicitly migrate or clear their data.
+Current first-party plugin, provider and View registrations use `opencraft.*`.
+The Web composition migrates exact former built-in provider IDs only when their
+current provider is registered, preserving Host IDs, recipes and observations.
+Exact former first-party Settings/View bookmarks resolve through Router REPLACE.
+Third-party identities remain opaque. The optional first-party Paper palette
+also normalizes its exact former ID before preferences copy forward.
+`vela-bot:` resource URIs, database identities and product storage partitions
+remain with their storage owners; these registration changes do not implicitly
+migrate or clear those separate contracts.
 
 Appearance preferences write the current `opencraft.appearance-theme` and
 `opencraft.appearance-theme-id` keys. The six built-in theme IDs use

@@ -30,18 +30,18 @@ test("Web can activate built-in model and Codex settings without desktop Host re
     }));
     const pages = supervisor.contributions.getSnapshot().settingsPages.map(({ contribution }) => contribution);
     assert.deepEqual(pages.map(({ id }) => id).sort(), [
-      "vela.builtin-agents.codex-accounts",
-      "vela.builtin-agents.model-services",
+      "opencraft.builtin-agents.codex-accounts",
+      "opencraft.builtin-agents.model-services",
     ]);
     assert.ok(pages.every(({ platforms }) => platforms?.includes("web")));
     assert.ok(pages.every(page => page.modelConfiguration === true));
     assert.deepEqual(Object.fromEntries(pages.map(({ id, targetHostId }) => [id, targetHostId])), {
-      "vela.builtin-agents.model-services": "local",
-      "vela.builtin-agents.codex-accounts": "local-codex",
+      "opencraft.builtin-agents.model-services": "local",
+      "opencraft.builtin-agents.codex-accounts": "local-codex",
     });
     assert.deepEqual(renderedViews.sort(), [
-      "vela.builtin-agents.codex-accounts",
-      "vela.builtin-agents.model-services",
+      "opencraft.builtin-agents.codex-accounts",
+      "opencraft.builtin-agents.model-services",
     ]);
   } finally {
     await supervisor.dispose();
@@ -79,10 +79,10 @@ test("Electron retains daemon Host registration and explicit configuration owner
     assert.ok(pages.every(({ platforms }) => platforms?.includes("electron")));
     assert.ok(pages.every(page => page.modelConfiguration === true));
     assert.deepEqual(Object.fromEntries(pages.map(({ id, targetHostId }) => [id, targetHostId])), {
-      "vela.builtin-agents.model-services": "local",
-      "vela.builtin-agents.codex-accounts": "local-codex",
+      "opencraft.builtin-agents.model-services": "local",
+      "opencraft.builtin-agents.codex-accounts": "local-codex",
     });
-    assert.deepEqual(providerIds, ["vela.builtin-agents"]);
+    assert.deepEqual(providerIds, ["opencraft.builtin-agents"]);
     assert.deepEqual(hostIds.sort(), ["local", "local-codex"]);
   } finally {
     await supervisor.dispose();
@@ -111,7 +111,7 @@ test("a server deployment contributes exactly one Codex page beside model servic
     assert.equal(accounts[0]!.id, "opencraft.server-connections.codex-accounts");
     assert.equal(accounts[0]!.group, "Server");
     assert.equal(accounts[0]!.targetHostId, undefined);
-    assert.ok(pages.some(page => page.id === "vela.headless-model-services" && page.group === accounts[0]!.group));
-    assert.ok(!supervisor.contributions.getSnapshot().views.some(({ contribution }) => contribution.id === "vela.builtin-agents.codex-accounts-view"));
+    assert.ok(pages.some(page => page.id === "opencraft.headless-model-services" && page.group === accounts[0]!.group));
+    assert.ok(!supervisor.contributions.getSnapshot().views.some(({ contribution }) => contribution.id === "opencraft.builtin-agents.codex-accounts-view"));
   } finally { await supervisor.dispose(); }
 });

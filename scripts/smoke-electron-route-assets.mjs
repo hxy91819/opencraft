@@ -6,7 +6,7 @@ const server = await createWorkbenchStaticServer({ root: resolve("apps/workbench
 try {
   const address = await server.listen();
   const origin = `http://127.0.0.1:${address.port}`;
-  for (const route of ["/", "/views/vela.bot-management.view", "/settings/models"]) {
+  for (const route of ["/", "/views/opencraft.bot-management.view", "/settings/models"]) {
     const pageUrl = `${origin}${route}`;
     const page = await fetch(pageUrl, { headers: { accept: "text/html" } });
     assert.equal(page.status, 200);

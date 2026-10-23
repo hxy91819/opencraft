@@ -10,7 +10,7 @@ const settled = () => new Promise<void>(resolve => setImmediate(resolve));
 for (const status of [401, 403]) test(`denied browser connector reads (${status}) do not recursively reload the managed list`, async t => {
   let requests = 0;
   t.mock.method(globalThis, 'fetch', async (_url: unknown, init?: RequestInit) => {
-    if (!init?.method) return Response.json({ protocolVersion: 1, hosts: { 'local-codex': 'fixture' } });
+    if (!init?.method) return Response.json({ protocolVersion: 1, hosts: { 'fixture-host': 'fixture' } });
     requests++;
     // Bound the broken implementation's feedback loop so the regression fails
     // deterministically without starving the test runner's event loop.
@@ -20,35 +20,35 @@ for (const status of [401, 403]) test(`denied browser connector reads (${status}
   const remote = await BrowserHeadlessConnectors.open();
   const controller = new ManagedConnectorController({} as ConnectorManager, async hostId => remote.client(hostId));
   t.after(() => { controller.dispose(); remote.dispose(); });
-  await controller.load('local-codex');
+  await controller.load('fixture-host');
   await settled();
   assert.equal(requests, 1, 'authentication failure must settle without another automatic list request');
-  assert.equal(controller.snapshot('local-codex').phase, 'error');
-  assert.equal(remote.owns('local-codex'), true, 'failure never transfers execution ownership to the browser');
+  assert.equal(controller.snapshot('fixture-host').phase, 'error');
+  assert.equal(remote.owns('fixture-host'), true, 'failure never transfers execution ownership to the browser');
 });
 
 test('expired browser connector state clears once without change notifications and can recover', async t => {
   let status = 200, calls = 0, notifications = 0, stateChanges = 0;
   t.mock.method(globalThis, 'fetch', async (_url: unknown, init?: RequestInit) => {
-    if (!init?.method) return Response.json({ protocolVersion: 1, hosts: { 'local-codex': 'fixture' } });
+    if (!init?.method) return Response.json({ protocolVersion: 1, hosts: { 'fixture-host': 'fixture' } });
     calls++;
     return Response.json(state, { status });
   });
   const remote = await BrowserHeadlessConnectors.open(); t.after(() => remote.dispose());
-  remote.client('local-codex').subscribeNotification(event => { if (event.method === 'connectors/managed/changed') notifications++; });
+  remote.client('fixture-host').subscribeNotification(event => { if (event.method === 'connectors/managed/changed') notifications++; });
   remote.subscribe(() => stateChanges++);
-  await remote.refresh('local-codex');
-  assert.deepEqual(remote.state('local-codex'), state);
+  await remote.refresh('fixture-host');
+  assert.deepEqual(remote.state('fixture-host'), state);
   assert.equal(notifications, 1);
   status = 401;
-  await assert.rejects(remote.refresh('local-codex'));
-  assert.equal(remote.state('local-codex'), null, 'expired data is removed from the presentation');
+  await assert.rejects(remote.refresh('fixture-host'));
+  assert.equal(remote.state('fixture-host'), null, 'expired data is removed from the presentation');
   assert.ok(stateChanges > 1, 'presentation subscribers learn that state was cleared');
   assert.equal(notifications, 1, 'a failed read cannot announce a managed configuration change');
   await settled(); assert.equal(calls, 2);
   status = 200;
-  await remote.refresh('local-codex');
-  assert.deepEqual(remote.state('local-codex'), state);
+  await remote.refresh('fixture-host');
+  assert.deepEqual(remote.state('fixture-host'), state);
   assert.equal(notifications, 2, 'successful refreshes still notify management consumers');
 });
 

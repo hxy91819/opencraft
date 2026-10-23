@@ -417,3 +417,12 @@ test("extension theme selection is root-owned and unload falls back atomically",
     });
   }
 });
+
+test("the first-party Paper palette migrates its exact old preference while other extension IDs stay opaque", async () => {
+  const stored = new Map([["opencraft.appearance-theme-id", "vela.theme-pack.paper"]]);
+  const { snapshot } = await readInitialPreferences(stored);
+  assert.equal(snapshot.requestedThemeId, "opencraft.theme-pack.paper");
+  assert.equal(stored.get("opencraft.appearance-theme-id"), "opencraft.theme-pack.paper");
+  const custom = new Map([["opencraft.appearance-theme-id", "vela.theme-pack.custom"]]);
+  assert.equal((await readInitialPreferences(custom)).snapshot.requestedThemeId, "vela.theme-pack.custom");
+});

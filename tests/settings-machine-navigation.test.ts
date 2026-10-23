@@ -5,7 +5,7 @@ import { createApplicationNavigation } from "../apps/workbench-web/src/runtime/w
 import { machineSettingsSection, replacementMachineSettingsSection } from "../apps/workbench-web/src/runtime/settings-machine-route";
 
 const profile = (hostId: string, known = true): HostConnectionProfile => ({
-  hostId, displayName: hostId, providerId: "vela.websocket", providerConfig: {}, providerConfigVersion: 1,
+  hostId, displayName: hostId, providerId: "opencraft.websocket", providerConfig: {}, providerConfigVersion: 1,
   hostKind: "remote", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: null,
   transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: [], revision: 0,
   machineIdentity: known ? { machineId: "12345678-1234-4123-8123-123456789abc", name: "服务器", platform: "linux" } : null,
@@ -41,7 +41,7 @@ for (const mode of ["connected", "hostless"] as const) test(`${mode}: PUSH, lega
     assert.equal(nav.getSnapshot().action, "replace");
     assert.equal(nav.getSnapshot().historyIndex, index);
     assert.deepEqual(nav.getSnapshot().applicationRoute, { kind: "settings", slug: section });
-    nav.openSettings("vela.builtin-agents.codex-accounts");
+    nav.openSettings("opencraft.builtin-agents.codex-accounts");
     nav.back(); await settle();
     assert.deepEqual(nav.getSnapshot().applicationRoute, { kind: "settings", slug: section });
     nav.back(); await settle();

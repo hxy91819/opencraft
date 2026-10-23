@@ -1741,7 +1741,7 @@ Composer command adapters (see below);
 `HostRuntimeRegistry` lazily creates and exclusively owns complete Host
 runtimes. A provider lease is held for the lifetime of every runtime it
 created, so plugin reload cannot invalidate a live connection. Web currently
-ships `vela.websocket`; Electron and Expo may register platform-specific
+ships `opencraft.websocket`; Electron and Expo may register platform-specific
 providers without changing Host, Thread, Session or Replica semantics.
 
 Adding a Host is `validate provider config → persist profile → register lazy

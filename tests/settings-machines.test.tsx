@@ -14,7 +14,7 @@ import messages from "../apps/workbench-web/src/i18n/locales/zh-CN.json";
 
 const identity = { machineId: "12345678-1234-4123-8123-123456789abc", name: "我的服务器", platform: "linux" as const };
 function profile(hostId: string, agent: string): HostConnectionProfile {
-  return { hostId, agent, machineIdentity: identity, displayName: hostId, providerId: "vela.builtin-agents", providerConfig: { url: `ws://server/${hostId}?token=secret` }, providerConfigVersion: 1, hostKind: "local", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: null, transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: [], revision: 0 };
+  return { hostId, agent, machineIdentity: identity, displayName: hostId, providerId: "opencraft.builtin-agents", providerConfig: { url: `ws://server/${hostId}?token=secret` }, providerConfigVersion: 1, hostKind: "local", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: null, transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: [], revision: 0 };
 }
 
 test("settings render machine ownership, cold/failed connections, first-level navigation history and localized sidebar labels", async context => {
