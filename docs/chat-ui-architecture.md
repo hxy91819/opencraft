@@ -224,7 +224,15 @@ sending and does not expose a server Resume action.
 Before transport dispatch the attempted state is saved. Reloaded attempts or a
 lost acknowledgement become unconfirmed and block FIFO; only exact server queue
 or timeline client-message identity retires them automatically. They are never
-blindly replayed. A confirmed pre-dispatch refusal can return to waiting. An
+blindly replayed. Exact positive proof retires the local attempt and its
+optimistic command together, then wakes FIFO after the authoritative snapshot
+has been published; a queue-only confirmation needs no further timeline event
+or page reload. Reconnect also refreshes the Host queue independently after
+history authority returns: a lost queue notification must not leave an attempted
+local input permanently unconfirmed. Old connection responses cannot publish
+queue authority into a newer generation. If readiness is synchronously revoked when the saved attempt is
+published, the transport has not been called: restore waiting custody before
+exiting the drain. A confirmed pre-dispatch refusal can return to waiting. An
 identity replacement revokes the old namespace and late completions; ownership
 is rechecked after asynchronous compilation immediately before sending.
 Closing a browser tab ends sessionStorage lifetime; this is not cross-device

@@ -2617,3 +2617,34 @@ test("optional local outbox accepts disconnected input and drains only after Rep
   assert.equal(runtime.getSnapshot().queuedSubmissions.some(row => row.local), false);
   runtime.dispose();
 });
+
+test("queue-only confirmation of an outbox timeout automatically releases the next message", async () => {
+  const replica = new FakeReplica(threadView(), false);
+  const key = createConversationKey("local", "thread-one");
+  let rows: readonly import("@opencraft/chat-runtime").ConversationOutboxEntry[] = [];
+  const calls: string[] = [];
+  const runtime = createReplicaConversationRuntime({ key, replica,
+    outbox: { read: () => rows, write: (_, next) => { rows = next; }, subscribe: () => () => {} },
+    commands: commands({ async submit(intent) {
+      calls.push(intent.clientMessageId);
+      if (calls.length === 1) throw new SubmissionOutcomeUnknownError();
+      return { ...receipt(intent.commandId, intent.clientMessageId), turnId: null };
+    } }), history: { async loadOlder() {} },
+  });
+  const make = (id: string) => {
+    const composer = createComposerController({ type: "existing-thread", key }, { now: () => 1, createId: () => id });
+    composer.dispatch({ type: "set-document", document: { version: 1, blocks: [{ type: "paragraph", children: [{ type: "text", text: id }] }] } });
+    return composer.createSubmitIntent();
+  };
+  const first = make("first"); const next = make("next");
+  await runtime.submit(first); await runtime.submit(next);
+  replica.setAuthority(true); await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(runtime.getSnapshot().queuedSubmissions[0]?.state, "unknown");
+  runtime.replaceQueuedSubmissions([{ id: "server-first", clientUserMessageId: first.clientMessageId,
+    input: [{ type: "text", text: "first" }], createdAt: 1, pausedReason: null }]);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.deepEqual(calls, [first.clientMessageId, next.clientMessageId]);
+  assert.equal(rows.length, 0);
+  assert.equal(runtime.getSnapshot().queuedSubmissions.some(row => row.local), false);
+  runtime.dispose();
+});
