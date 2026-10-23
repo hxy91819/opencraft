@@ -31,14 +31,14 @@ export function AsyncQuestionCard({ question, title }: { readonly question: Asyn
   }, [error, failure, notices, question.id]);
   const sending = state === "sending" || submitting;
   const status = state === "answered" ? intl.formatMessage({ id: "chat.question.answered", defaultMessage: "Answered" })
-    : state === "dismissed" ? intl.formatMessage({ id: "chat.question.dismissed", defaultMessage: "Superseded by a later message" })
-      : state === "unconfirmed" ? intl.formatMessage({ id: "chat.question.unconfirmed", defaultMessage: "Delivery unconfirmed" })
+    : state === "unconfirmed" ? intl.formatMessage({ id: "chat.question.unconfirmed", defaultMessage: "Delivery unconfirmed" })
         : sending ? intl.formatMessage({ id: "chat.question.sending", defaultMessage: "Sending answer…" })
           : queued ? intl.formatMessage({ id: "chat.question.queued", defaultMessage: "Answer in follow-up queue" })
             : context.answer === null ? intl.formatMessage({ id: "chat.question.offline", defaultMessage: "Connect to answer" }) : null;
-  const resolved = state === "answered" || state === "dismissed";
+  const resolved = state === "answered";
   const answer = context.answers.get(question.id);
   const viewQuestion = intl.formatMessage({ id: "chat.question.view", defaultMessage: "View question" });
+  if (state === "dismissed") return <>{title}</>;
   return (
     <section className="thread-async-question" data-state={state !== "pending" ? state : queued ? "queued" : sending ? "sending" : state}>
       {resolved ? (

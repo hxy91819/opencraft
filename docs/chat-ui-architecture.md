@@ -1743,8 +1743,9 @@ and follow-up queue so a second subscriber or a reconnect sees the same result.
 
 Resolved async questions use a compact disclosure row. Its summary owns the
 minimum pointer/touch hit height; the closed container adds no vertical panel
-padding. Expanded question content retains its own bottom inset. Answered and
-superseded states share this geometry and preserve native disclosure behavior.
+padding. Expanded question content retains its own bottom inset. Answered cards retain this geometry and native disclosure behavior. Superseded
+questions leave no status card or disclosure: their original Markdown title stays
+in the ordinary message history, with no deletion or synthesized answer.
 
 The Web/Electron inline async answer textarea submits with Enter or Cmd/Ctrl+Enter;
 Shift+Enter inserts a newline. IME composition (including legacy key code 229),
