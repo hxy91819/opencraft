@@ -35,8 +35,12 @@ export function connectRelay(options: RelayConnectOptions) {
     ws.on('open', () => { attempts = 0; lastPong = Date.now(); }); ws.on('error', () => {}); ws.on('pong', () => { lastPong = Date.now(); });
     ws.on('message', raw => {
       try {
-        if (stopped || control !== ws || streams.size >= MAX_STREAMS) throw new Error('Relay stream capacity');
+        if (stopped || control !== ws) return;
         const frame = parseOpen(JSON.parse(raw.toString()));
+        // A completed server stream can still be closing locally. Reject only
+        // this new open; its existing server deadline releases the reservation.
+        // Capacity pressure must not revoke the control link and every live stream.
+        if (streams.size >= MAX_STREAMS) return;
         const data = new WebSocket(base + DATA_PATH, RELAY_PROTOCOL, { ca: options.ca, headers: { authorization: `Bearer ${frame.token}`, [STREAM_HEADER]: frame.id }, perMessageDeflate: false, maxPayload: 65_536, handshakeTimeout: 10_000 });
         streams.add(data); data.on('error', () => {}); data.once('close', () => streams.delete(data));
         data.once('open', () => {

@@ -234,7 +234,7 @@
     "smoke:browser-todo": "tsx scripts/smoke-browser-todo.ts",
     "build:relay": "node scripts/package-relay.mjs",
     "test:actors": "tsx --test tests/actors.test.ts tests/actor-collaboration.test.ts tests/actor-collaboration-codex.test.ts",
-    "test:relay": "tsx --test tests/assertion-admission-probes.test.ts tests/relay-application.test.ts tests/relay-access.test.ts tests/relay-authentication.test.ts tests/relay-entry-origin.test.ts tests/relay-managed.test.ts tests/server-selection.test.ts tests/server-context.test.ts",
+    "test:relay": "tsx --test tests/assertion-admission-probes.test.ts tests/relay-application.test.ts tests/relay-capacity.test.ts tests/relay-access.test.ts tests/relay-authentication.test.ts tests/relay-entry-origin.test.ts tests/relay-managed.test.ts tests/server-selection.test.ts tests/server-context.test.ts",
     "auth:account": "tsx scripts/human-account.ts",
     "test:human-auth": "tsx --test tests/human-auth.test.ts tests/human-auth-artifact.test.ts tests/local-account-plugin.test.ts",
     "smoke:human-auth": "tsx scripts/smoke-human-auth.ts",
