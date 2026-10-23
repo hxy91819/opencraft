@@ -277,7 +277,7 @@ not a second source of product policy.
   account onboarding is a separate adapter and is not changed by this desktop fix.
 - Product onboarding shares a renderer-neutral account-state projection. An
   authenticated the downstream product account with zero executable Bots can still enter
-  Collaboration; `bot-required` belongs only to the Hermes/Codex Host path, not
+  Collaboration; `bot-required` belongs only to an explicitly selected Bot Host path, not
   to the application account gate. Web and Expo still resolve the same
   region-aware `/dashboard/create` target when a user explicitly enters that
   Agent path, then refresh the account catalog after regaining focus.

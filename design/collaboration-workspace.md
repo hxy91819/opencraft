@@ -9,7 +9,7 @@ Collaboration 是独立的团队 IM 产品，不是本地 Agent Chat 的前置�
 不加载实现、不注册 Applications 入口，也不连接 IM 或读取协作目录。用户启用后加载实现并注册
 Workspace 入口；停用撤销贡献并释放 IM/Workspace 资源，不注销平台账户、不结束 Agent 会话。
 
-组合根的 `enableLightVelaCollaboration` 只提供首次使用的产品默认值（省略为 `false`）。用户启停
+下游组合根只提供首次使用的扩展启用默认值（省略为 `false`）。用户启停
 选择通过统一 `ExtensionInstallationRepository` 持久化，刷新/重启及产品默认值变化不覆盖已有选择。
 默认停用同时适用于桌面宽度和手机抽屉，导航可见性由扩展激活贡献决定，不在 Shell 另加隐藏开关。
 扩展启用、账户登录和 Server 是否存在是三个独立状态。登录由既有平台账户入口提供，启用扩展不
@@ -41,7 +41,7 @@ OpenCraft 内存在两套完全独立的聊天产品：
 - Collaboration 插件不得 import Agent/AppServer conversation renderer；Agent Chat 插件也不得
   import第三方 IM adapter。
 
-Agent 可以通过 `vela-computer` 从 IM 收到工作并把结果发回 IM；这是 Agent 侧协议桥接，
+Agent 可以通过 托管 Computer 的 Agent Chat Client 从 IM 收到工作并把结果发回 IM；这是 Agent 侧协议桥接，
 不是前端两套 Chat 状态的合并点。
 
 ## IM Chat 内部边界
@@ -64,30 +64,30 @@ IM 群聊和 Server 内私聊是一套体验、一个消息模型和一套 Compo
 ## 插件与服务归属
 
 ```text
-lightvela-platform
+下游平台插件
   ├─ the downstream product Account / region / authenticated gateway transport
   ├─ the downstream product instance directory
   └─ instance-scoped terminal provider
 
-lightvela-collaboration
+下游 Collaboration 插件
   ├─ Server Workspace 与 collaboration API
   ├─ Tencent IM connection + unified IM Chat + Members
   └─ Computers + IM MessageThread
 
-lightvela-hermes
+下游 Hermes adapter
   └─ Agent/AppServer adapter，仅服务 Agent 会话 ChatUI
 
-vela-computer/
+托管 Computer 的 Agent Chat Client
   └─ 下发到托管 Computer 的 Agent Chat Client，不是 OpenCraft 插件
 ```
 
-`lightvela-platform` 拥有账户、下游产品 instance directory 和 instance-scoped terminal
+`下游平台插件` 拥有账户、下游产品 instance directory 和 instance-scoped terminal
 provider；Hermes 与 Collaboration 都只借用平台能力，彼此不成为对方的基础层。
 
 ## 一个 Workspace View，两个产品区
 
 最终只保留一个顶层 Navigation：`Collaboration`，对应一个
-`lightvela.collaboration.workspace` View。View 内部使用 OpenCraft 原生 master/detail 布局：
+由下游 Collaboration 插件注册的 Workspace View。View 内部使用 OpenCraft 原生 master/detail 布局：
 
 - **IM Chat + Members**：Server、Channel、私聊和成员目录属于同一个沟通工作区。点击 Channel
   进入群聊；点击 Member 创建或进入私聊；成员资料和管理动作是 Chat directory 的上下文详情，
@@ -99,14 +99,15 @@ Tasks、Reminders 和 Inbox 的后台契约继续保留，但暂不进入插件�
 
 临时 `Servers`、`Computers` 顶层 View 已随 Workspace 落地退役。
 
-所有选择进入 opaque `resourceUri`，不写入全局 singleton：
+所有选择进入 opaque `resourceUri`，不写入全局 singleton。以下为路径结构示意，
+`example-collaboration` 不是核心注册的协议；实际 scheme 由下游插件持有，不因文档示例改变：
 
 ```text
-lightvela-collaboration://servers/{serverId}/chat/channels/{channelId}
-lightvela-collaboration://servers/{serverId}/chat/direct/{directConversationId}
-lightvela-collaboration://servers/{serverId}/chat/channels/{channelId}/im-threads/{threadId}
-lightvela-collaboration://servers/{serverId}/chat/members/{memberId}
-lightvela-collaboration://servers/{serverId}/computers/{computerId?}
+example-collaboration://servers/{serverId}/chat/channels/{channelId}
+example-collaboration://servers/{serverId}/chat/direct/{directConversationId}
+example-collaboration://servers/{serverId}/chat/channels/{channelId}/im-threads/{threadId}
+example-collaboration://servers/{serverId}/chat/members/{memberId}
+example-collaboration://servers/{serverId}/computers/{computerId?}
 ```
 
 URI 只使用稳定业务 ID；名称只用于显示。需要增加纯 `route-codec` 和 round-trip/非法 URI
@@ -137,7 +138,7 @@ Computer 实现来源：
 - 当前默认产品配置不呈现 Computer。仅仅存在 OpenAPI、表结构或前端组件不代表用户可用；
   必须由组合根显式提供可信 `InstanceDirectory` 并打开 `enableComputers` capability。
 
-- `kind = lightvela_instance`；当前 UI 不提供其他 kind。
+- kind 对应下游实例类型；当前 UI 不提供其他 kind，具体 wire 值由下游契约持有。
 - 创建 Computer 的唯一入口是从当前下游产品账户实例目录选择已有实例；Computer 页面
   不购买或新建桌面服务实例。
 - 一个 Computer 只能归属一个 Server；一个 Server 可以拥有多个 Computers。跨 Server 使用
@@ -167,9 +168,9 @@ Computer 实现来源：
 
 使用 platform 的 instance-scoped terminal provider：
 
-1. Collaboration View 请求打开 `lightvela-instance://{instanceId}`。
+1. Collaboration View 请求打开 由下游实例 provider 持有、包含精确 instance ID 的 resource URI。
 2. Host 校验账户所有权和当前 Computer/Server 权限。
-3. `lightvela-platform` 为精确 instance 创建 terminal session。
+3. `下游平台插件` 为精确 instance 创建 terminal session。
 4. `plugin-terminal` 继续拥有 terminal registry、right/bottom panel tab、resize 和 dispose。
 
 底层 provider 可以调用桌面服务/企业服务，但 Collaboration 插件只看见 terminal resource port，不
@@ -194,13 +195,13 @@ Computer 实现来源：
 
 ## 实施顺序
 
-1. **平台基座**：抽 `lightvela-platform`；增加 resource URI push 和 instance terminal port。
+1. **平台基座**：抽 `下游平台插件`；增加 resource URI push 和 instance terminal port。
 2. **Workspace 骨架**：一个 View、route codec、Server rail、section layout；退役临时双入口。
 3. **IM Chat + Members**：迁 conversation/member directory、统一群聊/私聊、Composer、消息
    列表、搜索、附件和成员上下文操作。
 4. **IM MessageThread**：独立 service/snapshot，按平台 reply refs 从 IM hydrate。
 5. **Computers（默认关闭）**：平台列出现有下游产品 instances；后台实现
-   `Computer(kind=lightvela_instance)` authority、唯一归属 registry 和桌面服务 projection；
+   下游实例 Computer authority、唯一归属 registry 和桌面服务 projection；
    Computer 页面不创建实例。Tasks/Reminders 不进入本轮。
 6. **Terminal**：精确 instance provider + host-owned panel，不走旧 Enrollment surface。
 7. **退役**：删除插件内临时 View、禁止新客户端调用旧 Auth/Enrollment/企业服务 surface；旧发布契约
