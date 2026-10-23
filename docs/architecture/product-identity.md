@@ -176,6 +176,15 @@ revisions, sidebar ownership and Replica cursors remain intact. See
 recovery and platform boundaries. Split legacy extension settings/installations
 remain read-only import sources; Expo native SQLite is a separate owner.
 
+## Native Replica identity
+
+Expo native Replica files use the owned `opencraft-*.db` names. Exact former
+files are snapshot inputs; existing current caches win, and a complete SQLite
+snapshot is installed without overwriting a competing destination. Old files
+remain recoverable and current cache clears do not revive them. See
+[native Replica migration](../native-replica-identity-migration.md) for the native
+owner, WAL, recovery and verification boundaries.
+
 ## Browser metadata identity
 
 Page, tab and conversation-binding metadata now writes `opencraft.*` keys.
