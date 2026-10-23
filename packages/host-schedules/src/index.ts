@@ -35,7 +35,9 @@ export class ConversationSchedules {
   private closing: Promise<void> | null = null;
   private inTransaction = false;
   private summarySignature = "";
-  private readonly retries = new Map<string, number>();
+  // Check scheduling is ephemeral and scoped to the conversation flight, even
+  // before an occurrence can be persisted. Native events cannot waive a failure.
+  private readonly retries = new Map<string, { at: number; failed: boolean }>();
   // Only unfinished occurrences can retain an early native completion, including
   // completion racing the submit acknowledgement. This is not an execution log.
   private readonly observations = new Map<string, ScheduleExecutionEvent>();
@@ -180,7 +182,7 @@ export class ConversationSchedules {
     const run = this.runs(event.threadId).find(value => value.state === "submitting" || value.state === "running" || value.state === "unknown" && value.turnId !== null);
     if (!run || run.turnId !== null && run.turnId !== event.turnId) return;
     this.observations.set(run.id, event);
-    this.retries.delete(run.id);
+    if (!this.retries.get(event.threadId)?.failed) this.retries.delete(event.threadId);
     void this.tick();
   }
   private observed(run: ConversationScheduleRun) {
@@ -204,12 +206,15 @@ export class ConversationSchedules {
     const started: Promise<void>[] = [];
     for (const snapshot of schedules) {
       if (this.stopped || this.flights.size >= 4) break;
-      if (this.flights.has(snapshot.threadId)) continue;
+      if (this.flights.has(snapshot.threadId) || (this.retries.get(snapshot.threadId)?.at ?? 0) > this.now()) continue;
       const run = this.runs(snapshot.threadId).find(run => unfinished.has(run.state));
       if (!run && !(snapshot.status === "active" && snapshot.nextRunAt <= this.now())) continue;
-      if (run && (run.state === "unknown" && !this.observed(run) || (this.retries.get(run.id) ?? 0) > this.now())) continue;
+      if (run?.state === "unknown" && !this.observed(run)) continue;
       const operation = Promise.resolve().then(() => this.advancePlan(snapshot))
-        .catch(() => this.diagnostic({ event: "schedule-execution-check-failed", scheduleId: snapshot.id }))
+        .catch(() => {
+          this.retries.set(snapshot.threadId, { at: this.now() + 30000, failed: true });
+          this.diagnostic({ event: "schedule-execution-check-failed", scheduleId: snapshot.id });
+        })
         .finally(() => {
           this.flights.delete(snapshot.threadId);
           // Fill a released slot independently of other blocked conversations.
@@ -236,53 +241,47 @@ export class ConversationSchedules {
       this.writeRun(run);
     }
     if (run?.state === "waiting" && plan.status !== "active") { this.writeRun({ ...run, state: "failed", updatedAt: this.now() }); return; }
-    if (!run || run.state === "unknown" && !this.observed(run) || (this.retries.get(run.id) ?? 0) > this.now()) return;
-    try {
-      if (run.state === "waiting" || run.state === "submitting") {
-        // Persist intent before crossing the engine boundary. Re-entry uses the SAME ID.
-        if (run.state === "waiting") { run = { ...run, state: "submitting", updatedAt: this.now() }; this.writeRun(run); }
-        const occurrence = run;
-        const prompt = plan.skills?.length ? `${plan.prompt}\n\nUse these installed skills for this task: ${plan.skills.join(", ")}` : plan.prompt;
-        const result = await this.port.submit(run, prompt, () => {
-          const current = this.schedule(occurrence.threadId);
-          return !this.stopped && current?.id === occurrence.scheduleId && current.status === "active";
-        });
-        run = { ...run, state: result.state, turnId: result.turnId ?? run.turnId, updatedAt: this.now() };
-        const observed = this.observed(run);
-        if (run.state === "running" && observed) run = { ...run, ...observed };
-      } else {
-        let result: Awaited<ReturnType<ScheduleExecutionPort["inspect"]>> | undefined = this.observed(run);
-        if (!result) {
-          try { result = await this.port.inspect(run); }
-          catch (error) { result = this.observed(run); if (!result) throw error; }
-        }
-        run = { ...run, state: result.state, updatedAt: this.now() };
-      }
-      // A native completion can arrive while inspection is awaiting its reply.
-      const observation = this.observed(run);
-      if (observation && (run.state === "running" || run.state === "unknown")) run = { ...run, ...observation };
-      const settled = run;
-      this.transaction(() => {
-        this.writeRun(settled);
-        plan = this.schedule(plan.threadId)!;
-        if ((settled.state === "completed" || settled.state === "failed") && plan.status === "active" && !settled.id.includes(":manual:")) {
-          const after = Math.max(this.now(), plan.nextRunAt) + 1;
-          const next = plan.calendar ? nextCalendarRun(plan.calendar, plan.timeZone, after, plan.window)
-            : plan.intervalMinutes !== null ? nextIntervalRun(plan.nextRunAt, plan.intervalMinutes, plan.timeZone, after, plan.window) : null;
-          this.writeSchedule({ ...plan, status: next === null ? "completed" : "active",
-            nextRunAt: next ?? plan.nextRunAt,
-            revision: plan.revision + 1, updatedAt: this.now() });
-        }
+    if (!run || run.state === "unknown" && !this.observed(run)) return;
+    if (run.state === "waiting" || run.state === "submitting") {
+      // Persist intent before crossing the engine boundary. Re-entry uses the SAME ID.
+      if (run.state === "waiting") { run = { ...run, state: "submitting", updatedAt: this.now() }; this.writeRun(run); }
+      const occurrence = run;
+      const prompt = plan.skills?.length ? `${plan.prompt}\n\nUse these installed skills for this task: ${plan.skills.join(", ")}` : plan.prompt;
+      const result = await this.port.submit(run, prompt, () => {
+        const current = this.schedule(occurrence.threadId);
+        return !this.stopped && current?.id === occurrence.scheduleId && current.status === "active";
       });
-      if (run.state === "waiting" || run.state === "running") this.retries.set(run.id, this.now() + (run.state === "waiting" ? 5000 : this.port.subscribe ? 60000 : 15000));
-      else { this.retries.delete(run.id); this.observations.delete(run.id); }
-    } catch {
-      // Native completion can resolve a failed query above, but cannot turn a
-      // failed durable write into an immediate event/tick retry loop.
-      this.retries.set(run.id, this.now() + 30000);
-      this.diagnostic({ event: "schedule-execution-check-failed", scheduleId: plan.id });
+      run = { ...run, state: result.state, turnId: result.turnId ?? run.turnId, updatedAt: this.now() };
+      const observed = this.observed(run);
+      if (run.state === "running" && observed) run = { ...run, ...observed };
+    } else {
+      let result: Awaited<ReturnType<ScheduleExecutionPort["inspect"]>> | undefined = this.observed(run);
+      if (!result) {
+        try { result = await this.port.inspect(run); }
+        catch (error) { result = this.observed(run); if (!result) throw error; }
+      }
+      run = { ...run, state: result.state, updatedAt: this.now() };
     }
+    // A native completion can arrive while inspection is awaiting its reply.
+    const observation = this.observed(run);
+    if (observation && (run.state === "running" || run.state === "unknown")) run = { ...run, ...observation };
+    const settled = run;
+    this.transaction(() => {
+      this.writeRun(settled);
+      plan = this.schedule(plan.threadId)!;
+      if ((settled.state === "completed" || settled.state === "failed") && plan.status === "active" && !settled.id.includes(":manual:")) {
+        const after = Math.max(this.now(), plan.nextRunAt) + 1;
+        const next = plan.calendar ? nextCalendarRun(plan.calendar, plan.timeZone, after, plan.window)
+          : plan.intervalMinutes !== null ? nextIntervalRun(plan.nextRunAt, plan.intervalMinutes, plan.timeZone, after, plan.window) : null;
+        this.writeSchedule({ ...plan, status: next === null ? "completed" : "active",
+          nextRunAt: next ?? plan.nextRunAt,
+          revision: plan.revision + 1, updatedAt: this.now() });
+      }
+    });
+    if (run.state === "waiting" || run.state === "running") this.retries.set(run.threadId, { at: this.now() + (run.state === "waiting" ? 5000 : this.port.subscribe ? 60000 : 15000), failed: false });
+    else { this.retries.delete(run.threadId); this.observations.delete(run.id); }
   }
+
   close(): Promise<void> {
     return this.closing ??= (async () => {
       this.stopped = true;

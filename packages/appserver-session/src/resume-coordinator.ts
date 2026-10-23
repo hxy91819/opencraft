@@ -1,6 +1,6 @@
 import { executionEngineExtension } from "@opencraft/appserver-client";
 import { Context, Service } from "@deepseek-ai/cordis";
-import { AppServerRpcError, isRetryableAppServerRpcError, type AppServerClient } from "@opencraft/appserver-client";
+import { AppServerRpcError, isRetryableAppServerRpcError, isHistoryResponseTooLargeError, type AppServerClient } from "@opencraft/appserver-client";
 import { OPENCRAFT_RESUME_HISTORY_EXTENSION, buildResumeHistoryRequest, type AppServerThread, type ThreadHistoryCheckpoint, type ThreadResumeParams, type ThreadResumeResponse, type ThreadForkResponse } from "@opencraft/appserver-protocol";
 
 import type { HydratedThreadHistory, ResumeHistoryContext } from "./history-strategies";
@@ -442,8 +442,7 @@ export class ThreadResumeCoordinatorService extends Service {
       try {
         resumed = await requestResume(params);
       } catch (error) {
-        if (!params.initialTurnsPage || !(error instanceof Error)
-          || !error.message.includes("decoded message length too large")) throw error;
+        if (!params.initialTurnsPage || !isHistoryResponseTooLargeError(error)) throw error;
         this.ensureGeneration(generation);
         // A merged window can exceed a transport limit. Resume without the
         // window, then let the normal adaptive history reader fetch it.

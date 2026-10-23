@@ -99,3 +99,42 @@ test("failure to persist native completion backs off without spinning or resubmi
   fail = false; f.advance(30001); await f.service.tick();
   assert.equal(f.service.read("a").runs[0]?.state, "completed"); assert.equal(f.sends, 1); assert.equal(f.inspections, 0);
 });
+
+for (const stage of ["create-run", "expire-window"] as const) test(`whole-flight backoff covers ${stage} persistence failures and leaves peers available`, async t => {
+  const f = await fixture(t); await f.save("a"); await f.save("b");
+  if (stage === "expire-window") {
+    const plan = f.service.read("a").schedule!;
+    await f.service.handle("opencraft/schedules/save", { ...plan, expectedRevision: plan.revision,
+      window: { startAt: 1800000000000 - 1000, endAt: 1800000001000, weekdays: [0,1,2,3,4,5,6] } }, null);
+    f.advance(2000);
+  }
+  const service = f.service as any, key = stage === "create-run" ? "writeRun" : "writeSchedule", write = service[key].bind(service);
+  let failures = 0, fail = true;
+  service[key] = (value: any) => {
+    if (value.threadId === "a" && fail && (stage === "create-run" || value.status === "completed")) {
+      failures++;
+      if (failures > 1) void f.service.close(); // Bound the old self-waking baseline.
+      throw new Error("Synthetic SQLite write failure");
+    }
+    return write(value);
+  };
+  await f.service.tick(); await new Promise(resolve => setTimeout(resolve, 20));
+  await f.service.tick(); assert.equal(failures, 1);
+  assert.equal(f.service.read("b").runs[0]?.state, "running");
+  if (stage === "create-run") assert.equal(f.service.read("a").runs.length, 0);
+  fail = false; f.advance(30001); await f.service.tick();
+  assert.equal(stage === "create-run" ? f.service.read("a").runs[0]?.state : f.service.read("a").schedule?.status,
+    stage === "create-run" ? "running" : "completed");
+});
+
+test("duplicate native completions cannot cancel durable failure backoff", async t => {
+  const f = await fixture(t); await f.save(); await f.service.tick();
+  const service = f.service as any, write = service.writeRun.bind(service); let failures = 0, fail = true;
+  service.writeRun = (run: any) => {
+    if (run.state === "completed" && fail) { failures++; throw new Error("Synthetic completion write failure"); }
+    return write(run);
+  };
+  for (let i = 0; i < 3; i++) { f.event({ threadId: "a", turnId: "turn:a", state: "completed" }); await f.service.tick(); }
+  assert.equal(failures, 1); fail = false; f.advance(30001); await f.service.tick();
+  assert.equal(f.service.read("a").runs[0]?.state, "completed"); assert.equal(f.sends, 1); assert.equal(f.inspections, 0);
+});
