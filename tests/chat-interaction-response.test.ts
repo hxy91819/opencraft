@@ -73,7 +73,7 @@ test("permission approval grants only requested capabilities and preserves scope
       itemId: "item-1",
       environmentId: null,
       startedAtMs: 1,
-      cwd: "/vela",
+      cwd: "/opencraft",
       reason: "network access",
       permissions: { network: { enabled: true }, fileSystem: null },
     },

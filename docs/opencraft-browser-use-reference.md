@@ -23,11 +23,11 @@ OpenCraft In-App Browser 与 Browser Use 的平台边界如下：
 
 当前 DSH/Web v1 已经不是设计占位：
 
-- OpenCraft 初始化通过 `capabilities.extensions["vela/browser-use"]` 宣告能力；
+- OpenCraft 初始化通过 `capabilities.extensions["opencraft/browser-use"]` 宣告能力；
 - HyperNode 只向拥有当前 DSH Turn 的准确 OpenCraft connection 投影 Skill 和三个工具；
 - DSH worker 将 Skill 物化到会话目录，并在能力撤销后清理陈旧文件；
 - 调用使用标准 `item/tool/call`，结果异步回注同一个模型工具调用；取消、超时、断连均显式失败；
-- `open_in_vela` 能创建或聚焦当前 `(hostId, threadId)` 的右侧浏览器 Tab；
+- `open_in_opencraft` 能创建或聚焦当前 `(hostId, threadId)` 的右侧浏览器 Tab；
 - `get_tab_context` 通过 `BrowserAutomation` 读取受控页面正文、选区和非敏感表单文本，并将页面标记为不可信；
 - `browser_use` v1 支持 `list_tabs/navigate/back/forward/reload/stop/inspect/click/fill/press/scroll/wait`；
 - 元素 ref 绑定文档 revision；导航或 DOM 变化后旧 ref 失效；密码、token、密钥、OTP、卡号控件拒绝读取或填写；
@@ -45,7 +45,7 @@ Controller Lease。纯 Web 任意跨域 iframe 仍只有呈现能力；只有安
 本书冻结以下能力的实施契约：
 
 1. 用户在 OpenCraft 内打开、切换、关闭和恢复多个浏览器 Tab；
-2. Agent 通过 `open_in_vela` 请求 UI 打开页面；
+2. Agent 通过 `open_in_opencraft` 请求 UI 打开页面；
 3. OpenCraft 向 Agent 注入当前浏览器的轻量环境上下文；
 4. Agent 通过 `get_tab_context` 按需读取页面正文、选区和表单可见文本；
 5. Agent 通过 `browser_use` 导航、观察和操作受支持页面；
@@ -58,7 +58,7 @@ Controller Lease。纯 Web 任意跨域 iframe 仍只有呈现能力；只有安
 - 任意跨域 iframe 在纯 Web 中的 DOM 控制；
 - 绕过站点 CSP、X-Frame-Options、浏览器扩展权限或企业策略；
 - 在 Expo Native 中直接复用 Electron `WebContents`；
-- 用 `open_in_vela` 一个工具代替页面读取和控制工具；
+- 用 `open_in_opencraft` 一个工具代替页面读取和控制工具；
 - 把浏览器 UI 状态塞进 AppServer Replica。
 
 ## 2. 契约与验收边界
@@ -69,12 +69,12 @@ Controller Lease。纯 Web 任意跨域 iframe 仍只有呈现能力；只有安
 
 ## 3. 首先拆开三个经常被混淆的能力
 
-### 3.1 `open_in_vela`：只负责呈现
+### 3.1 `open_in_opencraft`：只负责呈现
 
 它表达“请在 OpenCraft 的 UI 中打开或聚焦某个页面”。它不读取 DOM，不点击，不执行脚本。
 
 ```text
-Agent ── open_in_vela ──> OpenCraft Presentation Intent
+Agent ── open_in_opencraft ──> OpenCraft Presentation Intent
                               └─ right / bottom / 当前 Thread
 ```
 
@@ -95,10 +95,10 @@ OpenCraft 在下一次用户消息的上下文中告诉模型：
 - `get_tab_context`：低成本、只读、可审计；
 - `browser_use`：高能力、可改变页面状态、必须受 Capability 和 Policy 约束。
 
-因此，`open_in_vela` 单独存在并不能完成 Agent 建站预览；完整闭环至少需要：
+因此，`open_in_opencraft` 单独存在并不能完成 Agent 建站预览；完整闭环至少需要：
 
 ```text
-open_in_vela + ambient context + get_tab_context + browser_use
+open_in_opencraft + ambient context + get_tab_context + browser_use
 ```
 
 ## 4. 产品对象模型
@@ -273,10 +273,10 @@ ThreadStartParams.dynamicTools: DynamicToolSpec[]
 建议注册两个 namespace：
 
 ```text
-vela_app
-  └─ open_in_vela
+opencraft_app
+  └─ open_in_opencraft
 
-vela_browser
+opencraft_browser
   ├─ get_tab_context
   └─ browser_use
 ```
@@ -332,7 +332,7 @@ interceptor 链。浏览器 handler 只捕获自己的 namespace/tool；其他�
 {
   "capabilities": {
     "extensions": {
-      "vela/browser-use": {
+      "opencraft/browser-use": {
         "version": 1,
         "backends": ["preview-bridge", "iframe-presentation"],
         "actions": ["open", "read-context", "navigate", "inspect", "click", "fill", "press", "scroll", "screenshot"],
@@ -356,7 +356,7 @@ Electron 和 Expo 按真实能力上报 backend/action；禁止 Web iframe 冒�
 
 ## 9. 三个公共工具契约
 
-### 9.1 `vela_app.open_in_vela`
+### 9.1 `opencraft_app.open_in_opencraft`
 
 浏览器呈现请求使用以下输入形状：
 
@@ -391,7 +391,7 @@ type OpenInOpenCraftInput = {
 }
 ```
 
-### 9.2 `vela_browser.get_tab_context`
+### 9.2 `opencraft_browser.get_tab_context`
 
 ```ts
 type GetTabContextInput = {
@@ -427,7 +427,7 @@ type GetTabContextInput = {
 <browser__redacted_form_control />
 ```
 
-### 9.3 `vela_browser.browser_use`
+### 9.3 `opencraft_browser.browser_use`
 
 这是 OpenCraft 的公共 action contract，定义浏览器观察、导航与操作请求。
 
@@ -621,7 +621,7 @@ type PreviewBinding = {
 
 ```text
 DSH/Codex engine
-  -> item/tool/call(namespace=vela_browser)
+  -> item/tool/call(namespace=opencraft_browser)
   -> HyperNode outer thread mapping
   -> exact owner OpenCraft WebSocket connection
   -> OpenCraft BrowserDynamicToolHandler
@@ -638,7 +638,7 @@ DSH/Codex engine
 ```
 
 当前存在 `owner connection ?? first connection` 的回退。浏览器工具绝不能发给第一个连接；若
-owner 不存在或没有 `vela/browser-use` capability，返回 `OWNER_CONNECTION_GONE` 或
+owner 不存在或没有 `opencraft/browser-use` capability，返回 `OWNER_CONNECTION_GONE` 或
 `CAPABILITY_UNAVAILABLE`。
 
 手动点击 OpenCraft UI 打开浏览器是本地命令，不经过 HyperNode。只有 Agent 动态工具调用需要
@@ -799,7 +799,7 @@ generation 和 cancellation token。
 
 验收：不接 UI 也能让 InMemory AppServer 发 `item/tool/call`，OpenCraft 返回确定性结果。
 
-### P1：`open_in_vela` 与 Presentation
+### P1：`open_in_opencraft` 与 Presentation
 
 - 将现有多 Tab runtime 接入动态工具；
 - 分离 Session close 与 Presentation hide；
@@ -911,7 +911,7 @@ Web 不能静默安装。大陆场景应支持离线包和企业策略，不把 
 1. 新建可路由 Thread；
 2. DSH 启动 Vite 服务；
 3. service gateway 创建 Preview Binding；
-4. Agent 调 `open_in_vela`；
+4. Agent 调 `open_in_opencraft`；
 5. OpenCraft 打开右侧 Browser Tab；
 6. Agent 调 `get_tab_context`；
 7. Agent inspect/fill/click；
@@ -957,3 +957,7 @@ Web 不能静默安装。大陆场景应支持离线包和企业策略，不把 
 3. Electron 与 Expo 的首发优先级；默认顺序为 Web Preview Bridge → Electron → Expo。
 
 这些决定不阻塞 P0-P4。
+
+Current tool specifications advertise only the OpenCraft names. Exact former
+namespace/function pairs remain input aliases for in-flight or recovered calls;
+unknown namespaces and mixed old/new pairs pass to the next handler.

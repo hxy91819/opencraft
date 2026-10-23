@@ -65,11 +65,11 @@ test("retirement revokes a pending factory and releases its late resource once",
   const entered = new Promise<void>(resolve => { enter = resolve; });
   const held = new Promise<void>(resolve => { release = resolve; });
   let api!: TrustedExtensionApiV1, cleanup = 0, lateCleanup = 0, lateAccepted = false;
-  const activation = supervisor.activate(definition("vela.retiring", async value => {
+  const activation = supervisor.activate(definition("opencraft.retiring", async value => {
     api = value;
     api.subscriptions.add(() => { cleanup++; });
     enter(); await held;
-    try { api.commands.register({ id: "vela.retiring.late", title: "Late" }, () => "wrong"); lateAccepted = true; } catch { /* Retired API must reject. */ }
+    try { api.commands.register({ id: "opencraft.retiring.late", title: "Late" }, () => "wrong"); lateAccepted = true; } catch { /* Retired API must reject. */ }
     return () => { lateCleanup++; };
   }));
   const result = Promise.allSettled([activation]);
@@ -93,12 +93,12 @@ test("retirement closes admission immediately and every disposer waits for clean
   const entered = new Promise<void>(resolve => { enter = resolve; });
   const held = new Promise<void>(resolve => { release = resolve; });
   let cleanups = 0, lateStarts = 0, secondFinished = false;
-  await supervisor.activate(definition("vela.owned", () => async () => {
+  await supervisor.activate(definition("opencraft.owned", () => async () => {
     cleanups++; enter(); await held;
   }));
   const first = supervisor.dispose();
   await entered;
-  const candidate = supervisor.activate(definition("vela.too-late", () => { lateStarts++; }));
+  const candidate = supervisor.activate(definition("opencraft.too-late", () => { lateStarts++; }));
   const [outcome] = await Promise.allSettled([candidate]);
   const second = supervisor.dispose().then(() => { secondFinished = true; });
   await Promise.resolve(); await Promise.resolve();
@@ -126,32 +126,32 @@ test("retirement owns a pending internal commit before unwinding consumers and p
       return async () => { events.push("pending:cleanup"); cleaning.release(); await cleanup.wait; };
     } }) },
   } });
-  await supervisor.activate(definition("vela.provider", api => {
-    api.commands.register({ id: "vela.provider.read", title: "Read" }, () => "available");
+  await supervisor.activate(definition("opencraft.provider", api => {
+    api.commands.register({ id: "opencraft.provider.read", title: "Read" }, () => "available");
     return () => { events.push("provider:cleanup"); };
   }));
-  await supervisor.activate({ manifest: { ...manifest("vela.consumer"), dependencies: ["vela.provider"] },
+  await supervisor.activate({ manifest: { ...manifest("opencraft.consumer"), dependencies: ["opencraft.provider"] },
     activate: () => () => { events.push("consumer:cleanup"); } });
-  const pending = supervisor.activate({ manifest: { ...manifest("vela.pending"), dependencies: ["vela.provider"] },
+  const pending = supervisor.activate({ manifest: { ...manifest("opencraft.pending"), dependencies: ["opencraft.provider"] },
     activate: api => {
-      api.commands.register({ id: "vela.pending.run", title: "Pending" }, () => "wrong");
+      api.commands.register({ id: "opencraft.pending.run", title: "Pending" }, () => "wrong");
       api.internal.register("delayed", {});
     } });
   const outcome = Promise.allSettled([pending]);
   await committing.wait;
   let queuedStarts = 0;
-  const queued = Promise.allSettled([supervisor.activate(definition("vela.pending", () => { queuedStarts++; }))]);
+  const queued = Promise.allSettled([supervisor.activate(definition("opencraft.pending", () => { queuedStarts++; }))]);
   const retiring = supervisor.dispose();
   commit.release();
   await cleaning.wait;
-  const providerResult = await supervisor.contributions.executeCommand("vela.provider.read");
+  const providerResult = await supervisor.contributions.executeCommand("opencraft.provider.read");
   const visible = supervisor.contributions.getSnapshot().commands.map(row => row.contribution.id);
   cleanup.release();
   const [result] = await outcome;
   const [queuedResult] = await queued;
   await retiring;
   assert.equal(providerResult, "available", "pending rollback borrows a still-live provider");
-  assert.deepEqual(visible, ["vela.provider.read"]);
+  assert.deepEqual(visible, ["opencraft.provider.read"]);
   assert.equal(result.status, "rejected");
   assert.equal(queuedResult.status, "rejected");
   assert.equal(queuedStarts, 0);
@@ -162,7 +162,7 @@ test("every retirement caller receives a pending factory rollback failure", asyn
   const entered = barrier(), factory = barrier();
   const failure = new Error("pending cleanup failed");
   const supervisor = new ExtensionSupervisor({ platform: "web" });
-  const activating = Promise.allSettled([supervisor.activate(definition("vela.pending-failure", async () => {
+  const activating = Promise.allSettled([supervisor.activate(definition("opencraft.pending-failure", async () => {
     entered.release(); await factory.wait;
     return () => { throw failure; };
   }))]);
@@ -186,10 +186,10 @@ test("retirement also drains and reports cleanup already started by deactivation
   const entered = barrier(), cleanup = barrier();
   const failure = new Error("deactivation cleanup failed");
   const supervisor = new ExtensionSupervisor({ platform: "web" });
-  await supervisor.activate(definition("vela.deactivating", () => async () => {
+  await supervisor.activate(definition("opencraft.deactivating", () => async () => {
     entered.release(); await cleanup.wait; throw failure;
   }));
-  const deactivating = Promise.allSettled([supervisor.deactivate("vela.deactivating")]);
+  const deactivating = Promise.allSettled([supervisor.deactivate("opencraft.deactivating")]);
   await entered.wait;
   const retiring = Promise.allSettled([supervisor.dispose()]);
   cleanup.release();
@@ -205,8 +205,8 @@ test("late or newly requested optional modules cannot mutate a retired superviso
     const entered = barrier(), loading = barrier();
     const supervisor = new ExtensionSupervisor({ platform: "web" });
     let starts = 0, loads = 0;
-    const extension = definition("vela.optional", () => { starts++; });
-    const pending = supervisor.loadOptional("vela.optional", async () => {
+    const extension = definition("opencraft.optional", () => { starts++; });
+    const pending = supervisor.loadOptional("opencraft.optional", async () => {
       entered.release(); await loading.wait;
       if (fails) throw new Error("late module failure");
       return extension;
@@ -216,7 +216,7 @@ test("late or newly requested optional modules cannot mutate a retired superviso
     const retired = supervisor.getSnapshot();
     loading.release();
     assert.equal(await pending, false);
-    assert.equal(await supervisor.loadOptional("vela.optional", () => { loads++; return extension; }), false);
+    assert.equal(await supervisor.loadOptional("opencraft.optional", () => { loads++; return extension; }), false);
     assert.equal(await supervisor.activateOptional(extension), false);
     assert.equal(starts, 0);
     assert.equal(loads, 0);
@@ -230,49 +230,49 @@ test("retirement from an activating observer prevents the factory from starting"
   supervisor.subscribe(() => {
     if (supervisor.getSnapshot().extensions.some(row => row.status === "activating")) retiring = supervisor.dispose();
   });
-  await assert.rejects(supervisor.activate(definition("vela.reentrant", () => { starts++; })));
+  await assert.rejects(supervisor.activate(definition("opencraft.reentrant", () => { starts++; })));
   await retiring;
   assert.equal(starts, 0);
   assert.deepEqual(supervisor.getSnapshot().extensions, []);
 });
 
 test("manifest V1 rejects ambiguous identity and unsupported trust", () => {
-  assert.equal(parseExtensionManifestV1(manifest("vela.example")).id, "vela.example");
+  assert.equal(parseExtensionManifestV1(manifest("opencraft.example")).id, "opencraft.example");
   assert.throws(
-    () => parseExtensionManifestV1({ ...manifest("vela.example"), id: "Example" }),
+    () => parseExtensionManifestV1({ ...manifest("opencraft.example"), id: "Example" }),
     ExtensionManifestError,
   );
   assert.throws(
-    () => parseExtensionManifestV1({ ...manifest("vela.example"), trust: "sandboxed" }),
+    () => parseExtensionManifestV1({ ...manifest("opencraft.example"), trust: "sandboxed" }),
     /trust=trusted/u,
   );
 });
 
 test("manifest V1 normalizes explicit extension dependencies", () => {
   const parsed = parseExtensionManifestV1({
-    ...manifest("vela.consumer"),
-    dependencies: ["vela.provider"],
+    ...manifest("opencraft.consumer"),
+    dependencies: ["opencraft.provider"],
   });
-  assert.deepEqual(parsed.dependencies, ["vela.provider"]);
+  assert.deepEqual(parsed.dependencies, ["opencraft.provider"]);
   assert.throws(
-    () => parseExtensionManifestV1({ ...manifest("vela.consumer"), dependencies: ["vela.consumer"] }),
+    () => parseExtensionManifestV1({ ...manifest("opencraft.consumer"), dependencies: ["opencraft.consumer"] }),
     /cannot depend on itself/u,
   );
 });
 
 test("supervisor enforces dependency activation and reverse disposal order", async () => {
   const supervisor = new ExtensionSupervisor({ platform: "web" });
-  const provider = definition("vela.provider", () => undefined);
+  const provider = definition("opencraft.provider", () => undefined);
   const consumer: TrustedExtensionDefinition = {
-    manifest: { ...manifest("vela.consumer"), dependencies: ["vela.provider"] },
+    manifest: { ...manifest("opencraft.consumer"), dependencies: ["opencraft.provider"] },
     activate: () => undefined,
   };
-  await assert.rejects(supervisor.activate(consumer), /requires active dependencies: vela.provider/u);
+  await assert.rejects(supervisor.activate(consumer), /requires active dependencies: opencraft.provider/u);
   await supervisor.activate(provider);
   await supervisor.activate(consumer);
-  await assert.rejects(supervisor.deactivate("vela.provider"), /required by active extensions: vela.consumer/u);
-  assert.equal(await supervisor.deactivate("vela.consumer"), true);
-  assert.equal(await supervisor.deactivate("vela.provider"), true);
+  await assert.rejects(supervisor.deactivate("opencraft.provider"), /required by active extensions: opencraft.consumer/u);
+  assert.equal(await supervisor.deactivate("opencraft.consumer"), true);
+  assert.equal(await supervisor.deactivate("opencraft.provider"), true);
   await supervisor.dispose();
 });
 
@@ -284,65 +284,65 @@ test("one activation atomically publishes declarations and presentation surfaces
     platform: "web",
     createActivationId: () => "activation-1",
   });
-  const identity = await supervisor.activate(definition("vela.example", (api) => {
+  const identity = await supervisor.activate(definition("opencraft.example", (api) => {
     apiAfterActivation = api;
     api.commands.register(
-      { id: "vela.example.echo", title: "Echo" },
+      { id: "opencraft.example.echo", title: "Echo" },
       async (value) => value,
     );
     api.settings.registerSchema({
-      id: "vela.example.preferences",
+      id: "opencraft.example.preferences",
       title: "Example",
       schemaVersion: 1,
       fields: [{ key: "enabled", type: "boolean", title: "Enabled", defaultValue: true }],
     });
     removeView = api.views.register({
-      id: "vela.example.settings-view",
+      id: "opencraft.example.settings-view",
       title: "Example settings",
-      viewType: "vela.example.settings",
+      viewType: "opencraft.example.settings",
       audience: "internal",
     });
     api.settings.registerPage({
-      id: "vela.example.settings-page",
+      id: "opencraft.example.settings-page",
       title: "Example",
-      viewId: "vela.example.settings-view",
+      viewId: "opencraft.example.settings-view",
       layout: "master-detail",
-      management: { familyId: "vela.example.manage", scope: "agent" },
+      management: { familyId: "opencraft.example.manage", scope: "agent" },
     });
     api.navigation.register({
-      id: "vela.example.navigation",
+      id: "opencraft.example.navigation",
       title: "Example",
       surface: "sidebar-primary",
-      target: { kind: "settings", pageId: "vela.example.settings-page" },
+      target: { kind: "settings", pageId: "opencraft.example.settings-page" },
       audience: "internal",
     });
     api.sidebar.registerCatalog({
-      id: "vela.example.catalog",
+      id: "opencraft.example.catalog",
       title: "Example catalog",
-      viewId: "vela.example.settings-view",
+      viewId: "opencraft.example.settings-view",
     });
     api.workbench.registerSurface({
-      id: "vela.example.empty",
-      viewId: "vela.example.settings-view",
+      id: "opencraft.example.empty",
+      viewId: "opencraft.example.settings-view",
       surface: "empty-workbench",
     });
     api.workbench.registerSurface({
-      id: "vela.example.authentication-required",
-      viewId: "vela.example.settings-view",
+      id: "opencraft.example.authentication-required",
+      viewId: "opencraft.example.settings-view",
       surface: "host-connection-intervention",
-      providerId: "vela.example",
+      providerId: "opencraft.example",
       intervention: "authentication-required",
     });
     api.themes.register({
-      id: "vela.example.paper",
+      id: "opencraft.example.paper",
       label: "Paper",
       palettes: { light: lightPalette, dark: darkPalette },
     });
     api.bots.register({
-      id: "vela.example.bot",
+      id: "opencraft.example.bot",
       name: "Example Bot",
       avatar: { kind: "monogram", text: "E", background: "#3478f6" },
-      action: { kind: "command", commandId: "vela.example.echo" },
+      action: { kind: "command", commandId: "opencraft.example.echo" },
       defaultPinned: true,
     });
     api.subscriptions.add(() => { disposalOrder.push("subscription"); });
@@ -350,7 +350,7 @@ test("one activation atomically publishes declarations and presentation surfaces
   }));
 
   assert.deepEqual(identity, {
-    extensionId: "vela.example",
+    extensionId: "opencraft.example",
     activationId: "activation-1",
     generation: 1,
   });
@@ -361,7 +361,7 @@ test("one activation atomically publishes declarations and presentation surfaces
   assert.equal(snapshot.views[0]?.contribution.audience, "internal");
   assert.equal(snapshot.settingsPages.length, 1);
   assert.deepEqual(snapshot.settingsPages[0]?.contribution.management, {
-    familyId: "vela.example.manage",
+    familyId: "opencraft.example.manage",
     scope: "agent",
   });
   assert.equal(snapshot.settingsPages[0]?.contribution.layout, "master-detail");
@@ -374,7 +374,7 @@ test("one activation atomically publishes declarations and presentation surfaces
   assert.equal(snapshot.bots.length, 1);
   assert.equal(snapshot.themes[0]?.contribution.palettes.light.surface, "#fbfaf7");
   assert.equal(snapshot.commands[0]?.owner.activationId, "activation-1");
-  assert.equal(await supervisor.contributions.executeCommand("vela.example.echo", "hello"), "hello");
+  assert.equal(await supervisor.contributions.executeCommand("opencraft.example.echo", "hello"), "hello");
 
   await removeView?.();
   assert.equal(supervisor.contributions.getSnapshot().views.length, 0);
@@ -382,14 +382,14 @@ test("one activation atomically publishes declarations and presentation surfaces
   assert.equal(supervisor.contributions.getSnapshot().navigation.length, 0);
   assert.equal(supervisor.contributions.getSnapshot().sidebarCatalogs.length, 0);
   assert.equal(supervisor.contributions.getSnapshot().workbenchSurfaces.length, 0);
-  assert.equal(await supervisor.deactivate("vela.example"), true);
+  assert.equal(await supervisor.deactivate("opencraft.example"), true);
   assert.deepEqual(disposalOrder, ["activation", "subscription"]);
   assert.equal(supervisor.contributions.getSnapshot().commands.length, 0);
   assert.equal(supervisor.contributions.getSnapshot().themes.length, 0);
   assert.equal(supervisor.contributions.getSnapshot().bots.length, 0);
   assert.throws(
     () => apiAfterActivation!.settings.registerSchema({
-      id: "vela.example.late",
+      id: "opencraft.example.late",
       title: "Late",
       schemaVersion: 1,
       fields: [],
@@ -405,12 +405,12 @@ test("trusted JavaScript can request a Host-owned announcement and await a data 
     platform: "web",
     createActivationId: () => "activation-announcement",
   });
-  await supervisor.activate(definition("vela.announcer", (activationApi) => {
+  await supervisor.activate(definition("opencraft.announcer", (activationApi) => {
     api = activationApi;
   }));
 
   const result = api.window.showAnnouncement({
-    id: "vela.announcer.release",
+    id: "opencraft.announcer.release",
     title: "What’s new",
     body: "A renderer-neutral announcement.",
     primaryAction: { id: "continue", label: "Continue" },
@@ -423,7 +423,7 @@ test("trusted JavaScript can request a Host-owned announcement and await a data 
 
   assert.throws(
     () => api.window.showAnnouncement({ id: "other.release", title: "Invalid" }),
-    /must be namespaced by extension vela\.announcer/u,
+    /must be namespaced by extension opencraft\.announcer/u,
   );
   assert.throws(
     () => api.window.showAnnouncement(null as never),
@@ -431,14 +431,14 @@ test("trusted JavaScript can request a Host-owned announcement and await a data 
   );
   assert.throws(
     () => api.window.showAnnouncement({
-      id: "vela.announcer.invalid-media",
+      id: "opencraft.announcer.invalid-media",
       title: "Invalid",
       media: { kind: "html", url: "/unsafe" },
     } as never),
     /invalid media kind/u,
   );
   const inlineResult = api.window.showAnnouncement({
-    id: "vela.announcer.inline-image",
+    id: "opencraft.announcer.inline-image",
     title: "Inline image",
     media: {
       kind: "image-url",
@@ -452,7 +452,7 @@ test("trusted JavaScript can request a Host-owned announcement and await a data 
   assert.deepEqual(await inlineResult, { kind: "dismissed", reason: "programmatic" });
   assert.throws(
     () => api.window.showAnnouncement({
-      id: "vela.announcer.non-image-data",
+      id: "opencraft.announcer.non-image-data",
       title: "Unsafe inline content",
       media: { kind: "image-url", url: "data:text/html,<script>alert(1)</script>", alt: "Invalid" },
     }),
@@ -460,7 +460,7 @@ test("trusted JavaScript can request a Host-owned announcement and await a data 
   );
   assert.throws(
     () => api.window.showAnnouncement({
-      id: "vela.announcer.invalid-dismiss",
+      id: "opencraft.announcer.invalid-dismiss",
       title: "Invalid",
       dismissOnOutsidePress: "yes",
     } as never),
@@ -471,20 +471,20 @@ test("trusted JavaScript can request a Host-owned announcement and await a data 
 
 test("extension retirement dismisses pending announcement work before draining callers", async () => {
   const supervisor = new ExtensionSupervisor({ platform: "web" });
-  await supervisor.activate(definition("vela.retiring", (activationApi) => {
+  await supervisor.activate(definition("opencraft.retiring", (activationApi) => {
     activationApi.commands.register(
-      { id: "vela.retiring.show", title: "Show announcement" },
+      { id: "opencraft.retiring.show", title: "Show announcement" },
       () => activationApi.window.showAnnouncement({
-        id: "vela.retiring.notice",
+        id: "opencraft.retiring.notice",
         title: "Pending notice",
       }),
     );
   }));
-  const result = supervisor.contributions.executeCommand("vela.retiring.show");
+  const result = supervisor.contributions.executeCommand("opencraft.retiring.show");
   for (let index = 0; index < 10 && supervisor.announcements.getSnapshot().announcements.length === 0; index += 1) {
     await new Promise<void>((resolve) => setImmediate(resolve));
   }
-  const retirement = supervisor.deactivate("vela.retiring");
+  const retirement = supervisor.deactivate("opencraft.retiring");
   assert.deepEqual(await result, { kind: "dismissed", reason: "owner-disposed" });
   await retirement;
   assert.equal(supervisor.announcements.getSnapshot().announcements.length, 0);
@@ -494,13 +494,13 @@ test("extension retirement dismisses pending announcement work before draining c
 test("invalid theme palette aborts the complete activation batch", async () => {
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   await assert.rejects(
-    supervisor.activate(definition("vela.bad-theme", (api) => {
+    supervisor.activate(definition("opencraft.bad-theme", (api) => {
       api.commands.register(
-        { id: "vela.bad-theme.command", title: "Must roll back" },
+        { id: "opencraft.bad-theme.command", title: "Must roll back" },
         () => undefined,
       );
       api.themes.register({
-        id: "vela.bad-theme.palette",
+        id: "opencraft.bad-theme.palette",
         label: "Bad",
         palettes: {
           light: { ...lightPalette, surface: "white" },
@@ -519,12 +519,12 @@ test("invalid theme palette aborts the complete activation batch", async () => {
 test("presentation contributions cannot outlive or invent their semantic target", async () => {
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   await assert.rejects(
-    supervisor.activate(definition("vela.dangling", (api) => {
+    supervisor.activate(definition("opencraft.dangling", (api) => {
       api.navigation.register({
-        id: "vela.dangling.open",
+        id: "opencraft.dangling.open",
         title: "Dangling",
         surface: "sidebar-primary",
-        target: { kind: "view", viewId: "vela.dangling.missing-view" },
+        target: { kind: "view", viewId: "opencraft.dangling.missing-view" },
       });
     })),
     /targets an unregistered contribution/u,
@@ -535,32 +535,32 @@ test("presentation contributions cannot outlive or invent their semantic target"
 
 for (const role of ["bot-conversation", "connector-management"] as const) test(`the ${role} View role has exactly one transactional owner`, async () => {
   const supervisor = new ExtensionSupervisor({ platform: "web" });
-  await supervisor.activate(definition("vela.bot-owner", (api) => {
+  await supervisor.activate(definition("opencraft.bot-owner", (api) => {
     api.views.register({
-      id: "vela.bot-owner.view",
+      id: "opencraft.bot-owner.view",
       title: "Bot owner",
-      viewType: "vela.bot-owner.surface",
+      viewType: "opencraft.bot-owner.surface",
       role,
     });
   }));
   await assert.rejects(
-    supervisor.activate(definition("vela.bot-contender", (api) => {
+    supervisor.activate(definition("opencraft.bot-contender", (api) => {
       api.views.register({
-        id: "vela.bot-contender.view",
+        id: "opencraft.bot-contender.view",
         title: "Bot contender",
-        viewType: "vela.bot-contender.surface",
+        viewType: "opencraft.bot-contender.surface",
         role,
       });
     })),
-    new RegExp(`View role ${role} is already owned by vela\\.bot-owner\\.view`, "u"),
+    new RegExp(`View role ${role} is already owned by opencraft\\.bot-owner\\.view`, "u"),
   );
   assert.deepEqual(
     supervisor.contributions.getSnapshot().views.map(({ contribution }) => contribution.id),
-    ["vela.bot-owner.view"],
+    ["opencraft.bot-owner.view"],
   );
-  await supervisor.deactivate("vela.bot-owner");
-  await supervisor.activate(definition("vela.replacement", (api) => {
-    api.views.register({ id: "vela.replacement.view", title: "Replacement", viewType: "vela.replacement.surface", role });
+  await supervisor.deactivate("opencraft.bot-owner");
+  await supervisor.activate(definition("opencraft.replacement", (api) => {
+    api.views.register({ id: "opencraft.replacement.view", title: "Replacement", viewType: "opencraft.replacement.surface", role });
   }));
   assert.equal(supervisor.contributions.getSnapshot().views[0]?.contribution.role, role);
   await supervisor.dispose();
@@ -569,10 +569,10 @@ for (const role of ["bot-conversation", "connector-management"] as const) test(`
 test("activation failure leaves no partially published contribution", async () => {
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   await assert.rejects(
-    supervisor.activate(definition("vela.failure", (api) => {
-      api.commands.register({ id: "vela.failure.command", title: "Command" }, () => undefined);
+    supervisor.activate(definition("opencraft.failure", (api) => {
+      api.commands.register({ id: "opencraft.failure.command", title: "Command" }, () => undefined);
       api.settings.registerSchema({
-        id: "vela.failure.settings",
+        id: "opencraft.failure.settings",
         title: "Settings",
         schemaVersion: 1,
         fields: [],
@@ -609,8 +609,8 @@ test("internal commit failure rolls back prior internal resources before public 
   };
   const supervisor = new ExtensionSupervisor({ platform: "web", internalContributions: adapters });
   await assert.rejects(
-    supervisor.activate(definition("vela.rollback", (api) => {
-      api.commands.register({ id: "vela.rollback.command", title: "Command" }, () => undefined);
+    supervisor.activate(definition("opencraft.rollback", (api) => {
+      api.commands.register({ id: "opencraft.rollback.command", title: "Command" }, () => undefined);
       api.internal.register("first", {});
       api.internal.register("second", {});
     })),
@@ -634,18 +634,18 @@ test("deactivation invalidates old generation before awaiting leased internal re
     internalContributions: { leased: adapter },
     createActivationId: () => `activation-${++activationNumber}`,
   });
-  const extension = definition("vela.leased", (api) => {
+  const extension = definition("opencraft.leased", (api) => {
     capturedApi = api;
     api.internal.register("leased", {});
   });
   const first = await supervisor.activate(extension);
   let retired = false;
-  const retirement = supervisor.deactivate("vela.leased").then(() => { retired = true; });
+  const retirement = supervisor.deactivate("opencraft.leased").then(() => { retired = true; });
   await Promise.resolve();
   assert.equal(retired, false);
   assert.throws(
     () => capturedApi.views.register({
-      id: "vela.leased.late",
+      id: "opencraft.leased.late",
       title: "Late",
       viewType: "late",
     }),
@@ -666,9 +666,9 @@ test("command invocation owns a lease across extension deactivation", async () =
   const commandWork = new Promise<void>((resolve) => { finish = resolve; });
   const events: string[] = [];
   const supervisor = new ExtensionSupervisor({ platform: "web" });
-  await supervisor.activate(definition("vela.command-lease", (api) => {
+  await supervisor.activate(definition("opencraft.command-lease", (api) => {
     api.commands.register(
-      { id: "vela.command-lease.run", title: "Run" },
+      { id: "opencraft.command-lease.run", title: "Run" },
       async () => {
         events.push("command:start");
         await commandWork;
@@ -677,10 +677,10 @@ test("command invocation owns a lease across extension deactivation", async () =
     );
     return () => { events.push("activation:dispose"); };
   }));
-  const command = supervisor.contributions.executeCommand("vela.command-lease.run");
+  const command = supervisor.contributions.executeCommand("opencraft.command-lease.run");
   await Promise.resolve();
   let retired = false;
-  const retirement = supervisor.deactivate("vela.command-lease").then(() => { retired = true; });
+  const retirement = supervisor.deactivate("opencraft.command-lease").then(() => { retired = true; });
   for (let index = 0; index < 10 && supervisor.contributions.getSnapshot().commands.length > 0; index += 1) {
     await new Promise<void>((resolve) => setImmediate(resolve));
   }
@@ -698,7 +698,7 @@ test("platform targeting is checked before extension code runs", async () => {
   let ran = false;
   const supervisor = new ExtensionSupervisor({ platform: "expo" });
   await assert.rejects(
-    supervisor.activate(definition("vela.web-only", () => { ran = true; })),
+    supervisor.activate(definition("opencraft.web-only", () => { ran = true; })),
     /does not target expo/u,
   );
   assert.equal(ran, false);
@@ -707,9 +707,9 @@ test("platform targeting is checked before extension code runs", async () => {
 
 test("settings pages preserve a fixed Host owner and reject an empty owner atomically", async () => {
   const supervisor = new ExtensionSupervisor({ platform: "web" });
-  const register = (targetHostId: string) => definition("vela.host-settings", api => {
-    api.views.register({ id: "vela.host-settings.view", title: "Host settings", viewType: "host-settings" });
-    api.settings.registerPage({ id: "vela.host-settings.page", title: "Settings", viewId: "vela.host-settings.view", targetHostId });
+  const register = (targetHostId: string) => definition("opencraft.host-settings", api => {
+    api.views.register({ id: "opencraft.host-settings.view", title: "Host settings", viewType: "host-settings" });
+    api.settings.registerPage({ id: "opencraft.host-settings.page", title: "Settings", viewId: "opencraft.host-settings.view", targetHostId });
   });
   await assert.rejects(supervisor.activate(register(" ")), /target Host/u);
   assert.equal(supervisor.contributions.getSnapshot().settingsPages.length, 0);

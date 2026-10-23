@@ -34,8 +34,10 @@ turn. Image-only turns and image history survive the AppServer projection.
 
 ## Build
 
+From this directory, install the separately locked dependencies and build:
+
 ```bash
-npm install
+npm ci
 npm run typecheck
 npm test
 npm run build
@@ -63,8 +65,9 @@ For a local loopback Hermes server, the bridge discovers its ephemeral dashboard
 from the local bootstrap page and uses it only on the `/api/ws` upgrade. A token can also be
 supplied explicitly for controlled deployments; it is never included in AppServer frames or logs.
 
-On this machine the services are `hermes-gateway.service`, `hermes-serve.service`, and
-`hemesclient.service`; all three are enabled for boot.
+The bridge needs a reachable Hermes gateway. Service installation, process
+supervision and boot configuration belong to the deployment; cloning or building
+this directory does not install or enable system services.
 
 The adapter deliberately owns two identities: the durable Hermes session id is exposed as the
 AppServer thread id, while Hermes' short live `session_id` is private transport state. Async

@@ -114,6 +114,7 @@ interface AppServerApplicationContextValue extends AppServerHostCatalog {
   readonly threadBadges: ThreadBadgeContributionRegistry;
   readonly threadListGrouping: ThreadListGroupingContributionRegistry;
   readonly identityAvatars: IdentityAvatarContributionRegistry;
+  readonly imageEditors?: import("./image-editor-contributions").ImageEditorContributionRegistry;
 }
 
 interface ConversationViewRuntimeContextValue {
@@ -170,6 +171,7 @@ export function AppServerRuntimeProvider({
     threadListGrouping,
     identityAvatars,
     composerActionRenderers,
+    imageEditors,
     botDirectory,
     sidebarLayout,
   } = supervisor;
@@ -289,6 +291,7 @@ export function AppServerRuntimeProvider({
     threadListGrouping,
     identityAvatars,
     composerActionRenderers,
+    imageEditors,
     botDirectory,
     sidebarLayout,
     registry,

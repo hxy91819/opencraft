@@ -489,7 +489,7 @@ test("new DSH threads receive the product dynamic-tool catalog at thread/start",
   const dynamicTools = [
     {
       type: "namespace" as const,
-      name: "vela_browser",
+      name: "opencraft_browser",
       description: "OpenCraft browser",
       tools: [
         {
