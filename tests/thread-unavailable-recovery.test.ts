@@ -13,6 +13,17 @@ for (const [message, code, reason] of [
   ["no rollout found for thread id old", -32600, "not-found"],
   ["thread not found: old", -32000, "not-found"],
   ["Thread no longer exists", -32000, "not-found"],
+  ["thread old not found", -32000, "not-found"],
+  ["thread foo bar not found", -32000, "not-found"],
+  ["thread  not found", -32000, "not-found"],
+  ["thread: not found", -32000, "not-found"],
+  ["thread old: not found", -32000, "not-found"],
+  ["a-thread not found", -32000, "not-found"],
+  ["thread\nnot found", -32000, "not-found"],
+  ["THREAD NOT FOUND", -32000, "not-found"],
+  [`thread${" ".repeat(64)}not found`, -32000, "not-found"],
+  [`thread${" ".repeat(64)}no longer exists`, -32000, "not-found"],
+  [`thread${" ".repeat(64)}x not found`, -32000, "not-found"],
 ] as const) test(`terminal Thread rejection: ${message}`, () => {
   const error = new AppServerRpcError({ code, message, data: { retryable: true } });
   assert.equal(threadUnavailableReason(error), reason);
@@ -20,7 +31,22 @@ for (const [message, code, reason] of [
   assert.equal(threadUnavailableReason(new AppServerClientError("TRANSPORT_ERROR", message)), null);
 });
 test("unrelated missing resources and transient failures cannot retire a Thread", () => {
-  for (const message of ["model not found", "history service unavailable", "archived messages unavailable"]) {
+  for (const message of [
+    "model not found",
+    "history service unavailable",
+    "archived messages unavailable",
+    "threads not found",
+    "thread2 not found",
+    "thread not founded",
+    "thread : not found",
+    "thread:not found",
+    "thread not  found",
+    "thread-id not found",
+    "thread old\nbar not found",
+    "thread foo: bar not found",
+    "thread:  not found",
+    `thread${" ".repeat(64)}x`,
+  ]) {
     const error = new AppServerRpcError({ code: -32000, message, data: { retryable: true } });
     assert.equal(threadUnavailableReason(error), null);
     assert.equal(isRetryableAppServerRpcError(error), true);
