@@ -42,7 +42,7 @@ for(const theme of ['light','dark','lavender']) {
  await page.getByRole('button',{name:'Task info',exact:true}).click();
  await sheetImport;
  try { assert.equal(await page.getByRole('dialog').count(),0,'sheet cannot paint without its presentation styles'); }
- finally { releaseSheet?.(); await page.unroute('**/modal/adaptive-sheet-handle*'); }
+ finally { releaseSheet?.(); }
  await page.getByRole('dialog').waitFor();
  await page.waitForFunction(()=>{const r=document.querySelector('[role=dialog]')?.getBoundingClientRect();return r&&Math.abs(r.bottom-innerHeight)<1});
  const sheet=await page.getByRole('dialog').boundingBox();assert(sheet);assert(Math.abs(sheet.width-390)<1);assert(Math.abs(sheet.x)<1);assert(Math.abs(sheet.y+sheet.height-844)<1);
