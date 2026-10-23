@@ -7,7 +7,7 @@ import { createConversationKey } from "@opencraft/chat-core";
 
 const tick = () => new Promise<void>(resolve => setImmediate(resolve));
 
-test("a queue change supersedes an in-flight empty read without hiding the accepted follow-up", async () => {
+for (const notify of [true, false]) test(`a ${notify ? "queue change" : "local submission"} supersedes an in-flight empty read without hiding the accepted follow-up`, async () => {
   const reads: ((data: unknown[]) => void)[] = [];
   let peer!: InMemoryAppServerPeer;
   let row: unknown;
@@ -25,7 +25,7 @@ test("a queue change supersedes an in-flight empty read without hiding the accep
     else if (request.method === "model/list") send({ data: [{ id: "test", model: "test", isDefault: true, inputModalities: ["text"] }], nextCursor: null });
     else if (request.method === "thread/queue/add") {
       row = { id: "server-one", clientUserMessageId: request.params.clientUserMessageId, input: request.params.input, createdAt: 101, pausedReason: null };
-      peer.send(JSON.stringify({ method: "thread/queue/changed", params: { threadId: "one" } }));
+      if (notify) peer.send(JSON.stringify({ method: "thread/queue/changed", params: { threadId: "one" } }));
       send({ queuedSubmission: row });
     } else if (request.method.endsWith("/list")) send({ data: [], nextCursor: null });
     else send({});

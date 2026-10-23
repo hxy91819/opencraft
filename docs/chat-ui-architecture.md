@@ -104,7 +104,12 @@ the runtime queue, delivery authority and first-Turn dispatch remain unchanged.
 Queue refresh keeps the current projection until a complete, current read succeeds.
 A queue-change notification received during a read invalidates that response;
 the coalesced follow-up read replaces it without publishing a stale empty list.
-A fresh empty response still removes consumed or deleted entries.
+A fresh empty response still removes consumed or deleted entries. Local queue admission and its acknowledgement also invalidate an in-flight read;
+this protection does not depend on notification timing. The pending row paints
+synchronously before transport acknowledgement. Its client message identity remains
+the React render key when the server queue ID arrives; actions continue to use
+the server ID. Once an authoritative queue snapshot takes ownership, a late
+admission acknowledgement cannot resurrect the retired local row.
 
 ## Streaming projection and document reuse
 

@@ -30,7 +30,7 @@ function Fixture() {
  return <main style={{ minHeight: "100dvh", padding: 12, background: "var(--color-background-primary)", color: "var(--color-text)" }}>
    <div style={{ maxWidth: 760, margin: "80px auto 0", position: "relative" }}>
     <div style={{ position: "absolute", inset: 0, color: "red" }} aria-hidden>正文正文正文正文正文正文正文正文正文正文正文正文</div>
-    <OpenCraftComposer controller={controller} isStreaming queuedSubmissions={state === "both" || state === "queue" ? Array.from({length:count},(_,i)=>({...submission,id:`queue-${i}`})) : []}
+    <OpenCraftComposer controller={controller} isStreaming queuedSubmissions={state === "both" || state === "queue" ? Array.from({length:count},(_,i)=>({...submission,id:`queue-${i}`,renderKey:`client-${i}`})) : []}
       floatingContent={state === "both" || state === "summary" ? <ConversationDocumentContext.Provider value={{ conversationId: null, cwd: null, hostId: null, theme: mode, onReviewTurnDiff: () => { (window as any).reviewCount = ((window as any).reviewCount ?? 0) + 1; } }}><div className="thread-live-changes"><TurnDiffBlock block={block} /></div></ConversationDocumentContext.Provider> : null}
       onSubmit={() => false} onCancel={() => {}} />
    </div>

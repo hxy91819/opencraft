@@ -2112,10 +2112,21 @@ export function createAppServerWorkbenchRuntime(
               await hydrateBinding(binding, false);
               if (released || binding.disposed) throw new Error(`Thread ${threadId} lease is released`);
             }
-            const receipt = await binding.runtime.submit(intent);
-            if (receipt.turnId !== null)
-              retainAcceptedTurn(binding, receipt.turnId);
-            return receipt;
+            const invalidateQueueRead = () => {
+              if (intent.target.type === "enqueue-follow-up" && binding.queueRefreshOperation !== null)
+                binding.queueRefreshRequested = true;
+            };
+            // A read started before local admission cannot remove its pending
+            // row, even when the Host's change notification has not arrived yet.
+            invalidateQueueRead();
+            try {
+              const receipt = await binding.runtime.submit(intent);
+              if (receipt.turnId !== null)
+                retainAcceptedTurn(binding, receipt.turnId);
+              return receipt;
+            } finally {
+              invalidateQueueRead();
+            }
           }),
         interrupt: (turnId, provenance) =>
           runBindingCommand(binding, () => binding.runtime.interrupt(turnId, provenance)),

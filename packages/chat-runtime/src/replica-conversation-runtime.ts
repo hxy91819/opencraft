@@ -1601,6 +1601,9 @@ export function createReplicaConversationRuntime(
         const receipt = await config.commands.submit(intent, options);
         if (options?.canDispatch() === false) return receipt;
         if (intent.target.type === "enqueue-follow-up") {
+          // A queue snapshot may already have taken ownership and consumed the
+          // entry while this RPC was in flight. Its late ACK must not revive it.
+          if (!queued.has(intent.commandId)) return receipt;
           queued.set(intent.commandId, {
             commandId: intent.commandId,
             clientMessageId: intent.clientMessageId,
@@ -1651,7 +1654,7 @@ export function createReplicaConversationRuntime(
         if (intent.target.type === "enqueue-follow-up") {
           const acknowledgedByQueue = [...authoritativeQueue.values()].some((submission) =>
             submission.clientMessageId === intent.clientMessageId);
-          if (!acknowledgedByQueue) {
+          if (!acknowledgedByQueue && queued.has(intent.commandId)) {
             queued.set(intent.commandId, {
               commandId: intent.commandId,
               clientMessageId: intent.clientMessageId,
