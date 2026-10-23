@@ -3453,3 +3453,17 @@ owner, persistence store or inference request is introduced. History may be part
 structured plan/file records and explicit agent states contribute. Terminal completion never
 implies completion of a background process. Desktop and narrow presentation reuse the same
 controlled disclosure/scroll state while the conversation DOM stays mounted.
+
+
+### Mobile viewport diagnostic measurement budget
+
+The viewport port remains the only geometry commit and animation-frame owner.
+Diagnostics observe Shell and focused-editor rectangles on every committed frame
+so their extrema retain brief excursions, including recovery before transmission.
+Root/body/fixed-reference rectangles, Composer/send rectangles, computed style
+and send hit testing describe the sampled report frame and are read only within
+the existing 80ms and token-credit budget. The detailed measurement clock advances
+even when an unchanged report is deduplicated; network silence cannot reopen
+frame-rate measurement. Diagnostics do not alter viewport positioning, the native
+settling window, queue admission, input focus or drafts. This bounds confirmed
+measurement overhead; it does not establish a queued-message paint failure's cause.

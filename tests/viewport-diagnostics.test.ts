@@ -6,19 +6,20 @@ function fixture(t: test.TestContext) {
   let now = 0;
   let top = 0;
   let revision = "a".repeat(40);
+  const reads = { rect: 0, style: 0, hit: 0 };
   const reports: Record<string, number | string>[] = [];
   class Element {
     isContentEditable = true;
     scrollTop = 0;
     closest(_selector: string): unknown { return null; }
-    getBoundingClientRect() { return { top, height: 394, bottom: top + 394 }; }
+    getBoundingClientRect() { reads.rect++; return { top, height: 394, bottom: top + 394 }; }
   }
   const shell = new Element();
   const doc = {
     visibilityState: "visible",
     documentElement: Object.assign(new Element(), { clientHeight: 688 }),
     body: new Element(), activeElement: shell,
-    elementFromPoint(_x: number, _y: number): unknown { return null; },
+    elementFromPoint(_x: number, _y: number): unknown { reads.hit++; return null; },
     querySelector(selector: string) {
       return selector.startsWith("meta") ? { content: revision } : shell;
     },
@@ -27,7 +28,7 @@ function fixture(t: test.TestContext) {
     document: doc, HTMLElement: Element, innerHeight: 394, innerWidth: 390, scrollY: 294,
     window: {
       visualViewport: { height: 394, width: 390, offsetTop: 294, offsetLeft: 0, pageTop: 294, scale: 1 },
-      getComputedStyle: () => ({ top: "294px", height: "394px" }),
+      getComputedStyle: () => { reads.style++; return { top: "294px", height: "394px" }; },
     },
   };
   for (const [key, value] of Object.entries(values)) {
@@ -40,7 +41,7 @@ function fixture(t: test.TestContext) {
     reports.push(JSON.parse(String(init.body)));
     return new Response("{}", { status: 202 });
   });
-  return { reports, doc, top(value: number) { top = value; }, advance(ms: number) { now += ms; top++; }, revision(value: string) { revision = value; } };
+  return { reports, doc, reads, top(value: number) { top = value; }, advance(ms: number) { now += ms; top++; }, revision(value: string) { revision = value; } };
 }
 
 test("long-lived pages retain evidence after the first 64 keyboard observations", t => {
@@ -117,4 +118,39 @@ test("hidden pages and missing client revisions cannot consume later valid obser
   assert.equal(f.reports.length, 0);
   f.doc.visibilityState = "visible"; report();
   assert.equal(f.reports.length, 1);
+});
+
+
+test("rate-limited frames retain excursion evidence without detailed geometry or hit testing", t => {
+  const f = fixture(t), report = createViewportDiagnostics();
+  const send = {
+    getBoundingClientRect() { f.reads.rect++; return { left: 250, top: 106, width: 44, height: 44, bottom: 150 }; },
+    contains: (element: unknown) => element === send,
+  };
+  const composer = {
+    getBoundingClientRect() { f.reads.rect++; return { top: 20, bottom: 160 }; },
+    querySelector: () => send,
+  };
+  f.doc.activeElement.closest = selector => selector === ".opencraft-composer-shell" ? composer : null;
+  report();
+  assert.deepEqual(f.reads, { rect: 7, style: 1, hit: 1 });
+  const before = { ...f.reads };
+  f.advance(16); f.top(-294); report();
+  f.advance(16); f.top(0); report();
+  assert.deepEqual(f.reads, { rect: before.rect + 4, style: before.style, hit: before.hit },
+    "Only Shell and focused editor are measured on ineligible frames");
+  f.advance(80); f.top(0); report();
+  assert.deepEqual(f.reads, { rect: before.rect + 11, style: before.style + 1, hit: before.hit + 1 });
+  assert.equal(f.reports.at(-1)!.editorMinTop, -294);
+  assert.equal(f.reports.at(-1)!.shellMinTop, -294);
+  assert.equal(f.reports.at(-1)!.observedSamples, 3);
+});
+
+
+test("unchanged reports cannot bypass the detailed measurement interval", t => {
+  const f = fixture(t), report = createViewportDiagnostics();
+  report();
+  for (let i = 0; i < 30; i++) { f.advance(16); f.top(0); report(); }
+  assert.equal(f.reports.length, 1, "Identical geometry stays deduplicated");
+  assert.equal(f.reads.style, 7, "Detailed reads occur at 0, 80, 160, 240, 320, 400 and 480ms");
 });

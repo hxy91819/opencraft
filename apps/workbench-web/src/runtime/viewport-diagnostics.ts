@@ -6,7 +6,7 @@ export function createViewportDiagnostics() {
   // making later interactions permanently invisible after the first 64 samples.
   let credits = 64;
   let creditedAt = performance.now();
-  let lastAt = -Infinity;
+  let lastMeasuredAt = -Infinity;
   let lastSignature = "";
   let touchGeometry: Record<string, number> = {};
   let touchSequence = 0;
@@ -33,18 +33,8 @@ export function createViewportDiagnostics() {
     const sourceRevision = document.querySelector<HTMLMetaElement>('meta[name="opencraft-source-revision"]')?.content;
     if (!sourceRevision || !/^[a-f0-9]{40}$/.test(sourceRevision)) return;
     const rect = shell.getBoundingClientRect();
-    const rootRect = document.documentElement.getBoundingClientRect();
-    const bodyRect = document.body.getBoundingClientRect();
-    const fixedRect = document.querySelector("[data-timeline-fixed-reference]")?.getBoundingClientRect();
-    const style = window.getComputedStyle(shell);
     const active = document.activeElement;
     const editing = active instanceof HTMLElement && (active.isContentEditable || /^(INPUT|TEXTAREA)$/.test(active.tagName));
-    const composer = editing ? active.closest(".opencraft-composer-shell") : null;
-    const sendElement = composer?.querySelector(".opencraft-composer-submit")
-      ?? (editing ? null : document.querySelector(".opencraft-composer-submit"));
-    const send = sendElement?.getBoundingClientRect();
-    const composerRect = composer?.getBoundingClientRect();
-    const draft = editing ? active.closest<HTMLElement>(".new-thread-draft-main") : null;
     const editorRect = editing ? active.getBoundingClientRect() : null;
     observations = Math.min(100_000, observations + 1);
     if (editorRect) {
@@ -53,6 +43,22 @@ export function createViewportDiagnostics() {
     }
     shellMinTop = Math.min(shellMinTop, rect.top);
     shellMaxTop = Math.max(shellMaxTop, rect.top);
+    // Only these two rectangles need frame-rate observation: their extrema
+    // retain an excursion that recovers before the next bounded report. Detailed
+    // geometry and hit testing describe the report frame, so read them only when
+    // a transmission is eligible. This observer never schedules its own frame.
+    if (now - lastMeasuredAt < 80 || credits < 1) return;
+    lastMeasuredAt = now;
+    const rootRect = document.documentElement.getBoundingClientRect();
+    const bodyRect = document.body.getBoundingClientRect();
+    const fixedRect = document.querySelector("[data-timeline-fixed-reference]")?.getBoundingClientRect();
+    const style = window.getComputedStyle(shell);
+    const composer = editing ? active.closest(".opencraft-composer-shell") : null;
+    const sendElement = composer?.querySelector(".opencraft-composer-submit")
+      ?? (editing ? null : document.querySelector(".opencraft-composer-submit"));
+    const send = sendElement?.getBoundingClientRect();
+    const composerRect = composer?.getBoundingClientRect();
+    const draft = editing ? active.closest<HTMLElement>(".new-thread-draft-main") : null;
     const sendHit = send && send.width > 0 && send.height > 0
       ? sendElement?.contains(document.elementFromPoint(send.left + send.width / 2, send.top + send.height / 2))
       : false;
@@ -80,12 +86,9 @@ export function createViewportDiagnostics() {
       shellMinTop, shellMaxTop,
       ...touchGeometry,
     };
-    // Preserve a short excursion even if layout returns before the next bounded
-    // transmission. Observing each animation frame does not send at frame rate.
-    if (now - lastAt < 80 || credits < 1) return;
     const signature = JSON.stringify(geometry);
     if (signature === lastSignature) return;
-    lastSignature = signature; lastAt = now; credits--;
+    lastSignature = signature; credits--;
     void serverFetch("/__opencraft_apphost_diagnostic", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ kind: "viewport", episode, sourceRevision, ...geometry, observedSamples: observations }),
