@@ -346,8 +346,10 @@ in `scripts/smoke-disclosure-reflow.ts`.
   and unloading an employee provider restores the product entrance.
 - No fixed employee login URL, synthetic identity or unsupported logout control
   is presented. Authoritative 401/expiration clears the footer; details remain
-  available for refresh. Covered by `tests/enterprise-identity.test.ts` and the real footer
-  controls in `scripts/smoke-enterprise-identity.ts`; live gateway evidence is separate.
+  available for refresh. Historical product coverage named
+  `tests/enterprise-identity.test.ts` and `scripts/smoke-enterprise-identity.ts`.
+  Neither probe is shipped in this standalone checkout; this record is not a
+  runnable core check. Live gateway evidence still requires a separate product run.
 
 ## Embedded panel host presentation
 
@@ -1302,7 +1304,7 @@ and does not receive the standard task-flow continuation button.
 
 ### Shared floating material
 
-Participant popovers and model/toolbar menus consume `menu.web.scss` `material`: elevated-secondary at 90%, 8px backdrop blur, shared border/radius/shadow. Page/sidebar backgrounds may be translucent and are not floating-surface tokens. Material is independent of menu geometry, typography and selection behavior; the participant popover retains its Radix and content ownership. Browser evidence: `scripts/smoke-participant-menu-material.ts` compares computed material across Neutral/Frost/Lavender light/dark and desktop/touch.
+Participant popovers and model/toolbar menus consume `menu.web.scss` `material`: elevated-secondary at 90%, 8px backdrop blur, shared border/radius/shadow. Page/sidebar backgrounds may be translucent and are not floating-surface tokens. Material is independent of menu geometry, typography and selection behavior; the participant popover retains its Radix and content ownership. Historical browser evidence named `scripts/smoke-participant-menu-material.ts` for computed material across Neutral/Frost/Lavender light/dark and desktop/touch. That probe is absent from this standalone checkout; the material contract above remains an acceptance requirement.
 
 ### Desktop navigation surface (2026-10-15)
 
@@ -1345,12 +1347,13 @@ only to project overlap; it introduces no scroll writer, scroll state or extra
 scrollport. Row badges and avatar stacks cannot tint or paint over the disclosure.
 Participant popover portals retain their existing floating-surface ownership.
 There are no duplicate headings.
-Real Shell coverage: OPENCRAFT_SIDEBAR_STICKY_ONLY=1 in
-scripts/smoke-sidebar-topology.ts.
+Historical Shell coverage used `OPENCRAFT_SIDEBAR_STICKY_ONLY=1` in
+`scripts/smoke-sidebar-topology.ts`. That probe is absent from this standalone
+checkout; this record does not establish a current passing sticky-geometry check.
 
 ### Consolidated conversation filters
 
-The conversation heading's single Filters button contains the existing display-mode radios, optional Only my conversations checkbox, and server radios. The separate participation/server chips are removed on desktop and mobile. Checked items reflect the existing plugin participation preference and Shell server preference; the closed button emphasizes active filters through its foreground and summarizes them in its tooltip, without a resting fill. Missing identity still omits participation filtering, and a saved server absent during loading never broadens the result scope. Radix owns keyboard/focus/dismissal and viewport-constrained menu scrolling. Evidence: `scripts/smoke-sidebar-thread-catalog.ts` (filter operation, offline continuity, reload persistence) and `scripts/smoke-sidebar-topology.ts` (desktop/mobile/touch scroll geometry).
+The conversation heading's single Filters button contains the existing display-mode radios, optional Only my conversations checkbox, and server radios. The separate participation/server chips are removed on desktop and mobile. Checked items reflect the existing plugin participation preference and Shell server preference; the closed button emphasizes active filters through its foreground and summarizes them in its tooltip, without a resting fill. Missing identity still omits participation filtering, and a saved server absent during loading never broadens the result scope. Radix owns keyboard/focus/dismissal and viewport-constrained menu scrolling. Core probe: `scripts/smoke-sidebar-thread-catalog.ts` (filter operation, offline continuity, reload persistence). Historical desktop/mobile/touch scroll-geometry coverage named `scripts/smoke-sidebar-topology.ts`, which is absent from this standalone checkout.
 
 Conversations has equal block spacing from the existing navigation section token.
 Desktop New chat is an unfilled quiet action with no extra top margin; the mobile
@@ -1372,8 +1375,9 @@ Shell alone resolves sidebar commands (button and Cmd/Ctrl+B); route App shortcu
 handlers do not write visibility. Layout-transition/exit states only retain physical
 content ownership, never create a third user-selectable visibility state. Shared
 portal content, draft and scroll survive fast reversals and responsive transfer.
-Verification: `scripts/smoke-sidebar-topology.ts` covers pointer pauses after collapse,
-animated reversal, threshold+16px explicit recovery and automatic drawer-to-dock.
+Historical verification used `scripts/smoke-sidebar-topology.ts` for pointer
+pauses after collapse, animated reversal, threshold+16px explicit recovery and
+automatic drawer-to-dock. That probe is absent from this standalone checkout.
 
 ## UI-TYPE-1 — Semantic typography ownership
 
@@ -1399,7 +1403,7 @@ The built-in resource plugin owns one Files creation action for both empty-panel
   rejection must reach the storage recovery boundary; early recovery retains
   saved data, gives a reload action, and does not expose raw storage diagnostics.
 
-分支会话的参与者不继承父会话：新分支头像先显示已认证创建者，后续实际接收的用户消息增加参与者。历史消息继续保留原作者。继承来源由Host持久化，刷新、重连与再次分支不能将历史作者恢复为新分支成员；创建者在头像列表去重。证据：`tests/enterprise-identity-participants.test.ts`、`tests/opencraft-message-senders.test.ts`、`scripts/smoke-fork-participants.ts`。
+分支会话的参与者不继承父会话：新分支头像先显示已认证创建者，后续实际接收的用户消息增加参与者。历史消息继续保留原作者。继承来源由Host持久化，刷新、重连与再次分支不能将历史作者恢复为新分支成员；创建者在头像列表去重。核心发送者回归入口：`tests/opencraft-message-senders.test.ts`。历史产品记录另引用 `tests/enterprise-identity-participants.test.ts`、`scripts/smoke-fork-participants.ts`；这两项未随独立公开核心交付，不能作为本仓库当前可运行的验收证据。
 
 - Workspace resource panels default to a collapsed file tree for all file types; the header folder
   toggle remains available. Manual visibility takes precedence for that panel
@@ -1621,9 +1625,11 @@ selection, grouping, menus and busy feedback without a custom cache comparator.
 Participant badge styles are a lazy module CSS dependency, shared by all rows;
 embedded ShadowRoots consume the existing feature stylesheet mirror.
 
-Acceptance: `node --import tsx scripts/smoke-sidebar-render-isolation.ts` checks
+Historical acceptance named `scripts/smoke-sidebar-render-isolation.ts` for
 zero list rebuilds during four mobile swipes, live business updates, selection
 and New Chat dismissal, DOM/draft continuity, and document/Shadow badge styles.
+That probe is absent from this standalone checkout; these invariants remain
+requirements, and this record does not establish a current passing regression.
 
 For the mobile drawer, offscreen conversation rows may skip layout and paint via
 `content-visibility: auto`. The complete touch row reserves 56px before its

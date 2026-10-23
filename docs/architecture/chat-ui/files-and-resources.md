@@ -505,11 +505,13 @@ Final remote assembly has a two-minute budget; its lost acknowledgement is an un
 outcome and must use the same attachment identity on retry. Legacy Hermes adapters
 without the terminal port retain 32 MiB; one-shot staging remains limited to 32 MiB.
 The shared file limit does not enlarge image limits or the separate inline Bot API.
-Validation: `tests/hermes-large-attachment.test.ts`,
-`scripts/smoke-hermes-large-attachment.ts`, `scripts/smoke-embedded-attachment.ts`.
-The browser smoke uses a local enterprise-service protocol peer and HTTP endpoint and runs the
-remote Python locally; it does not certify a real cloud instance. The Composer
-smoke exercises the production component and shared resolver, not full Application boot.
+Historical product validation named `tests/hermes-large-attachment.test.ts` and
+`scripts/smoke-hermes-large-attachment.ts`; neither probe is shipped in this
+standalone checkout. The recorded browser smoke used a local enterprise-service
+protocol peer and HTTP endpoint and ran the remote Python locally; that evidence
+did not certify a real cloud instance and is not a current passing core check.
+The retained `scripts/smoke-embedded-attachment.ts` exercises the production
+Composer and shared resolver, not full Application boot.
 
 The AppHost WebSocket message cap remains 48 MiB, accommodating legacy one-shot
 requests; chunked files do not require a larger WebSocket limit. The Local Host
