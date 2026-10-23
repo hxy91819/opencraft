@@ -7,7 +7,7 @@ const mailScheme = /^mailto:/iu;
 const contactScheme = /^(?:sms|tel):/iu;
 const fileScheme = /^file:/iu;
 const appScheme = /^(?:app|agent|navigation):/iu;
-// Read compatibility for existing engine-authored content; hosts still decide whether to open it.
+// Legacy URI input compatibility; hosts still decide whether to open the target.
 const legacyCodexAppScheme = /^codex:/iu;
 const resourceScheme = /^(?:sandbox|attachment|resource|plugin|mcp):/iu;
 const windowsAbsolutePath = /^[a-z]:[\\/]/iu;
