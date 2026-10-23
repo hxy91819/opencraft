@@ -1,6 +1,6 @@
 import { executionEngineExtension } from "@opencraft/appserver-client";
 import { Context, Service } from "@deepseek-ai/cordis";
-import { AppServerRpcError, type AppServerClient } from "@opencraft/appserver-client";
+import { AppServerRpcError, isRetryableAppServerRpcError, type AppServerClient } from "@opencraft/appserver-client";
 import { OPENCRAFT_RESUME_HISTORY_EXTENSION, buildResumeHistoryRequest, type AppServerThread, type ThreadHistoryCheckpoint, type ThreadResumeParams, type ThreadResumeResponse, type ThreadForkResponse } from "@opencraft/appserver-protocol";
 
 import type { HydratedThreadHistory, ResumeHistoryContext } from "./history-strategies";
@@ -229,6 +229,11 @@ export class ThreadResumeCoordinatorService extends Service {
       ...current,
       resumeState: "needs_resume",
     }));
+  }
+
+  /** A confirmed lifecycle change may make a previously rejected Thread resumable. */
+  clearResumeRejection(threadId: string): void {
+    this.rejectedResumes.delete(threadId);
   }
 
   /** Drop presentation/history ownership after the last runtime consumer.
@@ -526,8 +531,7 @@ export class ThreadResumeCoordinatorService extends Service {
       // Only an explicitly retryable rejection may be reissued in this generation.
       // Other rejections still require explicit retry or a new connection.
       if (failure instanceof AppServerRpcError && generation === this.client.connectionGeneration
-        && !(typeof failure.data === "object" && failure.data !== null
-          && "retryable" in failure.data && failure.data.retryable === true)) {
+        && !isRetryableAppServerRpcError(failure)) {
         this.rejectedResumes.set(threadId, { generation, error: failure });
       }
       if (provisionalOwner && this.ctx.threadStreamOwnership.get(threadId)?.role === "owner") {

@@ -1,4 +1,6 @@
 {
+  "chat.composer.reconnecting": "Menyambung semula…",
+  "chat.composer.loading": "Memuatkan…",
   "chat.recovery.progress.connecting": "Menyambung ke pelayan",
   "chat.recovery.progress.initializing": "Memulakan sambungan",
   "chat.recovery.progress.backoff": "Menunggu untuk cuba lagi",

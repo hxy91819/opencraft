@@ -6,9 +6,11 @@ const types = new Set(['touchStart', 'touchMove', 'touchEnd', 'touchCancel']);
 // unphased event on our pinned runtime. Chromium DCHECKs and aborts the process.
 // The private CDP injector supplies begin/end phases and routes through native
 // hit testing (including OOPIFs). It takes CSS positions and web delta signs.
-function createWidgetWheelDispatcher(debuggerPort, getZoomFactor) {
+function createWidgetWheelDispatcher(debuggerPort, getZoomFactor, getDocument = () => undefined) {
   return async event => {
+    const document = getDocument();
     const metrics = await debuggerPort.sendCommand('Page.getLayoutMetrics');
+    if (document !== getDocument()) throw Object.assign(new Error('Browser document changed'), { code: 'DOCUMENT_CHANGED', retryable: true });
     const scale = metrics.cssVisualViewport?.scale * getZoomFactor();
     if (!Number.isFinite(scale) || scale <= 0) throw new Error('Invalid native wheel scale');
     const modifiers = (event.modifiers ?? []).reduce((bits, modifier) => bits | ({ alt: 1, control: 2, meta: 4, shift: 8 }[modifier] ?? 0), 0);
@@ -22,12 +24,13 @@ function createWidgetWheelDispatcher(debuggerPort, getZoomFactor) {
 // applies browser zoom and pinch scale to its CSS coordinates on injection.
 // Read native metrics at dispatch, including while a gesture changes scale;
 // a viewer notification or a once-per-gesture snapshot would be stale.
-function createWidgetTouchDispatcher(debuggerPort, getZoomFactor) {
+function createWidgetTouchDispatcher(debuggerPort, getZoomFactor, getDocument = () => undefined) {
   // Wire identities are not Chromium pointer slots (VelocityTracker uses a
   // 32-bit bitset). Keep held contacts stable, even when their wire IDs are
   // large or their snapshot order changes. Commit slots only after native ACK.
   let slots = new Map();
   return async input => {
+    const document = getDocument();
     if (input.type === 'touchCancel') {
       try { return await debuggerPort.sendCommand('Input.dispatchTouchEvent', input); }
       finally { slots.clear(); }
@@ -46,6 +49,7 @@ function createWidgetTouchDispatcher(debuggerPort, getZoomFactor) {
     if (touchPoints.length) {
       if (touchPoints.some(point => !next.has(point.id))) throw new Error('Unknown native touch contact');
       const metrics = await debuggerPort.sendCommand('Page.getLayoutMetrics');
+      if (document !== getDocument()) throw Object.assign(new Error('Browser document changed'), { code: 'DOCUMENT_CHANGED', retryable: true });
       const scale = metrics.cssVisualViewport?.scale * getZoomFactor();
       if (!Number.isFinite(scale) || scale <= 0) throw new Error('Invalid native touch scale');
       touchPoints = touchPoints.map(point => ({ ...point, id: next.get(point.id), x: point.x / scale, y: point.y / scale }));

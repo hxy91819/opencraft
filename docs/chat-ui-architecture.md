@@ -87,7 +87,8 @@ own author tooltip and is never a drag target. Unknown authors and failed photos
 retain a same-size person icon. Hover, keyboard focus and held dragging do not
 fade the photo or place the grip over it. The warning indicator belongs to the
 sender slot; right-side Steer/Send, edit, delete and unconfirmed-delivery review
-stay distinct. Coarse pointers get a 44px handle contained in non-overlapping rows.
+stay distinct. Fine pointers use a compact 24px handle column with a centered
+12px grip; coarse pointers get a 44px handle contained in non-overlapping rows.
 ChatRuntime carries the original per-entry protocol sender. Exact-client local
 submission hints may paint a pending queue before acknowledgement; explicit server
 identity (including null) wins, and restored/unrelated entries never inherit the
@@ -708,6 +709,11 @@ controls remain visible with 44px targets. Existing source fallback, stable
 loading geometry and reading-surface width limits remain authoritative.
 `scripts/smoke-mermaid-display.ts` checks full SVG bounds, hidden source, toolbar
 separation, resizing, source replacement and preview on real WebChatDocument.
+Appending prose after a complete fence and finishing the Turn preserve the SVG.
+Measurement delivery reads the latest committed document callback and generation
+without becoming an input to the diagram's render lifecycle. Source or theme
+changes still invalidate the diagram; resize measurements still reach the
+current document owner.
 
 Bounds checks measure the actual scrollport, initial resource link and table
 actions against the reading surface, and verify the final column is reachable.
@@ -2559,8 +2565,13 @@ projection is independent of Turn streaming and does not authorize commands. It
 appears after 600ms, fades out in 350ms, uses theme colors, intercepts no input and
 preserves the mounted editor, draft, focus and selection. Reduced motion retains
 a static faint edge. Cold history uses the same Composer feedback instead of a
-central spinner; activation failures retain their retry action. Loading copy is
-screen-reader-only. No syncing/reconnecting notice is inserted into the transcript.
+central spinner; activation failures retain their retry action. The empty Composer placeholder shows “Reconnecting…” while its Host connects or
+retries, and “Loading…” while the connected conversation is being restored. The
+existing recovery owner decides whether work is pending; stopped recovery and
+required updates keep their existing actions. The editor owns emptiness, so a
+draft (including transient IME text) hides this placeholder. Changing the
+placeholder preserves the same editor, focus, selection and draft; readiness
+restores the normal prompt. The border scan also retains its screen-reader label. No syncing/reconnecting notice is inserted into the transcript.
 Only a stopped/blocked recovery or required client update presents
 an actionable instruction in normal flow above the Composer, never over the
 transcript. Its diagnostic report stays collapsed. Elapsed time, attempts, retry
@@ -3397,6 +3408,25 @@ an overlay, and streaming growth, shrinkage and width changes update that afford
 The existing View choice, completion defaults, copy/download and viewport ownership
 remain unchanged. `scripts/smoke-reasoning-disclosure.ts --plan-preview-only` covers
 short and long content, growth/shrinkage, expansion and View restoration.
+Queue row leading content is compact: the reorder hit area begins one spacing
+unit from the row edge and immediately precedes the independent sender slot.
+Keep the existing desktop/touch hit widths and row heights; only preview and
+trailing actions retain their normal text separation. Reducing leading whitespace
+must not put the photo inside the drag activator or overlap its target.
+### Archived and missing conversation restoration
+A confirmed archive/delete receipt or notification retires that Thread's live
+Replica authority and automatic recovery. A definite archived/not-found rejection
+from Thread metadata/Resume does the same, even if a provider also marks it
+retryable. Transport failures, missing models and unknown history failures never
+imply a missing conversation. Standard invalid-request/params/protocol RPC errors
+are deterministic and cannot opt into automatic history retries.
+The Host stays ready for other Threads. Recovery hints, reconnect and manual
+restore cannot resume a retired Thread; successful explicit unarchive reopens it.
+An archive fences pending hydration, so late success cannot restore authority.
+The Browser Application clears only matching Host/account selection memory and
+replaces an active invalid route with the existing Home and conversation list.
+Late failures cannot clear a newer selection or replace a newer navigation intent.
+This local draft does not create a remote Thread, unarchive it or replay input.
 
 ### Retained Web viewport measurements
 

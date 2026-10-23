@@ -267,3 +267,16 @@ unobserved identity from a running release whose dependencies are unavailable.
 Errors never include private endpoints, tokens or raw exception text. A fixed
 bootstrap must be upgraded through the local entry-maintenance contract for new
 updater observation logic to become active; updating Web assets alone is insufficient.
+
+### Managed Linux browser continuity
+
+The root-managed Linux remote browser uses a separate DynamicUser owner, private
+Unix transport and immutable runtime retained under its data directory. Gateway
+upgrade/restart reconnects viewing clients while the same native tabs retain DOM,
+forms and scroll. Handoff revokes old input and suspends unviewed encoding. This
+is independent of the existing execution/core upgrade transaction; deployment
+must not stop the owner with the Gateway or delete its retained runtime. Direct
+unmanaged adapters, host reboot and actual native owner failure still recover
+from checkpoints. The first migration from the previous pipe-owned browser needs
+one replacement; subsequent compatible Gateway deployments preserve it. Owner
+protocol mismatch fails closed instead of silently killing active tabs.

@@ -108,3 +108,10 @@ test('legacy mouse emulation remains single touch and respects modifiers',async(
  assert.deepEqual(seen.map(v=>v.type),['touchStart','touchMove','touchEnd']);
  assert.equal(seen[0].modifiers,8);assert(!t.active);
 });
+
+test('navigation during touch metrics rejects the old contact before native injection', async () => {
+  let document='old',release;const gate=new Promise(r=>release=r),calls=[];
+  const dispatch=createWidgetTouchDispatcher({async sendCommand(method,input){calls.push(method);if(method==='Page.getLayoutMetrics'){await gate;return {cssVisualViewport:{scale:1}}}}},()=>1,()=>document);
+  const result=assert.rejects(dispatch({type:'touchStart',touchPoints:[{id:1,x:10,y:20}]}),{code:'DOCUMENT_CHANGED'});
+  document='new';release();await result;assert.deepEqual(calls,['Page.getLayoutMetrics']);
+});

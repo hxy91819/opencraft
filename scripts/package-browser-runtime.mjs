@@ -23,7 +23,7 @@ export async function packageBrowserRuntime(destination) {
   }
   await mkdir(destination, { recursive: true });
   await cp(distribution, join(destination, 'electron'), { recursive: true });
-  for (const name of ['worker.cjs','controls.cjs','touch.cjs','clipboard.cjs','ime.cjs','focus.cjs','encoder-preload.cjs','encoder.html'])
+  for (const name of ['worker.cjs','owner.cjs','diagnostics.cjs','controls.cjs','touch.cjs','clipboard.cjs','ime.cjs','focus.cjs','encoder-preload.cjs','encoder.html'])
     await cp(join(root, 'scripts/remote-browser', name), join(destination, name));
   await build({ entryPoints: [join(root, 'packages/browser-preview-bridge/src/index.ts')], outfile: join(destination, 'preview-bridge.js'),
     bundle: true, format: 'iife', globalName: 'OpenCraftPreviewBridgeRuntime', platform: 'browser', target: 'chrome120' });

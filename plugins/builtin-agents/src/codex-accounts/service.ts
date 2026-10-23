@@ -49,6 +49,10 @@ export class CodexAccountsService {
     await this.update("opencraft/codex/accounts/setEnabled", { accountId, enabled });
   }
 
+  async setAllowCredits(accountId: string, allowCredits: boolean): Promise<void> {
+    await this.update("opencraft/codex/accounts/setAllowCredits", { accountId, allowCredits });
+  }
+
   async reorder(accountIds: readonly string[]): Promise<void> {
     await this.update("opencraft/codex/accounts/reorder", { accountIds });
   }
@@ -145,11 +149,14 @@ export class CodexAccountsService {
     return this.requestHost(this.hostId, method, params);
   }
 
-  private async update<TMethod extends "opencraft/codex/accounts/setEnabled" | "opencraft/codex/accounts/reorder" | "opencraft/codex/accounts/remove" | "opencraft/codex/accounts/refresh">(
+  private async update<TMethod extends "opencraft/codex/accounts/setEnabled" | "opencraft/codex/accounts/setAllowCredits" | "opencraft/codex/accounts/reorder" | "opencraft/codex/accounts/remove" | "opencraft/codex/accounts/refresh">(
     method: TMethod,
     params: AppServerMethodParams<TMethod>,
   ): Promise<void> {
+    // A list started before or during a mutation cannot undo its committed value.
+    this.generation += 1;
     const result = await this.request(method, params);
+    this.generation += 1;
     this.publish({ ...this.snapshot, phase: "ready", accounts: result.accounts, error: null });
   }
 

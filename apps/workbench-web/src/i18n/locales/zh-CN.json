@@ -1,4 +1,6 @@
 {
+  "chat.composer.reconnecting": "正在重新连接…",
+  "chat.composer.loading": "正在加载…",
   "chat.recovery.progress.connecting": "正在连接服务器",
   "chat.recovery.progress.initializing": "正在初始化连接",
   "chat.recovery.progress.backoff": "等待重试",
@@ -474,8 +476,8 @@
   "sidebar.rail.start.short": "开始",
   "sidebar.rail.storage": "云存储",
   "sidebar.rail.storage.short": "文件",
-  "sidebar.rail.tasks": "任务",
-  "sidebar.rail.tasks.short": "任务",
+  "sidebar.rail.tasks": "看板",
+  "sidebar.rail.tasks.short": "看板",
   "sidebar.thread.actions": "{title} 的操作",
   "chat.archive.pending": "正在归档会话…",
   "chat.archive.done": "会话已归档",

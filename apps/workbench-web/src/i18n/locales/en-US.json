@@ -1,4 +1,6 @@
 {
+  "chat.composer.reconnecting": "Reconnecting…",
+  "chat.composer.loading": "Loading…",
   "chat.recovery.progress.connecting": "Connecting to server",
   "chat.recovery.progress.initializing": "Initializing connection",
   "chat.recovery.progress.backoff": "Waiting to retry",
@@ -380,8 +382,8 @@
   "sidebar.rail.start.short": "Start",
   "sidebar.rail.storage": "Cloud storage",
   "sidebar.rail.storage.short": "Files",
-  "sidebar.rail.tasks": "Tasks",
-  "sidebar.rail.tasks.short": "Tasks",
+  "sidebar.rail.tasks": "Board",
+  "sidebar.rail.tasks.short": "Board",
   "sidebar.search": "Search conversations",
   "sidebar.serverFilter": "Filter by server",
   "sidebar.serverOrigin": "From {server}",

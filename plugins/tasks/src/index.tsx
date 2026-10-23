@@ -54,15 +54,15 @@ export function createTasksExtension(
     activate(api) {
       api.views.register({
         id: TASKS_VIEW_ID,
-        title: "任务",
+        title: "看板",
         viewType: TASKS_VIEW_ID,
         platforms: ["web", "electron"],
       });
       api.navigation.register({
         id: "opencraft.tasks.navigation",
-        title: "任务",
-        titleMessage: { id: "sidebar.rail.tasks", defaultMessage: "Tasks" },
-        shortTitleMessage: { id: "sidebar.rail.tasks.short", defaultMessage: "Tasks" },
+        title: "看板",
+        titleMessage: { id: "sidebar.rail.tasks", defaultMessage: "Board" },
+        shortTitleMessage: { id: "sidebar.rail.tasks.short", defaultMessage: "Board" },
         badgeMessage: { id: "navigation.tryIt", defaultMessage: "Try it" },
         surface: "sidebar-primary",
         target: { kind: "view", viewId: TASKS_VIEW_ID },

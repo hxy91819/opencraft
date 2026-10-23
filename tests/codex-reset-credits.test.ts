@@ -23,6 +23,11 @@ test("independent Core account owner returns redacted reset counts through its a
     assert.equal(result.accounts[0].resetCredits.availableCount, 2);
     assert.ok(result.accounts[0].resetCredits.observedAt > 0);
     assert.doesNotMatch(JSON.stringify(result), /fixture-access|fixture-refresh|upstream-a/);
+    assert.equal(result.accounts[0].allowCredits, false);
+    const changed = await service.request("opencraft/codex/accounts/setAllowCredits", { accountId: "a", allowCredits: true }) as { accounts: any[] };
+    assert.equal(changed.accounts[0].allowCredits, true);
+    await assert.rejects(service.request("opencraft/codex/accounts/setAllowCredits", { accountId: "a", allowCredits: "true" }), /Invalid credit policy/);
+
   } finally { await service?.close(); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -132,7 +137,7 @@ test("ledger v1 upgrades without moving aside accounts, credentials, quota or af
     try {
       assert.equal(database.prepare("SELECT account_id FROM pool_affinity").get()!.account_id, "a");
       assert.equal(database.prepare("SELECT utilization FROM pool_quota").get()!.utilization, 0.3);
-      assert.equal(database.prepare("SELECT max(version) AS version FROM schema_migrations").get()!.version, 2);
+      assert.equal(database.prepare("SELECT max(version) AS version FROM schema_migrations").get()!.version, 3);
     } finally { database.close(); }
   } finally { await rm(root, { recursive: true, force: true }); }
 });

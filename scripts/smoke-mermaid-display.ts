@@ -58,6 +58,32 @@ try {
     await expand.click();
     await page.locator("dialog[open] .chat-mermaid-preview__diagram > svg").waitFor();
     await page.getByRole("button", {name:"Close Mermaid preview"}).click();
+    // Closed diagrams survive prose updates and completion without a blank frame.
+    await page.evaluate(() => {
+      const svg = document.querySelector('[data-diagram="login"] .chat-mermaid-surface > svg');
+      (window as any).originalDiagram = svg;
+      (window as any).diagramRemovals = 0;
+      new MutationObserver(records => {
+        for (const record of records) {
+          if ([...record.removedNodes].some(n => n === svg || n.contains(svg))) {
+            (window as any).diagramRemovals++;
+          }
+        }
+      }).observe(document.querySelector('[data-diagram="login"]')!, { childList: true, subtree: true });
+    });
+    for (let chunk = 0; chunk < 5; chunk++) {
+      await page.evaluate(() => (window as any).appendDiagramTail());
+      await page.waitForTimeout(80);
+      assert.equal(await page.evaluate(() => document.querySelector('[data-diagram="login"] .chat-mermaid-surface > svg') === (window as any).originalDiagram), true, "Streaming prose must retain the diagram SVG");
+    }
+    await page.evaluate(() => (window as any).finishDiagramStream());
+    await page.waitForTimeout(80);
+    assert.equal(await page.evaluate(() => (window as any).diagramRemovals), 0, "Streaming and completion must never clear a closed diagram");
+    await page.evaluate(() => { (window as any).diagramMeasurements = []; (window as any).setDiagramWidth(740); });
+    await page.waitForTimeout(150);
+    const measurements = await page.evaluate(() => (window as any).diagramMeasurements);
+    assert.ok(measurements.length > 0, "Resizing still reports diagram geometry");
+    assert.ok(measurements.every((event: any) => event.tail === 5 && event.generation === 6), "Measurement uses the latest streamed document generation and callback");
     const previousId = await page.locator('[data-diagram="login"] .chat-mermaid-surface > svg').getAttribute("id");
     await page.evaluate(() => (window as any).refreshDiagram());
     await page.waitForFunction((previousId: string) => document.querySelector('[data-diagram="login"] .chat-mermaid-surface > svg')?.id !== previousId, previousId);

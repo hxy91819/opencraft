@@ -23,9 +23,17 @@ for (const [name, value] of Object.entries(buildOpenCraftThemeCssProperties(them
 function Demo() {
   const [width, setWidth] = useState(960);
   const [revision, setRevision] = useState(0);
+  const [tail, setTail] = useState(0);
+  const [streaming, setStreaming] = useState(true);
+  Object.assign(window, {
+    appendDiagramTail: () => setTail(v => v + 1),
+    finishDiagramStream: () => setStreaming(false),
+  });
   Object.assign(window, { setDiagramWidth: setWidth, refreshDiagram: () => setRevision(v => v + 1) });
   return <div className="thread-scroll" style={{width, maxWidth: "100%", height: "100vh", padding: 0}}><div className="thread-scroll-surface"><div className="thread-content thread-layout-width">
-    {Object.entries(sources).map(([kind, source]) => <section key={kind} data-diagram={kind}><WebChatDocument documentId={kind} theme={theme} source={"```mermaid\n" + source + (revision ? "\n%% refreshed" : "") + "\n```"} /></section>)}
+    {Object.entries(sources).map(([kind, source]) => <section key={kind} data-diagram={kind}><WebChatDocument documentId={kind} theme={theme} streaming={streaming}
+      onMeasurementRequest={event => ((window as any).diagramMeasurements ??= []).push({ tail, ...event })}
+      source={"```mermaid\n" + source + (revision ? "\n%% refreshed" : "") + "\n```\n\n" + "后续流式文字。".repeat(tail)} /></section>)}
   </div></div></div>;
 }
 createIntlTestRoot(document.getElementById("root")!).render(<Demo />);

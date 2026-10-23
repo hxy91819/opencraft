@@ -214,3 +214,25 @@ test("a synchronous disconnected Host error does not permanently poison login po
   assert.equal(polls, 2);
   service.dispose();
 });
+
+test("a late account list cannot undo a committed credit policy", async () => {
+  const account: CodexAccountView = {
+    id: "a", label: "A", priority: 1, enabled: true, allowCredits: false, credentialConfigured: true,
+    email: null, subscriptionType: "pro", rateLimitTier: null, status: "ready", observedAt: null,
+    heldUntil: null, lastUsedAt: null, lastUsedHostId: null, limitWindows: [],
+  };
+  let resolveList!: (result: unknown) => void;
+  const service = new CodexAccountsService((async (_host: string, method: string, params: any) => {
+    if (method.endsWith("/list")) return new Promise(resolve => { resolveList = resolve; });
+    assert.equal(method, "opencraft/codex/accounts/setAllowCredits");
+    assert.deepEqual(params, { accountId: "a", allowCredits: true });
+    return { accounts: [{ ...account, allowCredits: true }] };
+  }) as HostProtocolRequest, "local-codex");
+  try {
+    const stale = service.refresh();
+    await service.setAllowCredits("a", true);
+    resolveList({ accounts: [account] });
+    await stale;
+    assert.equal(service.getSnapshot().accounts[0]?.allowCredits, true);
+  } finally { service.dispose(); }
+});
