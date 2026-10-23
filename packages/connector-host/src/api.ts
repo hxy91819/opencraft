@@ -23,8 +23,8 @@ export function validateApi(row: StoredConnection): void {
   if (!key || (row.definitionId === "wechat-reading" && !key.startsWith("wrk-")) || (row.definitionId === "qq-music" && !key.startsWith("qmk-"))
     || (row.definitionId === "meituan-travel" && !/^[\da-f]{32,}$/i.test(key)) || (row.definitionId === "ctrip-wendao" && !/^[\da-f]{32}$/i.test(key))) throw new ConnectorHostError("invalid");
 }
-export async function callApi(row: StoredConnection, name: string, args: Record<string, unknown>, fetchOverride?: typeof fetch): Promise<unknown> {
-  if (KNOWLEDGE_TOOLS[row.definitionId]) return callKnowledge(row, name, args, fetchOverride);
+export async function callApi(row: StoredConnection, name: string, args: Record<string, unknown>, fetchOverride?: typeof fetch, signal?: AbortSignal): Promise<unknown> {
+  if (KNOWLEDGE_TOOLS[row.definitionId]) return callKnowledge(row, name, args, fetchOverride, signal);
   validateApi(row);
   const definition = API_TOOLS[row.definitionId]?.find(tool => tool.name === name); if (!definition) throw new ConnectorHostError("missing");
   const required = definition.inputSchema.required as string[], properties = record(definition.inputSchema.properties);
@@ -52,7 +52,7 @@ export async function callApi(row: StoredConnection, name: string, args: Record<
     case "ctrip-wendao": url = "https://wendao-skill-prod.ctrip.com/skill/query"; delete headers.Authorization; body = { token: row.secrets.api_key, query: args.query, source: "opencraft" }; plain = true; break;
     default: throw new ConnectorHostError("unsupported");
   }
-  const response = await (fetchOverride ?? connectorFetch([new URL(url).origin]))(url, { method, headers, ...(method === "POST" ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(90000) });
+  const response = await (fetchOverride ?? connectorFetch([new URL(url).origin]))(url, { method, headers, ...(method === "POST" ? { body: JSON.stringify(body) } : {}), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(90000)]) : AbortSignal.timeout(90000) });
   if (plain) { if (!response.ok) throw new ConnectorHostError("unavailable"); const value = await response.text(); if (!value || value.length > 262144) throw new ConnectorHostError("unavailable"); return value; }
   const result = await jsonResponse(response), data = record(result);
   const status = row.definitionId === "tencent-news" ? (data.base_rsp ? record(data.base_rsp).code : undefined) : data.errcode ?? data.errCode ?? data.ret ?? data.code ?? data.status;

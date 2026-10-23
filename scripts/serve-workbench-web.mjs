@@ -385,6 +385,7 @@ export async function createWorkbenchWebServer({
   observability = null,
   mcpAppsService = null,
   getImService = () => null,
+  connectorService = null,
   hubService = null,
   speechPublicAccess = process.env.OPENCRAFT_SPEECH_PUBLIC_ACCESS === "1",
   webSocketHeartbeatIntervalMs = 15_000,
@@ -468,6 +469,10 @@ export async function createWorkbenchWebServer({
       if (url.pathname === '/__opencraft_actors' || url.pathname.startsWith('/__opencraft_actors/')) {
         if (actorService && await actorService.handle(request, response)) return;
         sendJson(response, 404, { error: 'missing' }); return;
+      }
+      if (url.pathname === "/__opencraft_connectors") {
+        if (connectorService && await connectorService.handle(request, response)) return;
+        sendJson(response, 404, { error: "missing" }); return;
       }
       if (actorService?.isSessionRequest(request)) {
         sendJson(response, 403, { error: 'actor_resource_interface_required' }); return;

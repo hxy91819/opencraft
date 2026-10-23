@@ -26,9 +26,9 @@ export class ManagedConnectorService {
     if (!row.enabled) throw new ConnectorHostError("unavailable");
     return row;
   }
-  async tools(id: string) {
+  async tools(id: string, signal?: AbortSignal) {
     const row = this.supported(id);
-    const tools = API_TOOLS[row.definitionId] ?? await this.mcp.list(id);
+    const tools = API_TOOLS[row.definitionId] ?? await this.mcp.list(id, signal);
     return { revision: row.revision, digest: toolsDigest(tools), tools };
   }
   async probe(id: string): Promise<ConnectorProbe> {
@@ -41,7 +41,8 @@ export class ManagedConnectorService {
     const inventory = await this.tools(id);
     return { level: "tools", tools: inventory.tools, toolCount: inventory.tools.length };
   }
-  async handle(method: string, raw: unknown): Promise<unknown> {
+  async handle(method: string, raw: unknown, signal?: AbortSignal): Promise<unknown> {
+    signal?.throwIfAborted();
     const params = raw === undefined || raw === null ? {} : record(raw);
     try {
       switch (method) {
@@ -66,9 +67,10 @@ export class ManagedConnectorService {
           const id = text(params.id), row = this.supported(id), expected = Number(params.revision), tool = text(params.tool);
           if (row.revision !== expected) throw new ConnectorHostError("conflict");
           const args = record(params.arguments); if (JSON.stringify(args).length > 65536) throw new ConnectorHostError("invalid");
-          const inventory = await this.tools(id);
+          const inventory = await this.tools(id, signal);
+          signal?.throwIfAborted();
           if (inventory.digest !== params.digest || !inventory.tools.some(t => t.name === tool) || this.database.get(id).revision !== expected) throw new ConnectorHostError("conflict");
-          const value = API_TOOLS[row.definitionId] ? await callApi(row, tool, args, this.fetchOverride) : await this.mcp.call(id, expected, inventory.digest, tool, args);
+          const value = API_TOOLS[row.definitionId] ? await callApi(row, tool, args, this.fetchOverride, signal) : await this.mcp.call(id, expected, inventory.digest, tool, args, signal);
           if (this.database.get(id).revision !== expected) throw new ConnectorHostError("conflict");
           let serialized = JSON.stringify(value); if (serialized.length > 262144) throw new ConnectorHostError("unavailable");
           const tokens = row.oauth.tokens ? record(row.oauth.tokens) : {};

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { HeadlessConnectors } from "../packages/connector-host/src/headless.ts";
 import { CapabilityBindings } from "../packages/session-capabilities/src/bindings.ts";
 import { SessionCapabilities } from "../packages/session-capabilities/src/index.ts";
 import { SessionCapabilityMcp, capabilitySigningKey } from "../packages/session-capabilities/src/mcp.ts";
@@ -244,6 +245,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
   let actorAccess;
   let humanAccounts;
   let imPlugins;
+  let connectorService;
   const capabilities = new SessionCapabilities();
   let capabilityMcp;
   let capabilityBindings;
@@ -269,7 +271,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       desktop?.close(); // Retire viewers before the execution provider; never stop the desktop.
       // Retire admitted ingress clients before their Host provider.
       const entryResults = await Promise.allSettled([ingress?.close(), sshNativeRpc?.close(), imPlugins?.close()]);
-      entryResults.push(...await Promise.allSettled([actorCollaboration?.close()]));
+      entryResults.push(...await Promise.allSettled([connectorService?.close(), actorCollaboration?.close()]));
       const results = [...entryResults, ...await Promise.allSettled([web?.close(), appHostServer?.close(), agent?.close()])];
       results.push(...await Promise.allSettled([capabilityMcp?.close()]));
       results.push(...await Promise.allSettled([agentIdentity?.close()]));
@@ -360,6 +362,16 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       desktop = new LocalDesktopService({ serverId, environmentId, principalId, observer, control,
         transport: desktopAccess === "trusted-internal" ? "same-origin-trusted-internal" : "same-origin-loopback" });
     }
+    const engines = options.engines ?? ["dsh"];
+    connectorService = new HeadlessConnectors(join(dataDirectory, "connectors"), actorAccess,
+      { "local-codex": `server:${machineIdentity.machineId}:codex`, "opencraft-server": `server:${machineIdentity.machineId}:${options.defaultEngine ?? (engines.includes("dsh") ? "dsh" : "pi")}` },
+      capabilities, actorId => !instanceAccess || instanceAccess.admitsActor(actorId), undefined,
+      (hostId, threadId) => {
+        if (hostId === "local-codex") return `server:${machineIdentity.machineId}:codex`;
+        const engine = threadId.startsWith("pi_") ? "pi" : "dsh";
+        if (!engines.includes(engine)) throw new Error("Execution engine is unavailable");
+        return `server:${machineIdentity.machineId}:${engine}`;
+      });
     capabilityBindings = new CapabilityBindings(join(dataDirectory, "session-capabilities.sqlite"));
     capabilityMcp = new SessionCapabilityMcp(capabilities, capabilitySigningKey(join(dataDirectory, "session-capabilities.key")), capabilityBindings);
     await capabilityMcp.listen();
@@ -383,7 +395,6 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       },
       machineIdentity,
     });
-    const engines = options.engines ?? ["dsh"];
     if (engines.includes("pi")) {
       const piModels = await createPiModelConfiguration(join(dataDirectory, "models"), join(dataDirectory, "pi"));
       agent = await startEngineHost({
@@ -481,6 +492,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       appServerIdentity: agentIdentity ?? null,
       mcpAppsService: mcpApps,
       getImService: () => imPlugins,
+      connectorService,
       loopbackOnly: host === "127.0.0.1",
       localAccess,
       appHostServer,
@@ -491,6 +503,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
         ...(capabilityBindings ? [{name:'session-capabilities',status:capabilityBindings.outcome.status,appliedVersion:capabilityBindings.outcome.appliedVersion,movedAside:capabilityBindings.outcome.movedAsidePaths.length>0}] : []),
         ...(imPlugins ? [{name:'im-switchboard',status:imPlugins.outcome.status,appliedVersion:imPlugins.outcome.appliedVersion,movedAside:imPlugins.outcome.movedAsidePaths.length>0}] : []),
         ...(agent.storageOutcomes ?? []),
+        ...(connectorService?.outcomes() ?? []),
         {name:"mcp-apps",status:mcpApps.outcome.status,appliedVersion:mcpApps.outcome.appliedVersion,movedAside:mcpApps.outcome.movedAsidePaths.length>0},
         ...(agentIdentity ? [{ name: "thread-identity", hostId: "opencraft-server", status: agentIdentity.store.outcome.status,
           appliedVersion: agentIdentity.store.outcome.appliedVersion, backupPath: agentIdentity.store.outcome.backupPath,

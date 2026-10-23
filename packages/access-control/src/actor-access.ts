@@ -38,6 +38,13 @@ export class ActorAccess {
     return this.store.isCurrent(context) && (!principal || (principal.expiresAt > this.store.now()
       && (this.options.isHumanCurrent?.(principal) ?? true) && this.options.admitted(principal)));
   }
+  /** Current authority without retaining an HTTP request or its credential headers. */
+  lease(request: IdentityRequest): { readonly context: ActorContext; isCurrent(): boolean } | null {
+    const context = this.authenticate(request);
+    if (!context) return null;
+    const principal = this.#requests.get(request)?.principal ?? null;
+    return { context, isCurrent: () => this.current(context, principal) };
+  }
   manages(request: IdentityRequest, context: ActorContext) {
     const principal = this.#requests.get(request)?.principal ?? null;
     return this.current(context, principal) && (this.store.can(context, this.store.managementResource, 'actors.manage')
