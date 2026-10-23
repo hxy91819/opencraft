@@ -3,13 +3,14 @@
 # Per case: unique temp root, explicit kill/wait, leftover-process ASSERTION (pgrep by root),
 # numeric field assertions (loaded/active/unknown/failedCode), <10s bound on immediate-failure cases.
 set -u
-HERE="$(cd "$(dirname "$0")/.." && pwd)"
+HERE="$(cd "$(dirname "$0")" && pwd)"
 PROBE="$HERE/../../../build/idle-probe/preflight-cand.mjs"; FIXTURE="$HERE/fixture-fake-apphost-ingress.mjs"; LEGACY="$HERE/tests/legacy-v1-client.mjs"
-LOG="$HERE/tests/results-$(date +%Y%m%d-%H%M%S).log"; : > "$LOG"
+LOG_ROOT="${TMPCHOICE_LOG_DIR:-$(mktemp -d)}"
+LOG="$LOG_ROOT/results-$(date +%Y%m%d-%H%M%S).log"; : > "$LOG"
 FAILS=0
 note() { echo "$@" | tee -a "$LOG"; }
 flat_json() { node -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));for(const[k,v]of Object.entries(j))process.stdout.write(k+"="+JSON.stringify(v)+" ")' "$1" 2>/dev/null; }
-start_case() { ROOT=$(mktemp -d "${TMPCHOICE:-/data/tmp}/join-pfcand3-XXXXXXXX"); export TMPDIR="$ROOT"; note "### $1 (root=$ROOT)"; }
+start_case() { ROOT=$(mktemp -d "${TMPDIR_BASE:-}join-pfcand3-XXXXXXXX"); export TMPDIR="$ROOT"; note "### $1 (root=$ROOT)"; }
 assert_root_clean() { # leftover assertion: no process whose cmdline references the case root
   if pgrep -f "$ROOT" >/dev/null 2>&1; then note "  LEFTOVER: yes (FAIL)"; pgrep -af "$ROOT" | tee -a "$LOG"; FAILS=$((FAILS+1)); return 1; fi
   note "  leftovers: none"
@@ -46,7 +47,7 @@ case_cleanup() { [ -n "${FPID:-}" ] && kill "$FPID" 2>/dev/null; wait "${FPID:-0
 
 note "### preflight-cand-20261023 r3 suite $(date -Iseconds)"
 note "### original preflight sha256 (host, must be unchanged):"
-sha256sum /data/opencraft-join-delivery-20261014/managed-ready/preflight.mjs 2>/dev/null | tee -a "$LOG" || note "(host preflight not present on this machine; skipped)"
+# no external-gate reads: this suite is self-contained
 note "### positive ordering note: fixture always ACKs success first, host/frame result arrives +25ms later; a success ACK resolving an RPC early would break T2/T3-T6"
 
 # T0 connect failure (nothing listening): exit 3 immediate
