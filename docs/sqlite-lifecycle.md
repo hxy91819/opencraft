@@ -39,6 +39,42 @@ Electron Main 三库仍按消费入口懒打开。Local Agent 基础五库及配
 
 Web preferences、Connector configuration 与插件文档继续使用各自 IndexedDB adapter；Web/Expo replica 保持原有平台语义。SQLite debug reader 是只读消费者，不建表、不迁移。DSH/Hermes/Codex 引擎私有存储、JSON 项目/模型配置不由本 runner 接管。`codex-thread-pins` 经原生 reserved section 协议操作，不是另一份本地自有 SQLite；Hermes pins 同样由远端协议 owner 持有。原生 `queue_1.sqlite` 只沿既有队列搬运语义读取/删除已确认导入记录，不接管其 schema；`.codex-writer.sqlite` 只承担 writer lock，排除于业务库清单。类名中的 DSH 不改变 routing/executions 的 OpenCraft 所有权。
 
+### 两个 Host 自有文件的离线改名
+
+新目录直接创建 `opencraft-host-state.sqlite` 和
+`opencraft-message-attachments.sqlite`；既有目录默认原位读取旧名。
+改名从源码 checkout 使用独立维护入口，对一个明确的本地数据目录执行：
+
+```sh
+npm run storage:move -- --data-dir /path/to/host-data
+npm run storage:move -- --data-dir /path/to/host-data --apply
+```
+
+默认仅检查路径并输出计划，不打开 SQLite、不创建目录或锁文件。执行前停掉
+该目录的所有 Host overlay owner，并停用自动重启；SSH binding 的本地 overlay
+目录也须逐个处理。当前两个 owner 持有共享 SQLite lease，维护进程取独占 lease，
+进程退出由内核释放。旧二进制不认识此 lease，工具无法证明空闲旧连接已经退出；
+停掉所有旧 owner 是离线操作条件。原生账户 writer lock 不能替代此条件。
+
+工具先拒绝双名称、非普通文件、未知硬链接及孤立 WAL/SHM/journal，再记录私有
+维护日志。每个库通过 quick_check、WAL checkpoint 和独占事务检查，切到 DELETE
+journal 后关闭连接，确认没有 sidecar，制作并校验 SHA-256 恢复副本。发布目标使用
+不覆盖现有文件的硬链接再移除旧名；不支持硬链接的文件系统会失败并保留日志。
+文件和日志按步骤 fsync；Windows 的 Node 不提供目录 fsync，不能据此承诺断电后的
+目录持久性。两个独立库逐个完成，不构成跨库事务。
+
+中断后重新执行相同方向的 `--apply`。活动日志
+`.opencraft-owned-storage-move.json` 阻止当前 owner 打开；即使中断发生在链接与
+移除旧名之间，也只在 inode、内容 hash 和恢复副本全部一致时续做。独立冲突文件、
+修改后的源/目标/恢复副本及无效日志均拒绝继续，不能通过删日志来跳过检查。
+成功后保留完成回执和 `.opencraft-storage-<id>-<index>.sqlite` 私有恢复副本。
+日志只含固定文件身份、阶段和 hash，不含业务记录。
+
+需要撤销名称切换时，先停掉 owner，再用
+`--direction legacy --apply`。这会移动当前最新数据并另存恢复副本，绝不自动恢复旧
+备份；只反向改文件名，不降级 schema，也不保证旧版本程序能读新版 schema。
+迁移 SQL、账本、业务表和数据均不由此工具修改。代码交付不表示任何部署目录已经搬迁。
+
 ## 3. 存储边界
 
 权威数据与可重建 replica cache 分开管理；cache 版本变化不授权重建权威库。

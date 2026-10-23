@@ -62,8 +62,10 @@ The cleanup changes owned symbols, live table names and fresh-store paths. It pr
 - Account credentials, installation state and conversation identities.
 
 Current active storage names describe OpenCraft ownership. New stores use `opencraft-host-state.sqlite` and `opencraft-message-attachments.sqlite`.
-Existing old files stay in place; physical relocation remains a separate migration
-concern. These legacy names are not native engine contracts.
+Existing old files stay in place on ordinary open. The separate
+[offline maintenance command](../sqlite-lifecycle.md#两个-host-自有文件的离线改名)
+can relocate their physical names after all owners stop. These legacy names are
+not native engine contracts; code delivery does not mean installed data moved.
 The engine-specific classes above describe actual integrations. Future generic
 implementations should obtain their own owner and verified capability contract;
 renaming a native adapter alone cannot establish engine independence.
