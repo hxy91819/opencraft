@@ -36,6 +36,8 @@ WebConversationViewportOwner.prototype.setLatestTurnMeasurementListener = functi
 };
 function Demo() {
   const [mounted, setMounted] = useState(true);
+  const [hidden, setHidden] = useState(false);
+  probe.setHidden = setHidden;
   const [loadingOlder, setLoadingOlder] = useState(false);
   probe.setHistoryLoading = setLoadingOlder;
   const [state, setState] = useState({ revision: 0, heights: [600, 600, 600, 600, 600, 200], active: !submissionMode && !historyMode, phase: "final_answer", lifetime: 0 });
@@ -84,7 +86,7 @@ function Demo() {
       blocks: index === state.heights.length - 1 && state.phase === "idle" ? [] : [{ id: `text-${index}`, type: "text", text: String(height), sourceItemIds: [], streaming: index === state.heights.length - 1 && state.active, phase: index === state.heights.length - 1 ? state.phase : "final_answer" }],
     }]),
   } as any;
-  return <div style={{ height: 700, width: 1000 }}>
+  return <div hidden={hidden} style={{ height: 700, width: 1000 }}>
     <TimelineBlockRendererProvider registry={ctx.timelineBlockRenderers}>
       {mounted && <Conversation key={state.lifetime} timeline={timeline} scrollPolicy={naturalMode ? "natural" : "response-placement"}
         onTerminalResultVisible={resultVisible}
