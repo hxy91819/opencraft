@@ -164,6 +164,7 @@ export interface AppServerHostCatalog {
 }
 
 export interface WebWorkbenchCommands {
+  forgetThread(hostId: string, threadId: string): void;
   selectHost(hostId: string, selection?: { model: string; effort: string | null; serviceTier?: string | null }): Promise<void>;
   navigate(location: WorkbenchLocation, mode?: WorkbenchHistoryMode): Promise<boolean>;
   selectConversation(location: WorkbenchLocation): Promise<boolean>;
@@ -629,6 +630,11 @@ export function createWebWorkbenchCommands(input: {
     const epoch = ++hostSelectionEpoch;
     const memoryScope = input.threadMemoryScope?.();
     const activated = await action();
+    if (location.kind === "thread" && memoryScope === input.threadMemoryScope?.()
+      && input.registry.peekRuntime(location.key.hostId)?.resources.threads.getUnavailableReason?.(location.key.threadId)) {
+      commands.forgetThread(location.key.hostId, location.key.threadId);
+      return false;
+    }
     if (activated && epoch === hostSelectionEpoch && memoryScope === input.threadMemoryScope?.()
       && equalWorkbenchLocation(input.navigation.getSnapshot().location, location)) {
       const hostId = location.kind === "thread" ? location.key.hostId : location.hostId;
@@ -654,6 +660,24 @@ export function createWebWorkbenchCommands(input: {
     },
   });
   commands = {
+    forgetThread(hostId, threadId) {
+      // Compare before clearing: a late rejection must not erase a newer choice.
+      for (const key of [activeThreadStorageKey(hostId, input.threadMemoryScope?.()), currentProductStorageKey("vela.active-thread-id")]) {
+        try { if (window.localStorage.getItem(key) === threadId) setLocalPreference(key, null); } catch { /* Preferences are optional. */ }
+      }
+      const current = input.navigation.getSnapshot();
+      const pending = input.coordinator.getSnapshot().pendingLocation;
+      if (current.location.kind !== "thread" || current.location.key.hostId !== hostId
+        || current.location.key.threadId !== threadId || (pending && !equalWorkbenchLocation(pending, current.location))) return;
+      input.navigation.forgetView(current.routeScopeId);
+      const surface = current.applicationRoute;
+      const cwd = input.hostProfiles.getSnapshot().profiles.find(profile => profile.hostId === hostId)?.workspaceBrowseRoots[0] ?? null;
+      commands.navigateToHome({ execution: { hostId: asHostId(hostId), workspace: {
+        cwd, runtimeWorkspaceRoots: cwd ? [cwd] : [],
+      } }, mode: "replace" });
+      if (surface.kind === "settings") input.navigation.openSettings(surface.slug, "replace");
+      else if (surface.kind === "extension-view") input.navigation.openExtensionView(surface.viewId, surface.resourceUri);
+    },
     createGoal(intent, objective) {
       if (intent.target.type !== "new-thread") throw new Error("Expected a new conversation");
       assertTarget(intent.target.execution.hostId);

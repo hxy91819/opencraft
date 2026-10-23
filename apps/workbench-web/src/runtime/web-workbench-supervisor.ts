@@ -734,6 +734,7 @@ export async function createWebWorkbenchApplicationSupervisor(
       : profiles.find((host) => host.hostId === "local")?.hostId ?? profiles[0]!.hostId;
   const initialWorkspaceRoot = profiles.find((host) => host.hostId === initialHostId)
     ?.workspaceBrowseRoots[0] ?? null;
+  let forgetUnavailableThread: ((hostId: string, threadId: string) => void) | undefined;
   const createHostRegistration = (
     profile: HostConnectionProfile,
   ): HostRuntimeRegistration<AppServerWorkbenchRuntime> => ({
@@ -805,6 +806,12 @@ export async function createWebWorkbenchApplicationSupervisor(
         throw error;
       }
       const stopQueryRecovery = bindHostQueryRecovery(runtime, profile.hostId, queryClient);
+      const stopUnavailable = runtime.resources.threads.subscribeUnavailable?.(threadId => {
+        const memoryScope = threadMemoryScope?.();
+        queueMicrotask(() => {
+          if (!disposed && memoryScope === threadMemoryScope?.()) forgetUnavailableThread?.(profile.hostId, threadId);
+        });
+      });
       let disposed = false;
       const composerCommands = createHostComposerCommandPort({
         provider: providerLease.provider,
@@ -838,6 +845,7 @@ export async function createWebWorkbenchApplicationSupervisor(
         async dispose() {
           if (disposed) return;
           disposed = true;
+          stopUnavailable?.();
           stopQueryRecovery();
           stopIdentity();
           try {
@@ -1070,6 +1078,7 @@ export async function createWebWorkbenchApplicationSupervisor(
     connectionProviders: connectionProviders.providers,
     onThreadCreated: (intent, receipt) => taskConversationFlow?.created(intent, receipt) ?? Promise.resolve(),
   });
+  forgetUnavailableThread = commands.forgetThread;
   const tasksStorageHostId = platform === "electron" ? "local-codex" : headlessAppHost ? "opencraft-server" : bootstrapDefinitions[0]?.hostId;
   const tasks: TasksRequestPort | null = import.meta.env.VITE_INCLUDE_TASKS_PLUGIN === "true" ? {
     request: (method, params) => {
