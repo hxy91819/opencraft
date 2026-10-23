@@ -101,8 +101,9 @@ try {
  const fallbackPage=await fallbackContext.newPage();await fallbackPage.goto(vite.resolvedUrls!.local[0]!);await fallbackPage.getByLabel('Draft').waitFor({timeout:60000});
  await fallbackPage.evaluate(()=>{document.documentElement.dataset.uiDensity='touch';document.documentElement.dataset.touchNewera='on'});
  const fallbackLenses=fallbackPage.locator('.app-shell-header .ui-liquid-glass:visible, .app-shell-touch-sidebar-toggle .ui-liquid-glass:visible');
- const fallback=await fallbackLenses.evaluateAll(es=>es.map(e=>({map:!!e.querySelector('feImage'),filter:getComputedStyle(e,'::before').backdropFilter})));
+ const fallback=await fallbackLenses.evaluateAll(es=>es.map(e=>({map:!!e.querySelector('feImage'),filter:getComputedStyle(e,'::before').backdropFilter,shadow:getComputedStyle(e).boxShadow,rim:getComputedStyle(e,'::before').boxShadow})));
  assert.equal(fallback.length,2);assert.ok(fallback.every(e=>!e.map&&e.filter.includes('blur(4px)')&&!e.filter.includes('url(')),'syntax-only URL engines must retain the working CSS fallback');
+ assert.ok(fallback.every(e=>e.shadow!=='none'&&e.rim!=='none'),'CSS approximation keeps directional edge light and a soft contact shadow');
  await fallbackPage.screenshot({path:output+'/syntax-only-engine-fallback.png'});evidence.push({simulatedPrefixedEngineFallback:fallback});await fallbackContext.close();
  console.log(JSON.stringify({ok:true,evidence}));await writeFile(output+'/result.json',JSON.stringify({ok:true,evidence},null,2));
 }finally{await browser?.close();await vite.close()}
