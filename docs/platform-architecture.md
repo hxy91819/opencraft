@@ -1159,6 +1159,17 @@ authorization or persistence boundary.
 
 ### Internationalization authority
 
+The [project-wide authoring and coverage contract](internationalization.md) applies
+to every first-party app, shared UI and bundled plugin. Source discovery is no
+longer limited to migrated Web feature folders: `check:i18n` also checks literal
+JSX/accessibility/branch/template copy against an explicit legacy inventory and
+validates descriptors under their Web/shared or native Main catalog owner.
+A clean check reports remaining inventory debt; it does not certify full project
+translation or indirect/imperative message paths. Shared dictation, queue and
+image/table preview controls consume the existing application's Intl instance,
+preserving domain values, draft/editor identity and current preview/queue state.
+
+
 Application localization uses an explicit
 locale override, an `IDE` / `SYSTEM` / `FIRST_AVAILABLE` source policy, canonical
 BCP-47 tags, regional catalog matching, lazy messages, and a cached FormatJS Intl

@@ -5,6 +5,9 @@ import { LocaleRuntime } from "@opencraft/i18n";
 import { UiPreferencesRuntime } from "@opencraft/ui-preferences";
 import { createComposerController } from "@opencraft/composer-core";
 import { createConversationKey } from "@opencraft/chat-core";
+import { DictationFooter } from "../../packages/composer-editor/src/dictation-footer";
+import { ComposerQueueTray } from "../../packages/composer-editor/src/queue-tray";
+import { WebChatDocument } from "@opencraft/chat-render-web";
 import { OpenCraftComposer } from "@opencraft/composer-editor";
 import { UiPreferencesProvider } from "../../apps/workbench-web/src/runtime/ui-preferences-runtime";
 import { IndexedDbUiPreferenceStore } from "../../apps/workbench-web/src/runtime/indexeddb-ui-preference-store";
@@ -46,6 +49,12 @@ function App() {
         <div data-imperative>{snapshot.intl.formatMessage({ id: "settings.title", defaultMessage: "Settings" })}</div>
         <OpenCraftComposer controller={composer} onSubmit={() => false} onCancel={() => {}}
           selectionCatalog={{ agents: [], models: [{ id: "fixture", value: "fixture", label: "Fixture", isDefault: true, description: null, efforts: [], defaultEffort: null, inputModalities: ["text"] }], permissionProfiles: [] }} />
+        <section data-shared-i18n>
+          <DictationFooter interaction={{ kind: "dictation", phase: "starting", startedAt: null, audioLevels: { subscribe: () => () => {} }, cancel() {}, finish: async () => false }} canSend={false} onSend={() => {}} onCancel={() => {}} />
+          <ComposerQueueTray items={[{ id: "unknown", preview: "User-authored queue message", state: "unknown", operation: "idle", actionable: false, unconfirmedTargetTurnId: "unknown-turn" }]} isResponseInProgress={false} onDiscardUnconfirmed={async () => {}} />
+          <WebChatDocument documentId="locale-table" source={"| User heading | Value |\n| --- | --- |\n| User cell | 42 |"} />
+          <WebChatDocument documentId="locale-image" source={"![](data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=)"} />
+        </section>
       </WorkbenchIntlProvider>
     </UiPreferencesProvider>
     <section data-independent><IntlRuntimeProvider runtime={second}><Probe /></IntlRuntimeProvider></section>
