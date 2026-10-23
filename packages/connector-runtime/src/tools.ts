@@ -4,8 +4,8 @@ import { ConnectorError, objectInput } from "./lifetime";
 import type { ConnectorScope } from "./contract";
 
 export const CONNECTOR_SESSION_TOOLS = [
-  { name: "connectors_search_tools", description: "Search integrations explicitly selected for this conversation. Returns compact summaries and opaque references. Use connectors_get_tool to load exact schemas.", inputSchema: { type: "object", properties: { query: { type: "string" }, connectorId: { type: "string" }, cursor: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 20 } }, additionalProperties: false } },
-  { name: "connectors_get_tool", description: "Load exact schemas and temporary invocation handles for one to four references returned by connectors_search_tools.", inputSchema: { type: "object", properties: { toolRefs: { type: "array", minItems: 1, maxItems: 4, items: { type: "string" } } }, required: ["toolRefs"], additionalProperties: false } },
+  { name: "connectors_search_tools", description: "Search integrations explicitly selected for this conversation. Returns compact summaries and opaque references. Load exact schemas with the schema lookup tool.", inputSchema: { type: "object", properties: { query: { type: "string" }, connectorId: { type: "string" }, cursor: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 20 } }, additionalProperties: false } },
+  { name: "connectors_get_tool", description: "Load exact schemas and temporary invocation handles for one to four references returned by tool search.", inputSchema: { type: "object", properties: { toolRefs: { type: "array", minItems: 1, maxItems: 4, items: { type: "string" } } }, required: ["toolRefs"], additionalProperties: false } },
   { name: "connectors_call_tool", description: "Invoke a selected integration with an exact handle. Writes and unknown effects require one-shot human approval. An uncertain external effect must never be automatically retried.", inputSchema: { type: "object", properties: { handle: { type: "string" }, arguments: { type: "object", additionalProperties: true } }, required: ["handle", "arguments"], additionalProperties: false } },
 ];
 

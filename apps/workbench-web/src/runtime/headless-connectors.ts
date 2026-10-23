@@ -37,14 +37,15 @@ export class BrowserHeadlessConnectors implements HeadlessConnectorPort {
   private async request<T>(hostId: string, method: string, params: unknown): Promise<T> {
     if (this.disposed || !this.owns(hostId)) throw new Error("Connector owner unavailable");
     const controller = new AbortController(); this.controllers.add(controller);
+    const timer = setTimeout(() => controller.abort(), 45000);
     try {
       const response = await fetch("/__opencraft_connectors", { method: "POST", credentials: "same-origin", cache: "no-store", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ hostId, method, params }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(45000)]) });
+        body: JSON.stringify({ hostId, method, params }), signal: controller.signal });
       if (!response.ok) { if (response.status === 401 || response.status === 403) { this.states.clear(); this.publish(); } throw new Error("Connector request unavailable; refresh state before retrying a mutation"); }
       const value = await response.json();
       if (this.disposed) throw new Error("Connector owner retired");
       return value as T;
-    } finally { this.controllers.delete(controller); }
+    } finally { clearTimeout(timer); this.controllers.delete(controller); }
   }
   client(hostId: string): ConnectorManagementClient {
     if (!this.owns(hostId)) throw new Error("Connector owner unavailable");
