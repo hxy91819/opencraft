@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import type { OpenCraftHostStateDatabase } from "./opencraft-host-state-database.js";
-import type { OpenCraftTokenUsageLedger } from "./token-usage-ledger.js";
+import type { UsageRollout, UsageTurnKey } from "./token-usage-ledger.js";
 import { scanRolloutTurnModels } from "./token-usage-rollout.js";
 
 export interface BackfillModelsResult {
@@ -11,9 +11,16 @@ export interface BackfillModelsResult {
   readonly missingRollouts: number;
 }
 
+/** A preview only reads rollout references and checks whether a Turn exists. */
+export interface TokenUsageModelBackfillLedger {
+  rollouts(after: string, limit: number): readonly Pick<UsageRollout, "threadId" | "path">[];
+  readTurn(key: UsageTurnKey): UsageTurnKey | null;
+  correctTurnIdentities(key: UsageTurnKey, provider: string | null, model: string | null): boolean;
+}
+
 export async function backfillTokenUsageModels(options: {
   readonly state?: OpenCraftHostStateDatabase;
-  readonly ledger: OpenCraftTokenUsageLedger;
+  readonly ledger: TokenUsageModelBackfillLedger;
   readonly nativeHome?: string;
   readonly apply: boolean;
 }): Promise<BackfillModelsResult> {

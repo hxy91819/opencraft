@@ -405,3 +405,26 @@ native facts may clear only the existing replayable gap categories.
 
 
 The dedicated `token-usage.sqlite` owner appends migration 2, `token-usage-thread-query-index`, to index `(server_id, thread_id, started_ms, turn_id)` for per-thread date queries. The published isolated v1 and former Host migrations retain their SQL/name/checksum. Managed upgrades back up v1, preserve facts/allocation/recovery state, validate the complete v2 schema, and reject historical checksum mismatch before creating the index; the inactive legacy import remains read-only. No runtime DDL or schema downgrade is introduced.
+
+### Model identity backfill CLI
+
+`scripts/backfill-token-usage-models.ts` targets an existing `token-usage.sqlite`
+and an existing Server scope. Supply both explicitly; the tool has no deployment
+directory or Server ID default:
+
+```sh
+npx tsx scripts/backfill-token-usage-models.ts \
+  --data-dir /path/to/host-data --server-id server:example --dry-run
+```
+
+`OPENCRAFT_USAGE_DATA_DIR` and `OPENCRAFT_SERVER_ID` can supply these arguments.
+The former `OPENCRAFT_CODEX_DATA_DIR` remains an explicit compatibility input.
+Missing targets and unknown Server IDs fail without creating a database or scope.
+The default preview uses a read-only connection and leaves pending delivery
+attempts, model identities and schema untouched. `--dry-run` wins over `--apply`.
+
+For an actual correction, stop the collector first and replace `--dry-run` with
+`--apply`. Pending delivery attempts must be reconciled before applying. The tool
+uses the dedicated metering owner and canonical ledger correction path; it does
+not import or modify the former queue database. Existing native rollout formats,
+published migrations and storage compatibility names remain unchanged.
