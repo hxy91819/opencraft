@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 
-/** Adapt downward scroll intent to one page reveal, without owning pagination.
- * Observing visibility alone would eagerly drain a short list on mount/resize.
+/** Reveal one page when scrolling reaches the end, without owning pagination.
+ * Scroll movement, rather than visibility, avoids draining short lists on mount/resize.
  * Passive listeners leave native vertical scrolling and horizontal Shell gestures intact.
  */
 export function useSidebarEndPull(footerRef: RefObject<HTMLDivElement | null>, enabled: boolean, reveal: () => void) {
@@ -18,6 +18,8 @@ export function useSidebarEndPull(footerRef: RefObject<HTMLDivElement | null>, e
     let consumed = false;
     const viewport = () => column?.getAttribute("data-navigation-layout") === "mobile"
       ? target : panel.querySelector<HTMLElement>(column ? ".sidebar-activity-list" : ".sidebar-content-scroll");
+    let lastViewport = viewport();
+    let lastScrollTop = lastViewport?.scrollTop ?? 0;
     const atEnd = () => {
       const root = viewport();
       if (!root || !root.clientHeight || footer.closest('[inert], [aria-hidden="true"]')) return false;
@@ -31,6 +33,19 @@ export function useSidebarEndPull(footerRef: RefObject<HTMLDivElement | null>, e
       consumed = true;
       downward = false;
       action.current.reveal();
+    };
+    const scroll = (event: Event) => {
+      const root = viewport();
+      if (!root || event.target !== root) return;
+      const previous = root === lastViewport ? lastScrollTop : root.scrollTop;
+      lastViewport = root;
+      lastScrollTop = root.scrollTop;
+      if (root.scrollTop <= previous) return;
+      // Scrollbar drags, keyboard navigation and touch momentum all arrive here.
+      // A held touch still consumes at most one page, including its final scroll.
+      if (!touch) consumed = false;
+      downward = true;
+      tryReveal();
     };
     const withinList = (event: Event) => event.target instanceof Node
       && (event.target === viewport() || panel.querySelector(".sidebar-activity-list")?.contains(event.target));
@@ -55,12 +70,14 @@ export function useSidebarEndPull(footerRef: RefObject<HTMLDivElement | null>, e
       tryReveal();
     };
     const end = () => { touch = null; downward = false; };
+    target.addEventListener("scroll", scroll, { capture: true, passive: true });
     target.addEventListener("wheel", wheel, { passive: true });
     target.addEventListener("touchstart", start, { passive: true });
     target.addEventListener("touchmove", move, { passive: true });
     target.addEventListener("touchend", end, { passive: true });
     target.addEventListener("touchcancel", end, { passive: true });
     return () => {
+      target.removeEventListener("scroll", scroll, true);
       target.removeEventListener("wheel", wheel);
       target.removeEventListener("touchstart", start);
       target.removeEventListener("touchmove", move);
