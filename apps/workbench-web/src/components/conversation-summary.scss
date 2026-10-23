@@ -15,8 +15,10 @@
 }
 .conversation-summary {
   @include material.surface;
-  position: absolute; inset-inline-end: 16px; top: 16px; bottom: 24px;
-  display: flex; flex-direction: column; width: var(--summary-panel-width); max-height: calc(100% - 40px);
+  // Edge-scroll content extends under the toolbar; consume the Shell geometry.
+  --summary-top-inset: calc(var(--height-toolbar, 0px) - var(--app-shell-main-content-frame-top-offset, var(--height-toolbar, 0px)) + 16px);
+  position: absolute; inset-inline-end: 16px; top: var(--summary-top-inset); bottom: 24px;
+  display: flex; flex-direction: column; width: var(--summary-panel-width); max-height: calc(100% - var(--summary-top-inset) - 24px);
   height: fit-content; min-height: 120px; border: 1px solid var(--color-border-subtle); border-radius: 24px; overflow: hidden;
   &__heading { display: flex; flex-shrink: 0; align-items: center; gap: 8px; padding: 16px 16px 4px; h2 { @include typography.role(panel-title); margin: 0; flex: 1; } }
   &__loading { height: 120px; }
