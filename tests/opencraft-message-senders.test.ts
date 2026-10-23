@@ -28,7 +28,7 @@ test("message authors share queue SQLite, survive reopen, and cannot be reassign
     }), /nonempty/);
     assert.equal(host.database.prepare("SELECT count(*) AS n FROM message_senders WHERE client_message_id='rejected'").get()?.n, 0);
     assert.equal(queue.findByClientId("t", "rejected"), null);
-    assert.deepEqual((await readdir(root)).filter(n => n.endsWith('.sqlite')), ["codex-host-queue.sqlite"]);
+    assert.deepEqual((await readdir(root)).filter(n => n.endsWith('.sqlite')), ["opencraft-host-state.sqlite"]);
     queue.close(); host.close(); host = new OpenCraftHostStateDatabase(root);
     senders = new OpenCraftMessageSenders(host.database);
     assert.deepEqual(senders.get("t", "m"), a);

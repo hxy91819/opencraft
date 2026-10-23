@@ -83,7 +83,7 @@ test("default preview and --dry-run never recover pending attempts or write mode
 test("apply repairs only the selected scope in the current usage store and leaves the legacy store intact", async t => {
   const directory = await fixture();
   t.after(() => rm(directory, { recursive: true, force: true }));
-  const legacy = await readFile(join(directory, "codex-host-queue.sqlite"));
+  const legacy = await readFile(join(directory, "opencraft-host-state.sqlite"));
   const before = await readFile(join(directory, "token-usage.sqlite"));
   await assert.rejects(cli(directory, ["--data-dir", directory, "--server-id", "unknown", "--apply"]), /Server ID is not present/);
   assert.deepEqual(await readFile(join(directory, "token-usage.sqlite")), before);
@@ -93,7 +93,7 @@ test("apply repairs only the selected scope in the current usage store and leave
     { server_id: "other-server", provider: null, model: null },
     { server_id: serverId, provider: "fixture-provider", model: "fixture-model" },
   ]);
-  assert.deepEqual(await readFile(join(directory, "codex-host-queue.sqlite")), legacy);
+  assert.deepEqual(await readFile(join(directory, "opencraft-host-state.sqlite")), legacy);
   assert.equal(JSON.parse((await cli(directory, args)).stdout).updatedTurns, 0);
 });
 

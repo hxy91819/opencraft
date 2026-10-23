@@ -121,7 +121,7 @@ test("SSH published v1 upgrades with a backup, keeps encrypted rows/key and CAS;
 
 
 test("ledgered shared state with missing domain objects fails without recreating them", async () => {
-  const root = await mkdtemp(join(tmpdir(), "oc-downstream-domain-")), path = join(root, "codex-host-queue.sqlite");
+  const root = await mkdtemp(join(tmpdir(), "oc-downstream-domain-")), path = join(root, "opencraft-host-state.sqlite");
   try {
     const owner = new OpenCraftHostStateDatabase(root);
     new OpenCraftMessageSenders(owner.database).record("t", "m", { kind: "employee", loginName: "retained" }); owner.close();
@@ -181,14 +181,14 @@ test("required Codex state failure prevents native process/open status; unused T
   let spawned=0;
   try {
     const state=new OpenCraftHostStateDatabase(root);new OpenCraftMessageSenders(state.database).record("t","m",null);state.close();
-    const bad=new DatabaseSync(join(root,"codex-host-queue.sqlite"));bad.exec("UPDATE schema_migrations SET version=99 WHERE version=2");bad.close();
+    const bad=new DatabaseSync(join(root,"opencraft-host-state.sqlite"));bad.exec("UPDATE schema_migrations SET version=99 WHERE version=2");bad.close();
     // Private Host Tasks is unopened until a consumer actually uses the feature.
     const tasks=new DatabaseSync(join(root,"tasks.sqlite"));tasks.exec("CREATE TABLE unused_feature(value TEXT)");tasks.close();
     const adapter=new CodexEngineAdapter({executable:"unused",runtimeDirectory:root,dataDirectory:root,nativeCodexHomeDirectory:join(root,"native"),spawnAppServer:()=>{spawned++;throw new Error("unexpected spawn");}});
     await assert.rejects(adapter.connect(),fault("newer-schema"));
     assert.equal(spawned,0);assert.equal(adapter.status.state,"failed");assert.deepEqual(adapter.storageOutcomes,[]);
-    const read=new DatabaseSync(join(root,"codex-host-queue.sqlite"));assert.equal(read.prepare("SELECT client_message_id FROM message_senders").get()?.client_message_id,"m");read.close();await adapter.close();
-    const repair=new DatabaseSync(join(root,"codex-host-queue.sqlite"));repair.exec("UPDATE schema_migrations SET version=2 WHERE version=99");repair.close();
+    const read=new DatabaseSync(join(root,"opencraft-host-state.sqlite"));assert.equal(read.prepare("SELECT client_message_id FROM message_senders").get()?.client_message_id,"m");read.close();await adapter.close();
+    const repair=new DatabaseSync(join(root,"opencraft-host-state.sqlite"));repair.exec("UPDATE schema_migrations SET version=2 WHERE version=99");repair.close();
     const retry=new CodexEngineAdapter({executable:"unused",runtimeDirectory:root,dataDirectory:root,nativeCodexHomeDirectory:join(root,"native"),spawnAppServer:()=>{spawned++;throw new Error("synthetic spawn boundary");}});
     await assert.rejects(retry.connect(),/synthetic spawn boundary/);assert.equal(spawned,1,"unused corrupt Tasks never opens during engine connection");await retry.close();
   }finally{await rm(root,{recursive:true,force:true});}

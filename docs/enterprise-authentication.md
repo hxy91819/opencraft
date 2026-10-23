@@ -47,7 +47,8 @@ provider is actually wired.
 
 ## Published storage compatibility
 
-`codex-host-queue.sqlite` and `thread-identity.sqlite` contain published
+The Host-state database (`opencraft-host-state.sqlite` for new stores, with
+existing `codex-host-queue.sqlite` retained in place) and `thread-identity.sqlite` contain published
 `ioa_*` tables and migration names from the original downstream integration.
 Their SQL, version numbers and checksums remain part of the upgrade contract
 even when the provider is absent. The core does not use those tables to verify

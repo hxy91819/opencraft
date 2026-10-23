@@ -30,8 +30,8 @@
 | `opencraft-managed-connectors.sqlite` | daemon 内 Local Agent Host：[connector-host/store](../packages/connector-host/src/store.ts) | Host `dataDirectory` | 实例、凭据与 OAuth 事务 |
 | `account-pool.sqlite` | 独立 codex-core：[account-pool-host/store](../packages/account-pool-host/src/store.ts)、[account service](../packages/account-pool-host/src/codex-account-service.ts) | codex-core `dataDirectory` | 账户元数据、亲和性与配额；secret 文件由同一 owner 管理 |
 | `tasks.sqlite` | [TasksSqliteStore](../plugins/tasks/src/sqlite.ts)；Local Agent 启动 owner / Codex 功能私有 owner | 原 Host 目录；各实例各自独占，不跨目录合库 | Tasks、关联、revision/CAS；原 `tasks-rows` v1 SQL/hash 不变 |
-| `codex-host-queue.sqlite` | [OpenCraftHostStateDatabase](../apps/opencraft-daemon/src/opencraft-host-state-database.ts)；CodexEngineAdapter | 原 Codex 目录；SSH 为原 `ssh-servers/<binding hash>` 目录 | durable queue、message_senders、企业身份 presence/state/completion 与远端会话目录/同步水位共用一个迁移/连接/事务 owner |
-| `codex-message-attachments.sqlite` | [OpenCraftMessageAttachments](../apps/opencraft-daemon/src/opencraft-message-attachments.ts)；CodexEngineAdapter | 同上 | 已发送文件的 display metadata，不改变原生 mention 输入 |
+| `opencraft-host-state.sqlite`（旧目录沿用 `codex-host-queue.sqlite`） | [OpenCraftHostStateDatabase](../apps/opencraft-daemon/src/opencraft-host-state-database.ts)；CodexEngineAdapter | 原 Codex 目录；SSH 为原 `ssh-servers/<binding hash>` 目录 | durable queue、message_senders、企业身份 presence/state/completion 与远端会话目录/同步水位共用一个迁移/连接/事务 owner |
+| `opencraft-message-attachments.sqlite`（旧目录沿用 `codex-message-attachments.sqlite`） | [OpenCraftMessageAttachments](../apps/opencraft-daemon/src/opencraft-message-attachments.ts)；CodexEngineAdapter | 同上 | 已发送文件的 display metadata，不改变原生 mention 输入 |
 | `connections.sqlite` | [SshConnectionStore](../apps/opencraft-daemon/src/ssh-connection-store.ts)；可选 SSH management owner | 原 `ssh` 私有目录 | 连接/CAS、host key 与加密 credential；原 `ssh-connections` v1 SQL/hash 不变，v2 保留旧 reader 的 `user_version=1` |
 
 
@@ -382,7 +382,7 @@ same bounded diagnostic snapshot with an explicit process-lifetime explanation.
 `TokenUsageStateDatabase` owns `token-usage.sqlite` per physical Codex Host. Its
 independent v1 migration contains the existing metering schema and an atomic
 legacy-import receipt. Published Host v1–v12 migrations and their checksums stay
-unchanged. Queue/identity retain `codex-host-queue.sqlite`; only metering writes
+unchanged. Queue/identity remain in the selected Host-state file; only metering writes
 and the read worker select the dedicated file, so a metering writer lock cannot
 lock trusted sender admission.
 
@@ -454,10 +454,23 @@ Known unledgered upgrade inputs follow the same canonical result; unknown schema
 remain rejected. Failed migrations roll back, and checksum mismatches refuse
 opening. Reopening the upgraded owner does not repeat the migration.
 
-The files still use `codex-host-queue.sqlite` and
-`codex-message-attachments.sqlite`. Renaming these paths requires a separate file
-transition covering conflicting paths, exclusive ownership, WAL/SHM and metering
-backfill; this table migration does not implement that transition. An older
+New stores use `opencraft-host-state.sqlite` and
+`opencraft-message-attachments.sqlite`. For each owner, an existing
+`codex-host-queue.sqlite` or `codex-message-attachments.sqlite` is an explicit
+compatibility input: it stays at its original path, with its WAL/SHM/journal.
+Opening never renames, copies, deletes or merges database files. The metering
+import receives the Host owner's selected path instead of assuming the old name.
+If both names exist, or either name has sidecars without its main file, opening
+fails before creating or modifying a store. Operators must preserve all files
+and resolve their identity under the existing stopped-owner recovery procedure;
+there is no automatic preference, merge or repair. Path selection is not an
+exclusive-writer lock and does not permit concurrent old/new owners.
+
+Existing installations therefore retain their physical legacy names. An offline
+physical relocation still requires its own stopped-owner, conflict, crash and
+rollback procedure; this change does not implement or run one. Never start an
+older binary against a newly named store: it does not understand the new paths
+and may create a separate empty legacy store. An older
 managed binary rejects the new migration version. Code rollback therefore
 requires the compatible owner or an explicit restoration of the pre-upgrade
 backup under the [backup and recovery procedure](#备份与恢复), accounting for any
@@ -468,3 +481,8 @@ rollback.
 upgrades, preservation of every business table, old ledger/checksum retention,
 pre-upgrade backup contents, repeat opening, failure after a partial rename,
 retry, refusal by older readers, and both old and new checksum tampering.
+
+`tests/owned-database-path.test.ts` covers fresh and legacy path selection,
+reopen/data preservation, refusal without writes when both stores exist or
+sidecars are orphaned, unchanged active legacy WAL during path selection, and
+metering import from both selected paths.

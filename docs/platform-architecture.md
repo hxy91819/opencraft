@@ -1933,7 +1933,8 @@ closed and recreated before it accepts a new claim.
 Queue-to-active-Turn steering is a separate Host capability. Stock Codex
 AppServer has no single queued-steer operation, and its idle queue drain cannot
 be fenced by two independent RPCs from the adapter. The Daemon therefore owns
-Codex queued messages in `codex-host-queue.sqlite`; its physical AppServer is
+Codex queued messages in its Host-state database (`opencraft-host-state.sqlite`
+for new stores; existing `codex-host-queue.sqlite` remains in place); its physical AppServer is
 only the execution target for standard `turn/start` and `turn/steer`. The Host
 serializes queue dispatch per Thread, persists a claim before sending, and
 advertises `atomicSteer` and `unconfirmedSteerDiscard` from this Host-owned

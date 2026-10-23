@@ -214,7 +214,7 @@ test("Headless core mode retains overlay stores, sender and unique owner across 
     for (let n = 0; n < 200 && !a.frames.some(row => row.id === sendId); n++) await delay(10);
     assert.ok(a.frames.find(row => row.id === sendId)?.result);
     const { DatabaseSync } = await import("node:sqlite");
-    const read = new DatabaseSync(join(f.options.dataDirectory, "codex-host-queue.sqlite"), { readOnly: true });
+    const read = new DatabaseSync(join(f.options.dataDirectory, "opencraft-host-state.sqlite"), { readOnly: true });
     assert.match(String(read.prepare("SELECT sender_json FROM message_senders WHERE client_message_id='verified-message'").get()?.sender_json), /fixture/); read.close();
     await assert.rejects(f.adapter(true), /owned|locked/);
     await a.engine.close(); assert.deepEqual(await f.control.health(), before);
@@ -257,7 +257,7 @@ test("Headless overlay restart restores active queue subscription, dispatches on
     const pending = await b.rpc("b", "thread/queue/list", { threadId: unknown.thread.id });
     assert.equal(pending.steering[0].clientUserMessageId, "unconfirmed");
     const { DatabaseSync } = await import("node:sqlite");
-    const read = new DatabaseSync(join(f.options.dataDirectory, "codex-host-queue.sqlite"), { readOnly: true });
+    const read = new DatabaseSync(join(f.options.dataDirectory, "opencraft-host-state.sqlite"), { readOnly: true });
     assert.equal(read.prepare("SELECT state FROM opencraft_host_queue WHERE client_id='unconfirmed'").get()?.state, "unknown"); read.close();
     assert.equal((await b.rpc("b", "thread/read", { threadId: unknown.thread.id, includeTurns: true })).thread.turns.length, 1);
   } finally { await f.close(); }
