@@ -2,7 +2,7 @@
 
 公开实验入口 `OPENCRAFT_EXPO_WORKBENCH=web` 复用完整 Web 触控工作台；Expo 只拥有原生容器能力，不能复制会话、草稿、导航或面板状态。当前默认仍为 RN；实验入口与下游产品选择互斥。改动先读 [打包 Web 工作台](../../docs/mobile-workbench-container.md)，区分浏览器/打包与双端硬件验收，不能在能力未对齐时切换默认或删除回退。
 
-先遵循仓库根 `AGENTS.md` 和 `opencraft/AGENTS.md`。本文件只把手机任务路由到当前设计，不复制完整实现。
+先遵循仓库根 [`AGENTS.md`](../../AGENTS.md)。本文件只把手机任务路由到当前设计，不复制完整实现。
 
 公开默认入口装配既有 RN Workbench/Composer 与直连 Host。下述下游产品登录、Bot、Router 和发行身份规则属于显式下游产品，由下游产品 `products/<product>/run-expo.cjs` 选择；不能让公开构建隐式要求其账号或 Bot 生成物。通用入口的能力与本地产品选择见 [Expo README](README.md#public-and-downstream-product-entries)，私有源码与生成工具已由下游持有。
 
@@ -27,7 +27,7 @@ App 的运行时代码必须随安装包预制：禁止远程 JS、CSS、动态�
 麦克风、文件等设备能力由平台适配器负责；内置 DOM 消费明确的原生能力端口，不自动回退到浏览器权限接口。跨端共享听写状态、取消/重试和草稿写入所有权；录音权限与设备生命周期各平台独立实现。原生系统权限不能绕过，Expo Go 授权主体也不同于正式 App。设计见 [Embedded Bot bridge](../../docs/mobile-bot-bridge.md#native-audio-and-packaged-code)。
 打包的 Bot HTML 虽在 WKWebView 中运行，站点 `baseUrl` 仍让它具备联网能力，不能称为严格沙箱。原生宿主只准首次加载本地文档；其后的主文档或 iframe 导航必须由导航策略拦截，并按 Bot 路由、外部页面或拒绝处理。绝不永久放行站点根路径 `/`；重试必须重新挂载打包 HTML，不能重载当前 URL。修改这条边界时覆盖“首次本地加载、跳到线上主页、功能路由、外部链接、iframe”的回归测试。
 
-下游产品 Agent Console「对话」复用 OpenCraft Web Chat/Composer，与其他 Bot 功能一起打包到本地 DOM 容器；此入口不挂载 RN Chat 或 AgentChat。原独立 RN Workbench 保留自己的入口。更改 Chat 时先分清 `chat-core` 共享模型、Web/RN 渲染与 `LightVelaHermesTransport` 传输三层，切换 Bot 要释放旧运行时。
+下游产品 Agent Console「对话」复用 OpenCraft Web Chat/Composer，与其他 Bot 功能一起打包到本地 DOM 容器；此入口不挂载 RN Chat 或 AgentChat。原独立 RN Workbench 保留自己的入口。更改 Chat 时先分清 `chat-core` 共享模型、Web/RN 渲染与下游产品传输适配三层，切换 Bot 要释放旧运行时。
 草稿文档由共享 Conversation View 连续性模型保存，Expo 用 SQLite 适配并按凭证作用域隔离；前后台与网络事件只向共享返回探针报告状态，当前会话由 Host 运行时追平。iPad、折叠屏和手机沿用同一 Scope/View，不随断点生成第二份草稿或会话；几何只取容器尺寸和安全区。
 修改 Chat 折叠、虚拟列表或定位前先读 [ChatUI architecture](../../docs/chat-ui-architecture.md) 的滚动契约。复现要覆盖宽度变化后的迟到测量、远处跳转、目标缺失、流式输出期间定位以及键盘/容器尺寸变化；修测量代次和几何事务，不另建滚动控制器、用固定延时判目标缺失或提前卸载仍可见的窗口。模型测试与 iOS bundle 只能证明各自边界，不能声称已经证明真机流畅度。
 DOM Chat 由 Web visualViewport 契约管理输入区和列表容量，外层只处理一次安全区；独立 RN Chat 由移动键盘布局层统一管理键盘进度、占位和输入区容量。不得在输入框、页面外壳和列表各补一份固定键盘高度或叠加多个避让器；细节见 [Mobile shell](../../docs/mobile-shell.md)。
