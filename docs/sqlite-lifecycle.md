@@ -222,7 +222,11 @@ IndexedDB 使用原生升级事务，不运行 SQL runner；广播仅通知已�
 ### 受管 Headless 的历史 Codex Bot 数据保留
 
 OpenCraftHostStateDatabase 的已发布 v1 保持原文，v2 追加 rooms/commands/message slots；
-旧 Bot bridge 已删除，历史表不再由 Bot adapter 使用。已知旧结构仍在 owner 内有界转换并保留映射/receipt/消息 ID，
+旧 Bot bridge 已删除，历史表不再由 Bot adapter 使用。v14 将三张历史表改为
+`opencraft_bot_rooms`、`opencraft_bot_commands`、`opencraft_bot_message_slots`，
+保留所有旧记录和已发布 v1–v13 SQL/账本。升级前副本保留旧结构，旧 managed reader
+拒绝新版库；无版本守卫的旧 bridge 不得重开当前库并重建旧表。
+已知旧结构仍在 owner 内有界转换并保留映射/receipt/消息 ID，
 未知仍拒绝；回退接受性须用实际旧 reader 在隔离副本验证。来源与边界见
 [受管 Headless](managed-headless.md#codex-原生会话与保留数据)。
 
@@ -483,7 +487,9 @@ native queue import formats are unchanged. Storage diagnostics use
 `opencraft-host-state` and `opencraft-message-attachments`, scoped by Host.
 
 These are appended migrations. Published Host-state v1–v12 and attachment v1 SQL,
-names and checksums remain unchanged, as do dormant historical Bot tables. The
+names and checksums remain unchanged. Host-state v14 separately renames dormant
+Bot rooms, command receipts and message slots to `opencraft_bot_*` without
+discarding any records; v13 SQL and history also remain unchanged. The
 managed owner backs up the previous database, applies the rename transactionally,
 validates the resulting schema, and preserves records and prior ledger entries.
 Known unledgered upgrade inputs follow the same canonical result; unknown schemas

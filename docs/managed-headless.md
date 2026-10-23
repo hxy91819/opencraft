@@ -32,9 +32,11 @@ Codex 使用原生 Thread/Turn 协议。旧 Codex Bot bridge 已删除；Headles
 声明 Codex 的 `vela/bot-conversations` 能力，也不再把 `bot/*` 请求翻译为原生会话操作。
 通用 Bot 协议及其他引擎提供的 Bot 能力不受影响。
 
-`OpenCraftHostStateDatabase` 仍由 Host 独占。历史 `codex_bot_rooms`、
-`codex_bot_commands`、`codex_bot_message_slots` 表、已发布迁移与 checksum 保持不变，
-兼容读取和数据保留测试继续执行；本次退役不删除、转换或重放历史 Bot 数据。
+`OpenCraftHostStateDatabase` 仍由 Host 独占。v14 将历史 `codex_bot_rooms`、
+`codex_bot_commands`、`codex_bot_message_slots` 改为 `opencraft_bot_*`，完整保留
+rooms、command receipts 和原生消息 ID；不重放历史请求。已发布 v1–v13 SQL、
+迁移名称和 checksum 保持原文。升级前副本保留旧结构供离线读取，旧 managed reader
+拒绝新版库；不得让无版本守卫的旧 bridge 重开当前库并重建旧表。
 原生会话、队列、sender、附件、Tasks、pins 与 core/Host writer 边界保持。
 代码回退不恢复 SQLite 数据，沿用受管版本回退与既有存储兼容检查。
 
