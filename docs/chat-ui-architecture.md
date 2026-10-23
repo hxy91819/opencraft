@@ -63,6 +63,14 @@ while `datetime` preserves the original instant. Known local zone names remain e
 no clock. Existing always-visible timestamps, action disclosure and alignment
 remain independent; this view never derives or persists a replacement time.
 
+## User message copy action
+
+Web/Electron keep the existing copy icon visible below every user message with
+text, before hover or focus and on touch input. The action copies the full message
+even when its bubble is collapsed, excluding sender, timestamp and attachment
+metadata. Keyboard activation and localized copied feedback use the existing
+button and clipboard path. Timestamp disclosure keeps its independent policy.
+
 ## User message sender display
 
 Web/Electron show each user message's verified employee `loginName` above its
