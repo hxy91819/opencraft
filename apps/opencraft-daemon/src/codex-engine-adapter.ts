@@ -110,6 +110,8 @@ interface CapacityRetry {
 }
 
 interface SharedCodexRoutingOptions {
+  /** Trusted Host composition. Never accepted from renderer requests. */
+  readonly sessionMcp?: (threadId: string) => Record<string, unknown> | null | Promise<Record<string, unknown> | null>;
   readonly observationComponent?: 'core' | 'gateway';
   readonly tokenUsage?: {
     readonly queryWorkerEntry?: string;
@@ -840,6 +842,12 @@ export class CodexEngineAdapter implements DuplexTransport {
             this.emit({ id, error: { code: -32602, message: errorMessage(error) } }, clientId);
             return;
           }
+        }
+        if (message.method === "turn/start") {
+          try { await this.prepareSessionMcp(string(params.threadId)); }
+          catch { this.emit({ id, error: { code: -32000, message: "Session tools could not be prepared; input was not sent. Retry after this thread is idle." } }, clientId); return; }
+          if (!this.initializedClients.has(clientId) || this.clientEpoch(clientId) !== requestClientEpoch) return;
+          this.validateSubmissionContext(context);
         }
         const pending: PendingRequest = { clientId, clientEpoch: requestClientEpoch, originalId: id, method: message.method as string, params,
           ...((message.method === "thread/start" || message.method === "thread/fork") ? { metadataSender: context.sender } : {}) };
@@ -1768,6 +1776,11 @@ export class CodexEngineAdapter implements DuplexTransport {
 
   private observeMetadataResult(method: string, params: RpcRecord, result: unknown, sender?: import("@opencraft/appserver-protocol").MessageSender | null): void {
     if (params.threadSource === "thread_title" || this.threadTitles?.owns(string(params.threadId))) return;
+    if (method === "thread/start") {
+      const configuration = record(params.config)["mcp_servers.opencraft_session"];
+      const threadId = string(record(record(result).thread).id);
+      if (configuration && threadId) this.sessionMcpConfigurations.set(threadId, JSON.stringify(configuration));
+    }
     this.threadTitles?.observeResult(method, params, result);
     this.durableCatalog?.observe(method, params, result);
     try { this.identity?.observeResult(method, params, result, sender); }
@@ -2295,7 +2308,55 @@ export class CodexEngineAdapter implements DuplexTransport {
     }
   }
 
-  private writePhysical(message: RpcRecord): Promise<void> | void {
+  private readonly sessionMcpConfigurations = new Map<string, string>();
+  private async prepareSessionMcp(threadId: string): Promise<void> {
+    if (!threadId || !this.options.sessionMcp) return;
+    const configuration = await this.options.sessionMcp(threadId);
+    const revision = JSON.stringify(configuration);
+    const previous = this.sessionMcpConfigurations.get(threadId);
+    if (previous === revision || (configuration === null && previous === undefined)) return;
+    const read = record(await this.requestPhysical("thread/read", { threadId, includeTurns: false }));
+    const thread = record(read.thread);
+    if (thread.ephemeral === true) {
+      if (configuration) throw new Error("Session capabilities require a durable Codex thread");
+      return;
+    }
+    const status = string(record(thread.status).type);
+    if (!["idle", "notLoaded"].includes(status)) throw new Error("Wait until the Codex thread is idle before changing its tools");
+    this.cancelNativeRelease(threadId);
+    const live = status === "notLoaded" ? {} : record(await this.requestPhysical("thread/resume", { threadId, excludeTurns: true }));
+    const resume: RpcRecord = {};
+    for (const key of ["model", "modelProvider", "serviceTier", "cwd", "runtimeWorkspaceRoots", "approvalPolicy", "approvalsReviewer"])
+      if (live[key] !== undefined) resume[key] = live[key];
+    const profile = string(record(live.activePermissionProfile).id);
+    if (profile) resume.permissions = profile;
+    else {
+      const sandbox = record(live.sandbox), modes: Record<string, string> = { dangerFullAccess: "danger-full-access", readOnly: "read-only", workspaceWrite: "workspace-write" };
+      if (sandbox.type && !modes[string(sandbox.type)]) throw new Error("Cannot preserve this Codex sandbox while refreshing tools");
+      if (sandbox.type) resume.sandbox = modes[string(sandbox.type)];
+    }
+    if (status !== "notLoaded") {
+      await this.requestPhysical("thread/unsubscribe", { threadId });
+      // Native keeps durable threads in its catalog after unsubscribe. The
+      // idle resume boundary rebuilds the session configuration without relying
+      // on thread/read or loaded/list as an unloading acknowledgement.
+    }
+    await this.requestPhysical("thread/resume", { ...resume, threadId, config: {
+      "mcp_servers.opencraft_session": configuration ?? { enabled: false, url: "http://127.0.0.1:1/mcp" },
+    } });
+    if (Object.keys(live).length) {
+      const settings: RpcRecord = { threadId };
+      if (profile) settings.permissions = profile;
+      else if (live.sandbox) settings.sandboxPolicy = live.sandbox;
+      for (const key of ["approvalPolicy", "approvalsReviewer", "model", "serviceTier", "collaborationMode"])
+        if (live[key] !== undefined && live[key] !== null) settings[key] = live[key];
+      if (live.reasoningEffort) settings.effort = live.reasoningEffort;
+      await this.requestPhysical("thread/settings/update", settings);
+    }
+    this.sessionMcpConfigurations.set(threadId, revision);
+  }
+  private async writePhysical(message: RpcRecord): Promise<void> {
+    if (message.method === "turn/start") await this.prepareSessionMcp(string(record(message.params).threadId));
     if (this.options.collaboration && message.method === "thread/start") {
       const params = record(message.params), tools = Array.isArray(params.dynamicTools) ? params.dynamicTools : [];
       const names = new Set<string>(CONVERSATION_TOOLS.map(t=>t.name));
@@ -2340,7 +2401,7 @@ export class CodexEngineAdapter implements DuplexTransport {
 
   private publishStatus(status: TransportStatus): void {
     this.statusValue = status;
-    if (["failed", "closing", "closed"].includes(status.state)) this.threadTitles?.reset();
+    if (["failed", "closing", "closed"].includes(status.state)) { this.threadTitles?.reset(); this.sessionMcpConfigurations.clear(); }
     for (const listener of this.statusListeners) listener(status);
   }
 }

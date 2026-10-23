@@ -2,7 +2,7 @@
 
 Headless composes `@opencraft/plugin-im` with independent WeCom and Slack
 transport plugins. IM owns routing, stable source bindings, message admission
-and final reply facts. Core owns natural-person identities, authorization,
+and reply delivery facts. Core owns natural-person identities, authorization,
 conversations, input idempotency and execution queues. There is no Tenant,
 general Flow or second execution queue. Platform plugins do not choose Agents.
 
@@ -64,8 +64,8 @@ A fixed reference is validated against the sender's actual core permissions.
 
 “按来源分会话” is the above function. “交给管家” returns a specified conversation
 reference: its Agent can use existing delegation. Multiple sources entering the
-same conversation share its context, and final replies still return separately
-to each originating chat. Delegated work finishing after the parent's Turn does
+same conversation share its context. Explicit replies use each arrival's
+replyRef and return separately to its originating chat. Delegated work finishing after the parent's Turn does
 not implicitly send a new IM notification. “自定义函数” edits the same contract.
 
 Preview uses the production evaluator and has no creation, execution or delivery
@@ -86,6 +86,10 @@ invalid targets and oversized output are rejected.
 `im-switchboard.sqlite` uses the managed migration lifecycle. V1 `switchboard`
 SQL and existing tuples remain unchanged. V2 adds channels, route history,
 verified sender links, expiring identity challenges and message admission facts.
+V3 captures reply mode, opaque replyRef and expiry. Existing records retain
+final mode; new Headless arrivals use explicit tool mode. See
+[Host session capabilities](session-capabilities.md) for authorization, creation
+reservations and the Remote MCP/native adapter boundary.
 The `(bot_endpoint_id, source_key)` mapping is the only current key binding.
 There is no persisted general Flow.
 
@@ -95,7 +99,9 @@ reply address. Event identity is independent of route version. Retried callbacks
 reuse this admission; they do not evaluate new code or resubmit as new input.
 Endpoint admission is serialized only while resolving/creating/submitting;
 ongoing Turns do not hold that lane. Core idempotency keys recover a submission
-whose receipt was lost. Results are read from the exact captured Turn ID.
+whose receipt was lost. Legacy final-mode results are read from the exact
+captured Turn ID. Tool-mode messages carry a replyRef in their admitted input;
+im_reply sends one complete answer, while ordinary final remains in the workbench.
 
 Restart resumes accepted requests and known pending replies after the platform
 connection is ready. A crash during unresolved admission becomes `unknown`;
@@ -122,8 +128,9 @@ account provider. Execution currently targets the local Codex core server.
 WeCom follows the [official long-connection contract](https://developer.work.weixin.qq.com/document/path/101463):
 fixed WSS endpoint, Bot ID/Secret subscription, 30-second heartbeat and bounded
 reconnect. Normal human text, recognized voice and mixed text are supported;
-`compat_info` identities are excluded. It sends processing/final stream updates
-using the original request and stream IDs. Active connection takeover stops
+`compat_info` identities are excluded. New tool-mode messages send only a final stream protocol frame using the
+original request and stream IDs. Processing/final feedback remains only for
+legacy final-mode admissions. Active connection takeover stops
 reconnect. The adapter refuses expired replies and waits for ACKs.
 
 Slack follows [Socket Mode](https://docs.slack.dev/apis/events-api/using-socket-mode/).

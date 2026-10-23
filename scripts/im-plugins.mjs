@@ -1,5 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { readPrivateJson } from '../packages/identity-core/src/node.ts';
+import { IM_REPLY_TOOL } from '../plugins/im/src/reply-tool.ts';
 import { ImFault } from '../plugins/im/src/server.ts';
 import { conversationRef, encodeConversationRef } from '../packages/appserver-protocol/src/collaboration.ts';
 import { callConversationHost } from './conversation-execution.mjs';
@@ -28,7 +29,7 @@ export async function readImConfiguration(path) {
 }
 
 /** Trusted composition maps verified external identities; wire sender IDs confer no authority. */
-export function createImExecution({actors,collaboration,getAppHost,admittedActor = () => true}) {
+export function createImExecution({actors,collaboration,getAppHost,prepareCapabilities,admittedActor = () => true}) {
   const serverId = collaboration.execution.serverId, hostId = collaboration.execution.hostId;
   const human = actorId => {
     const actor = actors.get(actorId);
@@ -49,8 +50,14 @@ export function createImExecution({actors,collaboration,getAppHost,admittedActor
   return {
     human, authorize,
     async create(context,signal) {
-      const result = await invoke(context,null,'thread/start',{experimentalRawEvents:false,persistExtendedHistory:true},signal);
-      return conversationRef({serverId,threadId:result.thread.id});
+      const reservation = prepareCapabilities?.([IM_REPLY_TOOL]);
+      try {
+        const result = await invoke(context,null,'thread/start',{experimentalRawEvents:false,
+          ...(reservation ? {config:{'mcp_servers.opencraft_session':reservation.configuration}} : {})},signal);
+        const ref = conversationRef({serverId,threadId:result.thread.id});
+        reservation?.bind(ref);
+        return ref;
+      } catch (error) { reservation?.cancel(); throw error; }
     },
     async validate(context,ref,signal) {
       const result = await invoke(context,ref,'thread/read',{includeTurns:false},signal);

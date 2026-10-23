@@ -103,6 +103,7 @@ export async function startLocalAgentHost(options: {
   readonly port?: number;
   readonly token?: string;
   readonly dshUrl?: string;
+  readonly sessionCapabilities?: import("@opencraft/session-capabilities").SessionCapabilityPort;
   readonly dshExecutable?: string;
   readonly dshRepository?: string;
   /** Stable operational cwd for packaged Daemon/DSH processes; never a Thread workspace. */
@@ -247,7 +248,7 @@ export async function startLocalAgentHost(options: {
     projectlessRoot: projectlessWorkspaceRoot,
   }));
   cleanup.push(() => adapter.close());
-  const capabilities = new DshCapabilityBroker();
+  const capabilities = new DshCapabilityBroker(undefined, options.sessionCapabilities);
   cleanup.push(() => capabilities.close());
   cleanup.push(() => capabilityLink?.close());
   if (patches.length) {

@@ -508,3 +508,7 @@ Hosts merely to populate this page. Editor requests fence the
 captured Host/profile/authorization scope, with backend revision checks unchanged.
 
 The scheduled task catalog resolves names for durable conversations missing from `thread/list` through metadata-only `thread/read`, under the same Host admission and authorization fences. This does not start a Turn or create a second title authority; failed metadata reads retain the plan with its conversation ID. Reads are limited to four concurrent requests per Host.
+
+## Host-owned session capabilities
+
+The [session capability service](session-capabilities.md) owns the shared catalog and invocation entry point; domain providers retain authorization and durable effect receipts. Remote MCP and native Pi/DSH adapters consume that same service. Host contributions are independent of browser capability leases, cannot be shadowed by browser declarations, and survive View disconnect. Codex installs a scoped MCP entry at creation or its next idle preparation boundary; neither global MCP configuration nor the native process becomes a per-session credential authority. IM explicit replies use captured per-arrival references and never race an automatic final send; existing final-mode records preserve their previous completion path.

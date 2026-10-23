@@ -63,11 +63,18 @@ export class DshCapabilityLink {
     }
     return text.length === 0 ? {} : JSON.parse(text);
   }
+  private readonly mounted = new Map<string, { endpoint: string | null; nativeId: string; signature: string }>();
   async register(threadId: string): Promise<DshCapabilityRegistrationResult> {
-    return this.request("/register", {
-      sessionId: this.routing?.native(threadId) ?? threadId,
-      capabilities: this.broker.list(threadId),
-    }) as Promise<DshCapabilityRegistrationResult>;
+    const nativeId = this.routing?.native(threadId) ?? threadId;
+    const capabilities = this.broker.list(threadId), signature = JSON.stringify(capabilities);
+    const previous = this.mounted.get(threadId);
+    if (previous && previous.endpoint === this.endpoint && previous.nativeId === nativeId && previous.signature !== signature) {
+      if (this.authority.table.get(threadId)?.state === "running") throw new Error("Cannot replace capabilities of an active execution");
+      await this.unregister(threadId);
+    }
+    const result = await this.request("/register", { sessionId: nativeId, capabilities }) as DshCapabilityRegistrationResult;
+    if (!result.deferred) this.mounted.set(threadId, { endpoint: this.endpoint, nativeId, signature });
+    return result;
   }
   async validate(capabilities: readonly DshHostCapability[]) {
     await this.request("/validate-capabilities", { capabilities });
@@ -103,6 +110,7 @@ export class DshCapabilityLink {
     return this.request("/generation", input) as Promise<{ sessionId: string; generation: number; interruptedTurns: number; seedThroughSeq: number; seedThroughTurn: number }>;
   }
   async unregister(threadId: string) {
+    this.mounted.delete(threadId);
     await this.request("/unregister", { sessionId: this.routing?.native(threadId) ?? threadId });
   }
   private async poll() {

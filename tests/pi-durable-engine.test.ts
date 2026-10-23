@@ -564,3 +564,19 @@ test("Pi temporary fork validates before allocation and does not survive engine 
   assert.equal((await reopened.request("thread/list", {}, noTools)).data.length, 1);
   assert.equal((await reopened.request("thread/resume", { threadId: parent.thread.id }, noTools)).thread.id, parent.thread.id);
 });
+
+for (const ephemeral of [false,true]) test(`Host tools and browser tools coexist on an existing ${ephemeral?"temporary":"durable"} Pi session`,async t=>{
+ const directory=await mkdtemp(join(tmpdir(),"pi-host-tools-"));let target="",hostCalls=0,browserCalls=0;
+ const {models,faux}=fixtureModels([]);
+ const engine=new PiEngine({directory,cwd:directory,models,sessionCapabilities:{tools:id=>id===target?[{name:"im_reply",description:"Reply",inputSchema:{type:"object",properties:{}}}]:[],async call(id,name){assert.equal(id,target);assert.equal(name,"im_reply");hostCalls++;return {success:true,contentItems:[{type:"inputText",text:"receipt"}]};}}});
+ t.after(async()=>{await engine.close();await rm(directory,{recursive:true,force:true});});
+ const owner:ExecutionEngineClient={notify(){},async request(){browserCalls++;return {success:true,contentItems:[{type:"inputText",text:"browser"}]};}};
+ const created=await engine.request("thread/start",{model:piModel("faux","faux-1"),cwd:directory,ephemeral},owner);target=created.thread.id;
+ await engine.request("runtime/capabilities/register",{threadId:target,dynamicTools:[{type:"function",name:"lookup",description:"Browser lookup",inputSchema:{type:"object",properties:{}}}]},owner);
+ faux.setResponses([fauxAssistantMessage([fauxToolCall("opencraft_host_im_reply",{},{id:"host"}),fauxToolCall("opencraft_0_lookup",{},{id:"browser"})],{stopReason:"toolUse"}),fauxAssistantMessage("done")]);
+ let done=completed(engine);await engine.request("turn/start",{threadId:target,input:[{type:"text",text:"use both tools"}]},owner);assert.equal((await done).status,"completed");assert.equal(hostCalls,1);assert.equal(browserCalls,1);
+ // A browser full-list update cannot erase the Host contribution.
+ await engine.request("runtime/capabilities/register",{threadId:target,dynamicTools:[]},owner);engine.disconnect(owner);
+ faux.setResponses([fauxAssistantMessage([fauxToolCall("opencraft_host_im_reply",{},{id:"host-again"})],{stopReason:"toolUse"}),fauxAssistantMessage("done")]);
+ done=completed(engine);await engine.request("turn/start",{threadId:target,input:[{type:"text",text:"Host without browser"}]},noTools);assert.equal((await done).status,"completed");assert.equal(hostCalls,2);assert.equal(browserCalls,1);
+});
