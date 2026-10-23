@@ -8,6 +8,7 @@ export const builtinThemeIds = Object.freeze({
 /** Exact compatibility aliases only; extension-owned identifiers are opaque. */
 export function normalizeBuiltinThemeId(id: string): string {
   switch (id) {
+    case "vela.theme-pack.paper": return "opencraft.theme-pack.paper";
     case "vela.core.codex": return builtinThemeIds.neutral;
     case "vela.core.web": return builtinThemeIds.canvas;
     case "vela.core.frost": return builtinThemeIds.frost;

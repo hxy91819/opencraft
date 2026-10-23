@@ -384,7 +384,7 @@ export function createBotManagementView(directory: Directory, conversations: App
         }</p></div>}
         <ul className="bot-management__list">{entries.map(entry => <li key={`${entry.hostId}:${entry.bot.botId}`}>
           <ContextMenu.Root><ContextMenu.Trigger asChild><div className="bot-management__row">
-            <SettingsButton variant="quiet" disabled={entry.availability !== "available"} onClick={() => host.openView("vela.bot-chat.view", botSelectionResourceUri(entry.hostId, entry.bot.botId))}>
+            <SettingsButton variant="quiet" disabled={entry.availability !== "available"} onClick={() => host.openView("opencraft.bot-chat.view", botSelectionResourceUri(entry.hostId, entry.bot.botId))}>
               <Bot aria-hidden="true" size={18} /><span>{entry.bot.name}</span>
             </SettingsButton>
             <DropdownMenu.Root><DropdownMenu.Trigger asChild><SettingsIconButton label={`${entry.bot.name} 的操作`}><MoreHorizontal size={18} /></SettingsIconButton></DropdownMenu.Trigger>
@@ -400,7 +400,7 @@ export function createBotManagementView(directory: Directory, conversations: App
           <h3>群聊</h3>
           <ul className="bot-management__list">{groups.map(group => <li key={group.conversationId}>
             <div className="bot-management__row"><SettingsButton variant="quiet" onClick={() =>
-              host.openView("vela.bot-chat.view", botConversationResourceUri(createConversationKey(hostId, group.conversationId)))}>
+              host.openView("opencraft.bot-chat.view", botConversationResourceUri(createConversationKey(hostId, group.conversationId)))}>
               <MessagesSquare aria-hidden="true" size={18} /><span>{group.title}</span>
             </SettingsButton></div>
           </li>)}</ul>
@@ -411,7 +411,7 @@ export function createBotManagementView(directory: Directory, conversations: App
           const createdHostId = groupDraft.hostId;
           setGroupDraft(null);
           if (createdHostId === hostId) void refreshGroups().catch(() => undefined);
-          host.openView("vela.bot-chat.view", botConversationResourceUri(createConversationKey(createdHostId, conversationId)));
+          host.openView("opencraft.bot-chat.view", botConversationResourceUri(createConversationKey(createdHostId, conversationId)));
         }} />}
       {action?.kind === "configure" ? <BotConfigurationOperation entry={action.entry} conversations={conversations}
         directory={directory} onClose={() => setAction(null)} onComplete={() => setAction(null)} /> : null}

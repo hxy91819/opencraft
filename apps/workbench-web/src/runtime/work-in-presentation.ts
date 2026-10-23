@@ -17,5 +17,5 @@ export function machineName(machine: WorkInMachine, platform: "web" | "electron"
 
 export function machineRole(machine: WorkInMachine, platform: "web" | "electron"): "local" | "server" | "cloud" {
   if (machine.cloud) return "cloud";
-  return platform === "electron" && machine.hosts.some(host => host.providerId === "vela.builtin-agents") ? "local" : "server";
+  return platform === "electron" && machine.hosts.some(host => host.providerId === "opencraft.builtin-agents") ? "local" : "server";
 }

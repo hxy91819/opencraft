@@ -26,7 +26,7 @@ initializeAppearanceTheme();
 const query=new URLSearchParams(location.search),configured=query.has('host'),managed=query.has('managed'),product=query.has('product');
 const productTrace=[];
 const options={hostProfileMode:'configured',navigationMode:'memory',...(product?{clientProduct:createSmokeClientProduct(productTrace)}:{}),
- ephemeralHostProfiles:configured?[{hostId:'fixture',displayName:'Unavailable fixture',providerId:'vela.websocket',providerConfig:{url:'ws://127.0.0.1:${(host.address() as { port: number }).port}'},providerConfigVersion:1,hostKind:'local',enabled:true,autoConnect:false,includeInSidebar:true,credentialRef:null,transportEndpoint:null,executionLocation:null,workspaceBrowseRoots:[],revision:1}]:[]};
+ ephemeralHostProfiles:configured?[{hostId:'fixture',displayName:'Unavailable fixture',providerId:'opencraft.websocket',providerConfig:{url:'ws://127.0.0.1:${(host.address() as { port: number }).port}'},providerConfigVersion:1,hostKind:'local',enabled:true,autoConnect:false,includeInSidebar:true,credentialRef:null,transportEndpoint:null,executionLocation:null,workspaceBrowseRoots:[],revision:1}]:[]};
 const manifest={manifestVersion:1,id:'lifetime.probe',name:'Lifetime probe',version:'1.0.0',apiVersion:1,trust:'trusted',platforms:['web'],activationEvents:['onStartupFinished']};
 let application,oldDocument,release,cleanupEntered=false;
 const pending=[],finished=[];

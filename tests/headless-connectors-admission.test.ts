@@ -21,7 +21,7 @@ test('managed connector requests consume a relay assertion once and reject repla
   const signer = new AssertionSigner(scope, pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString());
   const provider = new AssertionProvider(scope, pair.publicKey.export({ type: 'spki', format: 'pem' }).toString());
   const access = new ActorAccess(actors, { authenticateHuman: r => provider.authenticate(r), admitted: () => true, administrator: () => false, trustedOrigin: () => scope.origin });
-  const service = new HeadlessConnectors(join(root, 'connectors'), access, { first: 'server:fixture:codex' }, new SessionCapabilities());
+  const service = new HeadlessConnectors(join(root, 'connectors'), access, { first: 'server:fixture:dsh' }, new SessionCapabilities());
   const paths: string[] = [];
   const backend = createServer(async (req, res) => {
     paths.push(`${req.method} ${req.url}`);

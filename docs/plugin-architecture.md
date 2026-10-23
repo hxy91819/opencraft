@@ -132,9 +132,9 @@ Headless 通过可信服务端 composition 创建身份适配器；受管站点�
   内部贡献 prepare/commit/逆序 rollback、generation fence、串行 activate/deactivate 和完整 dispose；
 - 最小 Settings Value Store 已落地：只支持当前 Profile，只读写 manifest 已声明字段，提供
   default、运行时校验、`get/set/reset/subscribe`；Web 使用独立 IndexedDB Adapter；
-- WebSocket Host provider 已从匿名 Cordis plugin 迁移为 `vela.websocket-host` first-party Extension；
+- WebSocket Host provider 已从匿名 Cordis plugin 迁移为 `opencraft.websocket-host` first-party Extension；
   provider owner 是 activationId，卸载会先撤出 provider，再等待在用 Host lease 归还；
-- `vela.theme-pack` 是第二个真实 Extension 切片：插件只登记 accent/ink/surface/contrast 与
+- `opencraft.theme-pack` 是第二个真实 Extension 切片：插件只登记 accent/ink/surface/contrast 与
   diff/skill 语义色，应用根统一派生完整 Token；选择被持久化，卸载时原子回退到内建中性主题；
 - Theme palette 现在还可选择性声明 `surfaces`（window/sidebar/panel/input/popover 的
   `#RRGGBB` 色值）、`material.window`（translucent/opaque）和
@@ -372,7 +372,7 @@ ApplicationSupervisor
 ```text
 HostConnectionProfile (IndexedDB / platform secure store)
   ├─ hostId                  稳定执行命名空间
-  ├─ providerId              如何连接，例如 vela.websocket
+  ├─ providerId              如何连接，例如 opencraft.websocket
   ├─ providerConfig          provider 私有、JSON 可迁移配置
   ├─ hostKind                local / remote-ssh / durable 等语义
   └─ presentation metadata  名称、roots、是否出现在侧栏

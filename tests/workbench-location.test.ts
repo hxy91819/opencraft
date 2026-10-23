@@ -228,11 +228,11 @@ test("Extension View resources round-trip and can be canonically replaced", () =
   const resourceUri =
     "vela-bot:conversation?hostId=host-a&conversationId=conversation-a";
   const url = new URL(
-    `https://vela.test/views/vela.bot-chat.view?resource=${encodeURIComponent(resourceUri)}`,
+    `https://vela.test/views/opencraft.bot-chat.view?resource=${encodeURIComponent(resourceUri)}`,
   );
   assert.deepEqual(parseApplicationRouteUrl(url), {
     kind: "extension-view",
-    viewId: "vela.bot-chat.view",
+    viewId: "opencraft.bot-chat.view",
     resourceUri,
   });
 });
