@@ -8,3 +8,8 @@ export const stickers = {
   "✅": [{ color: "#22c55e", path: "M2 2H30V30H2Z" }, { color: "#ffffff", path: "M6 16L10 12L14 17L23 7L27 11L14 25Z" }],
 } as const;
 export type Sticker = keyof typeof stickers;
+
+const previews = Object.fromEntries((Object.keys(stickers) as Sticker[]).map(value => [value,
+  `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${stickers[value].map(layer => `<path d="${layer.path}" fill="${layer.color}"/>`).join("")}</svg>`)}`,
+])) as Record<Sticker, string>;
+export const stickerPreview = (value: Sticker): string => previews[value];

@@ -3554,3 +3554,6 @@ preserving the draft; the editor does not load a remote/native editing fallback.
 Touch editing separates document and viewport intent: one pointer edits; a second touch cancels the incomplete operation and begins bounded pinch/pan until all fingers lift. Text/stickers commit on release. Zoom/pan and fit do not enter undo history or change export pixels. The modal owner follows visualViewport for mobile keyboard placement; the plugin uses shared mobile-input typography, safe-area spacing and 44px minimum targets.
 
 Image editor styles are delivered as trusted scoped CSS with the optional contribution and mounted only inside the preview presentation root, including ShadowRoot consumers. They do not enter startup app CSS; existing theme tokens still resolve from the host.
+
+
+Image annotation text is entered at the tapped image position with a native multiline textarea for caret, selection and IME. It remains a local pending operation until confirmed or a tool/save action commits it once; Escape discards only pending text. View resize keeps native image coordinates and text. Normal editing shows tools without permanent instructions or a filename; accessible names and error feedback remain. Image editor interface glyphs use shared original artwork, including the pixel mosaic; sticker content previews are not interface artwork.

@@ -77,12 +77,7 @@ classes and source geometry; `timeline-icons` keeps progress ratios, interpolati
 and gradient identifiers. Consumers retain their callbacks and motion policies.
 The Workbench compatibility activity entry only re-exports shared components.
 
-Only the two explicitly retained layout silhouettes use the licensed library,
-isolated in `retained-layout-icons`; do not import general Lucide artwork in Web
-consumers. Brand marks, generated avatars, diagrams and content SVG are different
-semantic objects. Native adapters keep their platform artwork outside this Web
-migration. Check dynamic icon registries as well as direct JSX: zero selected
-import names alone does not prove complete coverage.
+Interface glyphs use the shared original artwork. Lucide packages and copied Lucide SVG paths are prohibited, including for new image editing controls. The retained layout adapter is a known legacy dependency pending migration, not permission to introduce further library glyphs; preserve its user-requested visual behavior while migrating. Image text, crop, fit, undo/redo, sticker and mosaic controls use `image-edit-icons` through the shared action entry. Content sticker previews are content, separate from interface glyphs.
 
 Run `npm run check:icons` to inspect direct imports, re-exports, dynamic registry
 inputs and inline control SVG across Web, shared packages and plugins. Test the

@@ -2754,3 +2754,6 @@ Legacy Word uses the same retained read-only preview identity, with local Worker
   within the editor. Pixelation is composited into the exported image.
 
 - Image editing is touch-first: a second finger cancels unfinished ink/crop/placement; pinch/pan changes only viewport, with no editing until all fingers release. Undo/export use native document pixels. Keyboard resize preserves the same editing transaction and keeps tools in the visual viewport.
+
+
+Image annotation text is entered at the tapped image position with a native multiline textarea for caret, selection and IME. It remains a local pending operation until confirmed or a tool/save action commits it once; Escape discards only pending text. View resize keeps native image coordinates and text. Normal editing shows tools without permanent instructions or a filename; accessible names and error feedback remain. Image editor interface glyphs use shared original artwork, including the pixel mosaic; sticker content previews are not interface artwork.

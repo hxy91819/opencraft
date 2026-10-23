@@ -1,23 +1,27 @@
 import type { ImageEditorProps } from "@opencraft/extension-react";
 import { useIntl } from "@opencraft/i18n/react";
-import { Crop, Grid2X2, Maximize, Pencil, Redo2, RotateCw, Smile, Type, Undo2 } from "lucide-react";
+import { CheckIcon, CloseIcon, EditIcon, ImageCropIcon, ImageFitIcon, ImageMosaicIcon, ImageRedoIcon, ImageStickerIcon, ImageTextIcon, ImageUndoIcon, RotateIcon } from "@opencraft/design-system-web/action-icons";
+import { flushSync } from "react-dom";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { commitEdit, emptyHistory, exportImage, paintEdit, renderDocument, selectionRect, stepHistory, type ImageEdit, type Point, type Rect } from "./document";
-import { stickers, type Sticker } from "./stickers";
+import { stickerPreview, stickers, type Sticker } from "./stickers";
 import { messages } from "./messages";
 import { useTouchViewport } from "./touch-viewport";
 
 type Tool = "pen" | "sticker" | "text" | "crop" | "mosaic";
+type TextDraft = { readonly point: Point; readonly text: string };
 type Brush = Extract<ImageEdit, { type: "pen" | "mosaic" }>;
 const colors = ["#ffffff", "#111827", "#ef4444", "#facc15", "#22c55e", "#3b82f6"];
-const tools = [{ id: "pen", Icon: Pencil }, { id: "sticker", Icon: Smile }, { id: "text", Icon: Type }, { id: "crop", Icon: Crop }, { id: "mosaic", Icon: Grid2X2 }] as const;
+const tools = [{ id: "pen", Icon: EditIcon }, { id: "sticker", Icon: ImageStickerIcon }, { id: "text", Icon: ImageTextIcon }, { id: "crop", Icon: ImageCropIcon }, { id: "mosaic", Icon: ImageMosaicIcon }] as const;
 
 export default function ImageEditor({ source, name, onCancel, onComplete }: ImageEditorProps) {
   const intl = useIntl(), m = (key: keyof typeof messages) => intl.formatMessage(messages[key]);
   const [history, setHistory] = useState(emptyHistory);
   const [tool, setTool] = useState<Tool>("pen"), [color, setColor] = useState(colors[2]!);
   const [width, setWidth] = useState(6), [textSize, setTextSize] = useState(42);
-  const [text, setText] = useState(""), [sticker, setSticker] = useState<Sticker>("😀");
+  const [textDraft, setTextDraft] = useState<TextDraft | null>(null), [sticker, setSticker] = useState<Sticker>("😀");
+  const pendingText = useRef<TextDraft | null>(null), textInput = useRef<HTMLTextAreaElement>(null), composing = useRef(false);
+  const updateText = (next: TextDraft | null) => { pendingText.current = next; setTextDraft(next); };
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [scene, setScene] = useState<HTMLCanvasElement | null>(null);
   const [crop, setCrop] = useState<Rect | null>(null);
@@ -68,8 +72,19 @@ export default function ImageEditor({ source, name, onCancel, onComplete }: Imag
   };
   const commit = (edit: ImageEdit) => { setHistory(current => commitEdit(current, edit)); setError(null); };
   const cancelGesture = () => { stroke.current = null; cropStart.current = null; placement.current = null; setCrop(null); scheduleDraw(); };
-  const changeTool = (next: Tool) => { cancelGesture(); setCrop(null); setTool(next); };
-  const navigate = (direction: -1 | 1) => { cancelGesture(); setCrop(null); setHistory(current => stepHistory(current, direction)); };
+  const takeText = (): Extract<ImageEdit, { type: "text" }> | null => {
+    const draft = pendingText.current;
+    updateText(null);
+    if (!draft?.text.trim() || !scene) return null;
+    return { type: "text", text: draft.text.trim(), point: draft.point, size: textSize * Math.min(scene.width, scene.height) / 500, color };
+  };
+  const applyText = () => { if (composing.current) return; const edit = takeText(); if (edit) commit(edit); };
+  const changeTool = (next: Tool) => { if (composing.current) return; applyText(); cancelGesture(); setTool(next); };
+  const navigate = (direction: -1 | 1) => {
+    if (composing.current) return;
+    cancelGesture(); const edit = takeText();
+    setHistory(current => stepHistory(edit ? commitEdit(current, edit) : current, direction));
+  };
   const down = (event: PointerEvent<HTMLCanvasElement>) => {
     if (!scene || busy || event.button !== 0 || stroke.current || cropStart.current) return;
     event.preventDefault(); const p = point(event), scale = Math.min(scene.width, scene.height) / 500;
@@ -86,12 +101,16 @@ export default function ImageEditor({ source, name, onCancel, onComplete }: Imag
   };
   const up = (event: PointerEvent<HTMLCanvasElement>) => {
     if (placement.current?.pointerId === event.pointerId) {
-      const value = tool === "text" ? text.trim() : sticker;
-      const size = textSize * Math.min(scene!.width, scene!.height) / 500;
-      if (value) commit(tool === "sticker" ? { type: "sticker", sticker, point: point(event), size } : { type: "text", text: value, point: point(event), size, color });
+      const p = point(event);
       placement.current = null;
-      const focused = stage.current?.getRootNode() as Document | ShadowRoot | undefined;
-      if (focused?.activeElement instanceof HTMLInputElement) focused.activeElement.blur();
+      if (tool === "text") {
+        if (!composing.current) {
+          applyText();
+          // Keep focus in the trusted touch event for mobile software keyboards.
+          flushSync(() => updateText({ point: p, text: "" }));
+          textInput.current?.focus({ preventScroll: true });
+        }
+      } else commit({ type: "sticker", sticker, point: p, size: textSize * Math.min(scene!.width, scene!.height) / 500 });
     }
     const current = stroke.current;
     if (current?.pointerId === event.pointerId) { stroke.current = null; cancelAnimationFrame(frame.current); commit({ ...current.edit, points: [...current.edit.points, point(event)] }); }
@@ -99,44 +118,57 @@ export default function ImageEditor({ source, name, onCancel, onComplete }: Imag
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
   };
   const save = async () => {
-    if (busy || !scene || stroke.current || cropStart.current) return;
-    if (history.cursor === 0) { onCancel(); return; }
+    if (busy || !scene || stroke.current || cropStart.current || composing.current) return;
+    const edit = takeText(), finalHistory = edit ? commitEdit(history, edit) : history;
+    if (edit) setHistory(finalHistory);
+    if (finalHistory.cursor === 0) { onCancel(); return; }
     setBusy(true); setError(null);
     try {
-      const file = await exportImage(image ? renderDocument(image, history) : scene, name);
+      const file = await exportImage(image ? renderDocument(image, finalHistory) : scene, name);
       if (active.current && !onComplete(file)) { setError("saveFailed"); setBusy(false); }
     } catch { if (active.current) { setError("saveFailed"); setBusy(false); } }
   };
   const scale = scene ? Math.min(viewport.width / scene.width, viewport.height / scene.height, 1) : 0;
   const { view, reset: resetView, handlers: touchHandlers } = useTouchViewport(viewport.width, viewport.height, (scene?.width ?? 0) * scale, (scene?.height ?? 0) * scale, `${scene?.width}x${scene?.height}`, cancelGesture);
-  const canUndo = history.cursor > 0, canRedo = history.cursor < history.edits.length;
+  const textScale = scene ? textSize * Math.min(scene.width, scene.height) / 500 * scale / 16 : 1;
+  const canUndo = history.cursor > 0 || !!textDraft?.text.trim(), canRedo = history.cursor < history.edits.length;
   const gestureActive = () => stroke.current !== null || cropStart.current !== null || placement.current !== null;
-  return <section className="image-editor" aria-label={m("edit")} aria-busy={busy} onKeyDown={event => {
+  return <section className="image-editor" aria-label={`${m("edit")}: ${name}`} aria-busy={busy} onKeyDown={event => {
     if (!(event.ctrlKey || event.metaKey) || event.altKey || event.nativeEvent.isComposing || (event.target as HTMLElement).closest("input,textarea,[contenteditable=true]")) return;
     const key = event.key.toLowerCase();
     if (key === "z" || key === "y") { event.preventDefault(); event.stopPropagation(); if (!busy) navigate(key === "y" || event.shiftKey ? 1 : -1); }
   }}>
     <header className="image-editor__header">
       <button type="button" onClick={onCancel}>{m("cancel")}</button>
-      <span className="image-editor__name">{name}</span>
-      <button type="button" aria-label={m("fit")} title={m("fit")} onClick={resetView} disabled={busy || !scene}><Maximize aria-hidden size={24} /></button>
-      <button type="button" aria-label={m("undo")} title={m("undo")} disabled={busy || !canUndo} onClick={() => navigate(-1)}><Undo2 aria-hidden size={24} /></button>
-      <button type="button" aria-label={m("redo")} title={m("redo")} disabled={busy || !canRedo} onClick={() => navigate(1)}><Redo2 aria-hidden size={24} /></button>
+      <span className="image-editor__header-space" aria-hidden />
+      <button type="button" aria-label={m("fit")} title={m("fit")} onClick={resetView} disabled={busy || !scene}><ImageFitIcon aria-hidden size={24} /></button>
+      <button type="button" aria-label={m("undo")} title={m("undo")} disabled={busy || !canUndo} onClick={() => navigate(-1)}><ImageUndoIcon aria-hidden size={24} /></button>
+      <button type="button" aria-label={m("redo")} title={m("redo")} disabled={busy || !canRedo} onClick={() => navigate(1)}><ImageRedoIcon aria-hidden size={24} /></button>
     </header>
     <div className="image-editor__stage" ref={stage} {...touchHandlers}>
       {scene ? <div className="image-editor__image" style={{ width: scene.width * scale, height: scene.height * scale, transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
         <canvas ref={display} aria-label={m("surface")} onPointerDown={down} onPointerMove={event => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) return; move(event); }} onPointerUp={up} onPointerCancel={cancelGesture} onLostPointerCapture={() => { if (gestureActive()) cancelGesture(); }} />
+        {textDraft && <textarea ref={textInput} className="image-editor__text-entry" aria-label={m("text")} placeholder={m("text")} value={textDraft.text} maxLength={500} wrap="off" rows={Math.max(1, textDraft.text.split("\n").length)}
+          style={{ left: textDraft.point.x * scale, top: textDraft.point.y * scale, color, "--image-text-scale": textScale, "--image-text-lines": Math.max(1, textDraft.text.split("\n").length), width: Math.max(80, Math.min(scene.width * scale, 360)) / textScale } as CSSProperties}
+          onChange={event => updateText({ ...textDraft, text: event.currentTarget.value })}
+          onCompositionStart={() => { composing.current = true; }} onCompositionEnd={event => { composing.current = false; if (pendingText.current) updateText({ ...pendingText.current, text: event.currentTarget.value }); }}
+          onKeyDown={event => {
+            event.stopPropagation();
+            if (composing.current || event.nativeEvent.isComposing) return;
+            if (event.key === "Escape") { event.preventDefault(); updateText(null); }
+            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) { event.preventDefault(); applyText(); }
+          }} />}
         {crop && <div className="image-editor__crop" aria-hidden style={{ left: crop.x * scale, top: crop.y * scale, width: crop.width * scale, height: crop.height * scale }} />}
       </div> : <span role="status">{m(error === "failed" ? "failed" : "loading")}</span>}
     </div>
     <div className="image-editor__controls">
-      <div className="image-editor__feedback" role={error ? "alert" : "status"}>{error ? m(error) : tool === "crop" ? m("cropHint") : tool === "text" || tool === "sticker" ? m("placeHint") : m("drawHint")} {m("gestureHint")}</div>
+      {error && <div className="image-editor__feedback" role="alert">{m(error)}</div>}
       <fieldset className="image-editor__options" disabled={busy || !scene}>
         {(tool === "pen" || tool === "text") && <div className="image-editor__colors" role="group" aria-label={m("color")}>{colors.map(value => <button key={value} type="button" style={{ "--image-ink": value } as CSSProperties} aria-label={`${m("color")} ${value}`} aria-pressed={color === value} onClick={() => setColor(value)} />)}</div>}
         {(tool === "pen" || tool === "mosaic") && <input type="range" aria-label={m("width")} min={2} max={30} value={width} onChange={event => setWidth(Number(event.target.value))} />}
-        {tool === "text" && <><input type="text" aria-label={m("text")} placeholder={m("text")} value={text} maxLength={500} onChange={event => setText(event.target.value)} /><input type="range" aria-label={m("textSize")} min={16} max={100} value={textSize} onChange={event => setTextSize(Number(event.target.value))} /></>}
-        {tool === "sticker" && <>{(Object.keys(stickers) as Sticker[]).map(value => <button type="button" key={value} aria-label={value} aria-pressed={sticker === value} onClick={() => setSticker(value)}><svg aria-hidden width="28" height="28" viewBox="0 0 32 32">{stickers[value].map((layer, index) => <path key={index} d={layer.path} fill={layer.color} />)}</svg></button>)}</>}
-        {tool === "crop" && <><button type="button" aria-label={m("rotate")} onClick={() => { if (!gestureActive()) commit({ type: "rotate" }); }}><RotateCw aria-hidden size={20} />{m("rotate")}</button><button type="button" disabled={!crop || crop.width < 2 || crop.height < 2} onClick={() => { if (crop && !gestureActive()) commit({ type: "crop", rect: crop }); }}>{m("applyCrop")}</button></>}
+        {tool === "text" && <><input type="range" aria-label={m("textSize")} min={16} max={100} value={textSize} onChange={event => setTextSize(Number(event.target.value))} />{textDraft && <><button type="button" aria-label={m("discardText")} onClick={() => updateText(null)}><CloseIcon size={24} /></button><button type="button" aria-label={m("applyText")} onClick={applyText}><CheckIcon size={24} /></button></>}</>}
+        {tool === "sticker" && <>{(Object.keys(stickers) as Sticker[]).map(value => <button type="button" key={value} aria-label={value} aria-pressed={sticker === value} onClick={() => setSticker(value)}><img src={stickerPreview(value)} alt="" width={28} height={28} draggable={false} /></button>)}</>}
+        {tool === "crop" && <><button type="button" aria-label={m("rotate")} onClick={() => { if (!gestureActive()) commit({ type: "rotate" }); }}><RotateIcon aria-hidden size={24} /></button><button type="button" aria-label={m("applyCrop")} disabled={!crop || crop.width < 2 || crop.height < 2} onClick={() => { if (crop && !gestureActive()) commit({ type: "crop", rect: crop }); }}><CheckIcon size={24} /></button></>}
       </fieldset>
       <footer className="image-editor__toolbar">
         <div className="image-editor__tools" role="group" aria-label={m("edit")}>{tools.map(({ id, Icon }) => <button key={id} type="button" aria-label={m(id)} title={m(id)} aria-pressed={tool === id} disabled={busy || !scene} onClick={() => changeTool(id)}><Icon aria-hidden size={24} /></button>)}</div>

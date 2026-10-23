@@ -40,7 +40,7 @@ export function useTouchViewport(width: number, height: number, imageWidth: numb
   };
   return { view, reset, handlers: {
     onPointerDownCapture(event: PointerEvent<HTMLDivElement>) {
-      if (event.pointerType !== "touch") return;
+      if (event.pointerType !== "touch" || (event.target as Element).closest("textarea")) return;
       pointers.current.set(event.pointerId, position(event));
       if (pointers.current.size >= 2 || blocked.current) {
         blocked.current = true; cancelEdit(); rebase();

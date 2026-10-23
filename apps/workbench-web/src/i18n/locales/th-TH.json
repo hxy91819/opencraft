@@ -889,6 +889,8 @@
   "imageEditor.redo": "ทำซ้ำ",
   "imageEditor.pen": "วาด",
   "imageEditor.sticker": "สติกเกอร์",
+  "imageEditor.applyText": "ใช้ข้อความ",
+  "imageEditor.discardText": "ยกเลิกข้อความ",
   "imageEditor.text": "ข้อความ",
   "imageEditor.crop": "ครอบตัด",
   "imageEditor.mosaic": "โมเสก",

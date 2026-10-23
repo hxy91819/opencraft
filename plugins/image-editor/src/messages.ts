@@ -10,6 +10,8 @@ export const messages = defineMessages({
   gestureHint: { id: "imageEditor.gestureHint", defaultMessage: "Use two fingers to zoom and move." },
   pen: { id: "imageEditor.pen", defaultMessage: "Draw" },
   sticker: { id: "imageEditor.sticker", defaultMessage: "Sticker" },
+  applyText: { id: "imageEditor.applyText", defaultMessage: "Apply text" },
+  discardText: { id: "imageEditor.discardText", defaultMessage: "Discard text" },
   text: { id: "imageEditor.text", defaultMessage: "Text" },
   crop: { id: "imageEditor.crop", defaultMessage: "Crop" },
   mosaic: { id: "imageEditor.mosaic", defaultMessage: "Mosaic" },

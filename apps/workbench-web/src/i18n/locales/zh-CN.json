@@ -911,6 +911,8 @@
   "imageEditor.redo": "重做",
   "imageEditor.pen": "画笔",
   "imageEditor.sticker": "表情",
+  "imageEditor.applyText": "确认文字",
+  "imageEditor.discardText": "取消文字",
   "imageEditor.text": "文字",
   "imageEditor.crop": "裁剪",
   "imageEditor.mosaic": "马赛克",

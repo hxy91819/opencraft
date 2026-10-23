@@ -47,7 +47,11 @@ export function ImageAttachmentPreview({ images, selectedId, onSelect, onClose, 
         data-editing={isEditing}
         style={viewport ?? undefined}
         onCloseAutoFocus={event => { event.preventDefault(); onReturnFocus(); }}
-        onEscapeKeyDown={event => { if (event.isComposing || event.keyCode === 229) event.preventDefault(); }}
+        onEscapeKeyDown={event => {
+          // Radix receives document-capture Escape before the inline editor.
+          // Native text editing owns this key, including inside a ShadowRoot.
+          if (event.isComposing || event.keyCode === 229 || (isEditing && event.composedPath().some(target => target instanceof HTMLTextAreaElement))) event.preventDefault();
+        }}
         onKeyDown={event => {
           if (isEditing || event.defaultPrevented || event.nativeEvent.isComposing || event.keyCode === 229 || images.length < 2) return;
           if (event.key === "ArrowLeft") { event.preventDefault(); previous(); }

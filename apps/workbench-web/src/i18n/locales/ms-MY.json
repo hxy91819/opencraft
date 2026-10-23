@@ -889,6 +889,8 @@
   "imageEditor.redo": "Buat semula",
   "imageEditor.pen": "Lukis",
   "imageEditor.sticker": "Pelekat",
+  "imageEditor.applyText": "Gunakan teks",
+  "imageEditor.discardText": "Buang teks",
   "imageEditor.text": "Teks",
   "imageEditor.crop": "Pangkas",
   "imageEditor.mosaic": "Mozek",
