@@ -1,5 +1,5 @@
 import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { createRequire } from 'node:module';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -8,7 +8,7 @@ import { assertPackageName } from './web-deployment/package-identity.mjs';
 import { parseNpmPackResult } from './web-deployment/npm-pack-result.mjs';
 
 async function copyOfficeLicenses(repositoryRoot, packageRoot) {
-  const queue = [{ name: '@opencraft/plugin-office-preview', from: join(repositoryRoot, 'package.json') }];
+  const queue = ['@opencraft/plugin-office-preview', '@opencraft/plugin-structured-preview'].map(name => ({ name, from: join(repositoryRoot, 'package.json') }));
   const seen = new Set();
   const manifest = [];
   while (queue.length) {
@@ -43,6 +43,7 @@ async function copyOfficeLicenses(repositoryRoot, packageRoot) {
 
 export async function copyPdfLicenses(repositoryRoot, packageRoot) {
   await copyOfficeLicenses(repositoryRoot, packageRoot);
+  await cp(join(repositoryRoot, 'plugins/structured-preview/licenses'), join(packageRoot, 'web/licenses/structured'), { recursive: true });
   const licenses = join(packageRoot, 'web/licenses/pdfjs');
   await mkdir(licenses, { recursive: true });
   await cp(join(repositoryRoot, 'node_modules/pdfjs-dist/LICENSE'), join(licenses, 'LICENSE'));
@@ -60,7 +61,7 @@ export async function packageWebResources({ repositoryRoot, packageRoot, directo
   try { selection = JSON.parse(await readFile(join(packageRoot, 'web/optional-assets.json'), 'utf8')); }
   catch (error) { if (error.code === 'ENOENT') return null; throw error; }
   if (selection.schemaVersion !== 1 || !Array.isArray(selection.files)
-    || selection.files.some(file => !/^assets\/[A-Za-z0-9_.-]+$/.test(file) || file.endsWith('.map'))) throw new Error('Invalid optional build assets');
+    || selection.files.some(file => !/^assets\/(?:[A-Za-z0-9_.~-]+|excalidraw-fonts\/fonts\/[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+\.woff2)$/.test(file) || file.endsWith('.map'))) throw new Error('Invalid optional build assets');
   await rm(join(packageRoot, 'web/optional-assets.json'));
   if (!selection.files.length) return null;
   const output = join(directory, 'resources');
@@ -68,6 +69,7 @@ export async function packageWebResources({ repositoryRoot, packageRoot, directo
   await rm(root, { recursive: true, force: true });
   await mkdir(join(root, 'web/assets'), { recursive: true });
   for (const file of selection.files) {
+    await mkdir(dirname(join(root, 'web', file)), { recursive: true });
     await cp(join(packageRoot, 'web', file), join(root, 'web', file));
     await rm(join(packageRoot, 'web', file));
   }

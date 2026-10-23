@@ -6,7 +6,7 @@ import { createNpmReleaseSource, unpackPackage } from './releases.mjs';
 import { RESOURCE_PACKAGE, PUBLIC_RESOURCE_PACKAGE } from './package-identity.mjs';
 export { RESOURCE_PACKAGE } from './package-identity.mjs';
 
-const safeFile = file => typeof file === 'string' && /^assets\/[A-Za-z0-9_.-]+$/.test(file) && !file.endsWith('.map');
+const safeFile = file => typeof file === 'string' && /^assets\/(?:[A-Za-z0-9_.~-]+|excalidraw-fonts\/fonts\/[A-Za-z0-9_-]+\/[A-Za-z0-9_.-]+\.woff2)$/.test(file) && !file.endsWith('.map');
 export function parseResources(value) {
   if (value?.schemaVersion !== 1 || !Array.isArray(value.packs) || value.packs.length > 1000) throw new Error('Invalid resource manifest');
   for (const pack of value.packs) {

@@ -1807,11 +1807,24 @@ See [Tasks initial loading](../docs/workbench-design-language.md#tasks-initial-l
 - The same Hub can connect outward and accept connections. Transit is explicit;
   an outgoing-only configuration does not imply an externally reachable listener.
 
-## Read-only Office preview ownership
+## Read-only file preview ownership
 
 - Host-authorized bytes and original download stay with the resource panel; an
-  Office adapter cannot resolve paths or write files. DOCX/PPTX/XLSX are parsed
-  lazily, with read-only controls and no external document resources.
+  format adapter cannot resolve paths or write files. DOCX/PPTX/XLSX/XLS/XLSM,
+  CSV/TSV, Draw.io/DIO, Excalidraw and standalone Mermaid files are parsed
+  lazily, with read-only controls and no remote executable viewer dependency.
+- Adapter registrations own extension support. The resource panel and preview
+  service consume the same registry, rather than maintaining an Office-only
+  allowlist. Unregister revokes previews and publishes the capability change.
+- CSV/TSV preserve literal cell contents (including leading zeros and formula
+  strings), support quoted separators/newlines and use a bounded virtual table.
+  XLS requires an OLE signature; OOXML keeps its archive admission rules. Neither
+  workbook path executes macros or writes back to the original file.
+- Draw.io normalizes compressed and multi-page XML within expansion limits and
+  uses a packaged viewer in an opaque sandbox. Excalidraw exports a read-only
+  scene with packaged fonts; standalone `.mmd`/`.mermaid` use the same serialized
+  Mermaid engine and theme configuration as chat. View transforms and page
+  selection belong to the retained preview, never the Host document.
 - Workbench owner + tab + Host/resource/runtime generation + immutable Blob
   revision + adapter generation identify each mutable preview. Hidden is not
   closed. Recent ready instances may be retained within explicit capacity and
@@ -1820,7 +1833,8 @@ See [Tasks initial loading](../docs/workbench-design-language.md#tasks-initial-l
 - Loading, timeout and retry use the viewer's existing area; they cannot enlarge
   menus, rows or neighboring containers. File-tree visibility and PDF behavior
   remain owned by the existing panel contract.
-- Evidence: `tests/file-preview-core.test.ts`, `scripts/smoke-office-preview.ts`;
+- Evidence: `tests/file-preview-core.test.ts`, `tests/structured-preview.test.ts`,
+  `scripts/smoke-office-preview.ts`, `scripts/smoke-structured-preview.ts`;
   detailed boundaries and limits: [file previews](../docs/file-preview.md).
 
 

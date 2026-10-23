@@ -1,5 +1,6 @@
 import { FilePreviewService } from "@opencraft/file-preview-web";
 import { OfficePreviewPlugin } from "@opencraft/plugin-office-preview";
+import { StructuredPreviewPlugin } from "@opencraft/plugin-structured-preview";
 import type { Context } from "@deepseek-ai/cordis";
 import { BranchIcon as GitBranch } from "@opencraft/design-system-web/action-icons";
 import type { ReactNode } from "react";
@@ -45,6 +46,7 @@ export const BuiltinWorkbenchPanelPlugin = Object.assign(async function BuiltinW
   await ctx.plugin(FilePreviewService);
   await ctx.inject(["filePreviews", "workbenchPanels", "workbenchPanelRenderers"], async (ctx) => {
     await ctx.plugin(OfficePreviewPlugin);
+    await ctx.plugin(StructuredPreviewPlugin);
     const remove = [
       ctx.workbenchPanels.register({
         kind: "changes",
