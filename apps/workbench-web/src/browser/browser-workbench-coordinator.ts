@@ -28,6 +28,14 @@ interface StoredBrowserTab {
   readonly viewportMode: unknown;
 }
 
+export interface BrowserConversationTab {
+  readonly tabId: BrowserTabId;
+  readonly ownerId: string;
+  readonly title: string;
+  readonly url: string | null;
+}
+const EMPTY_CONVERSATION_TABS: readonly BrowserConversationTab[] = [];
+
 export interface BrowserTabWithPage {
   readonly tab: BrowserTabSnapshot;
   readonly page: BrowserPageSnapshot;
@@ -48,6 +56,9 @@ export class BrowserWorkbenchCoordinator {
   private readonly panelOwners = new Map<BrowserTabId, Set<string>>();
   private readonly scopeByView = new Map<string, ConversationScopeId>();
   private readonly closingTabs = new Set<BrowserTabId>();
+  private readonly resourceListeners = new Map<string, Set<() => void>>();
+  private readonly resourceSnapshots = new Map<string, readonly BrowserConversationTab[]>();
+  private readonly unsubscribeBindings: () => void;
 
   constructor(
     private readonly pages: WebBrowserPageRuntime,
@@ -56,6 +67,12 @@ export class BrowserWorkbenchCoordinator {
     private readonly storage: BrowserMetadataStorage | null = null,
   ) {
     this.restoreTabs();
+    this.unsubscribeBindings = bindings.subscribe(() => {
+      for (const key of this.resourceListeners.keys()) {
+        const [hostId, threadId] = JSON.parse(key);
+        this.publishResources(hostId, threadId);
+      }
+    });
     this.pages.setNewWindowHandler((pageId, url, background) => {
       const source = [...this.tabs.values()].find(tab => tab.pageId === pageId);
       if (!source) return;
@@ -97,6 +114,41 @@ export class BrowserWorkbenchCoordinator {
         const page = this.pages.getSnapshot(tab.pageId);
         return page === null ? [] : [{ tab, page }];
       });
+  }
+
+  /** Metadata only: listing a row must never initialize a browser surface. */
+  getConversationTabs(hostId: string, threadId: string): readonly BrowserConversationTab[] {
+    const key = JSON.stringify([hostId, threadId]);
+    const ownerId = this.bindings.findScope(createConversationKey(hostId, threadId));
+    const next = ownerId === null ? EMPTY_CONVERSATION_TABS : this.listForOwner(ownerId).map(({ tab, page }) => ({
+      tabId: tab.id, ownerId: tab.ownerId, title: page.title, url: page.navigation.currentUrl,
+    }));
+    const previous = this.resourceSnapshots.get(key) ?? EMPTY_CONVERSATION_TABS;
+    if (previous.length === next.length && previous.every((tab, i) => {
+      const other = next[i]!;
+      return tab.tabId === other.tabId && tab.ownerId === other.ownerId && tab.title === other.title && tab.url === other.url;
+    })) return previous;
+    this.resourceSnapshots.set(key, next);
+    return next;
+  }
+
+  subscribeConversationTabs(hostId: string, threadId: string, listener: () => void): () => void {
+    const key = JSON.stringify([hostId, threadId]);
+    this.getConversationTabs(hostId, threadId);
+    const listeners = this.resourceListeners.get(key) ?? new Set<() => void>();
+    listeners.add(listener); this.resourceListeners.set(key, listeners);
+    return () => { listeners.delete(listener); if (!listeners.size) { this.resourceListeners.delete(key); this.resourceSnapshots.delete(key); } };
+  }
+
+  private publishResources(hostId: string, threadId: string): void {
+    const key = JSON.stringify([hostId, threadId]), previous = this.resourceSnapshots.get(key) ?? EMPTY_CONVERSATION_TABS;
+    if (this.getConversationTabs(hostId, threadId) !== previous)
+      for (const listener of this.resourceListeners.get(key) ?? []) listener();
+  }
+
+  private publishOwnerResources(ownerId: string): void {
+    const key = this.bindings.resolve(ownerId as ConversationScopeId)?.conversationKey;
+    if (key) this.publishResources(key.hostId, key.threadId);
   }
 
   bindView(scopeId: ConversationScopeId, viewId: string): void {
@@ -237,6 +289,7 @@ export class BrowserWorkbenchCoordinator {
   }
 
   dispose(): void {
+    this.unsubscribeBindings(); this.resourceListeners.clear(); this.resourceSnapshots.clear();
     this.pages.setNewWindowHandler(null);
     for (const tabId of [...this.tabs.keys()]) this.stopObserving(tabId);
     this.panelOwners.clear();
@@ -256,6 +309,7 @@ export class BrowserWorkbenchCoordinator {
     const synchronize = () => {
       const page = this.pages.getSnapshot(tab.pageId);
       if (page === null) return;
+      this.publishOwnerResources(tab.ownerId);
       for (const panelOwnerId of this.panelOwners.get(tabId) ?? []) {
         for (const region of ["right", "bottom"] as const) {
         this.panels.dispatch(panelOwnerId, {
@@ -287,6 +341,7 @@ export class BrowserWorkbenchCoordinator {
     if (![...this.tabs.values()].some((candidate) => candidate.pageId === tab.pageId))
       this.pages.close(tab.pageId);
     this.persistTabs();
+    this.publishOwnerResources(tab.ownerId);
   }
 
   private presentTab(panelOwnerId: string, tabId: BrowserTabId, activate: boolean) {

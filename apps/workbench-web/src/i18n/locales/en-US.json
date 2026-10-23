@@ -788,5 +788,8 @@
   "chat.question.offline": "Connect to answer",
   "chat.question.failure": "Answer not sent. Your selection is saved; please retry.",
   "chat.question.retry": "Selection saved. Try again.",
-  "panel.sideChat": "New side chat"
+  "panel.sideChat": "New side chat",
+  "sidebar.browser.tabs": "{count, plural, one {# browser tab} other {# browser tabs}}",
+  "sidebar.browser.closeAll": "Close all browser tabs",
+  "sidebar.browser.failed": "Could not update browser tabs. Try again."
 }

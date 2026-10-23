@@ -48,6 +48,7 @@ export function SidebarActivityItem({
   disabled = false,
   twoLine = false,
   badge = null,
+  resources = null,
   badgePlacement = "trailing",
   goalActive = false,
   onInvoke,
@@ -66,6 +67,7 @@ export function SidebarActivityItem({
   readonly disabled?: boolean;
   readonly twoLine?: boolean;
   readonly badge?: ReactNode;
+  readonly resources?: ReactNode;
   readonly badgePlacement?: "trailing" | "metadata" | "title";
   readonly goalActive?: boolean;
   readonly onInvoke: () => void;
@@ -113,6 +115,6 @@ export function SidebarActivityItem({
       <span className="sidebar-activity-item__trailing">
         <ThreadActivity id={activityId} pending={pending} status={status} unread={unread} goalActive={goalActive} />
       </span>
-    </button>{badge ? <div className="sidebar-activity-item__badge-slot" data-placement={badgePlacement}>{badge}{metadataBadge ? stateLabel : null}</div> : null}</div>
+    </button>{resources ? <div className="sidebar-activity-item__resources-slot">{resources}</div> : null}{badge ? <div className="sidebar-activity-item__badge-slot" data-placement={badgePlacement}>{badge}{metadataBadge ? stateLabel : null}</div> : null}</div>
   );
 }

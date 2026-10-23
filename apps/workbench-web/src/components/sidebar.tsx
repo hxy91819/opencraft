@@ -25,6 +25,7 @@ import { sidebarActivityDateHeadings, groupThreadsByTaskFlow, sidebarActivityMet
 import { NavigationIcon as SidebarContributionIcon, type NavigationAction as SidebarActionItem } from "./shell-navigation/navigation-action";
 import { useSidebarEndPull } from "./use-sidebar-end-pull";
 import { useSidebarHeadingOcclusion } from "./use-sidebar-heading-occlusion";
+import { SidebarBrowserResources } from "./sidebar-browser-resources";
 import { SidebarActivityItem } from "./sidebar-activity-item";
 import { SidebarNavigationItem } from "./sidebar-navigation-item";
 import { useShellPresentation, useDismissSidebarAfterSelection } from "./shell-presentation";
@@ -270,7 +271,8 @@ export const Sidebar = memo(function Sidebar(props: SidebarProps) {
         status={thread.status} unread={Boolean(thread.unread) && (threadListGrouping?.isParticipant?.({
           hostId: thread.connectionHostId, threadId: thread.id, updatedAt: thread.updatedAt, pinned: thread.pinned,
         }) ?? true)} goalActive={thread.goalActive}
-        schedule={thread.schedule} twoLine={attention} badge={badge} badgePlacement={threadBadge?.placement}
+        schedule={thread.schedule} twoLine={attention} resources={<SidebarBrowserResources store={menus} hostId={thread.connectionHostId} threadId={thread.id} unavailable={disabled}
+          onOpenConversation={() => { onSelectThread(thread.connectionHostId, thread.id); dismiss?.(); }} />} badge={badge} badgePlacement={threadBadge?.placement}
         onInvoke={() => { menus.close(); onSelectThread(thread.connectionHostId, thread.id); dismiss?.(); }} />
     </SidebarThreadRowMenu>;
   // Parent props invalidate render-time readers even when their function identity
