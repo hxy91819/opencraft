@@ -1,3 +1,4 @@
+import { SERVER_CONNECTIONS_ID, SERVER_SSH_SETTINGS_ID, SERVER_CODEX_ACCOUNTS_SETTINGS_ID } from "./server-connection-identity";
 import { createDeferredView } from "@opencraft/extension-react";
 import type { DuplexTransport } from "@opencraft/appserver-client/transport";
 import type { TrustedExtensionDefinition } from "@opencraft/extension-runtime";
@@ -71,7 +72,7 @@ export function createHeadlessModelServicesExtension(options: {
 export function createHeadlessServerExtension(options: HeadlessServerExtensionOptions): TrustedExtensionDefinition {
   const config = validate({});
   const hostProvider: HostConnectionProvider = Object.freeze({
-    id: "vela.headless-codex",
+    id: SERVER_CONNECTIONS_ID,
     label: "Server",
     targets: ["web"] as const,
     configVersion: 1,
@@ -83,7 +84,7 @@ export function createHeadlessServerExtension(options: HeadlessServerExtensionOp
   return {
     manifest: {
       manifestVersion: 1,
-      id: "vela.headless-codex",
+      id: SERVER_CONNECTIONS_ID,
       name: "Server Connections",
       description: "Connects the browser Workbench to the server-owned AppHost.",
       version: "0.1.0",
@@ -96,13 +97,13 @@ export function createHeadlessServerExtension(options: HeadlessServerExtensionOp
       const accounts = new CodexAccountsService(options.requestHost, "local-codex");
       const sshManagement = options.sshManagement;
       if (sshManagement && sshManagement.getSnapshot().available !== false) {
-        api.views.register({ id: "vela.headless-codex.ssh-view", title: "远程连接", viewType: "vela.headless-codex.ssh", platforms: ["web"] });
-        api.settings.registerPage({ id: "vela.headless-codex.ssh", title: "Remote connections", titleMessage: { id: "settings.contributions.remoteConnections", defaultMessage: "Remote connections" }, viewId: "vela.headless-codex.ssh-view", group: "Server", groupMessage: { id: "settings.groups.server", defaultMessage: "Server" }, icon: "server", platforms: ["web"] });
-        api.internal.register("platformViewRenderer", { viewType: "vela.headless-codex.ssh", Component: createDeferredView(async () => (await import("./ssh-connections/view")).createSshConnectionsView(sshManagement)) });
+        api.views.register({ id: `${SERVER_SSH_SETTINGS_ID}-view`, title: "远程连接", viewType: SERVER_SSH_SETTINGS_ID, platforms: ["web"] });
+        api.settings.registerPage({ id: SERVER_SSH_SETTINGS_ID, title: "Remote connections", titleMessage: { id: "settings.contributions.remoteConnections", defaultMessage: "Remote connections" }, viewId: `${SERVER_SSH_SETTINGS_ID}-view`, group: "Server", groupMessage: { id: "settings.groups.server", defaultMessage: "Server" }, icon: "server", platforms: ["web"] });
+        api.internal.register("platformViewRenderer", { viewType: SERVER_SSH_SETTINGS_ID, Component: createDeferredView(async () => (await import("./ssh-connections/view")).createSshConnectionsView(sshManagement)) });
       }
-      api.views.register({ id: "vela.headless-codex.accounts-view", title: "Codex 账户", viewType: "vela.headless-codex.accounts", platforms: ["web"] });
-      api.settings.registerPage({ id: "vela.headless-codex.accounts", title: "Codex accounts", titleMessage: { id: "settings.contributions.codexAccounts", defaultMessage: "Codex accounts" }, viewId: "vela.headless-codex.accounts-view", group: "Server", groupMessage: { id: "settings.groups.server", defaultMessage: "Server" }, icon: "user-round-cog", platforms: ["web"] });
-      api.internal.register("platformViewRenderer", { viewType: "vela.headless-codex.accounts", Component: createDeferredView(async () => (await import("./codex-accounts/view")).createCodexAccountsView(accounts, { allowImport: false, credentialLocation: "服务器" })) });
+      api.views.register({ id: `${SERVER_CODEX_ACCOUNTS_SETTINGS_ID}-view`, title: "Codex 账户", viewType: SERVER_CODEX_ACCOUNTS_SETTINGS_ID, platforms: ["web"] });
+      api.settings.registerPage({ id: SERVER_CODEX_ACCOUNTS_SETTINGS_ID, title: "Codex accounts", titleMessage: { id: "settings.contributions.codexAccounts", defaultMessage: "Codex accounts" }, viewId: `${SERVER_CODEX_ACCOUNTS_SETTINGS_ID}-view`, group: "Server", groupMessage: { id: "settings.groups.server", defaultMessage: "Server" }, icon: "user-round-cog", platforms: ["web"] });
+      api.internal.register("platformViewRenderer", { viewType: SERVER_CODEX_ACCOUNTS_SETTINGS_ID, Component: createDeferredView(async () => (await import("./codex-accounts/view")).createCodexAccountsView(accounts, { allowImport: false, credentialLocation: "服务器" })) });
       api.subscriptions.add(() => accounts.dispose());
       api.internal.register("hostConnectionProvider", hostProvider);
       api.internal.register(HOST_PROFILE_CONTRIBUTION_CHANNEL, {
