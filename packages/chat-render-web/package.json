@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./clipboard": "./src/clipboard.ts",
-    "./mermaid": "./src/extensions/mermaid/mermaid-svg.ts"
+    "./mermaid": "./src/extensions/mermaid/mermaid-svg.ts",
+    "./zoomable-image": "./src/zoomable-image.tsx"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

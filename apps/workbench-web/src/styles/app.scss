@@ -4774,7 +4774,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
   }
 }
 
-.modal-surface:is(.thread-user-image-lightbox, .thread-generated-image-lightbox__dialog) {
+.modal-surface:is(.thread-user-image-lightbox, .thread-generated-image-lightbox__dialog, .opencraft-composer-image-preview) {
   display: grid;
   width: 100vw;
   height: 100dvh;
@@ -10302,7 +10302,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
     width: 260px;
     grid-template-columns: 80px minmax(0, 1fr);
 
-    > img {
+    > .opencraft-composer-image-attachment__preview {
       grid-column: 1;
       grid-row: 1;
       width: 80px;
@@ -10325,13 +10325,22 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
     }
   }
 
-  > img {
+  &__preview {
+    display: grid;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    padding: 0;
+    border: 0;
+    place-items: center;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    &:disabled { cursor: default; }
+    > img { width: 100%; height: 100%; object-fit: cover; }
   }
 
   &__status {
+    pointer-events: none;
     position: absolute;
     inset: 0;
     display: grid;
@@ -10344,6 +10353,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
     &.is-failed { background: rgb(0 0 0 / 55%); }
 
     button {
+      pointer-events: auto;
       display: grid;
       width: 40px;
       height: 40px;

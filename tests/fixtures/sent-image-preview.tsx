@@ -1,4 +1,8 @@
 import React from "react";
+import { createComposerController } from "@opencraft/composer-core";
+import { createConversationKey } from "@opencraft/chat-core";
+import { OpenCraftComposer } from "@opencraft/composer-editor";
+import * as themes from "@opencraft/design-system/theme-engine";
 import type { UserMessageTimelineBlock } from "@opencraft/chat-core";
 import { createIntlTestRoot } from "./intl-root";
 import { UserMessageBlock } from "../../apps/workbench-web/src/components/conversation/user-message";
@@ -38,8 +42,22 @@ const block: UserMessageTimelineBlock = {
   hasExternalAttachments: false,
 };
 
+const mode = new URLSearchParams(location.search).get("mode") === "dark" ? "dark" : "light";
+for (const [key, value] of Object.entries(themes.buildOpenCraftThemeCssProperties(mode, themes.opencraftNeutralThemePalette[mode]))) presentationRoot.style.setProperty(key, value);
+presentationRoot.dataset.theme = mode;
+presentationRoot.dataset.uiDensity = new URLSearchParams(location.search).has("touch") ? "touch" : "compact";
+presentationRoot.style.minHeight = "100dvh";
+presentationRoot.style.background = "var(--color-background-primary)";
+const controller = createComposerController({ type: "existing-thread", key: createConversationKey("local", "images") }, { now: () => Date.now(), createId: () => crypto.randomUUID() });
+const completions: (() => void)[] = [];
+Object.assign(window, { imagePreviewFixture: { controller, complete: () => completions.splice(0).forEach(complete => complete()), submissions: 0 } });
 createIntlTestRoot(presentationRoot).render(
   <WorkbenchPresentationRootProvider target={presentationRoot}>
     <UserMessageBlock block={block} />
+    <div style={{ position: "relative", maxWidth: 760, margin: "24px auto", padding: 12 }}>
+      <OpenCraftComposer controller={controller} portalContainer={presentationRoot} mentionSuggestionsEnabled={false} onCancel={() => {}}
+        onSubmit={() => { (window as any).imagePreviewFixture.submissions++; return false; }}
+        onResolveAttachment={(_file, pending) => new Promise(resolve => completions.push(() => resolve({ ...pending, lifecycle: "ready", uri: "file:///synthetic/" + pending.name, error: null })))} />
+    </div>
   </WorkbenchPresentationRootProvider>,
 );

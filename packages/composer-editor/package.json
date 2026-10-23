@@ -32,6 +32,7 @@
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "@radix-ui/react-dialog": "1.1.23",
-    "@opencraft/appserver-protocol": "0.1.0"
+    "@opencraft/appserver-protocol": "0.1.0",
+    "@opencraft/chat-render-web": "0.1.0"
   }
 }
