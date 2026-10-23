@@ -88,6 +88,10 @@ packaged WASM. XLSX sheet navigation remains available when the default toolbar
 is hidden. No global cross-origin-isolation header is required by these adapters.
 
 Engine code is dynamically imported only after its preview is requested.
+The startup React chunk excludes server rendering helpers used by optional
+document engines. Those helpers remain in their lazy import graph, so adding a
+viewer does not load its server renderer when opening the workspace.
+
 The build's optional-resource manifest follows emitted chunk ownership; shared
 static dependencies remain available to existing consumers. The existing
 versioned resource preparation endpoint installs optional assets before import.
