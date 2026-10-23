@@ -35,7 +35,7 @@ import {initializeAppearanceTheme} from '/apps/workbench-web/src/appearance-them
 import {AsyncNoticesProvider,useAsyncNotices} from '/apps/workbench-web/src/components/async-notices.tsx';
 import '/apps/workbench-web/src/styles/app.scss';initializeAppearanceTheme();
 const request=async(_,method,params)=>{const res=await fetch('/rpc',{method:'POST',body:JSON.stringify({method,params})});const result=await res.json();if(result.error)throw Object.assign(new Error(result.error.message),result.error);return result.value};
-const ports={storageHostId:'local',request,listThreads:async()=>[],listProjects:async()=>[],readConversation:async()=>({title:'Linked conversation',state:'idle'}),subscribe:()=>()=>{}};
+const ports={followUpDwellSince:${now}-2*3600000,storageHostId:'local',request,listThreads:async()=>[],listProjects:async()=>[],readConversation:async()=>({title:'Linked conversation',state:'idle'}),subscribe:()=>()=>{}};
 const View=createTasksView(ports,new AbortController().signal);
 const host={platform:'web',activeHostId:'local',profiles:[{hostId:'local',hostKind:'local',displayName:'Local',enabled:true}],openView(){},pushViewResource(){},replaceViewResource(){},openConversation(serverId,threadId){window.openedConversations??=[];window.openedConversations.push({serverId,threadId});if(window.failNavigation)throw new Error("Simulated navigation failure")},provisionHost:async()=>{},removeHost:async()=>false};
 function App(){const notices=useAsyncNotices();return <View host={host} contribution={{id:'tasks'}} activation={{viewId:'tasks',resourceUri:null}} reportError={notices.error}/>}
@@ -56,7 +56,7 @@ for(const width of [1440,390,320])for(const theme of ['light','dark']){
  await page.getByRole('radio',{name:'AI 跟进',exact:true}).click();
  assert.equal(await page.getByRole('radio',{name:'AI 跟进',exact:true}).getAttribute('aria-checked'),'true');
  assert.equal(await page.locator('.tasks-morning__metrics').count(),0,'Business metrics do not belong to AI follow-up');
- await page.getByText('等待 3 天 8 小时',{exact:true}).waitFor();assert.equal(await page.locator('[data-ai-follow-up-task-id]').count(),12);
+ await page.getByText('停留 2 小时',{exact:true}).first().waitFor();assert.equal(await page.locator('[data-ai-follow-up-task-id]').count(),12);
  assert.deepEqual(await page.locator('.tasks-ai-follow-up__column h3').allTextContents(),['Todo','Working','Needs you','In review','Ready to merge']);
  assert.deepEqual(await page.locator('.tasks-ai-follow-up__count').allTextContents(),['3','1','4','3','1']);
  assert.equal(await page.locator('.tasks-ai-follow-up__column--needs [data-ai-follow-up-task-id="Oldest handoff"]').count(),1);
@@ -99,7 +99,7 @@ for(const width of [1440,390,320])for(const theme of ['light','dark']){
  assert.equal(await page.locator('[data-ai-follow-up-task-id="Overdue handoff"]').count(),0);
  await page.getByRole('radio',{name:'看板',exact:true}).click();await page.getByRole('radio',{name:'AI 跟进',exact:true}).click();
  assert.equal(await filter.inputValue(),'member:owner-a','Owner selection survives leaving the follow-up view');
- await page.getByText('等待 3 天 8 小时',{exact:true}).waitFor();assert.equal(await page.locator('[data-ai-follow-up-task-id]').count(),2);
+ await page.getByText('停留 2 小时',{exact:true}).first().waitFor();assert.equal(await page.locator('[data-ai-follow-up-task-id]').count(),2);
  const cta=card.getByRole('button',{name:'进入会话：Oldest handoff',exact:true});
  if(width<600)await cta.tap();else {await cta.focus();await page.keyboard.press('Enter');}
  assert.deepEqual(await page.evaluate(()=>window.openedConversations),[{serverId:'server-test',threadId:'thread-Oldest handoff'}]);
@@ -109,6 +109,8 @@ for(const width of [1440,390,320])for(const theme of ['light','dark']){
  assert.equal(await page.getByText('未关联会话',{exact:true}).count(),0);
  const unlinked=page.locator('[data-ai-follow-up-task-id="Queued research"]');assert.equal(await unlinked.locator('button,a,[role="button"]').count(),0,'Unlinked cards have no action');
  await filter.selectOption('');
+ assert.equal(await page.locator('[data-ai-follow-up-task-id="Running research"] .tasks-ai-follow-up__wait').count(),0);
+ assert.equal(await page.locator('[data-ai-follow-up-task-id="Ready delivery"] .tasks-ai-follow-up__wait').count(),0,'Unassigned Ready has no clock');
  const multi=page.getByRole('button',{name:'选择关联会话：Overdue handoff',exact:true});
  if(width<600)await multi.tap();else await multi.click();
  await page.getByRole('menuitem',{name:'关联会话 1',exact:true}).click();
@@ -123,7 +125,7 @@ for(const width of [1440,390,320])for(const theme of ['light','dark']){
  await page.locator('.tasks-ai-follow-up').evaluate(el=>{(document.activeElement as HTMLElement)?.blur();el.scrollTop=0;el.querySelector('.tasks-ai-follow-up__board-scroll').scrollLeft=0;});
  await page.screenshot({path:join(output,`${width}-${theme}.png`)});
  await page.getByRole('radio',{name:'看板',exact:true}).click();assert.equal(await page.getByRole('searchbox',{name:'搜索任务…',exact:true}).inputValue(),'Queued');
- if(width===1440&&theme==='light'){failReads=true;await page.getByRole('radio',{name:'AI 跟进',exact:true}).click();await page.getByText('部分协作记录暂不可用；未推断执行或等待时间。',{exact:false}).waitFor();assert.equal(await page.locator('.tasks-ai-follow-up__wait').count(),0);failReads=false;await page.getByRole('button',{name:'重新核实',exact:true}).click();await page.getByText('等待 3 天 8 小时',{exact:true}).waitFor();}
+ if(width===1440&&theme==='light'){failReads=true;await page.getByRole('radio',{name:'AI 跟进',exact:true}).click();await page.getByText('部分协作记录暂不可用；未推断执行或停留时间。',{exact:false}).waitFor();assert.equal(await page.locator('.tasks-ai-follow-up__wait').count(),0);failReads=false;await page.getByRole('button',{name:'重新核实',exact:true}).click();await page.getByText('停留 2 小时',{exact:true}).first().waitFor();}
  assert.deepEqual(errors,[]);checks.push({width,theme,passed:true});await page.close();
 }
 assert.equal(mutations,0);await writeFile(join(output,'result.json'),JSON.stringify({passed:true,checks,realReactAndSqlite:true,fixtureOnly:true,mutationsDuringBrowsing:mutations,paidInference:false},null,2));console.log(JSON.stringify({passed:true,checks}));

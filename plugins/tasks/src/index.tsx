@@ -13,6 +13,8 @@ export interface TaskConversationActivity {
 /** The application owns transports, identities and native conversation activity. */
 export interface TasksExtensionPorts {
   readonly storageHostId: string | null;
+  /** Earliest lane-dwell origin, supplied by product assembly as Unix milliseconds. */
+  readonly followUpDwellSince?: number;
   readonly conversationOverview?: import("./conversation-overview-model").ConversationOverviewPort;
   request<M extends TasksMethod>(
     hostId: string,

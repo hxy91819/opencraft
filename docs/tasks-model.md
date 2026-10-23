@@ -445,7 +445,7 @@ in_progress for working, in_review for needs/review/ready), then append a fact
 using a stable event ID. A workflow status change closes the structured cycle.
 Only compatible facts determine a lane. Repeating a needs report for the same
 roundId or changing its judge preserves the first server timestamp; entering a
-new round uses a new roundId and starts a new clock. Ordinary progress is ignored
+new round uses a new roundId and starts a new decision-round clock (not lane dwell). Ordinary progress is ignored
 by the projection. To end a wait, record the valid response and move to todo for
 work not yet started; publish working only after actual execution starts. Review
 and ready must describe observed checks/readiness, never an inferred result.
@@ -454,12 +454,26 @@ API. Ready does not imply merged, deployed or completed. Non-code tasks need no
 invented PR. Existing progress text, CAS mutations and backend actor provenance
 remain authoritative; the view does not create another writable state store.
 
-The board reads bounded current-cycle history, reuses unchanged rows, limits
-concurrent reads to four and fences stale results. Failed or incomplete history
-has no inferred human clock, with a scoped retry. There is no new storage,
-migration, scheduling or write from browsing. The board does not introduce a
-formal overdue cutoff: orange identifies human waiting. The old strict 72-hour
-helper remains for legacy consumers, but no overdue group survives this layout.
+The board reads bounded lifecycle history (up to 50 pages of 100 events), reuses
+unchanged rows, limits concurrent reads to four and fences stale results. Failed,
+stale or incomplete history has no inferred clock, with a scoped retry. Browsing
+adds no storage, migration, scheduling or write.
+
+AI follow-up cards show **time in the current visible lane**, not time since the
+last update or the original research decision round. Only active tasks with an
+assigned Owner in Todo, Needs you and Ready to merge have this clock. Working
+and In review, and unassigned tasks, have no clock. Owner is not the judge.
+Entry comes from existing server activity; state changes/re-entry restart it,
+while ordinary comments, edits, reassignment and repeated facts in the same lane
+(including a new Needs round) do not. Backlog/todo share one visible Todo lane.
+Deleted/restored lifecycle boundaries restart the interval. The start is the
+later of verified lane entry and the product-supplied fixed rollout floor
+`TasksExtensionPorts.followUpDwellSince` (Unix ms; optional, default 0).
+Web assembly exposes `VITE_TASKS_DWELL_SINCE`; no date/tenant is hardcoded in the
+plugin. Refreshing, navigation or rebuild never changes that origin. Needs is
+sorted by the displayed dwell origin, with unknown/unassigned clocks last.
+The original research handoff/round timestamps and 72-hour helper remain intact
+for other consumers; this clock does not label a person overdue or claim AI execution.
 
 Cards show the shared task-kind badge, title, a bounded decision when applicable,
 current state/time and Owner. Full report and material contents stay in original

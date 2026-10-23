@@ -4,7 +4,7 @@ import { ArrowRight, Clock } from "lucide-react";
 import { SegmentedControl, SettingsButton, SettingsSelect, SettingsTextInput } from "@opencraft/extension-react";
 import { useIntl } from "@opencraft/i18n/react";
 import type { TaskConversation, TaskDetail, TaskMember, TasksRequestPort } from "@opencraft/appserver-protocol";
-import { activeFollowUpTask, FOLLOW_UP_LANES, followUpProjection, followUpTaskKey, readFollowUpEvents, type FollowUpProjection } from "./ai-follow-up-model";
+import { activeFollowUpTask, FOLLOW_UP_LANES, followUpProjection, followUpDwellStart, followUpTaskKey, readFollowUpEvents, type FollowUpProjection } from "./ai-follow-up-model";
 import { KindBadge } from "./task-kind";
 import { MemberAvatar } from "./member-avatar";
 import "./ai-follow-up.scss";
@@ -13,7 +13,8 @@ export interface FollowUpSelection { readonly scope: string; readonly search: st
 type CachedProjection = { key: string; status: string; value: FollowUpProjection; failed: boolean };
 
 /** A read-only projection; task status, activity and navigation retain their existing owners. */
-export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwnerFilterChange, selection, onSelectionChange, myMemberId, onOpenConversation }: {
+export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwnerFilterChange, selection, onSelectionChange, myMemberId, onOpenConversation, dwellSince = 0 }: {
+  dwellSince?: number;
   tasks: readonly TaskDetail[];
   members: readonly TaskMember[];
   activity: boolean;
@@ -69,10 +70,11 @@ export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwne
     const cached = activity ? reports.get(task.id) : undefined;
     if (cached?.key === followUpTaskKey(task)) return cached.value;
     // Retain the last-known lane during a same-status refresh, but never show its old clock as current.
-    if (cached && !cached.failed && cached.status === task.status) return { ...cached.value, readyAt: null };
+    if (cached && !cached.failed && cached.status === task.status) return { ...cached.value, readyAt: null, enteredAt: null };
     return followUpProjection(task);
   };
   const unverified = (task: TaskDetail) => !activity || reports.get(task.id)?.key !== followUpTaskKey(task) || reports.get(task.id)?.failed;
+  const dwellStart = (task: TaskDetail) => unverified(task) ? null : followUpDwellStart(task, projection(task), dwellSince);
   const unavailable = candidates.some(task => reports.get(task.id)?.failed && reports.get(task.id)?.key === followUpTaskKey(task)) || !activity;
   const query = selection.search.trim().toLocaleLowerCase();
   const active = candidates.filter(task => {
@@ -113,30 +115,32 @@ export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwne
     </div>
     <div className="tasks-ai-follow-up__summary">
       <span>{text(`当前 ${active.length} 项`, `${active.length} tasks`)}{selection.scope !== "all" && !myMemberId ? text(" · 请先在任务筛选中关联我的成员身份", " · Link your member identity in task filters first") : ""}</span>
-      <span>{text("Needs you 按本轮等待排序", "Needs you · longest wait first")}</span>
+      <span>{text("Needs you 按状态停留排序", "Needs you · longest dwell first")}</span>
     </div>
     <div className="tasks-ai-follow-up__feedback" role="status" aria-live="polite">
-      {checking ? text("正在核实协作记录…", "Checking collaboration records…") : unavailable ? <>{text("部分协作记录暂不可用；未推断执行或等待时间。", "Some records are unavailable; execution and waiting are not inferred.")} {activity ? <SettingsButton variant="quiet" onClick={retry}>{text("重新核实", "Retry")}</SettingsButton> : null}</> : null}
+      {checking ? text("正在核实协作记录…", "Checking collaboration records…") : unavailable ? <>{text("部分协作记录暂不可用；未推断执行或停留时间。", "Some records are unavailable; execution and dwell are not inferred.")} {activity ? <SettingsButton variant="quiet" onClick={retry}>{text("重新核实", "Retry")}</SettingsButton> : null}</> : null}
     </div>
     <div className="tasks-ai-follow-up__board-scroll" role="region" aria-label={text("任务分组，可横向滚动", "Task lanes, scroll horizontally")} tabIndex={0}>
     <div className="tasks-ai-follow-up__board" aria-busy={checking}>
       {FOLLOW_UP_LANES.map(lane => {
         const items = active.filter(task => projection(task).lane === lane).sort((a, b) => lane === "needs"
-          ? (projection(a).readyAt ?? Infinity) - (projection(b).readyAt ?? Infinity) || a.id.localeCompare(b.id)
+          ? (dwellStart(a) ?? Infinity) - (dwellStart(b) ?? Infinity) || a.id.localeCompare(b.id)
           : a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
         return <section key={lane} className={`tasks-ai-follow-up__column tasks-ai-follow-up__column--${lane}`} aria-label={titles[lane]}>
           <header><div><span className="tasks-ai-follow-up__dot" aria-hidden="true" /><h3>{titles[lane]}</h3><span className="tasks-ai-follow-up__count">{items.length}</span></div><p>{descriptions[lane]}</p></header>
           {!items.length ? <p className="tasks-ai-follow-up__empty">{text("暂无事项", "No tasks")}</p> : <ul>{items.map(task => {
             const p = projection(task), owner = ownerName(task.assigneeId);
             const status = p.report ? p.report.summary : p.lane === "todo" ? text("尚未开始", "Not started") : p.lane === "working" ? text("任务进行中 · 执行方式未核实", "In progress · execution unverified") : p.lane === "needs" ? text("等待人判断", "Awaiting judgment") : text("待审阅 · 方式未核实", "Review · method unverified");
-            const wait = p.lane === "needs" && unverified(task) ? text("正在核实本轮等待…", "Checking current wait…") : p.readyAt !== null ? text(`等待 ${duration(p.readyAt)}`, `Waiting ${duration(p.readyAt)}`)
-              : text(`${duration(p.updatedAt)}前更新`, `Updated ${duration(p.updatedAt)} ago`);
+            const timed = !!task.assigneeId && ["todo", "needs", "ready"].includes(p.lane);
+            const dwellAt = dwellStart(task);
+            const dwell = !timed ? null : dwellAt === null ? text("正在核实停留时间…", "Checking state duration…")
+              : text(`停留 ${duration(dwellAt)}`, `In state ${duration(dwellAt)}`);
             return <li className="tasks-ai-follow-up__item" key={task.id} data-ai-follow-up-task-id={task.id}>
               <div className="tasks-ai-follow-up__content">
                 <KindBadge kind={task.kind} />
                 <h4>{task.title}</h4>
                 {p.lane === "needs" ? <div className="tasks-ai-follow-up__decision"><span>{text("待判断", "Decision needed")}</span><p>{p.decision}</p></div> : null}
-                <div className="tasks-ai-follow-up__state"><span title={status}>{status}</span><span className={p.readyAt !== null ? "tasks-ai-follow-up__wait" : undefined}><Clock size={12} aria-hidden="true" />{wait}</span></div>
+                <div className="tasks-ai-follow-up__state"><span title={status}>{status}</span>{dwell ? <span className={dwellAt !== null ? "tasks-ai-follow-up__wait" : undefined} title={dwellAt !== null ? text(`本状态计时起点：${new Date(dwellAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}（北京时间）`, `State timer starts: ${new Date(dwellAt).toISOString()}`) : undefined}><Clock size={12} aria-hidden="true" />{dwell}</span> : null}</div>
                 {p.lane === "review" && unverified(task) ? <span className="tasks-ai-follow-up__unknown">{text("交接尚未核实 · 不计人工等待", "Handoff unverified · no human wait clock")}</span> : null}
                 {p.lane === "needs" ? <span className="tasks-ai-follow-up__judge">{text("本轮判断人：", "Current judge: ")}{p.report ? p.report.judgeId ? ownerName(p.report.judgeId) : text("待认领", "Unclaimed") : text("未单独记录", "Not recorded separately")}</span> : null}
               </div>
@@ -150,6 +154,6 @@ export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwne
       })}
     </div>
     </div>
-    <p className="tasks-ai-follow-up__footnote">{text("人工等待从本轮材料就绪开始，评论与改派不重置。可合入不代表已合并或已发布。", "Human waiting starts when this round is ready; comments and reassignment do not reset it. Ready to merge does not mean merged or deployed.")}</p>
+    <p className="tasks-ai-follow-up__footnote">{text("已分配 Owner 的 Todo、Needs you、Ready to merge 按当前状态计时；评论与改派不重置，切换状态重新计时。可合入不代表已合并或已发布。", "Assigned Todo, Needs you and Ready to merge tasks show time in their current state. Comments and reassignment do not reset it; state changes do. Ready does not mean merged or deployed.")}</p>
   </section>;
 }
