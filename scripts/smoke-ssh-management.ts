@@ -66,7 +66,7 @@ try {
     };
     page.on("pageerror", (error: Error) => errors.push(error.message));
     // An existing bookmark is canonicalized by the actual Shell/Router.
-    await page.goto(`${origin}/settings/vela.headless-codex.ssh`);
+    await page.goto(`${origin}/settings/opencraft.server-connections.ssh`);
     if (!sharedAccess) {
       await page.getByLabel("访问密钥", { exact: true }).waitFor({ timeout: 30000 });
       await page.getByLabel("访问密钥", { exact: true }).fill(access!);

@@ -120,7 +120,8 @@ if (process.argv[2] === 'core') {
       if (reply.error) throw new Error(JSON.stringify(reply.error)); return reply.result;
     };
     const initialized = await rpc('initialize', { clientInfo: { name: 'headless-update-smoke', version: '1' }, capabilities: { experimentalApi: true } });
-    assert.ok(initialized.capabilities.extensions['vela/bot-conversations']);
+    assert.equal(initialized.capabilities.extensions['opencraft/bot-conversations'], undefined);
+    assert.equal(initialized.capabilities.extensions['vela/bot-conversations'], undefined);
     const respond = (id: string | number, result: unknown) => socket.send(JSON.stringify({ type: 'host/send', requestId: 'reply-' + (++sequence), hostId: 'local-codex', leaseId, generation, frame: JSON.stringify({ id, result }) }));
     return { socket, rpc, frames, respond };
   }

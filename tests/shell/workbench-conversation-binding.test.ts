@@ -148,7 +148,7 @@ test("embedded Conversation bindings stay in memory and never enter durable alia
   const durableScope = asConversationScopeId("scope-durable");
   const embeddedScope = asConversationScopeId("scope-embedded");
   const durableKey = createConversationKey("local", "thread-durable");
-  const embeddedKey = createConversationKey("lightvela", "thread-embedded");
+  const embeddedKey = createConversationKey("embedded-host", "thread-embedded");
 
   store.register(durableScope, durableKey.hostId);
   store.bind(durableScope, durableKey);

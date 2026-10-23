@@ -10,7 +10,7 @@ test("Bot model editor stays writable while the model catalog is loading", () =>
   assert.deepEqual(botConfigurationControlState({
     optionsLoading: true,
     busy: false,
-    provider: "lightvela-custom-111-1yq8src",
+    provider: "example-custom-provider",
     model: "deepseek-v4-flash-0731",
     hasProviderCatalog: false,
     hasModelCatalog: false,
