@@ -1,11 +1,13 @@
 import { createRoot } from "react-dom/client";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { IntlRuntimeProvider, useIntl } from "@opencraft/i18n/react";
 import type { WebPreviewDocument } from "@opencraft/file-preview-web";
 import { columnLabel, decodeDelimitedBytes, parseDelimited } from "./delimited-model";
 import "./preview.web.scss";
 
 function DelimitedTable({ rows, source, name }: { rows: string[][]; source: string; name: string }) {
+  const intl = useIntl();
   const scroll = useRef<HTMLDivElement>(null);
   const [showSource, setShowSource] = useState(false);
   const columns = rows.reduce((max, row) => Math.max(max, row.length), 0);
@@ -15,9 +17,9 @@ function DelimitedTable({ rows, source, name }: { rows: string[][]; source: stri
   const visibleColumns = horizontal.getVirtualItems();
   return <div className="structured-preview structured-preview--table">
     <div className="structured-preview__toolbar">
-      <button type="button" aria-pressed={!showSource} onClick={() => setShowSource(false)}>Table</button>
-      <button type="button" aria-pressed={showSource} onClick={() => setShowSource(true)}>Source</button>
-      <span>{rows.length.toLocaleString()} × {columns.toLocaleString()}</span>
+      <button type="button" aria-pressed={!showSource} onClick={() => setShowSource(false)}>{intl.formatMessage({ id: "filePreview.table", defaultMessage: "Table" })}</button>
+      <button type="button" aria-pressed={showSource} onClick={() => setShowSource(true)}>{intl.formatMessage({ id: "filePreview.source", defaultMessage: "Source" })}</button>
+      <span>{intl.formatNumber(rows.length)} × {intl.formatNumber(columns)}</span>
     </div>
     <pre className="structured-preview__source" hidden={!showSource}>{source}</pre>
     <div ref={scroll} className="structured-preview__table-scroll" hidden={showSource} tabIndex={0} role="region" aria-label={name}>
@@ -46,9 +48,12 @@ export async function openDelimited(input: { blob: Blob; name: string; signal: A
   const element = document.createElement("div");
   element.className = "structured-preview-host";
   const root = createRoot(element);
-  root.render(<DelimitedTable rows={rows} source={source} name={input.name} />);
   let disposed = false;
   const dispose = () => { if (!disposed) { disposed = true; input.signal.removeEventListener("abort", dispose); root.unmount(); element.remove(); } };
   input.signal.addEventListener("abort", dispose, { once: true });
-  return { element, dispose, setActive: active => { element.inert = !active; } };
+  return { element, dispose, setActive: active => { element.inert = !active; },
+    setIntl(runtime) {
+      if (!disposed) root.render(<IntlRuntimeProvider runtime={runtime}><DelimitedTable rows={rows} source={source} name={input.name} /></IntlRuntimeProvider>);
+    },
+  };
 }

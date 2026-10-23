@@ -833,5 +833,7 @@
   "chat.image.close": "Close image preview",
   "chat.link.openInBrowser": "Open in browser",
   "chat.link.openExternal": "Open in external browser",
-  "chat.link.copy": "Copy link"
+  "chat.link.copy": "Copy link",
+  "filePreview.table": "Table",
+  "filePreview.source": "Source"
 }

@@ -835,5 +835,7 @@
   "chat.image.close": "Tutup pratonton imej",
   "chat.link.openInBrowser": "Buka dalam pelayar",
   "chat.link.openExternal": "Buka dalam pelayar luaran",
-  "chat.link.copy": "Salin pautan"
+  "chat.link.copy": "Salin pautan",
+  "filePreview.table": "Jadual",
+  "filePreview.source": "Sumber"
 }

@@ -857,5 +857,7 @@
   "chat.image.close": "关闭图片预览",
   "chat.link.openInBrowser": "在浏览器中打开",
   "chat.link.openExternal": "在外部浏览器中打开",
-  "chat.link.copy": "复制链接"
+  "chat.link.copy": "复制链接",
+  "filePreview.table": "表格",
+  "filePreview.source": "源文本"
 }

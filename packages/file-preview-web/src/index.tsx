@@ -2,12 +2,14 @@ import "./preview.web.scss";
 import { Service, type Context } from "@deepseek-ai/cordis";
 import { PreviewSessionPool, type PreviewLease } from "@opencraft/file-preview-core";
 import { createContext, useContext, useEffect, useState, useRef, useSyncExternalStore, useCallback, useMemo, type ReactNode } from "react";
-import { useIntl } from "@opencraft/i18n/react";
+import { useIntl, useIntlRuntime } from "@opencraft/i18n/react";
+import type { IntlPort } from "@opencraft/i18n";
 
 export interface WebPreviewDocument {
   readonly element: HTMLElement;
   setActive?(active: boolean): void;
   setTheme?(dark: boolean): void;
+  setIntl?(runtime: IntlPort): void;
   subscribeFailure?(listener: (error: unknown) => void): () => void;
   dispose(): void;
 }
@@ -99,6 +101,7 @@ export function FilePreviewProvider({ service, children }: { service: FilePrevie
 export function FilePreviewView(props: FilePreviewInput & { active?: boolean; dark: boolean; prepare(signal?: AbortSignal): Promise<void> }) {
   const service = useContext(PreviewContext);
   const intl = useIntl();
+  const intlRuntime = useIntlRuntime();
   const [attempt, setAttempt] = useState(0);
   const [result, setResult] = useState<{ request: object; lease?: PreviewLease<WebPreviewDocument>; failed?: boolean } | null>(null);
   const root = useRef<HTMLDivElement>(null);
@@ -131,6 +134,7 @@ export function FilePreviewView(props: FilePreviewInput & { active?: boolean; da
   }, [document]);
   useEffect(() => { document?.setActive?.(props.active !== false); }, [document, props.active]);
   useEffect(() => { document?.setTheme?.(props.dark); }, [document, props.dark]);
+  useEffect(() => { document?.setIntl?.(intlRuntime); }, [document, intlRuntime]);
   const error = failed || snapshot?.phase === "failed" || snapshot?.phase === "released";
   return <div className="file-preview" data-file-preview-phase={document ? "ready" : error ? "failed" : "opening"}>
     <div ref={root} className="file-preview__document" hidden={!document} />

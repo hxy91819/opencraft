@@ -25,6 +25,7 @@ import {FilePreviewProvider} from '@opencraft/file-preview-web';
 import React,{useSyncExternalStore,useState} from 'react';import {Context} from '@deepseek-ai/cordis';import {BlobResourceService} from '@opencraft/blob-resources';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {createIntlTestRoot} from '/tests/fixtures/intl-root.tsx';
+import {useUiPreferencesRuntime} from '/apps/workbench-web/src/runtime/ui-preferences-runtime.tsx';
 import {createWorkbenchPanelReactRuntime} from '@opencraft/workbench-panels-react';
 import {BuiltinWorkbenchPanelPlugin} from '/apps/workbench-web/src/panels/builtin-panel-plugin.tsx';
 import {AppShell} from '/apps/workbench-web/src/components/app-shell.tsx';
@@ -35,8 +36,8 @@ initializeAppearanceTheme();
 const context=new Context();await context.plugin(BlobResourceService);window.fixtureBlobs=context.blobResources;
 const runtime=await createWorkbenchPanelReactRuntime({defaultRightPanelOpen:true});await runtime.install(BuiltinWorkbenchPanelPlugin);
 const panels=runtime.panels;panels.ensureOwner('scope');panels.dispatch('scope',{type:'set-region-open',region:'right',open:true,allowEmpty:true});if(innerWidth<700)panels.dispatch('scope',{type:'toggle-right-full-width'});const get=()=>panels.getOwnerSnapshot('scope'),subscribe=f=>panels.subscribeOwner('scope',f);
-function App(){const state=useSyncExternalStore(subscribe,get);const[cwd,setCwd]=useState('/fixture');
-window.fixture={panels,state,setCwd,setThemePreference,previews:runtime.context.filePreviews};
+function App(){const state=useSyncExternalStore(subscribe,get);const[cwd,setCwd]=useState('/fixture');const preferences=useUiPreferencesRuntime();
+window.fixture={panels,state,setCwd,setThemePreference,previews:runtime.context.filePreviews,setLocale:locale=>preferences.set('locale.override',locale)};
 const panel=<RightPanel hostPresentationActive={innerWidth<700?true:undefined} state={state} presentationId='view' renderers={runtime.renderers.getSnapshot()} toolbarActions={panels.getToolbarActionSnapshot()} toolbarActionContext={{ownerId:'scope',resourceOwnerId:'scope',hostId:'tree-fixture',cwd}} onAction={a=>panels.dispatch('scope',a)} onCloseTab={t=>panels.close('scope',t.region,t.id)}/>;
 return <AppShell layoutScope='scope' header={<span>Workspace</span>} floatingSidebarHeader={()=>null} leftPanel={null} sidebarOpen={false} sidebarWidth={260} onSidebarCollapse={()=>{}} onSidebarExpand={()=>{}} onSidebarResizeEnd={()=>{}} windowChrome={{kind:'browser',platform:'linux',safeArea:{left:0,right:0}}} rightPanel={innerWidth<700?null:panel} rightPanelOpen={state.right.open} rightPanelFullWidth={state.rightPanelFullWidth} onRightPanelOpenChange={open=>panels.dispatch('scope',{type:'set-region-open',region:'right',open,allowEmpty:true})}>{innerWidth<700?panel:<p>Conversation</p>}</AppShell>
 }
@@ -68,6 +69,19 @@ for(const width of [390,1280])for(const theme of ['light','dark']){
     await page.getByRole('cell',{name:'00125',exact:true}).waitFor();
     await page.getByRole('button',{name:'Source',exact:true}).click();
     assert.match(await page.locator('.structured-preview__source').innerText(),/Line one\nLine two/);
+    const sourceNode=await page.locator('.structured-preview__source').elementHandle();
+    await page.getByRole('button',{name:'Source',exact:true}).focus();
+    await page.evaluate(()=>{const table=document.querySelector('.structured-preview--table');(window as any).localizedTable=table;(window as any).localeFocus=document.activeElement});
+    for(const [locale,sourceLabel,tableLabel] of [['zh-CN','源文本','表格'],['ms-MY','Sumber','Jadual'],['th-TH','ต้นฉบับ','ตาราง'],['en-US','Source','Table']]){
+      await page.evaluate(locale=>(window as any).fixture.setLocale(locale),locale);
+      await page.getByRole('button',{name:sourceLabel,exact:true}).waitFor();
+      assert.equal(await page.getByRole('button',{name:sourceLabel,exact:true}).getAttribute('aria-pressed'),'true');
+      await page.getByRole('button',{name:tableLabel,exact:true}).waitFor();
+      assert.equal(await page.evaluate(()=>document.querySelector('.structured-preview--table')===(window as any).localizedTable),true);
+      assert.equal(await page.evaluate(()=>document.activeElement===(window as any).localeFocus),true);
+      assert.equal(await sourceNode!.evaluate(node=>node===document.querySelector('.structured-preview__source')),true);
+      if(locale==='zh-CN')await page.screenshot({path:join(output,'csv-zh-CN-'+theme+'-'+width+'.png')});
+    }
     await page.getByRole('button',{name:'Table',exact:true}).click();
    }
   }else if(ext==='xls'||ext==='xlsm'){

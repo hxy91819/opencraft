@@ -66,7 +66,10 @@ Document hyperlinks do not navigate the application. No document macros run.
 ## Replaceable adapters and deployment
 
 The built-in registry accepts an extension list and asynchronous `open` operation
-returning an element, idempotent dispose and optional activation/theme/failure hooks.
+returning an element, idempotent dispose and optional activation/theme/Intl/failure hooks.
+`FilePreviewView` supplies the application’s existing `IntlPort` to a localized
+adapter. CSV/TSV reuse it in their detached React root; language changes retain
+the table/source choice, focus and scroll state rather than recreating the preview.
 An engine failure after readiness transitions the same session to a retryable
 failed state and releases the broken view; it cannot silently leave a ready blank.
 DOCX uses docx-preview 0.4.1, PPTX uses @aiden0z/pptx-renderer 1.3.0 and spreadsheets use

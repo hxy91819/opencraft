@@ -835,5 +835,7 @@
   "chat.image.close": "ปิดตัวอย่างรูปภาพ",
   "chat.link.openInBrowser": "เปิดในเบราว์เซอร์",
   "chat.link.openExternal": "เปิดในเบราว์เซอร์ภายนอก",
-  "chat.link.copy": "คัดลอกลิงก์"
+  "chat.link.copy": "คัดลอกลิงก์",
+  "filePreview.table": "ตาราง",
+  "filePreview.source": "ต้นฉบับ"
 }
