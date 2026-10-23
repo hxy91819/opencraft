@@ -879,5 +879,6 @@
   "preview.slideNumber": "หมายเลขสไลด์",
   "preview.slide": "สไลด์ {page}",
   "preview.slides": "ภาพขนาดย่อของสไลด์",
-  "preview.fitSlide": "ปรับสไลด์ให้พอดี"
+  "preview.fitSlide": "ปรับสไลด์ให้พอดี",
+  "sidebar.catalog.searchIncomplete": "ยังไม่พบรายการที่ตรงกัน · รายการการสนทนายังโหลดไม่ครบ"
 }

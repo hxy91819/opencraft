@@ -41,12 +41,13 @@ const ConversationSearchResult = memo(function ConversationSearchResult({ thread
   </button>;
 });
 
-export function ConversationSearch({ enabled, open, onOpenChange, threads, loading, sources = NO_SOURCES, onSelectThread }: {
+export function ConversationSearch({ enabled, open, onOpenChange, threads, loading, incomplete = false, sources = NO_SOURCES, onSelectThread }: {
   enabled: boolean;
   open: boolean;
   onOpenChange(open: boolean): void;
   threads: readonly SidebarThread[];
   loading: boolean;
+  incomplete?: boolean;
   sources?: readonly ConversationSearchSource[];
   onSelectThread(hostId: string, threadId: string, target?: ConversationSearchTarget): void;
 }) {
@@ -65,13 +66,14 @@ export function ConversationSearch({ enabled, open, onOpenChange, threads, loadi
     return () => window.removeEventListener("keydown", keydown);
   }, [enabled, onOpenChange]);
   const close = useCallback(() => onOpenChange(false), [onOpenChange]);
-  return enabled && open ? <ConversationSearchDialog threads={threads} loading={loading} sources={sources}
+  return enabled && open ? <ConversationSearchDialog threads={threads} loading={loading} incomplete={incomplete} sources={sources}
     onClose={close} onSelectThread={onSelectThread} /> : null;
 }
 
-function ConversationSearchDialog({ threads, loading, sources, onClose, onSelectThread }: {
+function ConversationSearchDialog({ threads, loading, incomplete, sources, onClose, onSelectThread }: {
   threads: readonly SidebarThread[];
   loading: boolean;
+  incomplete: boolean;
   onClose(): void;
   sources: readonly ConversationSearchSource[];
   onSelectThread(hostId: string, threadId: string, target?: ConversationSearchTarget): void;
@@ -174,6 +176,7 @@ function ConversationSearchDialog({ threads, loading, sources, onClose, onSelect
         : selecting ? intl.formatMessage({ id: "sidebar.search.locating", defaultMessage: "Opening matching message…" })
         : busy ? intl.formatMessage({ id: "sidebar.search.loading", defaultMessage: "Loading conversations…" })
         : results.length ? intl.formatMessage({ id: "sidebar.search.count", defaultMessage: "{count} conversations" }, { count: results.length })
+        : incomplete ? intl.formatMessage({ id: "sidebar.catalog.searchIncomplete", defaultMessage: "No matches yet · conversation list is incomplete" })
         : intl.formatMessage(content.rows.some(row => row.phase === "error" || row.phase === "unavailable" || row.phase === "loading" || row.cursor !== null)
           ? { id: "sidebar.search.incomplete", defaultMessage: "No matches yet · message search is incomplete" }
           : { id: "sidebar.search.empty", defaultMessage: "No matching conversations" })}

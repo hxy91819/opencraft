@@ -879,5 +879,6 @@
   "preview.slideNumber": "Nombor slaid",
   "preview.slide": "Slaid {page}",
   "preview.slides": "Lakaran kecil slaid",
-  "preview.fitSlide": "Muatkan slaid"
+  "preview.fitSlide": "Muatkan slaid",
+  "sidebar.catalog.searchIncomplete": "Belum ada padanan · senarai perbualan belum lengkap"
 }

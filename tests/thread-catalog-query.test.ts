@@ -98,3 +98,9 @@ test("durable catalog failure exposes saved-data state only with valid metadata"
   assert.equal(catalogCachedAt({catalog:{state:"error",lastSuccessAt:null}}),undefined);
   assert.equal(catalogCachedAt({catalog:{state:"error",lastSuccessAt:-1}}),undefined);
 });
+
+
+test("successful empty pages with a cursor are still loading, and failed continuation is retryable", () => {
+  assert.equal(threadCatalogPhase({ admitted: true, status: "success", isFetching: false, partial: true }), "loading");
+  assert.equal(threadCatalogPhase({ admitted: true, status: "error", isFetching: false, partial: true }), "error");
+});

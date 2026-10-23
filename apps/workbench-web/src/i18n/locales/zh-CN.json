@@ -901,5 +901,6 @@
   "preview.slideNumber": "幻灯片页码",
   "preview.slide": "第 {page} 页幻灯片",
   "preview.slides": "幻灯片缩略图",
-  "preview.fitSlide": "适合页面"
+  "preview.fitSlide": "适合页面",
+  "sidebar.catalog.searchIncomplete": "暂未找到匹配项 · 会话列表尚未完整加载"
 }
