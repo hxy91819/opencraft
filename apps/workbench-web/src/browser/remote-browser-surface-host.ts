@@ -306,8 +306,6 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
       const current = () => !p.closed && p.connection === generation;
       ws.onopen = () => { if (!current()) return; clearTimeout(timer);
         const viewport = p.viewportMeasured ? { ...p.viewport } : undefined;
-        void this.call(p, 'open', { lease: p.lease, multiView: true, documentInput: true, inputAcknowledgements: true, visible: p.visible, initialUrl: p.url ?? null, viewport, defaultDeviceProfile: remoteBrowserDeviceProfile() }).then(async config => {
-          if (current()) this.applyDocument(p, config.document);
         void this.call(p, 'open', { lease: p.lease, multiView: true, inputAcknowledgements: true, visible: this.isVisible(p), initialUrl: p.url ?? null, viewport, defaultDeviceProfile: remoteBrowserDeviceProfile() }).then(async config => {
           if (!current()) return; p.inputAcknowledgements = config.inputAcknowledgements === true; p.serverInitialNavigation = config.multiView === true; this.setControl(p, config.control); p.resumed = config.resumed === true; p.restored = (config.resumed || config.restored) && !!config.navigation?.url && config.navigation.url !== 'about:blank'; p.nativeCopy = config.nativeCopy === true; p.nativeIme = config.nativeIme === true; p.multiTouch = config.multiTouch === true; this.keyboardChanged(); this.applyViewport(p, config);
           const effective = { width: config.width, height: config.height, deviceProfile: config.deviceProfile };
