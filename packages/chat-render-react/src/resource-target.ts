@@ -6,7 +6,9 @@ const externalScheme = /^https?:/iu;
 const mailScheme = /^mailto:/iu;
 const contactScheme = /^(?:sms|tel):/iu;
 const fileScheme = /^file:/iu;
-const appScheme = /^(?:codex|app|agent|navigation):/iu;
+const appScheme = /^(?:app|agent|navigation):/iu;
+// Read compatibility for existing engine-authored content; hosts still decide whether to open it.
+const legacyCodexAppScheme = /^codex:/iu;
 const resourceScheme = /^(?:sandbox|attachment|resource|plugin|mcp):/iu;
 const windowsAbsolutePath = /^[a-z]:[\\/]/iu;
 const posixAbsolutePath = /^\//u;
@@ -74,7 +76,7 @@ export function resolveStandardChatResource(
   }
   if (mailScheme.test(target)) return decision("mail", target);
   if (contactScheme.test(target)) return decision("external", target);
-  if (appScheme.test(target)) return decision("app-route", target);
+  if (appScheme.test(target) || legacyCodexAppScheme.test(target)) return decision("app-route", target);
   if (resourceScheme.test(target)) return decision("resource", target);
   const location = fileLocationTarget(target);
   if (fileScheme.test(location.path) || windowsAbsolutePath.test(location.path) || posixAbsolutePath.test(location.path)) {

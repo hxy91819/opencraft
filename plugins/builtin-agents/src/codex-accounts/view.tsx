@@ -19,7 +19,7 @@ import {
 import type { CodexAccountView, CodexDeviceLoginView } from "@opencraft/appserver-protocol";
 
 import type { CodexAccountsService } from "./service.js";
-import { maskCodexAccountIdentity } from "./identity.js";
+import { maskAccountDisplayIdentity } from "./identity.js";
 
 function accountStatusLabel(status: CodexAccountView["status"]): string {
   switch (status) {
@@ -101,7 +101,7 @@ function AccountActionsMenu({ account, index, total, pending, onMove, onRefresh,
 }) {
   return <DropdownMenu.Root modal={false}>
     <DropdownMenu.Trigger asChild>
-      <SettingsIconButton className="engine-account__menu-trigger" label={`${maskCodexAccountIdentity(account.label)} 的操作`} disabled={pending}>
+      <SettingsIconButton className="engine-account__menu-trigger" label={`${maskAccountDisplayIdentity(account.label)} 的操作`} disabled={pending}>
         <MoreHorizontal size={16} />
       </SettingsIconButton>
     </DropdownMenu.Trigger>
@@ -164,7 +164,7 @@ function AccountRow({ account, index, total, service, credentialLocation }: {
           <span className="engine-account__status-dot" aria-hidden="true" />
           <span className="engine-account__identity">
             <span className="engine-account__name-line">
-              <strong>{maskCodexAccountIdentity(account.label)}</strong>
+              <strong>{maskAccountDisplayIdentity(account.label)}</strong>
               <span className="engine-account__plan">{planLabel(account)}</span>
             </span>
             <span className="engine-account__status-copy">
@@ -197,7 +197,7 @@ function AccountRow({ account, index, total, service, credentialLocation }: {
           onRemove={() => setConfirming(true)}
         />
       </div>
-      {error ? <div className="engine-account__error" role="alert">{maskCodexAccountIdentity(error)}</div> : null}
+      {error ? <div className="engine-account__error" role="alert">{maskAccountDisplayIdentity(error)}</div> : null}
       {expanded ? <div className="engine-account__details" id={detailsId}>
         <SettingsRow className="engine-account__credit-policy" label="允许使用积分" description={account.allowCredits === undefined
           ? "当前服务端不支持设置积分使用策略。"
@@ -207,7 +207,7 @@ function AccountRow({ account, index, total, service, credentialLocation }: {
             onCheckedChange={allowCredits => run("credits", () => service.setAllowCredits(account.id, allowCredits))} />
         </SettingsRow>
         <dl>
-          <div><dt>登录身份</dt><dd>{maskCodexAccountIdentity(account.email ?? account.label)}</dd></div>
+          <div><dt>登录身份</dt><dd>{maskAccountDisplayIdentity(account.email ?? account.label)}</dd></div>
           <div><dt>使用顺序</dt><dd>第 {index + 1} 位</dd></div>
           <div><dt>最近同步</dt><dd>{formatDate(account.observedAt)}</dd></div>
           <div><dt>可用重置券</dt><dd>{resetCredits === null ? "未报告" : `${resetCredits.availableCount} 张`}</dd></div>
@@ -223,7 +223,7 @@ function AccountRow({ account, index, total, service, credentialLocation }: {
         <AlertDialog.Overlay className="engine-account-dialog__overlay" />
         <AlertDialog.Content className="engine-account-dialog engine-account-dialog--compact">
           <AlertDialog.Title>移除 Codex 账户？</AlertDialog.Title>
-          <AlertDialog.Description>将删除“{maskCodexAccountIdentity(account.label)}”在{credentialLocation}保存的 OAuth 凭据和账户池绑定。现有会话记录不会删除。</AlertDialog.Description>
+          <AlertDialog.Description>将删除“{maskAccountDisplayIdentity(account.label)}”在{credentialLocation}保存的 OAuth 凭据和账户池绑定。现有会话记录不会删除。</AlertDialog.Description>
           <footer>
             <AlertDialog.Cancel asChild><SettingsButton disabled={pending !== null}>取消</SettingsButton></AlertDialog.Cancel>
             <SettingsButton variant="danger" disabled={pending !== null} onClick={() => run("remove", () => service.remove(account.id))}>确认移除</SettingsButton>
@@ -349,7 +349,7 @@ export function createCodexAccountsView(service: CodexAccountsService, options: 
       actions={<SettingsIconButton label="刷新账户" disabled={snapshot.phase === "loading"} onClick={() => void service.refresh()}><RefreshCw size={16} /></SettingsIconButton>}
     >
       <div className="engine-accounts-page">
-        {snapshot.error ? <SettingsNotice tone="error">{snapshot.phase === "error" ? `账户读取失败：${maskCodexAccountIdentity(snapshot.error)}。请点击右上角刷新重试。` : maskCodexAccountIdentity(snapshot.error)}</SettingsNotice> : null}
+        {snapshot.error ? <SettingsNotice tone="error">{snapshot.phase === "error" ? `账户读取失败：${maskAccountDisplayIdentity(snapshot.error)}。请点击右上角刷新重试。` : maskAccountDisplayIdentity(snapshot.error)}</SettingsNotice> : null}
         <SettingsSection
           title="ChatGPT 账户"
           description="多个账户按顺序使用；已有会话在账户可用时保持绑定。"

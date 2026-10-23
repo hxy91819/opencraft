@@ -1,4 +1,4 @@
-import type { CodexCredentialRefreshReason } from "./oauth-refresh.js";
+import type { AccountCredentialRefreshReason } from "./oauth-refresh.js";
 import type {
   AccountPoolAccount,
   AccountPoolLimitWindow,
@@ -88,7 +88,7 @@ export class CodexSubscriptionService {
     readonly resolveCredential: (
       account: AccountPoolAccount,
       secret: AccountPoolSecret,
-      reason: CodexCredentialRefreshReason,
+      reason: AccountCredentialRefreshReason,
     ) => Promise<AccountPoolSecret>;
     readonly fetch?: typeof fetch;
     readonly usageUrl?: string;

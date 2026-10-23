@@ -233,13 +233,23 @@ test("Chat URLs distinguish navigation, workspace files, external links and unsa
   );
   assert.equal(resolveStandardChatResource("#result", context).kind, "anchor");
   assert.equal(
-    resolveStandardChatResource("codex://settings", context).kind,
+    resolveStandardChatResource("app://settings", context).kind,
     "app-route",
   );
   assert.equal(
     resolveStandardChatResource("javascript:alert(1)", context).allowed,
     false,
   );
+});
+
+test("legacy Codex resource URIs remain classified without rewriting their target", () => {
+  for (const target of ["codex://settings", "CoDeX://settings"]) {
+    assert.deepEqual(resolveStandardChatResource(target, { cwd: null, externalResourcePolicy: "restricted" }), {
+      allowed: true,
+      kind: "app-route",
+      target,
+    });
+  }
 });
 
 test("file citations and mentions share the same display target on Web and Native", () => {

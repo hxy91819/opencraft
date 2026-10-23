@@ -2648,7 +2648,7 @@ quiet automatic retry and actionable failures.
 ## Account display identity
 
 Codex account rows, details, action labels, confirmations and error text share
-`maskCodexAccountIdentity`. Keep the final two Unicode characters of the mailbox
+`maskAccountDisplayIdentity`. Keep the final two Unicode characters of the mailbox
 local part visible (all available characters for shorter names). Keep its first
 character only when more than three characters exist; mask the middle and retain
 the existing private-domain masking. Presentation never changes Host identity or

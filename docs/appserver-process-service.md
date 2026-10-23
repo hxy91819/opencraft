@@ -13,7 +13,7 @@ the DSH adapter in the Daemon process; process requests never dispatch to DSH.
 - `process/outputDelta`: processHandle, sequence, stream, deltaBase64.
 - `process/exited`: processHandle and exitCode.
 
-OpenCraft additions (not claimed to be upstream Codex contracts):
+OpenCraft Host extensions:
 
 - `process/list`: retained running/exited metadata.
 - `process/attach`: processHandle, afterSequence; returns ordered output, phase,
