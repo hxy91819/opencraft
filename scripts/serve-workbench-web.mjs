@@ -455,6 +455,7 @@ export async function createWorkbenchWebServer({
       }
       const url = new URL(request.url || "/", "http://vela.invalid");
       const local = !!localAccess?.origin(request);
+      if (!local && !["/health", "/__opencraft_health"].includes(url.pathname)) await accessService?.prepare?.(request);
       // Login/callback endpoints must remain reachable before instance admission.
       if (url.pathname === '/__opencraft_auth' || url.pathname.startsWith('/__opencraft_auth/')) {
         if (authService && await authService.handle(request, response)) return;
@@ -721,6 +722,7 @@ export async function createWorkbenchWebServer({
     let admissionStatus, submissionContext, principal;
     try {
       const local = !!localAccess?.origin(request);
+      if (!local) await accessService?.prepare?.(request);
       admissionStatus = local ? 204 : authService?.invalidSession(request) ? 401 : accessService?.admissionStatus(request) ?? identityService?.admissionStatus(request) ?? 204;
       submissionContext = local ? { sender: null } : identityService ? identityService.connectionContext(request) : { sender: null };
       principal = local ? null : accessService?.authenticate(request);

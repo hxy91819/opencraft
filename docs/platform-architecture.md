@@ -130,6 +130,11 @@ resource ownership and audit records follow the Actor. Names and matching email
 addresses never authorize automatic account merging. Identity adapters verify
 their proof; core owns binding, authenticated sessions, admission and authorization.
 Client login sessions remain distinct from persistent Bot/Session actors and credentials.
+Trusted identity adapters may supply the optional admission port described in
+[relay deployment](relay-deployment.md#optional-provider-admission-policy).
+The gateway prepares verified identities asynchronously; core role, connection
+revocation and durable human admission share its synchronous decision. The port
+does not replace identity verification, membership or resource authorization.
 Headless bundles the official `opencraft.account` server plugin for independent
 per-deployment local accounts, configurable OIDC, browser sessions and explicit
 linking/unlinking; dedicated enterprise verification remains an optional adapter.
