@@ -874,5 +874,21 @@
   "threadSummary.modified": "已修改",
   "threadSummary.emptyTitle": "任务进展，一目了然",
   "threadSummary.empty": "计划、文件更改和活动会随任务进展显示在这里。",
-  "threadSummary.history": "根据已加载的会话记录整理"
+  "threadSummary.history": "根据已加载的会话记录整理",
+  "preview.tooLarge": "文件过大，预览上限为 25 MB。请下载后查看。",
+  "preview.encrypted": "暂不支持预览加密文件，请下载后使用密码打开。",
+  "preview.invalid": "文件已损坏或内容与格式不符，请下载原文件检查。",
+  "preview.timeout": "打开文档超时，请重试或下载原文件查看。",
+  "preview.busy": "请先关闭其他文档预览，再重试。",
+  "preview.worksheets": "工作表",
+  "preview.fitDiagram": "适合窗口",
+  "preview.actualSize": "实际大小",
+  "preview.layers": "图层",
+  "preview.find": "在表格中查找",
+  "preview.previousMatch": "上一个匹配项",
+  "preview.nextMatch": "下一个匹配项",
+  "preview.noMatch": "没有匹配项",
+  "preview.columnWidth": "列宽",
+  "preview.selectCell": "选择单元格查看完整内容",
+  "preview.cellContents": "单元格内容"
 }

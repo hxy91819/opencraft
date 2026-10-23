@@ -852,5 +852,21 @@
   "threadSummary.modified": "Diubah",
   "threadSummary.emptyTitle": "Gambaran tugas",
   "threadSummary.empty": "Pelan, perubahan fail dan aktiviti akan dipaparkan semasa tugas berjalan.",
-  "threadSummary.history": "Daripada sejarah perbualan yang dimuatkan"
+  "threadSummary.history": "Daripada sejarah perbualan yang dimuatkan",
+  "preview.tooLarge": "Fail ini terlalu besar untuk pratonton (had 25 MB). Muat turun untuk melihatnya.",
+  "preview.encrypted": "Fail berpassword tidak boleh dipratonton. Muat turun dan buka dengan kata laluan.",
+  "preview.invalid": "Fail ini rosak atau kandungannya tidak sepadan dengan format. Muat turun fail asal untuk menyemaknya.",
+  "preview.timeout": "Dokumen mengambil masa terlalu lama untuk dibuka. Cuba lagi atau muat turun fail asal.",
+  "preview.busy": "Tutup pratonton dokumen lain, kemudian cuba lagi.",
+  "preview.worksheets": "Lembaran kerja",
+  "preview.fitDiagram": "Muatkan rajah",
+  "preview.actualSize": "Saiz sebenar",
+  "preview.layers": "Lapisan",
+  "preview.find": "Cari dalam jadual",
+  "preview.previousMatch": "Padanan sebelumnya",
+  "preview.nextMatch": "Padanan seterusnya",
+  "preview.noMatch": "Tiada padanan",
+  "preview.columnWidth": "Lebar lajur",
+  "preview.selectCell": "Pilih sel untuk membaca kandungan penuh",
+  "preview.cellContents": "Kandungan sel"
 }

@@ -50,7 +50,7 @@ export async function openDiagram(input: { blob: Blob; name: string; signal: Abo
     viewport.setSvg(svg); viewport.element.dataset.diagramReady = "true";
   };
   try { await render(false); } catch (error) { dispose(); throw error; }
-  return { element: viewport.element, dispose,
+  return { element: viewport.element, dispose, setIntl: viewport.setIntl,
     setActive(active) { viewport.element.inert = !active; },
     setTheme(next) {
       if (disposed || next === dark) return; dark = next;

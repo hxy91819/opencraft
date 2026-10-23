@@ -850,5 +850,21 @@
   "threadSummary.modified": "Modified",
   "threadSummary.emptyTitle": "The task at a glance",
   "threadSummary.empty": "Plans, changed files and activity will appear here as work progresses.",
-  "threadSummary.history": "From loaded conversation history"
+  "threadSummary.history": "From loaded conversation history",
+  "preview.tooLarge": "This file is too large to preview (25 MB limit). Download it to view.",
+  "preview.encrypted": "Password-protected files cannot be previewed. Download it to open with its password.",
+  "preview.invalid": "This file is damaged or its contents do not match the format. Download the original to check it.",
+  "preview.timeout": "Opening took too long. Try again or download the original file.",
+  "preview.busy": "Close another document preview, then try again.",
+  "preview.worksheets": "Worksheets",
+  "preview.fitDiagram": "Fit diagram",
+  "preview.actualSize": "Actual size",
+  "preview.layers": "Layers",
+  "preview.find": "Find in table",
+  "preview.previousMatch": "Previous match",
+  "preview.nextMatch": "Next match",
+  "preview.noMatch": "No matches",
+  "preview.columnWidth": "Column width",
+  "preview.selectCell": "Select a cell to read its full contents",
+  "preview.cellContents": "Cell contents"
 }

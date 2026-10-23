@@ -852,5 +852,21 @@
   "threadSummary.modified": "แก้ไขแล้ว",
   "threadSummary.emptyTitle": "ภาพรวมของงาน",
   "threadSummary.empty": "แผน การเปลี่ยนแปลงไฟล์ และกิจกรรมจะแสดงที่นี่เมื่องานคืบหน้า",
-  "threadSummary.history": "จากประวัติการสนทนาที่โหลดแล้ว"
+  "threadSummary.history": "จากประวัติการสนทนาที่โหลดแล้ว",
+  "preview.tooLarge": "ไฟล์ใหญ่เกินกว่าจะแสดงตัวอย่าง (จำกัด 25 MB) โปรดดาวน์โหลดเพื่อดู",
+  "preview.encrypted": "ไม่สามารถแสดงตัวอย่างไฟล์ที่มีรหัสผ่านได้ โปรดดาวน์โหลดแล้วเปิดด้วยรหัสผ่าน",
+  "preview.invalid": "ไฟล์เสียหายหรือเนื้อหาไม่ตรงกับรูปแบบ โปรดดาวน์โหลดไฟล์ต้นฉบับเพื่อตรวจสอบ",
+  "preview.timeout": "ใช้เวลาเปิดนานเกินไป โปรดลองอีกครั้งหรือดาวน์โหลดไฟล์ต้นฉบับ",
+  "preview.busy": "โปรดปิดตัวอย่างเอกสารอื่นแล้วลองอีกครั้ง",
+  "preview.worksheets": "แผ่นงาน",
+  "preview.fitDiagram": "ปรับแผนภาพให้พอดี",
+  "preview.actualSize": "ขนาดจริง",
+  "preview.layers": "เลเยอร์",
+  "preview.find": "ค้นหาในตาราง",
+  "preview.previousMatch": "ผลลัพธ์ก่อนหน้า",
+  "preview.nextMatch": "ผลลัพธ์ถัดไป",
+  "preview.noMatch": "ไม่พบผลลัพธ์",
+  "preview.columnWidth": "ความกว้างคอลัมน์",
+  "preview.selectCell": "เลือกเซลล์เพื่ออ่านเนื้อหาทั้งหมด",
+  "preview.cellContents": "เนื้อหาเซลล์"
 }
