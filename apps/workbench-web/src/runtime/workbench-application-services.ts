@@ -1,3 +1,4 @@
+import { readSelectionPreference, writeSelectionPreference } from "./selection-preferences";
 import { serverStorageKey, serverUrl, serverEndpointNeedsRefresh } from "./server-context";
 import { TurnCompletionObserver } from "@opencraft/workbench-runtime";
 import { FULL_WORKBENCH_PRESENTATION, type WorkbenchPresentationPolicy } from "../workbench-presentation-policy";
@@ -343,7 +344,7 @@ export function parseWebHostDefinitions(
 }
 
 export function activeThreadStorageKey(hostId: string, accountScope?: string): string {
-  return currentProductStorageKey(`vela.active-thread-id:${hostId}${accountScope === undefined ? "" : `:account:${encodeURIComponent(accountScope)}`}`);
+  return currentProductStorageKey(`opencraft.active-thread-id:${hostId}${accountScope === undefined ? "" : `:account:${encodeURIComponent(accountScope)}`}`);
 }
 
 export function rememberedThreadId(
@@ -352,13 +353,13 @@ export function rememberedThreadId(
   hostProfileMode: "environment" | "configured" = "environment",
   accountScope?: string,
 ): string | null {
-  const scopedThreadId = storage.getItem(activeThreadStorageKey(hostId, accountScope));
+  const scopedThreadId = readSelectionPreference(storage, activeThreadStorageKey(hostId, accountScope), currentProductStorageKey);
   if (scopedThreadId !== null || hostProfileMode === "configured") return scopedThreadId;
-  return storage.getItem(currentProductStorageKey("vela.active-thread-id"));
+  return readSelectionPreference(storage, currentProductStorageKey("opencraft.active-thread-id"), currentProductStorageKey);
 }
 
 export function selectedProjectStorageKey(hostId: string): string {
-  return currentProductStorageKey(`vela.selected-project-id:${hostId}`);
+  return currentProductStorageKey(`opencraft.selected-project-id:${hostId}`);
 }
 
 /**
@@ -515,10 +516,14 @@ export interface WebWorkbenchSupervisorOptions {
   readonly clientProduct?: import("@opencraft/client-product").ClientWorkbenchProduct;
 }
 
+export function readLocalPreference(key: string): string | null {
+  try { return readSelectionPreference(window.localStorage, key, currentProductStorageKey); }
+  catch { return null; }
+}
+
 export function setLocalPreference(key: string, value: string | null): void {
   try {
-    if (value === null) window.localStorage.removeItem(key);
-    else window.localStorage.setItem(key, value);
+    writeSelectionPreference(window.localStorage, key, value, currentProductStorageKey);
   } catch {
     // Preferences cannot make an already committed application transaction fail.
   }
@@ -640,7 +645,7 @@ export function createWebWorkbenchCommands(input: {
     if (activated && epoch === hostSelectionEpoch && memoryScope === input.threadMemoryScope?.()
       && equalWorkbenchLocation(input.navigation.getSnapshot().location, location)) {
       const hostId = location.kind === "thread" ? location.key.hostId : location.hostId;
-      if (presentation.executionSelection === "selectable") setLocalPreference(currentProductStorageKey("vela.active-host-id"), hostId);
+      if (presentation.executionSelection === "selectable") setLocalPreference(currentProductStorageKey("opencraft.active-host-id"), hostId);
       setLocalPreference(activeThreadStorageKey(hostId, memoryScope), location.kind === "thread" ? location.key.threadId : null);
     }
     return activated;
@@ -664,8 +669,8 @@ export function createWebWorkbenchCommands(input: {
   commands = {
     forgetThread(hostId, threadId) {
       // Compare before clearing: a late rejection must not erase a newer choice.
-      for (const key of [activeThreadStorageKey(hostId, input.threadMemoryScope?.()), currentProductStorageKey("vela.active-thread-id")]) {
-        try { if (window.localStorage.getItem(key) === threadId) setLocalPreference(key, null); } catch { /* Preferences are optional. */ }
+      for (const key of [activeThreadStorageKey(hostId, input.threadMemoryScope?.()), currentProductStorageKey("opencraft.active-thread-id")]) {
+        try { if (readLocalPreference(key) === threadId) setLocalPreference(key, null); } catch { /* Preferences are optional. */ }
       }
       const current = input.navigation.getSnapshot();
       const pending = input.coordinator.getSnapshot().pendingLocation;
@@ -766,7 +771,7 @@ export function createWebWorkbenchCommands(input: {
         if (viewId !== null) input.views.get(viewId)?.composer.dispatch({ type: "set-selections", patch: { model: selection.model, effort: selection.effort ?? undefined, ...(selection.serviceTier === undefined ? {} : { serviceTier: selection.serviceTier }) } });
       }
       input.coordinator.setSelectedHostId(hostId);
-      if (presentation.executionSelection === "selectable") setLocalPreference(currentProductStorageKey("vela.active-host-id"), hostId);
+      if (presentation.executionSelection === "selectable") setLocalPreference(currentProductStorageKey("opencraft.active-host-id"), hostId);
     },
     navigate(location, mode = "push") {
       return navigateAndRemember(location, () => input.navigation.navigate(location, mode));
@@ -787,7 +792,7 @@ export function createWebWorkbenchCommands(input: {
         const activated = input.navigation.navigateToHome(location, options.mode);
         if (!activated) throw new Error(`Draft ${draft.id} activation was superseded`);
         input.coordinator.setSelectedHostId(options.execution.hostId);
-        if (presentation.executionSelection === "selectable") setLocalPreference(currentProductStorageKey("vela.active-host-id"), options.execution.hostId);
+        if (presentation.executionSelection === "selectable") setLocalPreference(currentProductStorageKey("opencraft.active-host-id"), options.execution.hostId);
         setLocalPreference(activeThreadStorageKey(options.execution.hostId, input.threadMemoryScope?.()), null);
         return location;
       } catch (error) {
@@ -802,7 +807,7 @@ export function createWebWorkbenchCommands(input: {
       const location = await input.navigation.promoteDraft(draftId, receipt);
       if (memoryScope !== input.threadMemoryScope?.()) throw new Error("Conversation account scope was retired");
       setLocalPreference(activeThreadStorageKey(receipt.hostId, memoryScope), receipt.threadId);
-      if (presentation.executionSelection === "selectable") setLocalPreference(currentProductStorageKey("vela.active-host-id"), receipt.hostId);
+      if (presentation.executionSelection === "selectable") setLocalPreference(currentProductStorageKey("opencraft.active-host-id"), receipt.hostId);
       return location;
     },
     retargetDraft(draftId, execution) {

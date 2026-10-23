@@ -150,6 +150,16 @@ The Bot payload version and domain schema remain unchanged. Generic
 `thread/*`, `turn/*`, and `bot/*` methods are
 unchanged. Native deep links now use `opencraft:`.
 
+## Conversation selection preferences
+
+The Workbench writes `opencraft.active-host-id`, `opencraft.active-thread-id`
+and Host-specific `opencraft.selected-project-id` keys. Reads copy forward only
+the corresponding former key in the same product/server partition and preserve
+opaque Host/account suffixes. Existing current values win; clearing a selection
+also removes its former alias so stale input cannot revive on reload. Failed
+copy-forward leaves historical input recoverable. This does not rename another
+owner's browser state, database, product ID or account identity.
+
 ## Service-provider ownership
 
 the downstream product remains a service-provider plugin. Its domains, OAuth callbacks,
