@@ -11,6 +11,8 @@ export interface CodexAccountView {
   readonly label: string;
   readonly priority: number;
   readonly enabled: boolean;
+  /** Absent on older Hosts which cannot configure this policy. */
+  readonly allowCredits?: boolean;
   readonly credentialConfigured: boolean;
   readonly email: string | null;
   readonly subscriptionType: string | null;
@@ -44,6 +46,10 @@ export interface AppServerCodexAccountMethodMap {
   };
   "opencraft/codex/accounts/setEnabled": {
     params: { readonly accountId: string; readonly enabled: boolean };
+    result: { readonly accounts: readonly CodexAccountView[] };
+  };
+  "opencraft/codex/accounts/setAllowCredits": {
+    params: { readonly accountId: string; readonly allowCredits: boolean };
     result: { readonly accounts: readonly CodexAccountView[] };
   };
   "opencraft/codex/accounts/reorder": {

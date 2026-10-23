@@ -609,6 +609,7 @@ test("account management projections never expose credentials and secret files s
       upstreamAccountId: "chatgpt-a",
       priority: 1,
       enabled: true,
+      allowCredits: false,
       credentialConfigured: true,
     }]);
     assert.doesNotMatch(JSON.stringify(projection), /access-private|refresh-private/);
@@ -1198,6 +1199,7 @@ test("known pre-ledger AccountPool tables retain account metadata, affinity, act
     try {
       assert.equal(pool.outcome.status, "migrated");
       assert.deepEqual(pool.listAccounts().map(account => account.id), ["account-b", "account-a"]);
+      assert.deepEqual(pool.listAccounts().map(account => account.allowCredits), [true, true], "existing accounts retain credit behavior");
       assert.deepEqual(pool.listAccountStates().find(state => state.accountId === "account-a"), {
         accountId: "account-a", email: "a@example.test", subscriptionType: "pro", rateLimitTier: "tier-a", resetCredits: null,
         lastUsedAt: 1900, lastUsedHostId: "host-a", observedAt: 1800, heldUntil: 5000,
@@ -1211,7 +1213,7 @@ test("known pre-ledger AccountPool tables retain account metadata, affinity, act
       });
       assert.equal(reader.prepare("SELECT account_id FROM pool_active_account WHERE provider='codex'").get()?.account_id, "account-a");
       assert.equal(reader.prepare("SELECT limit_windows_json FROM pool_quota").get()?.limit_windows_json, "[]");
-      assert.equal(reader.prepare("SELECT count(*) AS n FROM schema_migrations").get()?.n, 2);
+      assert.equal(reader.prepare("SELECT count(*) AS n FROM schema_migrations").get()?.n, 3);
     } finally { reader.close(); }
     const again = new AccountPoolStore({ databasePath, secretsDirectory, now: () => 2_000 });
     try {
@@ -1240,7 +1242,7 @@ test("unknown legacy account-pool schema is moved aside with backups and leaves 
       assert.ok(pool.outcome.backupPath);
       assert.equal(pool.listAccounts().length, 0);
       const files = await readdir(root);
-      assert.ok(files.some(name => name.includes(".pre-v2-")));
+      assert.ok(files.some(name => name.includes(".pre-v3-")));
       assert.ok(files.some(name => name.includes(".legacy-")));
     } finally {
       pool.close();
@@ -1250,7 +1252,7 @@ test("unknown legacy account-pool schema is moved aside with backups and leaves 
   }
 });
 
-test("legacy account-pool database with matching schema is adopted without ledger and accounts remain readable", async () => {
+test("legacy account-pool database with v2 schema migrates without ledger and accounts remain readable", async () => {
   const root = await mkdtemp(join(tmpdir(), "opencraft-account-pool-legacy-adopted-"));
   const databasePath = join(root, "pool.sqlite");
   const secretsDirectory = join(root, "secrets");
@@ -1296,7 +1298,7 @@ test("legacy account-pool database with matching schema is adopted without ledge
     legacy.close();
     const pool = new AccountPoolStore({ databasePath, secretsDirectory, now: () => 2_000 });
     try {
-      assert.equal(pool.outcome.status, "adopted");
+      assert.equal(pool.outcome.status, "migrated");
       assert.ok(pool.outcome.backupPath);
       assert.equal(pool.listAccounts()[0]?.id, "account-a");
       assert.deepEqual(pool.listAccountStates()[0], {
@@ -1305,7 +1307,7 @@ test("legacy account-pool database with matching schema is adopted without ledge
         limitWindows: [], status: "ready",
       });
       const files = await readdir(root);
-      assert.ok(files.some(name => name.includes(".pre-v2-")));
+      assert.ok(files.some(name => name.includes(".pre-v3-")));
       assert.equal(files.some(name => name.includes(".legacy-")), false);
     } finally {
       pool.close();
@@ -1415,7 +1417,7 @@ test("subscription exhaustion can use verified extra credits and persists across
   const options = { databasePath: join(root, "pool.sqlite"), secretsDirectory: join(root, "secrets"), now: () => 2_000_000 };
   let pool = new AccountPoolStore(options);
   try {
-    pool.addAccount({ id: "paid", provider: "codex", label: "Paid", upstreamAccountId: "paid", priority: 1, enabled: true },
+    pool.addAccount({ id: "paid", provider: "codex", label: "Paid", upstreamAccountId: "paid", priority: 1, enabled: true, allowCredits: true },
       { accessToken: "private", refreshToken: null, expiresAt: null });
     let credits: unknown;
     const usage = () => new CodexSubscriptionService({ store: pool, now: options.now, resolveCredential: async (_account, secret) => secret, fetch: async () => Response.json({
@@ -1480,4 +1482,43 @@ test("loopback bridge preserves compressed native request bytes and encoding", a
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { preserved: true });
   } finally { await server?.close(); pool.close(); await rm(root, { recursive: true, force: true }); }
+});
+
+
+test("credit policy is account-scoped, persistent and gates bound Threads at 98% and 100%", async () => {
+  const root = await mkdtemp(join(tmpdir(), "opencraft-credit-policy-"));
+  const options = { databasePath: join(root, "pool.sqlite"), secretsDirectory: join(root, "secrets"), now: () => 2_000 };
+  let pool = new AccountPoolStore(options);
+  try {
+    for (const id of ["a", "b"]) pool.addAccount(
+      { id, provider: "codex", label: id, upstreamAccountId: id, priority: 1, enabled: true },
+      { accessToken: `fixture-${id}`, refreshToken: null, expiresAt: null });
+    assert.equal(pool.getAccount("a").allowCredits, false, "new accounts must opt in");
+    const pick = () => pool.select({ provider: "codex", hostId: "test", affinityId: "bound" });
+    assert.equal(pick().account.id, "a");
+    pool.setAllowCredits("a", true);
+    for (const utilization of [0.98, 1]) {
+      for (const id of ["a", "b"]) pool.observeQuota(id, { utilization, resetAt: 9_000, limitWindows: [{
+        slot: "primary", windowMinutes: 300, utilization, resetAt: 9_000,
+        status: utilization === 1 ? "rejected" : "allowed", observedAt: 2_000, source: "usage", creditsAvailable: true,
+      }] });
+      assert.deepEqual(pool.listAccountStates().map(state => state.status), ["ready", "exhausted"]);
+      assert.equal(pick().account.id, "a");
+    }
+    pool.close(); pool = new AccountPoolStore(options);
+    assert.equal(pool.getAccount("a").allowCredits, true);
+    assert.equal(pool.getAccount("b").allowCredits, false);
+    assert.equal(pick().account.id, "a", "affinity and policy survive restart");
+    pool.setAllowCredits("a", false);
+    assert.throws(pick, /No eligible account/, "disabling policy also gates existing affinity");
+    pool.setAllowCredits("a", true);
+    assert.equal(pick().account.id, "a");
+    pool.observeQuota("a", { utilization: 1, resetAt: 9_000, limitWindows: [{
+      slot: "primary", windowMinutes: 300, utilization: 1, resetAt: 9_000,
+      status: "rejected", observedAt: 2_001, source: "header", creditsAvailable: false,
+    }] });
+    assert.throws(pick, /No eligible account/, "the toggle cannot override an actual rejection");
+    assert.throws(() => pool.setAllowCredits("a", "true" as any), /Invalid credit policy/);
+    assert.throws(() => pool.setAllowCredits("missing", true), /Account not found/);
+  } finally { pool.close(); await rm(root, { recursive: true, force: true }); }
 });

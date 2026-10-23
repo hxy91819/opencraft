@@ -94,6 +94,11 @@ export class CodexAccountService {
         store.setEnabled(string(params.accountId), params.enabled === true);
         if (params.enabled === true) void subscriptions.refreshAccount(string(params.accountId)).catch(() => undefined);
         result = { accounts: this.accountViews() }; break;
+      case "opencraft/codex/accounts/setAllowCredits":
+        if (typeof params.allowCredits !== "boolean") throw new TypeError("Invalid credit policy");
+        store.setAllowCredits(string(params.accountId), params.allowCredits);
+        if (params.allowCredits) void subscriptions.refreshAccount(string(params.accountId)).catch(() => undefined);
+        result = { accounts: this.accountViews() }; break;
       case "opencraft/codex/accounts/reorder":
         if (!Array.isArray(params.accountIds)) throw new Error("Invalid account order");
         store.reorder("codex", params.accountIds.map(string));
@@ -141,6 +146,7 @@ export class CodexAccountService {
         label: account.label,
         priority: account.priority,
         enabled: account.enabled,
+        allowCredits: account.allowCredits,
         credentialConfigured: account.credentialConfigured,
         email: state.email,
         subscriptionType: state.subscriptionType,

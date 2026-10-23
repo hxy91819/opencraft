@@ -12,6 +12,8 @@ import {
   SettingsNotice,
   SettingsPanel,
   SettingsSection,
+  SettingsRow,
+  SettingsSwitch,
   type ExtensionSettingsViewProps,
 } from "@opencraft/extension-react";
 import type { CodexAccountView, CodexDeviceLoginView } from "@opencraft/appserver-protocol";
@@ -197,6 +199,13 @@ function AccountRow({ account, index, total, service, credentialLocation }: {
       </div>
       {error ? <div className="engine-account__error" role="alert">{maskCodexAccountIdentity(error)}</div> : null}
       {expanded ? <div className="engine-account__details" id={detailsId}>
+        <SettingsRow className="engine-account__credit-policy" label="允许使用积分" description={account.allowCredits === undefined
+          ? "当前服务端不支持设置积分使用策略。"
+          : "订阅额度不足时，继续使用此账户可用的积分。关闭后，剩余额度不超过 2% 时切换账户。"} controlWidth="compact">
+          <SettingsSwitch label="允许使用积分" checked={account.allowCredits === true}
+            disabled={pending !== null || account.allowCredits === undefined}
+            onCheckedChange={allowCredits => run("credits", () => service.setAllowCredits(account.id, allowCredits))} />
+        </SettingsRow>
         <dl>
           <div><dt>登录身份</dt><dd>{maskCodexAccountIdentity(account.email ?? account.label)}</dd></div>
           <div><dt>使用顺序</dt><dd>第 {index + 1} 位</dd></div>
