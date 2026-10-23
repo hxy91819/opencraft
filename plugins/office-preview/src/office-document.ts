@@ -28,6 +28,11 @@ export async function openOfficeDocument(input: { blob: Blob; name: string; sign
     input.signal.throwIfAborted();
     return openSpreadsheet(buffer, input.name, input.signal);
   }
+  if (kind === "pptx") {
+    const { openPresentation } = await import("./presentation");
+    input.signal.throwIfAborted();
+    return openPresentation(buffer, input.signal);
+  }
   const paper = kind === "docx" ? createPaperViewport("docx") : null;
   const element = paper?.element ?? document.createElement("div");
   if (!paper) element.className = `office-preview office-preview--${kind}`;
@@ -62,13 +67,6 @@ export async function openOfficeDocument(input: { blob: Blob; name: string; sign
       paper!.refresh();
       return { element, dispose, setIntl: paper!.setIntl, setOpenLink: open => { openLink = open; }, setActive: active => { element.inert = !active; if (active) paper!.refresh(); } };
     }
-    const { PptxViewer, RECOMMENDED_ZIP_LIMITS } = await import("@aiden0z/pptx-renderer/browser");
-    input.signal.throwIfAborted();
-    const viewer = new PptxViewer(element, { fitMode: "contain", scrollContainer: element, pdfjs: false,
-      zipLimits: { ...RECOMMENDED_ZIP_LIMITS, maxTotalUncompressedBytes: 64 * 1024 * 1024, maxEntryUncompressedBytes: 32 * 1024 * 1024 } });
-    cleanups.push(() => viewer.destroy());
-    await viewer.open(buffer, { renderMode: "list", lazyMedia: true, lazySlides: true, signal: input.signal });
-    input.signal.throwIfAborted();
-    return { element, dispose, setOpenLink: open => { openLink = open; }, setActive: active => { if (active) void viewer.setFitMode("contain").catch(() => undefined); } };
+    throw new FilePreviewError("invalid");
   } catch (error) { dispose(); throw error; }
 }

@@ -11,6 +11,18 @@ not an Office layout-fidelity guarantee.
 
 ## Supported format behavior
 
+- PPTX opens a single slide with a thumbnail rail, page-number entry, previous/
+  next actions, Arrow Left/Right, Page Up/Down and Home/End navigation. Keyboard
+  navigation does not consume editing or modified keys. Fit includes both the
+  available width and height; zoom spans 25–300% of that fit. The rail defaults
+  closed in narrow containers and can be toggled explicitly. Page, zoom and rail
+  state belong to the retained document and survive theme/locale/tab changes.
+  The independent packaged engine parses one lazy deck; only the current slide
+  and at most eight near-viewport thumbnails hold render handles. Hidden rails
+  release thumbnail handles; closing or replacing the document releases all of
+  them. Thumbnail contents are inert, and original-file download remains with
+  the resource panel. Legacy `.ppt`, editing and presentation export are not added.
+
 - Legacy Word 97–2003 `.doc` requires a CFB/OLE signature and is parsed locally
   using `@extend-ai/react-docx@0.11.3` in a cancellable Worker with packaged WASM.
   The independent MIT implementation reuses its document model and read-only

@@ -875,5 +875,9 @@
   "chat.command.stopped": "Dihentikan",
   "chat.command.success": "Berjaya",
   "chat.command.exitCode": "Kod keluar {code}",
-  "chat.command.exitUnknown": "Kod keluar tidak diketahui"
+  "chat.command.exitUnknown": "Kod keluar tidak diketahui",
+  "preview.slideNumber": "Nombor slaid",
+  "preview.slide": "Slaid {page}",
+  "preview.slides": "Lakaran kecil slaid",
+  "preview.fitSlide": "Muatkan slaid"
 }
