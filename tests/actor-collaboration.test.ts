@@ -3,6 +3,7 @@ import test from 'node:test';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { createServer } from 'node:http';
 import { MembershipStore, InstanceAccess } from '../packages/access-control/src/index';
@@ -10,8 +11,9 @@ import { ActorStore } from '../packages/access-control/src/actors';
 import { ActorAccess } from '../packages/access-control/src/actor-access';
 import { Collaboration, CollaborationHttpApi, type ConversationExecutionPort, type ExecutionReceipt } from '../packages/access-control/src/collaboration';
 import { parsePrincipal } from '../packages/identity-core/src/index';
+import { createConversationExecution } from '../scripts/conversation-execution.mjs';
 
-async function fixture(t: any, now = Date.now) {
+async function fixture(t: any, now = Date.now, hostId = 'fixture-host') {
   const root = await mkdtemp(join(tmpdir(), 'actor-collaboration-'));
   const actors = new ActorStore(join(root, 'actors.sqlite'));
   const principal = parsePrincipal({ provider: 'local', subject: 'person-1', displayName: 'person', expiresAt: Date.now() + 60_000 })!;
@@ -23,6 +25,7 @@ async function fixture(t: any, now = Date.now) {
   const inputs: string[] = [], calls: string[] = [];
   let failAdd = false, failSteer: boolean | 'ambiguous' = false, validateHold: Promise<void> | undefined, current = true;
   const execution: ConversationExecutionPort = {
+    hostId,
     async validate() { await validateHold; },
     async receipt(_binding, id) { return receipts.get(id) ?? null; },
     async add(_binding, id, input) {
@@ -54,6 +57,65 @@ async function fixture(t: any, now = Date.now) {
     send(extra: Record<string, unknown> = {}) { return service.send(aContext, { targetActorId: b.id, content: 'review the code', idempotencyKey: 'first', ...extra }); },
   };
 }
+
+test('execution ownership must be explicit before opening collaboration storage or connecting a Host', async t => {
+  const f = await fixture(t), path = join(f.root, 'invalid-route.sqlite');
+  for (const hostId of [undefined, null, '', ' ', 'bad\nhost', 'x'.repeat(257)]) {
+    assert.throws(() => new Collaboration(path, f.actors, { ...f.execution, hostId } as unknown as ConversationExecutionPort), /execution_host_required/);
+    assert.equal(existsSync(path), false, 'invalid ownership cannot create a database');
+    assert.throws(() => createConversationExecution(() => { throw Error('must not connect'); }, { serverId: 'fixture', hostId }), /Host required/);
+  }
+});
+
+test('an explicit non-native Host survives binding, durable handoff and restart without an engine fallback', async t => {
+  const f = await fixture(t);
+  assert.equal(f.service.binding(f.b.id)!.hostId, 'fixture-host');
+  let receivedHost: string | undefined;
+  const add = f.execution.add;
+  f.execution.add = async (binding, ...args) => { receivedHost = binding.hostId; return add(binding, ...args); };
+  const sent = f.send({ execution: { mode: 'queue' } });
+  assert.equal(f.service.getRequest(f.aContext, sent.requestId!).host_id, 'fixture-host');
+  assert.equal(f.service.usageSubmission('thread-B', 'actor-input:' + sent.requestId)?.actorId, f.a.id);
+  await f.service.pump();
+  assert.equal(receivedHost, 'fixture-host');
+  await f.restart();
+  assert.equal(f.service.binding(f.b.id)!.hostId, 'fixture-host');
+  assert.equal(f.service.usageSubmission('thread-B', 'actor-input:' + sent.requestId)?.actorId, f.a.id);
+  assert.equal(f.service.getRequest(f.aContext, sent.requestId!).state, 'queued');
+});
+
+test('usage recovery matches the declared Host and cannot recover another engine request with the same thread', async t => {
+  const f = await fixture(t), sent = f.send({ execution: { mode: 'queue' } });
+  const inputId = 'actor-input:' + sent.requestId;
+  assert.equal(f.service.usageSubmission('thread-B', inputId)?.actorId, f.a.id);
+  assert.equal(f.service.usageSubmission('other-thread', inputId), null);
+  await f.service.close();
+  const db = new DatabaseSync(join(f.root, 'collaboration.sqlite'));
+  db.prepare('UPDATE actor_execution_requests SET host_id=? WHERE id=?').run('local-codex', sent.requestId);
+  db.close();
+  await f.restart();
+  assert.equal(f.service.usageSubmission('thread-B', inputId), null, 'a legacy native identity is not the current generic Host');
+});
+
+test('historical nullable request ownership retains its old native identity and migration ledger on reopen', async t => {
+  const f = await fixture(t, Date.now, 'local-codex');
+  const sent = f.send({ execution: { mode: 'queue' } });
+  await f.service.close();
+  const db = new DatabaseSync(join(f.root, 'collaboration.sqlite'));
+  const before = db.prepare('SELECT * FROM schema_migrations ORDER BY version').all();
+  db.prepare('UPDATE actor_execution_requests SET host_id=NULL WHERE id=?').run(sent.requestId);
+  db.close();
+  let receivedHost: string | undefined;
+  const add = f.execution.add;
+  f.execution.add = async (binding, ...args) => { receivedHost = binding.hostId; return add(binding, ...args); };
+  await f.restart(); await f.service.pump();
+  assert.equal(receivedHost, 'local-codex', 'read compatibility must not rewrite pre-existing ownership');
+  assert.equal(f.service.getRequest(f.aContext, sent.requestId!).state, 'queued');
+  assert.equal(f.service.getRequest(f.aContext, sent.requestId!).host_id, null);
+  const reopened = new DatabaseSync(join(f.root, 'collaboration.sqlite'), { readOnly: true });
+  assert.deepEqual(reopened.prepare('SELECT * FROM schema_migrations ORDER BY version').all(), before);
+  reopened.close();
+});
 
 test('human and Session use one message contract; delivery, reading and execution remain distinct', async t => {
   const f = await fixture(t);

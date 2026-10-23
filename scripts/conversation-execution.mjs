@@ -40,7 +40,8 @@ export function callConversationHost(appHost, binding, requestId, method, params
     } catch (error) { finish(error); }
   });
 }
-export function createConversationExecution(getAppHost, {serverId, hostId = "local-codex"}) {
+export function createConversationExecution(getAppHost, {serverId, hostId}) {
+  if (typeof hostId !== 'string' || !hostId.trim() || hostId.length > 256 || /[\x00-\x1f]/u.test(hostId)) throw new Error('Conversation execution Host required');
   const invoke = (binding, id, method, params) => {
     if (binding.hostId !== hostId) throw new Error('Unsupported Actor execution Host');
     const host = getAppHost(); if (!host) throw new Error('Actor Host unavailable');

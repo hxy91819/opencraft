@@ -33,7 +33,7 @@ async function fixture(t: any) {
   });
   adapter.subscribeMessage(frame => frames.push(JSON.parse(frame)));
   const host = new AppHostServer({ physicalHostLifetime: 'server', logicalClientRouting: true, createTransport: () => adapter });
-  service = new Collaboration(join(root, 'collaboration.sqlite'), actors, createConversationExecution(() => host, {serverId:"fixture"}));
+  service = new Collaboration(join(root, 'collaboration.sqlite'), actors, createConversationExecution(() => host, {serverId:"fixture",hostId:"local-codex"}));
   t.after(async () => { await service.close(); await host.close(); actors.close(); await rm(root, { recursive: true, force: true }); });
   await host.ensureHostConnected('local-codex');
   let next = 0;
@@ -121,7 +121,7 @@ test('actual Headless bundle persists authenticated messages, binds execution an
   const a = store.createSession('A', 'operator'), b = store.createSession('B', 'operator');
   const ca = store.issueCredential(a.id, Date.now() + 60_000, 'operator'), cb = store.issueCredential(b.id, Date.now() + 60_000, 'operator');
   for (const action of ['message.send', 'execution.queue']) store.setGrant(a.id, b.id, action, true, 'operator');
-  const seed = new Collaboration(join(dataDirectory, 'actor-collaboration.sqlite'), store, { validate: async () => {}, receipt: async () => null, add: async () => { throw new Error('not used'); }, steer: async () => {}, cancel: async () => false });
+  const seed = new Collaboration(join(dataDirectory, 'actor-collaboration.sqlite'), store, { hostId: "local-codex", validate: async () => {}, receipt: async () => null, add: async () => { throw new Error('not used'); }, steer: async () => {}, cancel: async () => false });
   await seed.bind(b.id, 'durable-thread', 0, () => {}); await seed.close(); store.close();
   const options = { root, webRoot, dataDirectory, port: 0, codexExecutable: wrapper, runtimeDirectory: root,
     startAgentHost: async () => ({ websocketUrl: 'ws://127.0.0.1:9/rpc', async close() {} }) };

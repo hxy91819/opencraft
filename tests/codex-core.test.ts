@@ -358,7 +358,7 @@ test('Actor collaboration survives Headless overlay restart while native Core re
     const a = store.createSession('source', 'operator'), b = store.createSession('target', 'operator');
     const credential = store.issueCredential(a.id, Date.now() + 60_000, 'operator');
     for (const action of ['message.send', 'execution.queue']) store.setGrant(a.id, b.id, action, true, 'operator');
-    const seed = new Collaboration(join(dataDirectory, 'actor-collaboration.sqlite'), store, { validate: async () => {}, receipt: async () => null, add: async () => { throw new Error('unused'); }, steer: async () => {}, cancel: async () => false });
+    const seed = new Collaboration(join(dataDirectory, 'actor-collaboration.sqlite'), store, { hostId: "local-codex", validate: async () => {}, receipt: async () => null, add: async () => { throw new Error('unused'); }, steer: async () => {}, cancel: async () => false });
     await seed.bind(b.id, thread.id, 0, () => {}); await seed.close(); store.close();
     const webRoot = join(f.root, 'web'); await mkdir(webRoot);
     await writeFile(join(webRoot, 'index.html'), '<!doctype html>Actor overlay fixture');
