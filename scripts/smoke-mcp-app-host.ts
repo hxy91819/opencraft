@@ -56,17 +56,18 @@ const ctx=new Context();await ctx.plugin(TimelineBlockRendererRegistryService);a
 const projectors=createDefaultTimelineProjectorRegistry();
 import{createMcpAppOwner}from'/apps/workbench-web/src/mcp-apps/owner.ts';
 import{ConversationDocumentContext}from'/apps/workbench-web/src/components/conversation/document-context.ts';
-const fixture=window.fixture={generation:1,mode:'legacy',reads:[],calls:[],messages:[],hold:false,release:null};
+const fixture=window.fixture={generation:1,mode:'legacy',historyReads:0,historyReady:false,reads:[],calls:[],messages:[],hold:false,release:null};
 const html={legacy:${JSON.stringify(legacy)},standard:${JSON.stringify(standard)},hypernode:${JSON.stringify(hypernode)},sdk:${JSON.stringify(sdkHtml)}};
 function App(){const[widgetStates]=useState(()=>new Map());const[fallback,setFallback]=useState(false);const[available,setAvailable]=useState(false);const[resourceUri,setResourceUri]=useState('ui://counter/app.html');const[displayName,setDisplayName]=useState('Counter');const[mode,setMode]=useState('legacy'),[generation,setGeneration]=useState(1),[theme,setTheme]=useState('light'),[show,setShow]=useState(true);
 const port=useMemo(()=>createMcpAppOwner({key:'host:thread:'+generation,threadId:'thread',widgetStateStore:{scope:'host:thread',entries:widgetStates},assertCurrent:()=>{if(fixture.generation!==generation)throw Error('stale owner')},request:async(method,params)=>{
-if(method==='mcpServer/resource/read'){fixture.reads.push(params);if(fixture.holdResource)await new Promise(resolve=>{fixture.releaseResource=resolve});return{contents:[{uri:params.uri,mimeType:'text/html;profile=mcp-app',text:html[mode].replaceAll('__SDK_ORIGIN__',location.origin),_meta:mode==='sdk'?{ui:{csp:{resourceDomains:[location.origin]}}}:undefined}]}}
-if(method==='mcpServerStatus/list')return{data:[{name:'counter',tools:Object.fromEntries(['increment','appBuilder.list','appBuilder.saveDraft','appBuilder.publish','appBuilder.read'].map(name=>[name,{name,inputSchema:{type:'object'}}]))}],nextCursor:null};
+if(method==='thread/read'){fixture.historyReads++;if(fixture.historyReads===1)throw Error('Temporary history read failure');fixture.historyReady=true;return {}}
+if(method==='mcpServer/resource/read'){fixture.reads.push(params);if(params.uri==='ui://opencraft/apps/recovered'&&!fixture.historyReady)throw Error('Canonical App reference not loaded');if(fixture.holdResource)await new Promise(resolve=>{fixture.releaseResource=resolve});return{contents:[{uri:params.uri,mimeType:'text/html;profile=mcp-app',text:html[mode].replaceAll('__SDK_ORIGIN__',location.origin),_meta:mode==='sdk'?{ui:{csp:{resourceDomains:[location.origin]}}}:undefined}]}}
+if(method==='mcpServerStatus/list')return{data:[{name:'counter',tools:Object.fromEntries(['increment','appBuilder.list','appBuilder.saveDraft','appBuilder.publish','appBuilder.read'].map(name=>[name,{name,inputSchema:{type:'object'}}]))},{name:'opencraft-app-recovered-r1',tools:{increment:{name:'increment',inputSchema:{type:'object'}}}}],nextCursor:null};
 if(method==='mcpServer/tool/call'){fixture.calls.push(params);if(params.tool==='appBuilder.list')return{content:[],structuredContent:{apps:[]}};if(params.tool==='appBuilder.saveDraft')return{content:[],structuredContent:{appId:params.arguments.spec.appId}};if(fixture.hold)await new Promise(resolve=>{fixture.release=resolve});return{content:[],structuredContent:{count:params.arguments.amount},_meta:{private:'for UI'}}}throw Error(method)
 },sendMessage:async text=>{fixture.messages.push(text)},openLink:url=>fixture.messages.push(url)}),[mode,generation]);
 const surfacePort=useMemo(()=>fallback?{...port,widgetState:undefined}:port,[port,fallback]);
 Object.assign(fixture,{setFallback,setAvailable,setTheme,setResourceUri,setDisplayName,switchMode:value=>{fixture.mode=value;setMode(value)},revoke:()=>{fixture.generation++;setGeneration(fixture.generation)},hide:value=>{Object.defineProperty(document,'visibilityState',{configurable:true,value:value?'hidden':'visible'});document.dispatchEvent(new Event('visibilitychange'))},unmount:()=>setShow(false),mount:()=>setShow(true),port});
-const timeline=useMemo(()=>projectTimeline({key:createConversationKey('host','thread'),revision:1,authoritative:true,phase:'live',turns:[{id:'turn',status:'complete',items:[{id:'question',type:'userMessage',payload:{content:[{type:'text',text:'Show a counter'}]}},{id:'call1',type:'mcpToolCall',payload:{server:'counter',tool:'Counter',status:'completed',mcpAppResourceUri:resourceUri,appContext:{appName:displayName},arguments:{count:0},result:{content:[],structuredContent:{count:0},_meta:{private:'initial'}}}},{id:'ordinary',type:'mcpToolCall',payload:{server:'counter',tool:'plain_tool',status:'completed',result:{content:[{type:'text',text:'Plain MCP output'}]}}},{id:'answer',type:'agentMessage',payload:{text:'Use the app above.',phase:'final_answer'}}]}]},projectors),[mode,resourceUri,displayName]);
+const timeline=useMemo(()=>projectTimeline({key:createConversationKey('host','thread'),revision:1,authoritative:true,phase:'live',turns:[{id:'turn',status:'complete',items:[{id:'question',type:'userMessage',payload:{content:[{type:'text',text:'Show a counter'}]}},{id:'call1',type:'mcpToolCall',payload:{server:resourceUri==='ui://opencraft/apps/recovered'?'opencraft-app-recovered-r1':'counter',tool:'Counter',status:'completed',mcpAppResourceUri:resourceUri,appContext:{appName:displayName},arguments:{count:0},result:{content:[],structuredContent:{count:0},_meta:{private:'initial'}}}},{id:'ordinary',type:'mcpToolCall',payload:{server:'counter',tool:'plain_tool',status:'completed',result:{content:[{type:'text',text:'Plain MCP output'}]}}},{id:'answer',type:'agentMessage',payload:{text:'Use the app above.',phase:'final_answer'}}]}]},projectors),[mode,resourceUri,displayName]);
 return <><input aria-label='Draft' defaultValue='Keep my draft'/>{show?<div style={{height:'80vh'}}><TimelineBlockRendererProvider registry={ctx.timelineBlockRenderers}><Conversation key={mode} timeline={timeline} scrollPolicy='natural' documentContext={{conversationId:'thread',cwd:null,hostId:'host',theme,mcpApps:available?surfacePort:undefined}}/></TimelineBlockRendererProvider></div>:null}<div style={{height:2000}}/></>}
 
 createIntlTestRoot(document.getElementById('root')).render(<App/>);`;
@@ -329,6 +330,45 @@ try {
     assert.deepEqual(await page.evaluate(()=>window.fixture.messages),[]);
     assert.deepEqual(errors,[]);
     results.push({width,fallbackStore:true,resourceJsonIsolated:true,manualPauseIsolated:true,originalIdentityRestored:true,displayNameStable:true,newPortFresh:true,pageerrors:errors});
+    await context.close();
+  }
+  // Restored built-in cards must recover when the first canonical-history
+  // read fails transiently. Exercise the actual Pause/Open UI on one owner.
+  for (const width of [390,1280]) for (const theme of ["light","dark"]) {
+    const context=await browser.newContext({viewport:{width,height:844},hasTouch:width===390,colorScheme:theme});
+    const page=await context.newPage();const errors:string[]=[];page.on("pageerror",error=>errors.push(error.message));
+    await page.goto(base+(productionServer?"index.html":"mcp-app-fixture"));
+    await page.waitForFunction(()=>window.fixture?.setAvailable);
+    await page.evaluate(theme=>{window.fixture.setAvailable(true);window.fixture.setTheme(theme)},theme);
+    const app=page.frameLocator("iframe");const activate=(target:any)=>width===390?target.tap():target.click();
+    await app.locator("#result").filter({hasText:'"count":2'}).waitFor();
+    await page.getByRole("textbox",{name:"Draft"}).fill("Keep retry draft");
+    await activate(app.locator("#state"));await page.waitForTimeout(60);
+    await page.evaluate(()=>window.fixture.setResourceUri("ui://opencraft/apps/recovered"));
+    await page.getByRole("alert").filter({hasText:"Canonical App reference not loaded"}).waitFor();
+    assert.equal(await page.locator("iframe").count(),0);
+    assert.equal(await page.evaluate(()=>window.fixture.historyReads),1);
+    const before=await page.evaluate(()=>window.fixture.calls.length);
+    await activate(page.getByRole("button",{name:"Pause app"}));
+    await activate(page.getByRole("button",{name:"Open app"}));
+    try { await app.locator("#result").filter({hasText:'"count":2'}).waitFor({timeout:3000}); }
+    catch(error){await page.screenshot({path:output+`/retry-failed-${theme}-${width}.png`});console.error("retry diagnosis",await page.evaluate(()=>({hydrations:window.fixture.historyReads,reads:window.fixture.reads.length,alert:document.querySelector('[role="alert"]')?.textContent})));throw error;}
+    assert.equal(await page.evaluate(()=>window.fixture.historyReads),2,"explicit retry reacquires the failed history read");
+    assert.equal(await page.evaluate(()=>window.fixture.reads.filter((r:any)=>r.uri==="ui://opencraft/apps/recovered").length),3,"one denied first attempt plus denied-and-accepted retry");
+    assert.equal(await page.evaluate(()=>window.fixture.calls.length),before+1,"recovery runs the newly opened App once without replaying earlier tool calls");
+    const frame=await page.locator("iframe").elementHandle();
+    await app.locator("body").evaluate(element=>{const input=document.createElement('input');input.id='retry-draft';element.append(input)});
+    await app.locator("#retry-draft").fill("Keep App retry input");
+    await page.evaluate(theme=>window.fixture.setTheme(theme==="light"?"dark":"light"),theme);
+    await app.locator("#theme").filter({hasText:theme==="light"?"dark":"light"}).waitFor();
+    assert.equal(await frame!.evaluate(element=>element.isConnected),true);
+    assert.equal(await app.locator("#retry-draft").inputValue(),"Keep App retry input");
+    await page.screenshot({path:output+`/retry-restored-${theme}-${width}.png`});
+    await page.evaluate(()=>window.fixture.setResourceUri("ui://counter/app.html"));
+    // The original App's saved widget data remains isolated from the recovered App.
+    await app.locator("#theme").filter({hasText:'state={"selected":9}'}).waitFor();
+    assert.equal(await page.getByRole("textbox",{name:"Draft"}).inputValue(),"Keep retry draft");
+    assert.deepEqual(errors,[]);results.push({width,theme,historyFailureRetry:true,hydrations:2,resourceReads:3,noToolReplay:true,draftRetained:true,originalWidgetStateRetained:true,pageerrors:errors});
     await context.close();
   }
   await writeFile(output+"/result.json",JSON.stringify(results,null,2));
