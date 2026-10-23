@@ -145,6 +145,7 @@ try {
     await preview.waitFor();
     await draftPage.keyboard.press("Escape");
     await preview.waitFor({ state: "detached" });
+    await draftPage.waitForFunction(el => el === el.getRootNode().activeElement, await triggers.nth(1).elementHandle(), { timeout: 3000 });
     assert(await triggers.nth(1).evaluate(el => el === el.getRootNode().activeElement), "keyboard dismissal returns to invoking thumbnail");
     // Independent remove control never opens preview.
     await activate(draftPage.getByRole("button", { name: "Remove portrait.svg", exact: true }));
