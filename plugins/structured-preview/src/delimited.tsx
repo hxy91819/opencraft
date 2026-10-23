@@ -32,7 +32,7 @@ function DelimitedTable({ rows, source, name, intl }: { rows: string[][]; source
     const needle = query.toLocaleLowerCase();
     // Walk actual cells, including ragged rows; never expand the rectangular grid.
     let row = selected?.row ?? (direction > 0 ? 0 : rows.length - 1);
-    let col = selected?.col ?? (direction > 0 ? -1 : rows[row]!.length);
+    let col = selected ? Math.min(selected.col, rows[row]!.length) : (direction > 0 ? -1 : rows[row]!.length);
     const count = rows.reduce((sum, row) => sum + row.length, 0);
     for (let checked = 0; checked < count; checked++) {
       col += direction;

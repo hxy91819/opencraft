@@ -12,7 +12,7 @@ const runtime=`
 const reads=[];window.fixtureReads=reads;const fixtures=${JSON.stringify(fixtures)};
 const runtime={resources:{host:{canRequest:method=>method==='fuzzyFileSearch/sessionStart'},fileSystem:{
 async getMetadata(path){return {isFile:path!=='/fixture',isDirectory:path==='/fixture',modifiedAtMs:0,size:100}},
-async readFile(path){reads.push(path);if(path.includes('encrypted.doc')){const bytes=Uint8Array.from(atob(fixtures.doc),c=>c.charCodeAt(0));bytes[523]|=1;return {dataBase64:btoa(String.fromCharCode(...bytes))}}return {dataBase64:path.includes('broken')?btoa('invalid document'):fixtures[path.split('.').at(-1)]??btoa('invalid document')}},
+async readFile(path){reads.push(path);if(path.includes('encrypted.doc')){const bytes=Uint8Array.from(atob(fixtures.doc),c=>c.charCodeAt(0));bytes[523]|=1;return {dataBase64:btoa(String.fromCharCode(...bytes))}}return {dataBase64:path.includes('broken')?btoa('invalid document'):path.includes('ragged')?btoa('target,b,c,d,e,f\\nshort\\n'):fixtures[path.split('.').at(-1)]??btoa('invalid document')}},
 async readDirectory(path){return {entries:path==='/fixture'? [{fileName:'nested',isDirectory:true,isFile:false},...['doc','docx','csv','tsv','xls','xlsm','drawio','dio','excalidraw','mmd','mermaid'].map(ext=>({fileName:'sample.'+ext,isDirectory:false,isFile:true}))]:[{fileName:'child.html',isDirectory:false,isFile:true}]}},
 async createFuzzyFileSearchSession(options){return {update:async()=>{options.onUpdated({files:[{root:'/fixture',path:'report-0.html',file_name:'report-0.html',match_type:'file'}]});options.onCompleted()},stop:async()=>{}}}
 }}};
@@ -148,6 +148,12 @@ for(const width of (process.env.OPENCRAFT_PREVIEW_WIDTHS?.split(',').map(Number)
    assert.equal(await page.evaluate(()=>document.querySelector('.structured-preview--table')===(window as any).retainedTable),true);
   }
  }
+ await open('/fixture/ragged.csv');await waitReady();
+ await page.getByRole('cell',{name:'short',exact:true}).click();
+ for(let col=0;col<5;col++)await page.locator('[role="cell"][tabindex="0"]').press('ArrowRight');
+ await page.getByRole('searchbox',{name:'Find in table',exact:true}).fill('target');
+ await page.getByRole('button',{name:'Previous match',exact:true}).click();
+ assert.equal(await page.getByRole('textbox',{name:'Cell contents',exact:true}).inputValue(),'target','backward search from a ragged-row padding cell must wrap to every real cell');
  await open('/fixture/encrypted.doc');await page.locator('[data-file-preview-phase="failed"]').waitFor({timeout:60000});
  await page.getByText('Password-protected files cannot be previewed. Download it to open with its password.',{exact:true}).waitFor();
  await page.evaluate(()=>(window as any).fixture.setLocale('zh-CN'));await page.getByText('暂不支持预览加密文件，请下载后使用密码打开。',{exact:true}).waitFor();
