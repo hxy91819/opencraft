@@ -202,9 +202,8 @@ Saved theme intent and existing storage/theme IDs retain their previous authorit
 an unavailable selection uses the configured fallback without overwriting storage.
 Presentation is not permission, routing or account authority.
 
-Both
-the downstream product embedded and full lightvela-web keep the pre-backport glyphs and their
-consumer-specific scales; core keeps the new artwork. Shared metrics and the
+The downstream product's embedded and standalone Web entries keep the pre-backport
+glyphs and their consumer-specific scales; core keeps the new artwork. Shared metrics and the
 semantic Web icon adapter own sizes/strokes. The classic adapter retains the
 existing glyphs; `workbenchIconMetrics.classic` names their scale without
 dispatching on a product ID. Tokens are projected onto each

@@ -4,8 +4,9 @@
 
 ### Host-side provider account pooling
 
-In server Web deployments, the headless Codex extension owns the single account
-settings entry in the Server group beside model services. The composition root
+In server Web deployments, the Server Connections extension
+(`opencraft.server-connections`) contributes the Codex account settings entry in
+the Server group beside model services. The composition root
 disables the built-in local account page in that deployment; standalone Web and
 Electron retain their existing local account entry and Host ownership.
 Account identity text masks email mailbox and private domain labels by default,
@@ -251,13 +252,13 @@ fresh-read revision checks and serialized writes are not a desktop service cross
 Deleted Bot events invalidate open conversation snapshots and block later sends.
 Only current Host generations may publish mutation receipts into the directory.
 
-`@lightvela/agent-core` comes from the product-neutral
-`shared/lightvela-agent-core` package. Downstream Web validates each product behavior
-first; OpenCraft injects AppServer/Host adapters only after that contract is
-stable. The core never imports either renderer, storage, auth transport, i18n or
-analytics. During migration the generated downstream HTTP repository may resolve the
-package for shared Bot identity/lifecycle, but remains a compatibility consumer,
-not a second source of product policy.
+Downstream products own their Bot identity/lifecycle libraries and generated HTTP
+repositories. These are product dependencies, not public OpenCraft packages. The
+shared lifecycle contract stays independent of renderers, storage, authentication
+transport, i18n and analytics; OpenCraft consumes it through explicit AppServer/Host
+adapters. Downstream Web validates its product behavior before that adapter contract
+is adopted. A generated HTTP repository remains a compatibility consumer, never
+a second source of product policy.
 
 - Protocol, content models, session state, restore/replica logic, commands,
   deterministic tests, routing identifiers, and design tokens: 100% shared.

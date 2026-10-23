@@ -18,7 +18,7 @@
 - 创建意图回执由物理Host端口保存，跨Bridge更新保留；相同请求ID不会重复POST，未知结果不自动重试。
 - 目录拒绝旧连接的迟到变更，刷新不能覆盖已发布管理事件；删除使打开的会话失效，保留屏幕历史但禁止继续发送。
 - Bots列表使用主题Settings控件与Radix菜单/弹窗，删除用AlertDialog；侧栏新建入口进入同一管理页。
-- Bots管理不呈现实例选择器，只消费当前账号唯一的`lightvela.hermes`云端Host。本机及其他Provider即使声明Bot能力也不参与；多个云端Host没有唯一已连接owner时拒绝暗选。
+- 此处云端专用策略属于下游产品：Bots管理不呈现实例选择器，只消费当前账号唯一的产品云端Hermes Host；本机及其他Provider不参与，多个候选没有唯一已连接owner时拒绝暗选。公开核心通过产品 session 的 `botManagement` 声明准入，不内置此产品筛选；省略声明时按通用能力规则选择，见[当前产品装配契约](../../docs/architecture/extensions/product-composition.md)。
 - 管理页将“Host连接 + Bot目录刷新”作为一个15秒用户交互事务；Host传输逐步投影“确认Agent/企业服务会话/Hermes Dashboard/AppServer”阶段，进入目录阶段后显示“正在读取Bot列表”。任一阶段超时都释放加载态，并在提示中带最后已知阶段和后台任务状态。Host连接与目录请求仍归其原owner，若随后成功，订阅自行收敛。
 - 进入Bots View即为唯一云端Hermes Host启动一次自动连接/目录刷新，连接不作为用户按钮呈现。首屏显示Bot列表或加载占位；失败后保留原因和通用刷新动作。
 - 控制面HTTP 404/405不是Hermes运行时“不支持”信号；`route_not_allowed`立即结束加载并向用户呈现通用内部错误，具体代码只保留在诊断对象中。只有原生Hermes RPC `-32601`才降级为运行时能力缺失。

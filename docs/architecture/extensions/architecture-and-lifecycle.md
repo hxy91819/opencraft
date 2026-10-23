@@ -256,7 +256,7 @@ UNLOADING / DISPOSED`，非常适合实现 Activation 内核。`ctx.effect()` �
 框架及后续接入条件见 [Conversation desktop plugin](../../cloud-desktop-plugin.md)。
 
 云桌面与下游产品插件保持单向依赖：通用插件拥有桌面 contract、面板和 noVNC
-媒体适配，不读取账号或调用企业云服务；`lightvela-platform/desktop` 只消费通用
+媒体适配，不读取账号或调用企业云服务；下游桌面 provider 只消费通用
 contract/media 子入口，拥有精确绑定校验、资源准备及后端 attachment 交接，
 不导入桌面 React renderer、noVNC 或 Hermes Chat 隧道。生产观看授权/输入门禁
 尚未实现，缺失 viewer port 时不发布能力。源码和 package dependency guard

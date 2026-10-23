@@ -36,8 +36,8 @@ workspace root）；缺失文件或 URL 拒绝构建，无配置时不探测下�
 启动失败逆序回滚；正常卸载先释放扩展和缓存订阅，再释放产品 session，不另建生命周期管理器。
 Bot 管理通过 session 的可选 `botManagement` 声明 provider 准入与空态提示；省略准入
 表示所有启用 profile，显式空列表表示不开放候选。核心按目录实际能力选择唯一管理
-目标，不修改当前聊天 Host；产品声明不是权限授予。Vela 在自己的 client plugin
-保留原云端专用策略，核心不再解释私有 provider ID 或账号语义。
+目标，不修改当前聊天 Host；产品声明不是权限授予。下游产品可在自己的 client plugin
+保留云端专用策略，核心不解释私有 provider ID 或账号语义。
 
 
 默认 Web/Electron 入口不选择私有产品，保留本地与远端 Host；本地缓存按服务器和可选
@@ -46,7 +46,7 @@ Bot 管理通过 session 的可选 `botManagement` 声明 provider 准入与空�
 ClientPersistenceScope，不能用本地 fallback 取代凭据撤权。
 构建 owner 通过 `OPENCRAFT_CLIENT_PRODUCT_ENTRY` 显式选择本地装配文件，校验方式
 与服务端扩展入口一致，无配置不探测下游。产品登录回调、账号创建、平台/Hermes
-装配、嵌入预检和 Collaboration 描述归 `plugin-lightvela-client`；产品构建入口由下游
+装配、嵌入预检和 Collaboration 描述归下游客户端产品插件；产品构建入口也由下游
 提供。客户端及 Collaboration 私有包的实现、锁和测试由下游产品工作区拥有，核心不再安装
 这些私有包；产品保留原包名与导出。平台/Hermes、账号SDK、三个私有共享快照
 和原生产品源码也归下游；核心保留通用接口与原工作台。私有测试随owner迁移，混合
