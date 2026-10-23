@@ -13,7 +13,7 @@ test('transferred viewer stops retries and implicit navigation; explicit reload 
     send(value: string) { this.sent.push(JSON.parse(value)); }
     close(code = 1000) { if (this.readyState === 3) return; this.readyState = 3; this.onclose?.({ code }); }
     result() { this.onmessage?.({ data: JSON.stringify({ type: 'result', id: this.sent[0].id, value: {
-      width: 430, height: 932, deviceProfile: 'iphone', resumed: true,
+      width: 430, height: 932, deviceProfile: 'iphone', resumed: true, document: 'doc-open-1',
       navigation: { url: 'https://example.test/live', title: 'Live', isLoading: false },
     } }) }); }
   }
@@ -36,8 +36,10 @@ test('transferred viewer stops retries and implicit navigation; explicit reload 
   try {
     p.ready = host.connect(p); sockets[0].onopen?.();
     assert.equal(sockets[0].sent[0].input.multiView, true);
+    assert.equal(sockets[0].sent[0].input.documentInput, true);
     assert.equal(sockets[0].sent[0].input.takeover, undefined);
     sockets[0].result(); await p.ready;
+    assert.equal(p.document, 'doc-open-1');
     sockets[0].close(4009);
     assert.equal(p.displaced, true); assert.equal(p.disconnected, true);
     t.mock.timers.tick(60000); assert.equal(sockets.length, 1);
