@@ -80,4 +80,3 @@ export function classifySshFailure(stderr: string): SshConnectionError {
   }
   return new SshConnectionError("SSH_LINK_LOST", true, "Remote connection was interrupted");
 }
-
