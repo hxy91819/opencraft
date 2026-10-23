@@ -123,7 +123,7 @@ Headless 通过可信服务端 composition 创建身份适配器；受管站点�
 
 - 可信产品装配可提供外部身份 provider、账户入口和设置页；凭据验证、员工目录与
   企业界面由下游插件持有，核心保留主体绑定、成员与资源授权。
-  详见 [外部身份与消息来源契约](./enterprise-authentication.md)。
+  详见 [外部身份与消息来源契约](enterprise-authentication.md)。
 
 - `packages/extension-contract`：renderer-free manifest V1、activation identity、Command、Settings、
   location-neutral View、Navigation、Sidebar Catalog、Settings Page、Workbench Surface、双明暗
@@ -141,7 +141,7 @@ Headless 通过可信服务端 composition 创建身份适配器；受管站点�
   `material.elevation`（soft/flat，主工作区表面阴影）。没有覆盖的值继续由原算法生成。
   注册层拒绝 CSS/URL、未知选项和不完整的明暗色板，并冻结嵌套数据。
   Web/Electron 已消费这些字段；Expo 动态主题不在本轮范围。完整链路见
-  [Theme surfaces and native appearance](./platform-architecture.md#theme-surfaces-and-native-appearance)。
+  [Theme surfaces and native appearance](architecture/platform/presentation-and-input.md#theme-surfaces-and-native-appearance)。
 - 场景测试覆盖成功激活、激活失败零残留、内部 commit 中断回滚、旧代 API 拒绝、重激活代际、
   平台筛选、Theme palette 校验和真实 WebSocket provider lease retirement。
 - Workbench 采用 `entry -> semantic View -> host placement`：插件不再用一个
@@ -1149,7 +1149,7 @@ authentication, access or ownership, and task assignment works without a provide
 
 ### Startup registration and demand presentation
 
-扩展元数据/provider 必须在路由恢复前可发现，管理页实现不属于注册依赖。Web 的 Required/Optional/Demand 阶段、共享账户/Host 生命周期、延迟组件失败重试和连接导入取消屏障，以 [Startup resource ownership](platform-architecture.md#startup-resource-ownership) 为当前实现契约；事件名 `onStartupFinished` 本身不保证模块已脱离关键图。构建应检查真实静态依赖，见 [启动资源门禁](startup-performance.md)。
+扩展元数据/provider 必须在路由恢复前可发现，管理页实现不属于注册依赖。Web 的 Required/Optional/Demand 阶段、共享账户/Host 生命周期、延迟组件失败重试和连接导入取消屏障，以 [Startup resource ownership](architecture/platform/lifecycle-and-resources.md#startup-resource-ownership) 为当前实现契约；事件名 `onStartupFinished` 本身不保证模块已脱离关键图。构建应检查真实静态依赖，见 [启动资源门禁](startup-performance.md)。
 
 ### Provider-owned Composer commands
 
