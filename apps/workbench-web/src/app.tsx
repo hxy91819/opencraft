@@ -45,10 +45,12 @@ import {
   type ComposerFollowUpAction,
   type SubmitIntent,
 } from "@opencraft/composer-core";
+import {
   compileSubmitIntent,
   restoreQueuedInput,
 } from "@opencraft/composer-appserver";
 import { queuedSubmissionPresentation, queueSenderPresentation, visibleQueuedSubmissions } from "./queued-submission-presentation";
+import {
   OpenCraftComposer,
   type ComposerSelectionCatalog,
 } from "@opencraft/composer-editor";
@@ -66,6 +68,7 @@ import { readCachedThreadName, writeCachedThreadName } from "./runtime/thread-ti
 import { archiveThread } from "./runtime/thread-archive";
 import { forkAndOpenThread } from "./runtime/thread-fork-navigation";
 import { formatDocumentTitle } from "./runtime/document-title";
+import {
   canInvokeHostPanelCommand,
   type PanelAction,
   type PanelTabDescriptor,
@@ -74,6 +77,7 @@ import { formatDocumentTitle } from "./runtime/document-title";
   type PanelToolbarActionContext,
 } from "@opencraft/workbench-panels";
 import { createPortal } from "react-dom";
+import {
   createInteractionResponse,
   createWorkbenchThreadLocation,
   draftSubmissionOwnsNavigation,
@@ -82,6 +86,7 @@ import { createPortal } from "react-dom";
   projectComposerModelChoices,
 } from "@opencraft/workbench-runtime";
 import { OPENCRAFT_THREAD_QUEUE_EXTENSION, OPENCRAFT_PERMISSION_MODES_EXTENSION, supportsAtomicQueuedSteer, supportsUnconfirmedSteerDiscard, type OpenCraftPermissionProfile } from "@opencraft/appserver-protocol";
+import {
   lazy,
   Suspense,
   useCallback,
@@ -93,22 +98,28 @@ import { OPENCRAFT_THREAD_QUEUE_EXTENSION, OPENCRAFT_PERMISSION_MODES_EXTENSION,
   useSyncExternalStore,
 } from "react";
 
+import {
   useBrowserWorkbench,
 } from "./browser/browser-runtime-context";
+import {
   AppShell,
 } from "./components/app-shell";
+import {
   AppShellHeader,
   AppShellNavigationControls,
 } from "./components/app-shell-header";
+import {
   AppShellRouteRegionsProvider,
   appShellPlatformViewRegions,
   useAppShellRouteHeader,
 } from "./components/app-shell-route-regions";
+import {
   Conversation,
   type ConversationInteractionAction,
   type ConversationRestoreSnapshot,
   type ConversationScrollApi,
 } from "./components/conversation";
+import {
   ConversationRecoveryNotice,
   ConversationRecoveryEmptyState,
   conversationRecoveryPresentation,
@@ -128,6 +139,7 @@ import { isWorkbenchToolPage } from "./runtime/workbench-tool-pages";
 import { WorkbenchToolNavigation, useWorkbenchToolActions } from "./components/workbench-tool-navigation";
 import { InternalDeveloperModeGate } from "./components/internal-developer-mode-gate";
 import { useInternalDeveloperMode } from "./internal-developer-mode";
+import {
   ManagementSettingsContent,
   ModalHost,
   showAnnouncementLab,
@@ -141,6 +153,7 @@ import { WorkspaceDirectoryPicker } from "./components/workspace-directory-picke
 import { useWorkbenchPresentationRoot } from "./components/workbench-presentation-root";
 import { useResponsiveSidebarDock } from "./components/use-responsive-sidebar-dock";
 import { usePersistedSidebarWidth } from "./components/use-persisted-sidebar-width";
+import {
   selectedProjectStorageKey,
   useActiveAppServerThread,
   useAppServerHosts,
@@ -160,6 +173,7 @@ import { usePersistedSidebarWidth } from "./components/use-persisted-sidebar-wid
   useMultiHostThreadCatalog,
   useThreadPinWriter,
 } from "./runtime/appserver-runtime-context";
+import {
   setAppearanceThemeId,
   setThemePreference,
   useAppearanceTheme,
@@ -167,10 +181,12 @@ import { usePersistedSidebarWidth } from "./components/use-persisted-sidebar-wid
 import { resolveBrowserAttachment } from "./runtime/browser-attachment-resolver";
 import { createAppServerMediaSourceLoader } from "./runtime/appserver-media-loader";
 import { useBlobResources, useImageProcessing } from "./runtime/appserver-runtime-context";
+import {
   buildDraftWorkspaceOptions,
   resolveDraftDirectorySelection,
 } from "./runtime/draft-workspace-model";
 
+import {
   usePanelRendererSnapshot,
   usePanelToolbarActions,
   useConversationPanelState,
@@ -182,6 +198,7 @@ import { ComposerExtensionActions } from "./runtime/composer-action-renderers";
 import { useConnectorPresentation } from "./components/connectors/connector-panel";
 import { useExtensionWorkbenchProjection } from "./runtime/extension-workbench-projection";
 import { useAuthenticationPresentation } from "./runtime/use-authentication-presentation";
+import {
   FULL_WORKBENCH_PRESENTATION,
   type WorkbenchPresentationPolicy,
 } from "./workbench-presentation-policy";
