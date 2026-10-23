@@ -891,11 +891,68 @@ export class DshAppServerAdapter {
     return { current: native ?? await this.defaultModel() ?? undefined };
   }
 
-  private async defaultModel(): Promise<{ provider: string; model: string } | null> {
+  private async defaultModel(): Promise<{ provider: string; model: string; reasoningEffort?: string } | null> {
     const settings = await (this.modelConfiguration ?? this.client).call<RuntimeSettingsDescribeResponse>("settings.describe");
     const value = object(settings.namespaces.find(entry => entry.ns === "agent-default-model")?.value);
-    return typeof value.provider === "string" && value.provider !== "" && typeof value.model === "string" && value.model !== ""
-      ? { provider: value.provider, model: value.model } : null;
+    if (typeof value.provider !== "string" || value.provider === "" || typeof value.model !== "string" || value.model === "") return null;
+    // The saved default reasoning effort must reach the engine; dropping it here
+    // silently resets every new thread to the provider's default thinking level.
+    return { provider: value.provider, model: value.model,
+      ...(typeof value.reasoningEffort === "string" && value.reasoningEffort !== "" ? { reasoningEffort: value.reasoningEffort } : {}) };
+  }
+
+  /**
+   * Project the host-wide default model selection onto the Codex-compatible
+   * `Config` shape so the Composer can read new-thread defaults from the
+   * standard `config/read`/`config/batchWrite` methods.
+   */
+  private async defaultModelConfigSnapshot(): Promise<RecordValue> {
+    const model = await this.defaultModel();
+    const provider = model?.provider ?? null;
+    const selectedModel = model?.model ?? null;
+    const effort = typeof model?.reasoningEffort === "string" ? model.reasoningEffort : null;
+    return {
+      model: provider && selectedModel ? encodeModel(provider, selectedModel) : null,
+      review_model: null,
+      model_context_window: null,
+      model_auto_compact_token_limit: null,
+      model_auto_compact_token_limit_scope: null,
+      model_provider: provider,
+      approval_policy: null,
+      approvals_reviewer: null,
+      sandbox_mode: null,
+      sandbox_workspace_write: null,
+      forced_chatgpt_workspace_id: null,
+      forced_login_method: null,
+      web_search: null,
+      tools: null,
+      instructions: null,
+      developer_instructions: null,
+      compact_prompt: null,
+      model_reasoning_effort: effort,
+      model_reasoning_summary: null,
+      model_verbosity: null,
+      service_tier: null,
+      analytics: null,
+      apps: null,
+      browser_use: null,
+      computer_use: null,
+      desktop: null,
+    };
+  }
+
+  /** Validate a merged `agent-default-model` document like runtime/settings/mutate does. */
+  private async assertDefaultModelValid(next: RecordValue): Promise<void> {
+    const cleared = this.modelConfiguration && !Object.hasOwn(next, "provider") && !Object.hasOwn(next, "model")
+      && !Object.hasOwn(next, "reasoningEffort");
+    if (cleared) return;
+    const catalog = await this.providers.models();
+    const model = catalog.groups.find(group => group.id === next.provider)?.models.find(model => model.id === next.model);
+    if (!model) throw new Error("默认模型必须启用且可用");
+    if (Object.hasOwn(next, "reasoningEffort") && next.reasoningEffort !== null
+      && !(model.reasoning?.efforts ?? []).some(effort => effort.id === next.reasoningEffort)) {
+      throw new Error(`默认模型不支持推理强度 ${String(next.reasoningEffort)}`);
+    }
   }
 
   private async assertInput(sessionId: string, input: unknown): Promise<void> {
@@ -921,6 +978,13 @@ export class DshAppServerAdapter {
         if (current.current?.provider !== selection.provider || current.current.model !== selection.model) throw new Error("Selected model is disabled or unavailable");
         // A selection preference must not interrupt an already-bound conversation.
         if (effort === undefined || effort === current.current.reasoningEffort) return current;
+      }
+      const current = (await this.sessionModels(sessionId)).current;
+      // An effortless re-select means "keep this model's selected thinking
+      // level": re-sending only the route would make the engine overwrite the
+      // session's stored reasoningEffort with the provider default.
+      if (effort === undefined && current?.provider === selection.provider && current.model === selection.model) {
+        return this.sessionModels(sessionId);
       }
       await this.client.call("session.selectModel", {
         sessionId,
@@ -1703,7 +1767,8 @@ export class DshAppServerAdapter {
         rejectUnsupportedPolicyOverrides(value, "sandbox");
         const selectedPermission = permissionSelection(value.permissions);
         const requestedPreset = selectedPermission === undefined ? undefined : await this.requirePermissionPreset(selectedPermission);
-        const selection = value.model == null || value.model === "" ? await this.defaultModel() : decodeModel(value.model);
+        const selection: { provider: string; model: string; reasoningEffort?: string } | null =
+          value.model == null || value.model === "" ? await this.defaultModel() : decodeModel(value.model);
         if (!selection) throw new Error("请先选择模型或在设置中指定默认模型");
         const selectedModel = encodeModel(selection.provider, selection.model);
         const catalog = await this.providers.models();
@@ -1733,7 +1798,7 @@ export class DshAppServerAdapter {
         if (!this.threadEngine && requestedPreset !== undefined) {
           await this.setPermissionPreset(started.sessionId, requestedPreset);
         }
-        const models = await this.selectModel(started.sessionId, selectedModel);
+        const models = await this.selectModel(started.sessionId, selectedModel, selection.reasoningEffort);
         if (!models.current) throw new Error("Engine did not acknowledge the selected model");
         const currentModel = encodeModel(models.current.provider, models.current.model);
         const summary: DshSessionSummary = { sessionId: started.sessionId, updatedAt: Date.now(), running: false, blank: true,
@@ -1748,7 +1813,7 @@ export class DshAppServerAdapter {
           thread, model: currentModel, modelProvider: "dsh", serviceTier: null, cwd: thread.cwd,
           runtimeWorkspaceRoots: workspace?.runtimeWorkspaceRoots ?? [thread.cwd], instructionSources: [],
           approvalsReviewer: "user",
-          reasoningEffort: null, multiAgentMode: "explicitRequestOnly", ...permissionState,
+          reasoningEffort: models.current?.reasoningEffort ?? null, multiAgentMode: "explicitRequestOnly", ...permissionState,
         };
         } catch (error) {
           if (created !== null) {
@@ -1841,6 +1906,48 @@ export class DshAppServerAdapter {
         return { data: projectPermissionProfileCatalog(presets, profile => dshPermissionMode(policies.get(profile.id))), nextCursor: null };
       }
       case "skills/list": throw new Error("Scoped skills require the connected host capability metadata service");
+      case "config/read": {
+        const config = await this.defaultModelConfigSnapshot();
+        return { config, origins: {}, layers: null };
+      }
+      case "config/batchWrite": {
+        // Compose new-thread model defaults through the Codex-compatible config
+        // surface. Route edits reset a stale explicit effort; a follow-up
+        // effort edit in the same batch then applies the intended level.
+        const ops: Array<RecordValue> = [];
+        const edits = Array.isArray(value.edits) ? value.edits : [];
+        for (const edit of edits) {
+          const entry = object(edit);
+          const keyPath = typeof entry.keyPath === "string" ? entry.keyPath : null;
+          if (keyPath !== "model" && keyPath !== "model_reasoning_effort") {
+            throw new Error(`此主机不支持写入配置项 ${String(entry.keyPath)}`);
+          }
+          if (entry.mergeStrategy !== "replace") throw new Error(`配置写入策略不受支持：${String(entry.mergeStrategy)}`);
+          if (keyPath === "model") {
+            const selection = decodeModel(entry.value);
+            if (!selection) throw new Error("无效的默认模型选择");
+            ops.push({ op: "set", path: ["provider"], value: selection.provider },
+              { op: "set", path: ["model"], value: selection.model },
+              { op: "unset", path: ["reasoningEffort"] });
+          } else if (entry.value === null) {
+            ops.push({ op: "unset", path: ["reasoningEffort"] });
+          } else {
+            if (typeof entry.value !== "string" || entry.value === "") throw new Error("无效的默认推理强度");
+            ops.push({ op: "set", path: ["reasoningEffort"], value: entry.value });
+          }
+        }
+        if (ops.length === 0) return { config: await this.defaultModelConfigSnapshot() };
+        const settings = await (this.modelConfiguration ?? this.client).call<RuntimeSettingsDescribeResponse>("settings.describe");
+        const next = { ...object(settings.namespaces.find(entry => entry.ns === "agent-default-model")?.value) };
+        for (const op of ops) {
+          const firstPath = (op.path as string[])[0];
+          if (op.op === "unset") delete next[firstPath];
+          else next[firstPath] = op.value;
+        }
+        await this.assertDefaultModelValid(next);
+        const mutateValue = { ns: "agent-default-model", ops };
+        return (this.modelConfiguration ?? this.client).call("settings.mutate", mutateValue);
+      }
       default: throw new Error(`Method not supported by OpenCraft DSH host: ${method}`);
     }
   }
