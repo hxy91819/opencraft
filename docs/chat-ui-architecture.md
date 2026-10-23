@@ -3397,3 +3397,8 @@ an overlay, and streaming growth, shrinkage and width changes update that afford
 The existing View choice, completion defaults, copy/download and viewport ownership
 remain unchanged. `scripts/smoke-reasoning-disclosure.ts --plan-preview-only` covers
 short and long content, growth/shrinkage, expansion and View restoration.
+Queue row leading content is compact: the reorder hit area begins one spacing
+unit from the row edge and immediately precedes the independent sender slot.
+Keep the existing desktop/touch hit widths and row heights; only preview and
+trailing actions retain their normal text separation. Reducing leading whitespace
+must not put the photo inside the drag activator or overlap its target.

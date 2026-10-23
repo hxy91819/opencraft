@@ -24,7 +24,7 @@ try {
     const photo = e.querySelector('.opencraft-composer-queue-item__avatar')!;
     const grip = e.querySelector('.opencraft-composer-queue-item__grip')!;
     const text = e.querySelector('.opencraft-composer-queue-item__preview')!;
-    return {handleRight:handle.getBoundingClientRect().right, photoLeft:photo.getBoundingClientRect().left,
+    return {rowLeft:e.getBoundingClientRect().left, handleLeft:handle.getBoundingClientRect().left, handleRight:handle.getBoundingClientRect().right, photoLeft:photo.getBoundingClientRect().left,
      photoRight:photo.getBoundingClientRect().right, textLeft:text.getBoundingClientRect().left,
      opacity:getComputedStyle(photo).opacity, gripOpacity:getComputedStyle(grip).opacity,
      photoActivatesDrag:handle.contains(photo)};
@@ -32,6 +32,8 @@ try {
    assert(layout.handleRight <= layout.photoLeft && layout.photoRight <= layout.textLeft, 'handle, sender and text occupy separate slots');
    assert.equal(layout.opacity, '1'); assert.equal(layout.gripOpacity, '1');
    assert.equal(layout.photoActivatesDrag, false, 'sender photo is not a drag target');
+   assert(layout.handleLeft-layout.rowLeft <= 4.1, 'reorder handle stays close to the leading edge');
+   assert(layout.photoLeft-layout.handleRight <= 1, 'handle and author slots have no extra spacer');
   };
   await separateAuthorAndHandle();
   if(width !== 390) { await handle.hover(); await separateAuthorAndHandle(); }
