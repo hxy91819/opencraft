@@ -4,6 +4,7 @@ import { createConversationKey } from "@opencraft/chat-core";
 import { OpenCraftComposer } from "@opencraft/composer-editor";
 import { ImageEditorContext } from "@opencraft/extension-react";
 import ImageEditor from "../../plugins/image-editor/src/editor";
+import editorStyles from "../../plugins/image-editor/src/editor.web.scss?inline";
 import * as themes from "@opencraft/design-system/theme-engine";
 import type { UserMessageTimelineBlock } from "@opencraft/chat-core";
 import { createIntlTestRoot } from "./intl-root";
@@ -55,7 +56,7 @@ const completions: (() => void)[] = [];
 Object.assign(window, { imagePreviewFixture: { controller, switchThread: (id: string) => controller.dispatch({ type: "switch-target", target: { type: "existing-thread", key: createConversationKey("local", id) } }), complete: () => completions.splice(0).forEach(complete => complete()), submissions: 0, files: [] as File[] } });
 createIntlTestRoot(presentationRoot).render(
   <WorkbenchPresentationRootProvider target={presentationRoot}>
-    <ImageEditorContext.Provider value={{ id: "opencraft.image-editor", Component: ImageEditor }}>
+    <ImageEditorContext.Provider value={{ id: "opencraft.image-editor", Component: ImageEditor, styles: editorStyles }}>
     <UserMessageBlock block={block} />
     <div style={{ position: "relative", maxWidth: 760, margin: "24px auto", padding: 12 }}>
       <OpenCraftComposer controller={controller} portalContainer={presentationRoot} mentionSuggestionsEnabled={false} onCancel={() => {}}

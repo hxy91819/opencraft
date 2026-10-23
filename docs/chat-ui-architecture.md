@@ -3552,3 +3552,5 @@ does not change export resolution. Oversized/unsupported images fail locally whi
 preserving the draft; the editor does not load a remote/native editing fallback.
 
 Touch editing separates document and viewport intent: one pointer edits; a second touch cancels the incomplete operation and begins bounded pinch/pan until all fingers lift. Text/stickers commit on release. Zoom/pan and fit do not enter undo history or change export pixels. The modal owner follows visualViewport for mobile keyboard placement; the plugin uses shared mobile-input typography, safe-area spacing and 44px minimum targets.
+
+Image editor styles are delivered as trusted scoped CSS with the optional contribution and mounted only inside the preview presentation root, including ShadowRoot consumers. They do not enter startup app CSS; existing theme tokens still resolve from the host.

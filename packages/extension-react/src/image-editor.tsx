@@ -10,6 +10,8 @@ export interface ImageEditorProps {
 
 export interface ImageEditorContribution {
   readonly id: string;
+  /** Trusted scoped CSS, mounted in the preview presentation root on demand. */
+  readonly styles?: string;
   readonly Component: ComponentType<ImageEditorProps>;
 }
 

@@ -1,5 +1,6 @@
 import type { TrustedExtensionDefinition } from "@opencraft/extension-runtime";
 import ImageEditor from "./editor";
+import styles from "./editor.web.scss?inline";
 
 export function createImageEditorExtension(): TrustedExtensionDefinition {
   return {
@@ -10,7 +11,7 @@ export function createImageEditorExtension(): TrustedExtensionDefinition {
       platforms: ["web", "electron"], activationEvents: ["onStartupFinished"],
     },
     activate(api) {
-      api.internal.register("imageEditor", { id: "opencraft.image-editor", Component: ImageEditor });
+      api.internal.register("imageEditor", { id: "opencraft.image-editor", Component: ImageEditor, styles });
     },
   };
 }

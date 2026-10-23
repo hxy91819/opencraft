@@ -54,6 +54,7 @@ export function ImageAttachmentPreview({ images, selectedId, onSelect, onClose, 
           if (event.key === "ArrowRight") { event.preventDefault(); next(); }
         }}
       >
+        {editor?.styles && <style>{portalContainer?.getRootNode() instanceof ShadowRoot ? editor.styles.replaceAll(":root", ":host") : editor.styles}</style>}
         <Dialog.Title className="modal-surface__accessible-title">{label}</Dialog.Title>
         {isEditing && Editor ? <Editor key={image.id + image.source} source={image.source} name={image.name} onCancel={onClose} onComplete={file => onEditComplete!(image.id, image.source, file)} /> : <>
         {failedSource === image.source
