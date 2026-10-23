@@ -129,22 +129,49 @@ async function openPage(width: number, cpuRate: number, storageState?: Awaited<R
   }, { cachedAnswer, restoredAnswer });
   return { context, page, errors };
 }
-async function assertDatesVisible(page: Page) {
-  // DOM presence does not catch a timestamp inside transparent hover controls.
+async function assertDateDisclosure(page: Page) {
+  // Display data is present before connection. Touch clocks are readable at
+  // rest; desktop clocks use the message's existing hover/focus disclosure.
+  const editor = page.locator('[contenteditable="true"]').first();
   await page.mouse.move(0, 0);
+  await editor.focus();
+  const hoverCapable = await page.evaluate(() => matchMedia('(any-hover: hover) and (any-pointer: fine)').matches
+    && !document.documentElement.hasAttribute('data-touch-interaction'));
+  const touchInput = await page.evaluate(() => matchMedia('(any-pointer: coarse), (hover: none)').matches
+    || document.documentElement.hasAttribute('data-touch-interaction'));
   for (const selector of ['.thread-user-message time', '[data-assistant-message-sent-time]']) {
     const date = page.locator(selector).first();
     await date.waitFor();
-    assert.equal(await date.evaluate(element => {
-      let opacity = 1;
-      for (let node: Element | null = element; node; node = node.parentElement) {
-        const style = getComputedStyle(node);
-        if (style.display === 'none' || style.visibility === 'hidden') return false;
-        opacity *= Number(style.opacity);
-      }
-      const rect = element.getBoundingClientRect();
-      return opacity > 0.99 && rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight;
-    }), true, `${selector} must be visibly painted without hover`);
+    const expectVisibility = async (visible: boolean) => {
+      await page.waitForFunction(({ selector, visible }) => {
+        const element = document.querySelector(selector);
+        if (!element) return false;
+        let opacity = 1;
+        for (let node: Element | null = element; node; node = node.parentElement) {
+          const style = getComputedStyle(node);
+          if (style.display === 'none' || style.visibility === 'hidden') return false;
+          opacity *= Number(style.opacity);
+        }
+        const rect = element.getBoundingClientRect();
+        return (visible ? opacity > 0.99 : opacity < 0.01)
+          && rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.bottom <= innerHeight;
+      }, { selector, visible });
+    };
+    await expectVisibility(touchInput);
+    const restingBounds = await date.boundingBox();
+    const frame = date.locator('xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " thread-user-message ") or contains(concat(" ", normalize-space(@class), " "), " thread-frame--assistant ")][1]');
+    await frame.locator('button').first().focus();
+    await expectVisibility(true);
+    assert.deepEqual(await date.boundingBox(), restingBounds, 'Focus reveals a clock without moving its slot');
+    await editor.focus();
+    await expectVisibility(touchInput);
+    if (hoverCapable) {
+      await frame.hover();
+      await expectVisibility(true);
+      assert.deepEqual(await date.boundingBox(), restingBounds, 'Hover reveals a clock without moving its slot');
+      await page.mouse.move(0, 0);
+      await expectVisibility(touchInput);
+    }
   }
   assert.equal(await page.locator('[data-assistant-message-sent-time]').first().getAttribute('datetime'), '2023-11-14T22:14:14.000Z');
 }
@@ -190,7 +217,7 @@ try {
       await waitForHeldInitialize();
       assert.equal(await cached.page.locator('.thread-user-message time').getAttribute('datetime'), '2023-11-14T22:13:20.000Z', 'Date paints before initialization completes');
       assert.match(await cached.page.locator(clockSelector).first().innerText(), /54/, 'Completed clock paints with cached text');
-      await assertDatesVisible(cached.page);
+      await assertDateDisclosure(cached.page);
       assert.equal(await cached.page.locator('.thread-agent-activity button').count(), 0, 'No expandable tool bodies restored from display cache');
       assert.equal(requests.slice(requestStart).includes('thread/resume'), false, 'Cached paint cannot resume or authorize execution');
       assert.equal(await cached.page.locator('.conversation-recovery-cold-stage').count(), 0);
@@ -220,7 +247,7 @@ try {
         assert.equal(await cached.page.getByText(previewAnswer, { exact: true }).count(), 0);
       } else await cached.page.getByText(previewAnswer, { exact: true }).waitFor();
       assert.ok(heldResume.length > 0, 'Final Resume is still held after preview');
-      await assertDatesVisible(cached.page);
+      await assertDateDisclosure(cached.page);
       assert.match(await cached.page.locator(clockSelector).first().innerText(), /54/, 'Preview keeps the already known completed clock');
       if (n === (timing ? 1 : 0)) await cached.page.screenshot({ path: join(output, `preview-before-resume-${width}.png`) });
       releaseResume(); previewStage = false;
@@ -258,7 +285,7 @@ try {
     assert.equal(await resumed.page.locator('[data-work-status="working"]').count(), 0, 'Painted progress cannot restart the live clock');
     assert.match(await resumed.page.locator('[data-work-status="worked"]').innerText(), /54/, 'Ended work paints with the cached partial reply');
     assert.equal(requests.slice(runningRequestStart).includes('thread/resume'), false);
-    await assertDatesVisible(resumed.page);
+    await assertDateDisclosure(resumed.page);
     const activeEditor = resumed.page.locator('[contenteditable="true"]').first();
     await activeEditor.fill('Draft while reconnecting');
     await resumed.page.screenshot({ path: join(output, `active-before-connect-${width}.png`) });
@@ -266,7 +293,8 @@ try {
     assert.equal(await resumed.page.getByText(cachedAnswer, { exact: true }).count(), 0);
     assert.equal(await activeEditor.innerText(), 'Draft while reconnecting');
     assert.deepEqual(resumed.errors, []); await resumed.context.close();
-    // With no local display, a held connection must still show cold recovery.
+    // A fresh profile has no retained history; routine connection loading stays
+    // neutral and must still preserve input before the authoritative baseline.
     hold = true;
     // Long active histories used to evict the dated input from the 24-block tail.
     release(); longActive = true; active = true; fresh = false; previewStage = false;
@@ -287,7 +315,7 @@ try {
     await longReload.page.getByText(cachedAnswer, { exact: true }).waitFor();
     await waitForHeldInitialize();
     assert.equal(await longReload.page.locator('.thread-user-message time').getAttribute('datetime'), '2023-11-14T22:13:20.000Z');
-    await assertDatesVisible(longReload.page);
+    await assertDateDisclosure(longReload.page);
     assert.equal(await longReload.page.locator('[data-work-status="working"]').count(), 0, 'Long activity never resumes a live clock');
     assert.match(await longReload.page.locator('[data-work-status="worked"]').innerText(), /54/, 'Observed ended work is static while reply text arrives');
     assert.deepEqual(longReload.errors, []);
@@ -298,8 +326,11 @@ try {
     await waitForHeldInitialize();
     assert.equal(await isolated.page.getByText(cachedAnswer, { exact: true }).count(), 0);
     assert.equal(await isolated.page.getByText(restoredAnswer, { exact: true }).count(), 0);
-    assert.equal(await isolated.page.locator('.conversation-recovery-cold-stage').count(), 1);
+    assert.equal(await isolated.page.locator('.conversation-recovery-cold-stage').count(), 0);
+    const isolatedEditor = isolated.page.locator('[contenteditable="true"]').first();
+    await isolatedEditor.fill('Draft before initial connection');
     release(); await isolated.page.getByText(restoredAnswer, { exact: true }).waitFor();
+    assert.equal(await isolatedEditor.innerText(), 'Draft before initial connection');
     assert.deepEqual(isolated.errors, []); await isolated.context.close();
     results.push({ width, cpuRate, cacheBeforeConnection: true, baselineStillRequired: true, canonicalReplacement: true, draftPreserved: true, isolatedProfile: true, activeTurnBeforeConnection: true, previewTimingContinuous: true });
     evidence.push({ id: `session-navigation-cold-${id}`, samples: coldSamples }, { id: `session-navigation-cached-${id}`, samples: cachedSamples });

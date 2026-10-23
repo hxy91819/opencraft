@@ -5,11 +5,27 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { scenarios, summarize, candidate, compare, markdown, annotations } from '../scripts/performance/report.mjs';
+import { scenarios, summarize, candidate, compare, markdown, annotations, sidebarEvidence } from '../scripts/performance/report.mjs';
 
 const evidence = () => Object.entries(scenarios).map(([id, metrics]) => ({ id, samples: Array.from({ length: 10 }, (_, n) => Object.fromEntries(metrics.map(metric => [metric, n < 9 ? 100 : 200]))) }));
 const workload = { version: 1, sha256: 'test-workload' };
 const baseline = () => candidate(summarize(evidence()), workload, { sourceRevision: 'fixture' });
+const sidebarReceipt = () => [30, 200].map(rows => ({ rows,
+  samples: Array.from({ length: 10 }, () => ({ ms: 20, rowsProcessed: 0, projections: 0 })) }));
+test('sidebar aggregation accepts measured rows alongside supported interaction receipts', () => {
+  const rows = [...sidebarReceipt(), ...['listContext', 'groupHeading', 'availability', 'titleOnly'].map(key => ({ [key]: true }))];
+  assert.deepEqual(sidebarEvidence('sidebar-menu', rows).map(row => row.id), ['sidebar-menu-30', 'sidebar-menu-200']);
+  assert.equal(sidebarEvidence('sidebar-update', sidebarReceipt()).length, 2);
+});
+test('sidebar aggregation rejects missing, duplicate, unknown and reconstructing evidence', () => {
+  for (const mutate of [rows => rows.pop(), rows => rows.push(rows[0]), rows => rows[0].rows = 999,
+    rows => rows.push({ unknown: true }), rows => rows.push({ listContext: false }),
+    rows => rows[0].samples[0].rowsProcessed = 1, rows => rows[0].samples[0].projections = 1,
+    rows => delete rows[0].samples[0].projections]) {
+    const rows = sidebarReceipt(); mutate(rows); assert.throws(() => sidebarEvidence('sidebar-menu', rows));
+  }
+  assert.throws(() => sidebarEvidence('sidebar-update', [...sidebarReceipt(), { listContext: true }]));
+});
 test('normal noise passes, quantiles retain the slow tail, improvements pass', () => {
   const rows = evidence(); const summary = summarize(rows);
   assert.deepEqual(summary['catalog-desktop'].metrics.firstPaintMs, { p50: 100, p95: 200 });

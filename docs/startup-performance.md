@@ -78,7 +78,7 @@ never connects to a user's server, activates execution or calls a model:
 
 | Scenario | Fixed workload | Measurements and behavior |
 | --- | --- | --- |
-| Directory entry | 222 rows, five 50-row pages; first response delayed 100ms, later responses 250ms | First committed rows and complete-directory animation frame; exactly five reads, all rows searchable, no partial authoritative cache or empty handover |
+| Directory entry | 222 rows, five 50-row pages; first response delayed 100ms, later responses 250ms | First committed rows and complete-directory animation frame; exactly five reads, all rows searchable, successful pages cached without claiming the directory complete, no empty handover |
 | Conversation cold/warm entry | 12 synthetic turns; bounded latest five turns, 40ms per RPC response | First content animation frame and authoritative readiness; ten user/assistant frames, latest turn visible, one cold native read and zero additional reads on unchanged warm entry |
 | Unrelated conversation update | 30 and 200 rows, 4× CPU | Two animation frames after publication; zero row reconstruction/grouping; latest commands, permissions, title and selection still work |
 | Row action menu | 30 and 200 rows, 4× CPU | Menu DOM plus animation frame; zero row reconstruction/grouping; pin, keyboard, badges, exclusivity and invalidation still work |
@@ -123,6 +123,20 @@ operation and is never part of release CI. Workload changes require an explicit
 new calibration candidate and a reason in the change; old Git baselines remain
 available. Production implementation changes keep the same workload so they
 compare against the existing budget.
+
+The aggregate workload version and each child receipt version are separate
+contracts. Aggregate version 3 explicitly requires navigation receipt version 5,
+which includes the retained sender/avatar/work-rule checks. Cold-open acceptance
+also follows the current message policy: desktop clocks reveal on hover/focus,
+touch clocks remain visible, and routine initial connection entry stays neutral
+while preserving the unsent draft. Updating these behavior assertions changes
+the workload hash even though the measured first-paint boundary is unchanged.
+Use an explicit candidate to revalidate that workload against the existing
+numeric budgets; a matching receipt version alone never approves performance.
+The catalog probe also requires successful-page caching during pagination,
+matching the directory's refresh/retry continuity contract. It still requires
+all 222 rows, exactly five reads, complete search and no empty handover. The
+legacy full-directory-barrier control retains its original cache behavior.
 
 Use the optional read-only native server benchmark for targeted real deployment
 investigations, and the validation matrix above for network/device/lifecycle

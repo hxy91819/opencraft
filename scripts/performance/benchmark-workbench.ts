@@ -83,8 +83,11 @@ try {
         if (kind === 'catalog') {
           await page.waitForFunction(() => (window as any).catalogEntry?.metrics.completePaintMs != null, undefined, { timeout: 20_000 });
           const value = await page.evaluate(() => { const w = (window as any).catalogEntry; return { ...w.metrics, count: w.cached()?.data.length,
-            partialCached: w.observations.some((x: any) => x.partial && x.cached), emptyHandover: w.observations.slice(w.observations.findIndex((x: any) => x.rows > 0)).some((x: any) => x.rows === 0) }; });
-          assert.equal(value.count, 222); assert.equal(value.partialCached, false); assert.equal(value.emptyHandover, false);
+            partialCached: w.observations.some((x: any) => x.rows > 0 && x.partial && x.cached), emptyHandover: w.observations.slice(w.observations.findIndex((x: any) => x.rows > 0)).some((x: any) => x.rows === 0) }; });
+          assert.equal(value.count, 222); assert.equal(value.emptyHandover, false);
+          if (process.env.OPENCRAFT_PERFORMANCE_CATALOG_MODE !== 'legacy') {
+            assert.equal(value.partialCached, true, 'Successful pages are cached while the remaining directory loads');
+          }
           assert.equal(requests.length - before, 5, 'complete directory must take exactly five pages');
           await page.getByRole('searchbox', { name: 'Search conversations' }).fill('Conversation 219');
           await page.getByText('Conversation 219', { exact: true }).waitFor();
