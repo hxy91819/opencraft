@@ -312,7 +312,8 @@ export async function createWebWorkbenchApplicationSupervisor(
     );
     startupRollback.push(() => extensionSettings.close());
     const sidebarLayoutStorage = await IndexedDbSidebarLayoutStorage.open({
-      databaseName: currentProductDatabaseName("vela-sidebar-layout-v2"),
+      databaseName: currentProductDatabaseName("opencraft-sidebar-layout-v2"),
+      formerDatabaseName: currentProductDatabaseName("vela-sidebar-layout-v2"),
     });
     const sidebarLayout = await SidebarLayoutStore.open(sidebarLayoutStorage);
     startupRollback.push(() => sidebarLayout.close());
@@ -571,7 +572,8 @@ export async function createWebWorkbenchApplicationSupervisor(
     ? { store: new FixedHostProfileStore(options.ephemeralHostProfiles ?? []), storageError: null }
     : await openHostProfiles({
     allowDeploymentRecovery: platform === "web" && sshManagement?.getSnapshot().available === true,
-    databaseName: currentProductDatabaseName("vela-host-connections"),
+    databaseName: currentProductDatabaseName("opencraft-host-connections"),
+    formerDatabaseName: currentProductDatabaseName("vela-host-connections"),
     seed: bootstrapDefinitions.map(hostDefinitionProfile),
     ephemeral: [
       ...hostProfileContributions.list(),

@@ -132,7 +132,7 @@ requested direction before committing, then locks that owner. Editors, sliders,
 scrollbar/draggable controls, foreground dialogs, media, interactive terminals and
 explicit exclusive regions retain input priority. Pending contacts resolve to
 sidebar, content or native input; only the committed owner writes movement.
-The [mobile gesture contract](../../design/invariants.md#mobile-sidebar-gestures)
+The [mobile gesture contract](../../design/invariants/navigation-and-sidebar.md#mobile-sidebar-gestures)
 owns thresholds and lifecycle details. The Shell adds no ancestor touch-action restrictions or DOM registration cache; native vertical input, pinch zoom,
 keyboard/wheel and non-mobile/standalone presentation remain available. Pending horizontal recognition reserves the cancelable stream before its movement owner commits; the decision clock starts at meaningful motion, excluding stationary contact time. Unknown speed waits for a timed segment. The first delayed/coalesced movement cannot prematurely assign content merely by crossing the travel threshold: pending retains its bounded observation window. Admission speed uses motion samples without diluting subsequent segments with touchstart latency; release sampling remains independent. Native
 scroll acquisition, multi-touch, detached content and foreground layers revoke

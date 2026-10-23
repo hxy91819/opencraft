@@ -1,4 +1,5 @@
 import type { SidebarLayoutDocument, SidebarLayoutStorage } from "@opencraft/sidebar-layout";
+import { migrateIndexedDbIdentity } from "@opencraft/indexeddb-storage";
 
 const DATABASE_VERSION = 1;
 const LAYOUT_STORE = "layouts";
@@ -26,8 +27,12 @@ export class IndexedDbSidebarLayoutStorage implements SidebarLayoutStorage {
   private closed = false;
   private constructor(private readonly database: IDBDatabase) {}
 
-  static async open(options: { readonly databaseName?: string; readonly factory?: IDBFactory } = {}) {
-    const request = (options.factory ?? indexedDB).open(options.databaseName ?? "vela-sidebar-layout", DATABASE_VERSION);
+  static async open(options: { readonly databaseName?: string; readonly formerDatabaseName?: string; readonly factory?: IDBFactory } = {}) {
+    const factory = options.factory ?? indexedDB;
+    const name = options.databaseName ?? "opencraft-sidebar-layout";
+    const formerName = options.formerDatabaseName ?? (options.databaseName === undefined ? "vela-sidebar-layout" : undefined);
+    if (formerName) await migrateIndexedDbIdentity({ factory, name, formerName, formerWriterVersion: DATABASE_VERSION });
+    const request = factory.open(name, DATABASE_VERSION);
     request.addEventListener("upgradeneeded", () => {
       if (!request.result.objectStoreNames.contains(LAYOUT_STORE)) {
         request.result.createObjectStore(LAYOUT_STORE, { keyPath: "scope" });
