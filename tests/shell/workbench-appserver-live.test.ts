@@ -102,7 +102,7 @@ test("real 9988 Workbench composes Resume, Replica and Conversation Runtime acro
       workspaceRoot,
       () => undefined,
     );
-    assert.ok(watch.watchId.startsWith("vela:local:fs:"));
+    assert.ok(watch.watchId.startsWith("opencraft:local:fs:"));
     await watch.dispose();
 
     const navigation = thread.getNavigation();
