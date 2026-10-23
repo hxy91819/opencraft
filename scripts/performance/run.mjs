@@ -23,7 +23,7 @@ const hash = createHash('sha256');
 for (const file of ['scripts/performance/benchmark-workbench.ts', 'scripts/smoke-session-cold-open.ts', 'scripts/performance/build-cold-open.mjs', 'scripts/performance/run.mjs', 'scripts/performance/report.mjs', 'scripts/smoke-sidebar-menu-latency.ts', 'scripts/smoke-sidebar-conversation-latency.ts', 'tests/fixtures/catalog-entry-browser.tsx', 'tests/fixtures/session-loading-browser.tsx']) {
   hash.update(file); hash.update(await readFile(path.join(root, file)));
 }
-const workload = { version: 2, sha256: hash.digest('hex'), scenarios, samples: 10, warmupWorkbench: 1, navigation: { rpcDelayMs: 40, cachedResources: 'cold', initialize: 'held-until-cached-paint', serve: 'compressed-release', warmup: 1 }, profiles: { desktop: { width: 1100, cpuRate: 1 }, narrow: { width: 390, cpuRate: 4 }, sidebar: { width: 1000, cpuRate: 4 } } };
+const workload = { version: 3, sha256: hash.digest('hex'), scenarios, samples: 10, warmupWorkbench: 1, navigation: { workloadVersion: 5, rpcDelayMs: 40, cachedResources: 'cold', initialize: 'held-until-cached-paint', serve: 'compressed-release', warmup: 1 }, profiles: { desktop: { width: 1100, cpuRate: 1 }, narrow: { width: 390, cpuRate: 4 }, sidebar: { width: 1000, cpuRate: 4 } } };
 const git = args => { try { return execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return 'unavailable'; } };
 const environment = { timestamp: new Date().toISOString(), sourceRevision: git(['rev-parse', 'HEAD']), dirty: git(['status', '--porcelain', '--', '.']) !== '', node: process.version, platform: platform(), arch: arch(), cpu: cpus()[0]?.model, cpuCount: cpus().length };
 const started = performance.now();
@@ -49,7 +49,7 @@ try {
     OPENCRAFT_COLD_OPEN_SAMPLES: '10', OPENCRAFT_COLD_OPEN_EVIDENCE: path.join(options.output, 'session-navigation'),
   });
   const navigation = JSON.parse(await readFile(path.join(options.output, 'session-navigation/receipt.json'), 'utf8'));
-  assert.equal(navigation.workloadVersion, workload.version); report.evidence.push(...navigation.evidence);
+  assert.equal(navigation.workloadVersion, workload.navigation.workloadVersion, 'Navigation evidence workload version mismatch'); report.evidence.push(...navigation.evidence);
   environment.navigationBuild = navigation.build; environment.navigationBrowser = navigation.browser;
   await run('catalog-behavior', ['--import', 'tsx', 'scripts/smoke-catalog-entry.ts'], { OPENCRAFT_CATALOG_ENTRY_OUTPUT: path.join(options.output, 'catalog-behavior') });
   await run('workbench', ['--import', 'tsx', 'scripts/performance/benchmark-workbench.ts'], { OPENCRAFT_PERFORMANCE_OUTPUT: path.join(options.output, 'workbench'), OPENCRAFT_PERFORMANCE_CATALOG_MODE: options.control ?? '' });

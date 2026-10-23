@@ -60,7 +60,7 @@ the weekday, and other days add month/day. Calendar-day comparison survives DST.
 Both roles use an unpadded numeric hour and a two-digit minute; the locale owns
 the hour cycle. A full localized date/time with zone is available in the title,
 while `datetime` preserves the original instant. Known local zone names remain explicit so the shared Intl cache follows local-zone changes. When a runtime reports `Etc/Unknown`, leave the zone unspecified: native default local formatting still works, but feeding that unknown name back as an explicit zone fails. Missing or invalid values render
-no clock. Existing always-visible timestamps, action disclosure and alignment
+no clock. Existing message hover/focus disclosure and timestamp slot alignment
 remain independent; this view never derives or persists a replacement time.
 
 ## User message copy action
@@ -1185,9 +1185,10 @@ animation, active clock, tool output or interaction is replayed. Slow storage
 coalesces pending observations to the latest snapshot while memory updates
 synchronously. A fresh authoritative baseline replaces the snapshot as usual.
 User and assistant message timestamps and terminal work clocks/durations are retained
-with the text. Web timestamps remain visible independently of hover/focus action
-disclosure, including before the first touch, so a reload paints the date and worked-for label together with its
-message while the Host reconnects. Live work clocks are never restored from this
+with the text. Web timestamp metadata and layout slots exist with the first message
+paint while the Host reconnects. Sending clocks remain visible at rest on touch
+and use the existing message hover/focus disclosure on desktop; the static worked-for
+label remains visible. Live work clocks are never restored from this
 cache. Legacy text-only entries remain readable with unknown clocks until the
 next authoritative observation refreshes them. Timing-only changes update the
 projection even when message text is unchanged. A retained terminal work clock
@@ -2967,7 +2968,7 @@ the original row cannot dismiss its menu or select the conversation underneath.
 The pointer modality is captured by the existing row trigger; mouse context menus
 retain nonmodal behavior and the same scoped close/focus ownership.
 
-Message footer sending clocks are hidden at rest on desktop and touch. Existing message hover/focus reveals user and assistant clocks while retaining their slots and time metadata. Touch action controls remain available; elapsed work duration is a separate status.
+Message footer sending clocks are visible at rest on touch. On desktop, existing message hover/focus reveals user and assistant clocks while retaining their slots and time metadata. Touch action controls remain available; elapsed work duration is a separate status.
 
 
 ## Delayed command completion placement
