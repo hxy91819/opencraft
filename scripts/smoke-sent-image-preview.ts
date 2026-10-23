@@ -263,6 +263,14 @@ try {
     await brush([.5, .7], [.5, .7]); await textEntry.fill("Discard this"); await textEntry.press("Escape");
     assert.equal(await textEntry.count(), 0); assert.equal(await draftPage.locator(".image-editor").count(), 1, "Escape discards text only");
     assert.equal(await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL()), afterText);
+    await brush([.5, .7], [.5, .7]); await textEntry.fill("Pending IME"); await textEntry.dispatchEvent("compositionstart", { data: "文" });
+    await draftPage.getByRole("button", { name: "Discard text", exact: true }).click();
+    assert.equal(await textEntry.count(), 0);
+    await brush([.5, .7], [.5, .7]); await textEntry.fill("New text after cancelled IME");
+    await draftPage.getByRole("button", { name: "Apply text", exact: true }).click(); await settle();
+    assert.equal(await textEntry.count(), 0, "discarded IME cannot lock the next text operation");
+    await draftPage.getByRole("button", { name: "Undo", exact: true }).click(); await settle();
+    assert.equal(await canvas.evaluate(node => (node as HTMLCanvasElement).toDataURL()), afterText);
     await draftPage.getByRole("button", { name: "Undo", exact: true }).click(); await settle();
     await draftPage.getByRole("button", { name: "Sticker", exact: true }).click(); await draftPage.getByRole("button", { name: "👍", exact: true }).click(); await brush([.3, .65], [.3, .65]);
     assert.equal(await draftPage.getByRole("button", { name: "Redo", exact: true }).isDisabled(), true, "new action retires redo branch");

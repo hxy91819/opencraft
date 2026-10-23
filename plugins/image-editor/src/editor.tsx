@@ -21,7 +21,7 @@ export default function ImageEditor({ source, name, onCancel, onComplete }: Imag
   const [width, setWidth] = useState(6), [textSize, setTextSize] = useState(42);
   const [textDraft, setTextDraft] = useState<TextDraft | null>(null), [sticker, setSticker] = useState<Sticker>("😀");
   const pendingText = useRef<TextDraft | null>(null), textInput = useRef<HTMLTextAreaElement>(null), composing = useRef(false);
-  const updateText = (next: TextDraft | null) => { pendingText.current = next; setTextDraft(next); };
+  const updateText = (next: TextDraft | null) => { if (!next) composing.current = false; pendingText.current = next; setTextDraft(next); };
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [scene, setScene] = useState<HTMLCanvasElement | null>(null);
   const [crop, setCrop] = useState<Rect | null>(null);
