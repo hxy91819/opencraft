@@ -150,7 +150,7 @@ Enabling login does not itself change anonymous workspace admission or product-s
 Optional ordinary relay deployment uses core `identity-core` principals and
 `access-control` instance membership at every headless HTTP/WS entry. The Node
 relay and outbound `relay-connect` plugin transport traffic; enterprise identity authentication
-remains an adapter. One approved authentication origin hands off a browser-bound,
+remains an adapter. Ordinary relay tunnels use a separate 512-stream per-installation budget; Hub peer links retain their 128-stream budget. One approved authentication origin hands off a browser-bound,
 single-use ticket to each team origin, and the instance independently verifies
 scoped assertions and local grants. An explicit `--access-member-provider` policy may admit verified identities from selected providers as ordinary members without persistent implicit grants; explicit revocations and administrator roles remain authoritative. Default installations still require explicit membership. This implements installation admission,
 member/admin roles and revocation, not the full Actor/Hub charter or private

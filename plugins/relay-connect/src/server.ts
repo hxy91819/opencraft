@@ -4,7 +4,7 @@ import { relayDuplex } from '@opencraft/relay-protocol/node';
 import { AssertionProvider, readPrivateJson, type AssertionProviderOptions } from '@opencraft/identity-core/node';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute } from 'node:path';
-import { CONTROL_PATH, DATA_PATH, STREAM_HEADER, RELAY_PROTOCOL, MAX_STREAMS, parseOpen } from "@opencraft/relay-protocol";
+import { CONTROL_PATH, DATA_PATH, STREAM_HEADER, RELAY_PROTOCOL, MAX_RELAY_STREAMS, parseOpen } from "@opencraft/relay-protocol";
 export interface RelayConnectOptions { readonly relay: string; readonly credential: string; readonly targetPort: number; readonly allowLoopbackInsecure?: boolean; readonly ca?: string; }
 export async function loadRelayConnection(path: string, assertionOptions: AssertionProviderOptions = {}) {
   const input = await readPrivateJson(path) as Record<string, unknown>;
@@ -35,7 +35,7 @@ export function connectRelay(options: RelayConnectOptions) {
     ws.on('open', () => { attempts = 0; lastPong = Date.now(); }); ws.on('error', () => {}); ws.on('pong', () => { lastPong = Date.now(); });
     ws.on('message', raw => {
       try {
-        if (stopped || control !== ws || streams.size >= MAX_STREAMS) throw new Error('Relay stream capacity');
+        if (stopped || control !== ws || streams.size >= MAX_RELAY_STREAMS) throw new Error('Relay stream capacity');
         const frame = parseOpen(JSON.parse(raw.toString()));
         const data = new WebSocket(base + DATA_PATH, RELAY_PROTOCOL, { ca: options.ca, headers: { authorization: `Bearer ${frame.token}`, [STREAM_HEADER]: frame.id }, perMessageDeflate: false, maxPayload: 65_536, handshakeTimeout: 10_000 });
         streams.add(data); data.on('error', () => {}); data.once('close', () => streams.delete(data));
