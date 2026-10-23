@@ -3090,7 +3090,10 @@ The file-change reader checkpoints its horizontal and vertical DOM scroll
 coordinates under its existing patch/file View identity. Restore before paint;
 ordinary output growth leaves manual reading stationary. Layout teardown reads
 the live element before refs detach, including when its native scroll event is
-still queued. Different files and new Views start at their original reading
+still queued. Hidden scroll events and hidden teardown cannot overwrite that
+checkpoint with zero geometry. Restoring while hidden waits for the existing
+presentation lifecycle to resume a measurable reader, then restores both axes
+before paint. Different files and new Views start at their original reading
 origin. Unkeyed consumers retain local behavior. The snapshot contains only
 coordinates, without diff text, execution state or permission.
 

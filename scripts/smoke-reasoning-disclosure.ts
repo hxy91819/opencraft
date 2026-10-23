@@ -65,7 +65,7 @@ try {
         (window as any).__reasoningSmokeAction = action;
         (window as any).update(action, engine);
       }, [action, engine]);
-      await page.locator(`[data-revision="${before + 1}"]`).waitFor({ state: process.argv.includes("--command-hidden-only") ? "attached" : "visible" });
+      await page.locator(`[data-revision="${before + 1}"]`).waitFor({ state: (process.argv.includes("--command-hidden-only") || process.argv.includes("--diff-hidden-only")) ? "attached" : "visible" });
     };
     const activate = (target: any) => touch ? target.tap() : target.click();
     if (process.argv.includes("--command-hidden-only")) {
@@ -415,6 +415,50 @@ try {
       assert.deepEqual(errors, []); assert.deepEqual(await page.evaluate(() => (window as any).resizeFeedback), [], "Turn file-list restore must not cause ResizeObserver feedback");
       results.push({ touch, theme, turnFilesRestored: true, refreshedFiles: true, transientShrink: true, separateTurns: true, explicitCollapse: true, freshViewIsolated: true });
       if (process.argv.includes("--turn-files-only")) { await page.close(); continue; }
+    }
+    if (process.argv.includes("--diff-hidden-only")) {
+      await update("diff-position-reset");
+      const rows = page.locator('.thread-activity-item[data-status="completed"]').filter({ has: page.locator('.thread-unified-diff') });
+      const first = rows.nth(0), second = rows.nth(1);
+      for (let index = 0; index < 8 && !await first.isVisible(); index++) {
+        const group = page.locator('.thread-agent-activity__group button[aria-expanded="false"]').first();
+        assert.ok(await group.count()); await activate(group);
+      }
+      const toggle = async (row: any) => {
+        const trigger = row.locator(':scope > .thread-activity-item__header > button');
+        if (touch) await trigger.tap({position:{x:8,y:8}}); else await trigger.click({position:{x:8,y:8}});
+      };
+      await toggle(first);
+      const reader = first.locator('.thread-unified-diff');
+      const position = () => reader.evaluate(element => [element.scrollTop, element.scrollLeft]);
+      await reader.evaluate(element => { element.scrollTop = 180; element.scrollLeft = 90; });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      assert.deepEqual(await position(), [180, 90]);
+      const original = await reader.elementHandle();
+      await update("presentation-hide"); await update("diff-position-append"); await update("presentation-show");
+      await reader.waitFor();
+      assert.equal(await original!.evaluate(element => element.isConnected), true);
+      assert.deepEqual(await position(), [180, 90], "hidden diff output keeps mounted View reading stationary");
+      await update("presentation-hide");
+      const hidden = await reader.elementHandle(); await update("restore");
+      await page.waitForFunction(element => !element.isConnected, hidden);
+      await reader.waitFor({state:"attached"});
+      await update("presentation-show"); await reader.waitFor();
+      assert.deepEqual(await position(), [180, 90], "hidden View replacement keeps both diff reading axes");
+      assert.ok((await first.innerText()).includes('updated-position-219'));
+      await toggle(second);
+      assert.deepEqual(await second.locator('.thread-unified-diff').evaluate(element => [element.scrollTop, element.scrollLeft]), [0,0],
+        "other files retain their independent reading origin");
+      await toggle(first); await toggle(first);
+      assert.deepEqual(await position(), [180,90], "explicit collapse preserves the existing diff reading choice");
+      await first.locator(':scope > .thread-activity-item__header > button').scrollIntoViewIfNeeded();
+      await page.screenshot({path:join(output, `diff-hidden-${touch ? 'touch' : 'mouse'}-${theme}.png`)});
+      await update("diff-position-reset");
+      for (let index = 0; index < 8 && !await first.isVisible(); index++) await activate(page.locator('.thread-agent-activity__group button[aria-expanded="false"]').first());
+      await toggle(first); assert.deepEqual(await position(), [0,0], "a new View does not inherit diff reading coordinates");
+      assert.deepEqual(errors, []); assert.deepEqual(await page.evaluate(() => (window as any).resizeFeedback), []);
+      results.push({touch,theme,hiddenMountedReading:true,hiddenRemountReading:true,refreshedDiff:true,separateFiles:true,explicitCollapse:true,freshViewIsolated:true});
+      await page.close(); continue;
     }
     if (process.argv.includes("--diff-position-only") || !process.argv.some(value => value.endsWith("-only"))) {
       const restoreView = async (action = "restore") => {

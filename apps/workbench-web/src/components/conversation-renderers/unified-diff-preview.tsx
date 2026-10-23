@@ -9,6 +9,7 @@ import {
 
 import { createContext, useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ActivityDisclosureStateContext, useActivityOpen } from "./activity/activity-disclosure";
+import { useWorkbenchPresentationActive } from "../workbench-presentation-activity";
 
 export interface DiffReadingPosition {
   readonly scrollTop: number;
@@ -50,18 +51,20 @@ function DiffLine({ line }: { readonly line: UnifiedDiffLine }) {
 
 export function UnifiedDiffPreview({ diff, restoreKey }: { readonly diff: string; readonly restoreKey?: string }) {
   const positions = useContext(DiffReadingPositionContext);
+  const presentationActive = useWorkbenchPresentationActive();
   const viewport = useRef<HTMLDivElement>(null);
   const rememberPosition = (element: HTMLElement) => {
     if (restoreKey !== undefined) positions?.set(restoreKey, { scrollTop: element.scrollTop, scrollLeft: element.scrollLeft });
   };
   useLayoutEffect(() => {
     const element = viewport.current;
-    if (!element || restoreKey === undefined || positions === null) return;
+    if (!presentationActive || !element?.clientHeight || restoreKey === undefined || positions === null) return;
     const saved = positions.get(restoreKey);
     if (saved) { element.scrollTop = saved.scrollTop; element.scrollLeft = saved.scrollLeft; }
     // A queued native scroll event may not run before navigation unmounts this View.
-    return () => rememberPosition(element);
-  }, [positions, restoreKey]);
+    // Hidden routes report zero coordinates; preserve the saved View reading.
+    return () => { if (element.clientHeight) rememberPosition(element); };
+  }, [presentationActive, positions, restoreKey]);
   const lines = useMemo(() => parseUnifiedDiff(diff), [diff]);
   const collapsedRows = useMemo(() => collapseUnifiedDiffContext(lines), [lines]);
   const choices = useContext(ActivityDisclosureStateContext);
@@ -77,7 +80,9 @@ export function UnifiedDiffPreview({ diff, restoreKey }: { readonly diff: string
   const visibleRows = showAll ? rows : rows.slice(0, 420);
   const hiddenRowCount = rows.length - visibleRows.length;
   return (
-    <div className="thread-unified-diff" ref={viewport} onScroll={event => rememberPosition(event.currentTarget)} role="table" aria-label="File changes">
+    <div className="thread-unified-diff" ref={viewport} onScroll={event => {
+      if (presentationActive && event.currentTarget.clientHeight) rememberPosition(event.currentTarget);
+    }} role="table" aria-label="File changes">
       {visibleRows.map((row) => row.kind === "collapsed" ? (
         <button
           className="thread-unified-diff__collapsed"
