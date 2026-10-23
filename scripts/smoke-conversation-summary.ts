@@ -27,6 +27,11 @@ await vite.listen();const {chromium}=await import(process.env.OPENCRAFT_PLAYWRIG
 const evidence=[];
 for(const theme of ['light','dark','lavender']) {
  const page=await browser.newPage({viewport:{width:1440,height:900}});const errors:string[]=[];page.on('pageerror',(e:Error)=>errors.push(e.message));
+ let releaseSheet: (() => void) | undefined;
+ let importArrived: () => void;
+ let importTimeout: ReturnType<typeof setTimeout>;
+ const sheetImport=new Promise<void>((resolve,reject)=>{importTimeout=setTimeout(()=>reject(new Error('Sheet import was not requested')),30_000);importArrived=()=>{clearTimeout(importTimeout);resolve()};});
+ await page.route('**/modal/adaptive-sheet-handle*',async route=>{await new Promise<void>(resolve=>{releaseSheet=resolve;importArrived()});await route.continue();});
  await page.goto(vite.resolvedUrls!.local[0]!); await page.waitForSelector('.thread-summary__section');
  await page.evaluate(theme=>{(window as any).fixture.setThemePreference(theme==='dark'?'dark':'light');(window as any).fixture.setAppearanceThemeId(theme==='lavender'?'opencraft.core.lavender':(window as any).fixture.coreThemeId)},theme);
  const draft=await page.locator('textarea').elementHandle();
@@ -34,7 +39,11 @@ for(const theme of ['light','dark','lavender']) {
  await page.getByRole('button',{name:/Plan/}).click();
  await page.screenshot({path:output+'/'+theme+'-desktop.png'});
  await page.setViewportSize({width:390,height:844}); await page.waitForFunction(()=>!document.querySelector('aside.conversation-summary'));
- await page.getByRole('button',{name:'Task info',exact:true}).click(); await page.getByRole('dialog').waitFor();
+ await page.getByRole('button',{name:'Task info',exact:true}).click();
+ await sheetImport;
+ try { assert.equal(await page.getByRole('dialog').count(),0,'sheet cannot paint without its presentation styles'); }
+ finally { releaseSheet?.(); await page.unroute('**/modal/adaptive-sheet-handle*'); }
+ await page.getByRole('dialog').waitFor();
  await page.waitForFunction(()=>{const r=document.querySelector('[role=dialog]')?.getBoundingClientRect();return r&&Math.abs(r.bottom-innerHeight)<1});
  const sheet=await page.getByRole('dialog').boundingBox();assert(sheet);assert(Math.abs(sheet.width-390)<1);assert(Math.abs(sheet.x)<1);assert(Math.abs(sheet.y+sheet.height-844)<1);
  assert.equal(await page.getByRole('button',{name:/Plan/}).getAttribute('aria-expanded'),'false');
