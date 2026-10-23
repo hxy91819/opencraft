@@ -54,6 +54,9 @@ ALTER TABLE pool_accounts ADD COLUMN reset_credit_count INTEGER CHECK(reset_cred
 ALTER TABLE pool_accounts ADD COLUMN reset_credits_observed_at INTEGER;
 `.trim();
 
+// Preserve existing accounts' credit behavior; new accounts opt in explicitly.
+const CREDIT_POLICY_SQL = `ALTER TABLE pool_accounts ADD COLUMN allow_credits INTEGER NOT NULL DEFAULT 1 CHECK(allow_credits IN (0,1));`;
+
 // The pre-ledger owner created these four tables and appended the nullable
 // account metadata and quota windows columns. Accept only those known shapes.
 const legacyAccountPoolMigration = {
@@ -64,6 +67,7 @@ const legacyAccountPoolMigration = {
     try {
       target.exec(BASELINE);
       target.exec(RESET_CREDITS_SQL);
+      target.exec(CREDIT_POLICY_SQL);
       const expected = JSON.parse(schemaFingerprint(target)) as typeof tables;
       const minimumColumns: Record<string, number> = { pool_accounts: 7, pool_affinity: 3, pool_active_account: 2, pool_quota: 6 };
       return tables.every(table => {
@@ -78,7 +82,7 @@ const legacyAccountPoolMigration = {
   migrate(database: DatabaseSync): void {
     database.exec(BASELINE.replaceAll("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS "));
     for (const [table, additions] of [
-      ["pool_accounts", ["email TEXT", "subscription_type TEXT", "rate_limit_tier TEXT", "last_used_at INTEGER", "last_used_host_id TEXT", "reset_credit_count INTEGER CHECK(reset_credit_count >= 0)", "reset_credits_observed_at INTEGER"]],
+      ["pool_accounts", ["email TEXT", "subscription_type TEXT", "rate_limit_tier TEXT", "last_used_at INTEGER", "last_used_host_id TEXT", "reset_credit_count INTEGER CHECK(reset_credit_count >= 0)", "reset_credits_observed_at INTEGER", "allow_credits INTEGER NOT NULL DEFAULT 1 CHECK(allow_credits IN (0,1))"]],
       ["pool_quota", ["limit_windows_json TEXT NOT NULL DEFAULT '[]'"]],
     ] as const) {
       const columns = new Set(database.prepare(`PRAGMA table_info(${table})`).all().map(column => column.name));
@@ -98,9 +102,11 @@ export interface AccountPoolAccountInput {
   readonly upstreamAccountId: string;
   readonly priority: number;
   readonly enabled: boolean;
+  readonly allowCredits?: boolean;
 }
 
 export interface AccountPoolAccount extends AccountPoolAccountInput {
+  readonly allowCredits: boolean;
   readonly createdAt: number;
 }
 
@@ -283,6 +289,7 @@ export class AccountPoolStore {
       migrations: [
         { version: 1, name: "account-pool", sql: BASELINE },
         { version: 2, name: "codex-reset-credit-count", sql: RESET_CREDITS_SQL },
+        { version: 3, name: "codex-account-credit-policy", sql: CREDIT_POLICY_SQL },
       ],
       legacyMigration: legacyAccountPoolMigration,
     });
@@ -300,8 +307,10 @@ export class AccountPoolStore {
       upstreamAccountId: requiredText(input.upstreamAccountId, "upstream account id"),
       priority: input.priority,
       enabled: input.enabled,
+      allowCredits: input.allowCredits ?? false,
       createdAt: this.now(),
     };
+    if (typeof account.allowCredits !== "boolean") throw new TypeError("Invalid credit policy");
     if (account.provider !== "codex" || !Number.isSafeInteger(account.priority)) throw new TypeError("Invalid account");
     const reference = parseCodexAuthFileReference(rawSecret);
     if (reference) readCodexAuthFile(reference, account.upstreamAccountId);
@@ -314,7 +323,7 @@ export class AccountPoolStore {
     try {
       this.transaction(() => {
         this.database.prepare(
-          "INSERT INTO pool_accounts (id,provider,label,upstream_account_id,priority,enabled,created_at) VALUES(?,?,?,?,?,?,?)",
+          "INSERT INTO pool_accounts (id,provider,label,upstream_account_id,priority,enabled,created_at,allow_credits) VALUES(?,?,?,?,?,?,?,?)",
         ).run(
           account.id,
           account.provider,
@@ -323,6 +332,7 @@ export class AccountPoolStore {
           account.priority,
           Number(account.enabled),
           account.createdAt,
+          Number(account.allowCredits),
         );
         this.writeSecret(account.id, secret);
       });
@@ -343,6 +353,7 @@ export class AccountPoolStore {
         upstreamAccountId: account.upstreamAccountId,
         priority: account.priority,
         enabled: account.enabled,
+        allowCredits: account.allowCredits,
         credentialConfigured: existsSync(this.secretPath(account.id)),
       };
     });
@@ -351,7 +362,7 @@ export class AccountPoolStore {
   listAccountStates(): AccountPoolAccountState[] {
     const now = this.now();
     return this.database.prepare(
-      `SELECT a.id,a.enabled,a.email,a.subscription_type,a.rate_limit_tier,a.last_used_at,a.last_used_host_id,a.reset_credit_count,a.reset_credits_observed_at,
+      `SELECT a.id,a.enabled,a.allow_credits,a.email,a.subscription_type,a.rate_limit_tier,a.last_used_at,a.last_used_host_id,a.reset_credit_count,a.reset_credits_observed_at,
         q.utilization,q.reset_at,q.held_until,q.error,q.observed_at,q.limit_windows_json
        FROM pool_accounts a LEFT JOIN pool_quota q ON q.account_id=a.id
        WHERE a.provider='codex' ORDER BY a.priority,a.created_at,a.id`,
@@ -371,6 +382,13 @@ export class AccountPoolStore {
 
   setEnabled(id: string, enabled: boolean): void {
     const result = this.database.prepare("UPDATE pool_accounts SET enabled=? WHERE id=?").run(Number(enabled), accountId(id));
+    if (Number(result.changes) !== 1) throw new Error("Account not found");
+  }
+
+  setAllowCredits(id: string, allowCredits: boolean): void {
+    if (typeof allowCredits !== "boolean") throw new TypeError("Invalid credit policy");
+    const result = this.database.prepare("UPDATE pool_accounts SET allow_credits=? WHERE id=?")
+      .run(Number(allowCredits), accountId(id));
     if (Number(result.changes) !== 1) throw new Error("Account not found");
   }
 
@@ -469,7 +487,7 @@ export class AccountPoolStore {
     }));
     const available = orderedAccounts.filter(candidate => candidate.account.enabled
       && candidate.error === null
-      && !this.quotaExhausted(candidate, now));
+      && !this.quotaExhausted(candidate, now, candidate.account.allowCredits));
     const availableById = new Map(available.map(candidate => [candidate.account.id, candidate]));
     const candidates = available.filter(candidate => !excluded.has(candidate.account.id)
       && (candidate.heldUntil === null || candidate.heldUntil <= now));
@@ -625,6 +643,7 @@ export class AccountPoolStore {
       upstreamAccountId: String(row.upstream_account_id),
       priority: Number(row.priority),
       enabled: Boolean(row.enabled),
+      allowCredits: Boolean(row.allow_credits),
       createdAt: Number(row.created_at),
     };
   }
@@ -644,7 +663,7 @@ export class AccountPoolStore {
         ? "error"
         : heldUntil !== null && heldUntil > now
           ? "held"
-          : this.quotaExhausted(quota, now)
+          : this.quotaExhausted(quota, now, Boolean(row.allow_credits))
             ? "exhausted"
             : "ready";
     return {
@@ -669,14 +688,14 @@ export class AccountPoolStore {
     readonly utilization: number | null;
     readonly resetAt: number | null;
     readonly limitWindows: readonly AccountPoolLimitWindow[];
-  }, now: number): boolean {
+  }, now: number, allowCredits: boolean): boolean {
     const active = (utilization: number | null, status: string | null, resetAt: number | null) => {
       if (resetAt !== null && resetAt <= now) return false;
       return utilization !== null && utilization >= this.switchThreshold
         || status?.toLowerCase() === "rejected";
     };
     if (quota.limitWindows.length > 0) {
-      return quota.limitWindows.some(window => window.creditsAvailable !== true && active(window.utilization, window.status, window.resetAt));
+      return quota.limitWindows.some(window => (!allowCredits || window.creditsAvailable !== true) && active(window.utilization, window.status, window.resetAt));
     }
     return active(quota.utilization, null, quota.resetAt);
   }

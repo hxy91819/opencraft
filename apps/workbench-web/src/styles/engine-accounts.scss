@@ -361,3 +361,9 @@
 @media (prefers-reduced-motion: reduce) {
   .engine-account__chevron { transition: none; }
 }
+
+// This preference pairs multiline copy with a compact control, unlike form fields.
+.settings-panel .settings-control-row.engine-account__credit-policy {
+  grid-template-columns: minmax(0, 1fr) auto;
+  .settings-control-row__value { width: auto; justify-content: flex-end; }
+}
