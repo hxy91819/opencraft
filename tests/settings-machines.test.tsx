@@ -41,8 +41,8 @@ test("settings render machine ownership, cold/failed connections, first-level na
   const hosts = [profile("local", "OpenCraft"), profile("local-codex", "Codex"), profile("alias", "OpenCraft")];
   const unknown = { ...profile("unknown", "Hermes"), machineIdentity: null };
   const cloud = { ...profile("cloud", "Hermes"), displayName: "云环境", enabled: false };
-  const entry: EnvironmentEntry = { id: "cloud", sourceId: "lightvela", name: "云环境", location: "region", profile: cloud, connectable: true,
-    resource: { providerId: "lightvela", phase: "suspended", rawPhase: "stopped", message: null, capabilities: { suspend: false, resume: true, remove: true } } };
+  const entry: EnvironmentEntry = { id: "cloud", sourceId: "fixture-cloud", name: "云环境", location: "region", profile: cloud, connectable: true,
+    resource: { providerId: "fixture-cloud", phase: "suspended", rawPhase: "stopped", message: null, capabilities: { suspend: false, resume: true, remove: true } } };
   const machines = groupWorkInMachines([...hosts, unknown, cloud], [entry]);
   const render = (component: React.ReactNode) => renderToStaticMarkup(<IntlProvider locale="zh-CN" defaultLocale="en" messages={messages}>{component}</IntlProvider>);
   const onSectionChange = () => { throw new Error("render must be read-only"); };

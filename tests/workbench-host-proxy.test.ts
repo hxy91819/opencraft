@@ -32,19 +32,19 @@ test("only trusted Host proxy navigation drops the iframe sandbox", () => {
 
 test("Host proxy URLs preserve the logical loopback address without exposing routing state", () => {
   const physical = encodeHostProxyUrl({
-    appOrigin: "https://chat.lightvela.com",
+    appOrigin: "https://chat.opencraft.example",
     brokerId: "broker/a",
-    hostId: "host:velahermes0",
+    hostId: "host:fixture-host",
     targetUrl: "http://127.0.0.1:4180/posts/你好?q=a%2Fb#intro",
   });
 
   assert.equal(
     physical,
-    "https://chat.lightvela.com/__opencraft/host-proxy/v1/broker%2Fa/host%3Avelahermes0/http/127.0.0.1%3A4180/posts/%E4%BD%A0%E5%A5%BD?q=a%2Fb#intro",
+    "https://chat.opencraft.example/__opencraft/host-proxy/v1/broker%2Fa/host%3Afixture-host/http/127.0.0.1%3A4180/posts/%E4%BD%A0%E5%A5%BD?q=a%2Fb#intro",
   );
   assert.deepEqual(decodeHostProxyUrl(physical), {
     brokerId: "broker/a",
-    hostId: "host:velahermes0",
+    hostId: "host:fixture-host",
     targetUrl: "http://127.0.0.1:4180/posts/%E4%BD%A0%E5%A5%BD?q=a%2Fb#intro",
   });
 });
@@ -57,7 +57,7 @@ test("Host proxy admits only plain HTTP loopback endpoints", () => {
   assert.equal(isLoopbackHttpUrl("http://192.168.1.10:3000"), false);
   assert.equal(isLoopbackHttpUrl("http://example.com:3000"), false);
   assert.throws(() => encodeHostProxyUrl({
-    appOrigin: "https://chat.lightvela.com",
+    appOrigin: "https://chat.opencraft.example",
     brokerId: "broker",
     hostId: "host",
     targetUrl: "http://example.com:3000",
@@ -65,16 +65,16 @@ test("Host proxy admits only plain HTTP loopback endpoints", () => {
 });
 
 test("malformed and non-proxy same-origin paths never decode as Host routes", () => {
-  assert.equal(decodeHostProxyUrl("https://chat.lightvela.com/local/thread"), null);
+  assert.equal(decodeHostProxyUrl("https://chat.opencraft.example/local/thread"), null);
   assert.equal(decodeHostProxyUrl(
-    "https://chat.lightvela.com/__opencraft/host-proxy/v1/broker/host/https/example.com/",
+    "https://chat.opencraft.example/__opencraft/host-proxy/v1/broker/host/https/example.com/",
   ), null);
 });
 
 test("Service Worker routes documents and root-relative assets through one Host broker", async () => {
   const handlers = new Map<string, (event: Record<string, unknown>) => void>();
   const workerSelf = {
-    location: { origin: "https://chat.lightvela.com" },
+    location: { origin: "https://chat.opencraft.example" },
     clients: { claim: async () => undefined },
     skipWaiting: () => undefined,
     addEventListener(type: string, handler: (event: Record<string, unknown>) => void) {
@@ -101,7 +101,7 @@ test("Service Worker routes documents and root-relative assets through one Host 
   });
 
   const brokerId = "broker-test";
-  const hostId = "velahermes0";
+  const hostId = "fixture-host";
   const channel = new MessageChannel();
   const targets: string[] = [];
   const forwardedHeaders: Array<readonly (readonly [string, string])[]> = [];
@@ -171,20 +171,20 @@ test("Service Worker routes documents and root-relative assets through one Host 
     assert.equal(targets[0], "http://127.0.0.1:4180/posts/one");
     assert.equal(documentResponse.headers.get("access-control-allow-origin"), "*");
     assert.match(html, /__opencraft\/preview-bridge\.js/u);
-    assert.match(html, /__opencraft\/host-proxy\/v1\/broker-test\/velahermes0\/http\/localhost%3A4180\/next/u);
+    assert.match(html, /__opencraft\/host-proxy\/v1\/broker-test\/fixture-host\/http\/localhost%3A4180\/next/u);
     assert.equal(forwardedHeaders[0]?.some(([name]) => name === "authorization"), false);
     assert.equal(forwardedHeaders[0]?.some(([name]) => name === "cookie"), false);
     assert.equal(forwardedHeaders[0]?.find(([name]) => name === "origin")?.[1], "http://127.0.0.1:4180");
 
     const assetResponse = await dispatchFetch(
-      new Request("https://chat.lightvela.com/styles/site.css"),
+      new Request("https://chat.opencraft.example/styles/site.css"),
       { clientId: "preview-frame" },
     );
     assert.equal(await assetResponse.text(), "body { color: red; }");
     assert.equal(targets[1], "http://127.0.0.1:4180/styles/site.css");
 
     const preflight = await dispatchFetch(new Request(
-      "https://chat.lightvela.com/api/save",
+      "https://chat.opencraft.example/api/save",
       {
         method: "OPTIONS",
         headers: {
@@ -242,16 +242,16 @@ test("restored Pages recover Host ownership before materializing their physical 
   const runtime = new WebBrowserPageRuntime(
     surfaces,
     {
-      toPhysicalUrl: (url, hostId) => `https://chat.lightvela.com/proxy/${hostId}?url=${encodeURIComponent(url)}` as BrowserUrl,
+      toPhysicalUrl: (url, hostId) => `https://chat.opencraft.example/proxy/${hostId}?url=${encodeURIComponent(url)}` as BrowserUrl,
       toLogicalUrl: (url) => url,
       isPhysicalProxyUrl: (url) => url.includes("/proxy/"),
     },
-    (ownerId) => ownerId === "conversation:one" ? "velahermes0" : null,
+    (ownerId) => ownerId === "conversation:one" ? "fixture-host" : null,
   );
   try {
     runtime.prepareSurface("page-restored" as BrowserPageId);
     assert.deepEqual(navigations, [{
-      url: "https://chat.lightvela.com/proxy/velahermes0?url=http%3A%2F%2F127.0.0.1%3A4180%2F",
+      url: "https://chat.opencraft.example/proxy/fixture-host?url=http%3A%2F%2F127.0.0.1%3A4180%2F",
       opaque: true,
     }]);
   } finally {
