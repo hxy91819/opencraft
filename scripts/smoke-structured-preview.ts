@@ -29,14 +29,15 @@ import {createWorkbenchPanelReactRuntime} from '@opencraft/workbench-panels-reac
 import {BuiltinWorkbenchPanelPlugin} from '/apps/workbench-web/src/panels/builtin-panel-plugin.tsx';
 import {AppShell} from '/apps/workbench-web/src/components/app-shell.tsx';
 import {RightPanel} from '/apps/workbench-web/src/components/right-panel.tsx';
+import {useUiPreferencesRuntime} from '/apps/workbench-web/src/runtime/ui-preferences-runtime';
 import {initializeAppearanceTheme,setThemePreference} from '/apps/workbench-web/src/appearance-theme.ts';
 import '/apps/workbench-web/src/styles/app.scss';
 initializeAppearanceTheme();
 const context=new Context();await context.plugin(BlobResourceService);window.fixtureBlobs=context.blobResources;
 const runtime=await createWorkbenchPanelReactRuntime({defaultRightPanelOpen:true});await runtime.install(BuiltinWorkbenchPanelPlugin);
 const panels=runtime.panels;panels.ensureOwner('scope');panels.dispatch('scope',{type:'set-region-open',region:'right',open:true,allowEmpty:true});if(innerWidth<700)panels.dispatch('scope',{type:'toggle-right-full-width'});const get=()=>panels.getOwnerSnapshot('scope'),subscribe=f=>panels.subscribeOwner('scope',f);
-function App(){const state=useSyncExternalStore(subscribe,get);const[cwd,setCwd]=useState('/fixture');
-window.fixture={panels,state,setCwd,setThemePreference,previews:runtime.context.filePreviews};
+function App(){const preferences=useUiPreferencesRuntime();const state=useSyncExternalStore(subscribe,get);const[cwd,setCwd]=useState('/fixture');
+window.fixture={panels,state,setLocale:locale=>preferences.set('locale.override',locale),setCwd,setThemePreference,previews:runtime.context.filePreviews};
 const panel=<RightPanel hostPresentationActive={innerWidth<700?true:undefined} state={state} presentationId='view' renderers={runtime.renderers.getSnapshot()} toolbarActions={panels.getToolbarActionSnapshot()} toolbarActionContext={{ownerId:'scope',resourceOwnerId:'scope',hostId:'tree-fixture',cwd}} onAction={a=>panels.dispatch('scope',a)} onCloseTab={t=>panels.close('scope',t.region,t.id)}/>;
 return <AppShell layoutScope='scope' header={<span>Workspace</span>} floatingSidebarHeader={()=>null} leftPanel={null} sidebarOpen={false} sidebarWidth={260} onSidebarCollapse={()=>{}} onSidebarExpand={()=>{}} onSidebarResizeEnd={()=>{}} windowChrome={{kind:'browser',platform:'linux',safeArea:{left:0,right:0}}} rightPanel={innerWidth<700?null:panel} rightPanelOpen={state.right.open} rightPanelFullWidth={state.rightPanelFullWidth} onRightPanelOpenChange={open=>panels.dispatch('scope',{type:'set-region-open',region:'right',open,allowEmpty:true})}>{innerWidth<700?panel:<p>Conversation</p>}</AppShell>
 }
@@ -69,6 +70,15 @@ for(const width of [390,1280])for(const theme of ['light','dark']){
     await page.getByRole('button',{name:'Source',exact:true}).click();
     assert.match(await page.locator('.structured-preview__source').innerText(),/Line one\nLine two/);
     await page.getByRole('button',{name:'Table',exact:true}).click();
+    await page.evaluate(()=>{(window as any).localizedTable=document.querySelector('.structured-preview--table')});
+    await page.getByRole('button',{name:'Source',exact:true}).click();
+    await page.evaluate(()=>(window as any).fixture.setLocale('zh-CN'));
+    await page.getByRole('button',{name:'源码',exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'源码',exact:true}).getAttribute('aria-pressed'),'true');
+    assert.equal(await page.evaluate(()=>document.querySelector('.structured-preview--table')===(window as any).localizedTable),true,'locale must preserve table DOM and source selection');
+    await page.getByRole('button',{name:'表格',exact:true}).click();
+    await page.evaluate(()=>(window as any).fixture.setLocale('en-US'));
+    await page.getByRole('button',{name:'Table',exact:true}).waitFor();
    }
   }else if(ext==='xls'||ext==='xlsm'){
    await page.getByRole('tab',{name:'Summary',exact:true}).waitFor();
