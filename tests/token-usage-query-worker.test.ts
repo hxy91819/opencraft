@@ -5,22 +5,22 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
-import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { TokenUsageStateDatabase } from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { TokenUsageQueryService } from "../apps/opencraft-daemon/src/token-usage-query-service.js";
 import { TokenUsageQueryError } from "../apps/opencraft-daemon/src/token-usage-query.js";
 const entry=fileURLToPath(new URL("../apps/opencraft-daemon/src/token-usage-query-worker.ts",import.meta.url));
 const parameters={from:"2026-10-21",through:"2026-10-21"};
 const A=()=>({actorId:"A",administrator:false});
-async function fixture(body:(service:TokenUsageQueryService,state:OpenCraftHostStateDatabase)=>Promise<void>,bundled=false){
- const directory=await mkdtemp(join(tmpdir(),"oc-query-worker-")),state=new OpenCraftHostStateDatabase(directory);
+async function fixture(body:(service:TokenUsageQueryService,state:TokenUsageStateDatabase)=>Promise<void>,bundled=false){
+ const directory=await mkdtemp(join(tmpdir(),"oc-query-worker-")),state=new TokenUsageStateDatabase(directory);
  const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>Date.parse("2026-10-20T16:00:00Z"));
  const key={threadId:"thread",turnId:"turn"};ledger.startTurn(key,Date.parse("2026-10-20T16:00:00Z"),"human",true);
  ledger.recordInput(key,{inputId:"A",actorId:"A",actorKind:"human",mode:"start",admission:"confirmed"});
  ledger.recordSource({...key,lineage:"epoch",sourceId:"r",version:0,kind:"response",provider:null,model:null,counts:{totalTokens:"9007199254740993123456789"}});
  let workerEntry=entry;
  if(bundled){workerEntry=join(directory,"query.mjs");await build({entryPoints:[entry],outfile:workerEntry,bundle:true,platform:"node",format:"esm",target:"node26",logLevel:"silent"});}
- const service=new TokenUsageQueryService({entry:workerEntry,databasePath:join(directory,"codex-host-queue.sqlite"),serverId:"server"});
+ const service=new TokenUsageQueryService({entry:workerEntry,databasePath:join(directory,"token-usage.sqlite"),serverId:"server"});
  try{await body(service,state);}finally{service.close();state.close();await rm(directory,{recursive:true,force:true});}
 }
 test("source worker opens the existing ledger read-only and keeps arbitrary precision",()=>fixture(async service=>{

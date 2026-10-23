@@ -38,25 +38,25 @@ try {
     const lists = await Promise.all(registrations.map(value => value.getNotifications()));
     return lists.flat().length === expected;
   }, count); };
-  for (const [host, status] of [["codex", "completed"], ["hermes", "failed"], ["dsh", "interrupted"]]) {
+  for (const [host, status] of [["host-a", "completed"], ["host-b", "failed"], ["host-c", "interrupted"]]) {
     await page.evaluate(host => (window as any).__turnNotificationFixture.context(host, `${host} 对话`, `我给 ${host} 的请求`), host);
     await page.evaluate(([host, status]) => (window as any).__turnNotificationFixture.emit(host, "turn-1", status), [host, status]);
   }
   await waitCount(3);
   const shown = await notifications();
-  assert.deepEqual(shown.map((value: any) => value.title).sort(), ["codex 对话 · OpenCraft · 本轮已完成", "hermes 对话 · OpenCraft · 本轮执行失败", "dsh 对话 · OpenCraft · 本轮已停止"].sort());
+  assert.deepEqual(shown.map((value: any) => value.title).sort(), ["host-a 对话 · OpenCraft · 本轮已完成", "host-b 对话 · OpenCraft · 本轮执行失败", "host-c 对话 · OpenCraft · 本轮已停止"].sort());
   assert.ok(shown.every((value: any) => value.data.clientId && value.data.ownerId && value.body === `你：我给 ${value.data.completion.hostId} 的请求`));
-  await page.evaluate(async () => { const f = (window as any).__turnNotificationFixture; await f.emit("codex", "turn-1"); await f.reconnect(); await f.emit("codex", "turn-1"); await f.emit("codex", "phase", "completed", "item/completed"); await f.emit("codex", "history", "completed", "thread/read"); });
+  await page.evaluate(async () => { const f = (window as any).__turnNotificationFixture; await f.emit("host-a", "turn-1"); await f.reconnect(); await f.emit("host-a", "turn-1"); await f.emit("host-a", "phase", "completed", "item/completed"); await f.emit("host-a", "history", "completed", "thread/read"); });
   assert.equal((await notifications()).length, 3);
   // A worker click message must target the original Application nonce and call its existing navigation port.
   await page.evaluate(data => navigator.serviceWorker.dispatchEvent(new MessageEvent("message", { data: { kind: "opencraft-turn-click", ownerId: data.ownerId, completion: data.completion } })), shown[0].data);
   await page.waitForFunction(() => (window as any).__turnNotificationFixture.opened.length === 1);
   await page.evaluate(() => (window as any).__turnNotificationFixture.settings());
   await page.locator("[data-conversation]").waitFor();
-  await page.evaluate(() => (window as any).__turnNotificationFixture.emit("codex", "turn-2")); await waitCount(4);
+  await page.evaluate(() => (window as any).__turnNotificationFixture.emit("host-a", "turn-2")); await waitCount(4);
   await page.evaluate(() => (window as any).__turnNotificationFixture.settings()); await toggle.waitFor();
   await toggle.click(); await page.waitForFunction(() => (window as any).__turnNotificationFixture.preference() === false);
-  await page.evaluate(() => (window as any).__turnNotificationFixture.emit("codex", "turn-3"));
+  await page.evaluate(() => (window as any).__turnNotificationFixture.emit("host-a", "turn-3"));
   assert.equal((await notifications()).length, 4);
   await page.reload(); await toggle.waitFor(); assert.equal(await toggle.getAttribute("aria-checked"), "false");
   const workers = await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).map(value => ({ scope: value.scope, script: value.active?.scriptURL })));
@@ -73,5 +73,5 @@ try {
   await deniedPage.getByText("尚未获得通知权限，你可以稍后重新开启。").waitFor();
   assert.equal(await deniedPage.evaluate(() => (window as any).__turnNotificationFixture.preference()), false);
   await denied.close();
-  console.log(`PASS real Chat Settings/Intl/IndexedDB/typed Clients/Notification Worker: conversation title and corresponding user request, explicit opt-in, all three engine paths, terminal states, dedup/reconnect, history suppression, Settings/View switching, disable/persistence, denied permission, click navigation port. OS popup clicking is simulated. Screenshot: ${screenshot}`);
+  console.log(`PASS real Chat Settings/Intl/IndexedDB/typed Clients/Notification Worker: conversation title and corresponding user request, explicit opt-in, three independent Host clients, terminal states, dedup/reconnect, history suppression, Settings/View switching, disable/persistence, denied permission, click navigation port. OS popup clicking is simulated. Screenshot: ${screenshot}`);
 } finally { await browser?.close(); await vite.close(); }

@@ -1222,7 +1222,7 @@ test("enabling a Codex account returns before background subscription usage refr
 });
 
 test("Host binds each submission to its trusted sender and keeps queued authors through another client's dispatch", async () => {
-  const root = await mkdtemp(join(tmpdir(), "codex-message-senders-integration-"));
+  const root = await mkdtemp(join(tmpdir(), "opencraft-message-senders-integration-"));
   const frames: Array<Record<string, unknown>> = [];
   const adapter = createRoutingAdapter(root, frames);
   const a = { kind: "employee" as const, loginName: "employee.a" };

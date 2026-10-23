@@ -4,10 +4,10 @@ import { projectScheduledTaskRows } from "../apps/workbench-web/src/runtime/sche
 
 test("catalog includes schedules absent from paginated conversation metadata and separates Host identities", () => {
   const rows = projectScheduledTaskRows([
-    { hostId: "codex", schedules: [{ threadId: "same", status: "active", nextRunAt: 20, needsReview: false }, { threadId: "not-loaded", status: "paused", nextRunAt: 30, needsReview: false }] },
-    { hostId: "dsh", schedules: [{ threadId: "same", status: "active", nextRunAt: 10, needsReview: false }] },
-  ], [{ connectionHostId: "codex", id: "same", title: "Codex conversation" }, { connectionHostId: "dsh", id: "same", title: "DSH conversation" }]);
-  assert.deepEqual(rows.map(row => row.title), ["DSH conversation", "Codex conversation", "not-loaded"]);
+    { hostId: "host-a", schedules: [{ threadId: "same", status: "active", nextRunAt: 20, needsReview: false }, { threadId: "not-loaded", status: "paused", nextRunAt: 30, needsReview: false }] },
+    { hostId: "host-b", schedules: [{ threadId: "same", status: "active", nextRunAt: 10, needsReview: false }] },
+  ], [{ connectionHostId: "host-a", id: "same", title: "First Host conversation" }, { connectionHostId: "host-b", id: "same", title: "Second Host conversation" }]);
+  assert.deepEqual(rows.map(row => row.title), ["Second Host conversation", "First Host conversation", "not-loaded"]);
   assert.equal(rows[2]?.status, "paused");
 });
 

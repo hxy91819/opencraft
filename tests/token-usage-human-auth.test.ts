@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {join} from "node:path";
 import {build} from "esbuild";
 import {humanAuthFixture} from "./human-auth-fixture.js";
-import {OpenCraftHostStateDatabase} from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import {TokenUsageStateDatabase} from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import {OpenCraftTokenUsageLedger} from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import {TokenUsageQueryService} from "../apps/opencraft-daemon/src/token-usage-query-service.js";
 import {TokenUsageQueryError} from "../apps/opencraft-daemon/src/token-usage-query.js";
@@ -19,10 +19,10 @@ test("server-verified local logins isolate usage and recheck instance membership
   people.push({browser,id:actor.actorId});
  }
  const [a,b,admin]=people as [typeof people[number],typeof people[number],typeof people[number]];
- const state=new OpenCraftHostStateDatabase(join(f.directory,"usage")),at=Date.parse("2026-10-21T00:00:00Z"),ledger=new OpenCraftTokenUsageLedger(state,"server",()=>at);
+ const state=new TokenUsageStateDatabase(join(f.directory,"usage")),at=Date.parse("2026-10-21T00:00:00Z"),ledger=new OpenCraftTokenUsageLedger(state,"server",()=>at);
  const entry=join(f.directory,"usage-worker.mjs");
  await build({entryPoints:[new URL("../apps/opencraft-daemon/src/token-usage-query-worker.ts",import.meta.url).pathname],outfile:entry,bundle:true,platform:"node",format:"esm",target:"node26",logLevel:"silent"});
- const service=new TokenUsageQueryService({entry,databasePath:join(f.directory,"usage","codex-host-queue.sqlite"),serverId:"server"});
+ const service=new TokenUsageQueryService({entry,databasePath:join(f.directory,"usage","token-usage.sqlite"),serverId:"server"});
  t.after(()=>{service.close();state.close();});
  const key={threadId:"shared",turnId:"turn"};ledger.startTurn(key,at,"human",true);
  for(const person of [a,b])ledger.recordInput(key,{inputId:person.id,actorId:person.id,actorKind:"human",mode:"start",admission:"confirmed"});
