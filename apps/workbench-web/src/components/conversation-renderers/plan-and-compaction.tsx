@@ -9,11 +9,13 @@ import {
   type TimelineBlock,
 } from "@opencraft/chat-core";
 import { WebChatDocument } from "@opencraft/chat-render-web";
+import { observeBorderBoxHeight } from "@opencraft/timeline-host-web";
 import { DownloadIcon as Download, ChecklistIcon as ListChecks } from "@opencraft/design-system-web/action-icons";
 import { motion, useReducedMotion } from "motion/react";
 import {
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -21,6 +23,8 @@ import { ConversationDocumentContext } from "../conversation/document-context";
 import { CadencedShimmer, useActivityOpen } from "./activity/activity-disclosure";
 import { ActivitySummaryRow } from "./activity/activity-summary-row";
 import { AssistantCopyButton } from "./activity/command-and-review-renderers";
+
+const PLAN_PREVIEW_HEIGHT_PX = 320;
 
 export function PlanBlock({
   block,
@@ -31,6 +35,13 @@ export function PlanBlock({
   const document = useContext(ConversationDocumentContext);
   const [expanded, setExpanded] = useActivityOpen(false, block.completed, JSON.stringify(["plan", block.id]));
   const collapsed = !expanded;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [previewClipped, setPreviewClipped] = useState(false);
+  useLayoutEffect(() => {
+    const element = contentRef.current;
+    if (element === null) return;
+    return observeBorderBoxHeight(element, (height) => setPreviewClipped(height > PLAN_PREVIEW_HEIGHT_PX));
+  }, []);
   const reducedMotion = useReducedMotion();
   const canCopy = block.completed && block.text.trim().length > 0;
   const download = () => {
@@ -82,24 +93,26 @@ export function PlanBlock({
       <motion.div
         className="thread-plan__body"
         initial={false}
-        animate={{ height: collapsed ? 320 : "auto" }}
+        animate={{ height: collapsed ? PLAN_PREVIEW_HEIGHT_PX : "auto" }}
         transition={{
           duration: reducedMotion ? 0 : 0.3,
           ease: [0.19, 1, 0.22, 1],
         }}
       >
-        <WebChatDocument
-          documentId={block.id}
-          source={block.text}
-          streaming={!block.completed}
-          conversationId={document.conversationId}
-          hostId={document.hostId}
-          cwd={document.cwd}
-          theme={document.theme}
-          onOpenResource={document.onOpenResource}
-          loadMediaSource={document.loadMediaSource}
-        />
-        {collapsed ? (
+        <div className="thread-plan__content" ref={contentRef}>
+          <WebChatDocument
+            documentId={block.id}
+            source={block.text}
+            streaming={!block.completed}
+            conversationId={document.conversationId}
+            hostId={document.hostId}
+            cwd={document.cwd}
+            theme={document.theme}
+            onOpenResource={document.onOpenResource}
+            loadMediaSource={document.loadMediaSource}
+          />
+        </div>
+        {collapsed && previewClipped ? (
           <div className="thread-plan__expand">
             <button type="button" onClick={() => setExpanded(true)}>
               Expand plan

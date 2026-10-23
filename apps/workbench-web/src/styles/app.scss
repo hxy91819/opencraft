@@ -6597,7 +6597,8 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
   > header > div { display: flex; gap: 4px; }
   button { border: 0; background: transparent; color: inherit; border-radius: 6px; padding: 6px; cursor: pointer; }
   @include controls.hover-capable { button:hover { background: var(--color-background-button-tertiary-hover); } }
-  &__body { position: relative; overflow: hidden; > .opencraft-chat-document { padding: 12px; } }
+  &__body { position: relative; overflow: hidden; max-height: max-content; }
+  &__content { padding: 12px; }
   &__expand { position: absolute; inset: auto 0 0; height: 160px; display: flex; align-items: end; justify-content: center; padding-bottom: 12px; pointer-events: none; background: linear-gradient(transparent, var(--color-surface));
     button { pointer-events: auto; background: var(--color-text); color: var(--color-surface); padding: 6px 12px; }
   }

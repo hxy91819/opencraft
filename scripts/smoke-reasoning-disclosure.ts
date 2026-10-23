@@ -68,6 +68,53 @@ try {
       await page.locator(`[data-revision="${before + 1}"]`).waitFor();
     };
     const activate = (target: any) => touch ? target.tap() : target.click();
+    if (process.argv.includes("--plan-preview-only")) {
+      await update("plan-preview-reset");
+      const plan = page.locator('.thread-plan');
+      const control = plan.locator('header button[aria-expanded]');
+      await plan.locator('.opencraft-chat-document li').first().waitFor();
+      const original = await plan.elementHandle();
+      const waitGeometry = (clipped: boolean) => page.waitForFunction(clipped => {
+        const plan = document.querySelector('.thread-plan');
+        const body = plan?.querySelector('.thread-plan__body');
+        const content = plan?.querySelector('.thread-plan__content') ?? plan?.querySelector('.opencraft-chat-document');
+        if (!body || !content) return false;
+        const natural = content.getBoundingClientRect().height;
+        return natural > 0 && (clipped ? natural > 320 : natural < 320)
+          && Math.abs(body.getBoundingClientRect().height - Math.min(320, natural)) <= 1;
+      }, clipped, {timeout: 5000});
+      await waitGeometry(false);
+      assert.equal(await plan.locator('.thread-plan__expand').count(), 0, 'a short preview has no covering fade or redundant expansion overlay');
+      assert.equal(await control.getAttribute('aria-expanded'), 'false');
+      await update("plan-preview-grow");
+      await waitGeometry(true);
+      assert.equal(await original!.evaluate(node => node.isConnected), true, 'growth keeps the same plan');
+      await plan.locator('.thread-plan__expand').waitFor();
+      if (touch) await activate(control); else { await control.focus(); await page.keyboard.press('Enter'); }
+      await page.waitForFunction(() => {
+        const body = document.querySelector('.thread-plan__body');
+        const content = document.querySelector('.thread-plan__content') ?? document.querySelector('.thread-plan .opencraft-chat-document');
+        return body && content && Math.abs(body.getBoundingClientRect().height - content.getBoundingClientRect().height) <= 1;
+      });
+      assert.equal(await control.getAttribute('aria-expanded'), 'true');
+      assert.equal(await plan.locator('.thread-plan__expand').count(), 0);
+      await activate(control); await waitGeometry(true);
+      await update("plan-preview-shrink"); await waitGeometry(false);
+      assert.equal(await plan.locator('.thread-plan__expand').count(), 0);
+      await update("plan-preview-complete"); await waitGeometry(false);
+      assert.equal(await control.getAttribute('aria-expanded'), 'false', 'completion preserves explicit collapse');
+      await update("restore"); await plan.locator('.opencraft-chat-document li').first().waitFor(); await waitGeometry(false);
+      assert.equal(await control.getAttribute('aria-expanded'), 'false', 'the same View keeps its explicit choice');
+      await page.screenshot({path:join(output, `plan-preview-${touch ? 'touch' : 'mouse'}-${theme}.png`)});
+      await update("plan-preview-fresh-complete"); await plan.locator('.opencraft-chat-document li').first().waitFor(); await waitGeometry(false);
+      assert.equal(await control.getAttribute('aria-expanded'), 'true', 'fresh completed plan starts expanded');
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      assert.deepEqual(errors, []);
+      assert.deepEqual(await page.evaluate(() => (window as any).resizeFeedback), []);
+      results.push({touch, theme, shortNaturalHeight:true, longPreviewBounded:true, expansionNatural:true,
+        shrinkMeasured:true, planRetained:true, explicitChoiceRestored:true, freshCompletedDefault:true});
+      await page.close(); continue;
+    }
     if (process.argv.includes("--late-body-only")) {
       await update("late-body-reset");
       // Mount the file row while no diff exists, before the late body arrives.

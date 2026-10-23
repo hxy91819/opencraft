@@ -71,6 +71,16 @@ function Demo() {
   const [turn, setTurn] = useState<TimelineSourceTurn>({ id: "turn", status: "streaming", items: [reasoning("codex")] });
   probe.update = (action: string, selectedEngine = engine) => {
     setRevision(value => value + 1);
+    if (action.startsWith("plan-preview-")) {
+      const mode = action.slice("plan-preview-".length);
+      if (mode === "reset" || mode === "fresh-complete") { restore = null; setGeneration(value => value + 1); }
+      const completed = mode === "complete" || mode === "fresh-complete";
+      const count = mode === "grow" ? 24 : 1;
+      const text = "# Reading plan\n\n" + Array.from({ length: count }, (_, index) => `- Step ${index + 1}: Preserve reading choices.`).join("\n");
+      setTurn({ id: "turn", status: completed ? "complete" : "streaming", items: [
+        { id: "preview-plan", type: "plan", payload: { text } },
+      ] }); return;
+    }
     if (action.startsWith("late-body-")) {
       const mode = action.slice("late-body-".length);
       if (mode === "reset") { restore = null; setGeneration(value => value + 1); }
