@@ -7,6 +7,10 @@ does not replace any gate; callers own their own gates and thresholds.
 
 ## Commands (run from the repository root)
 
+Install pinned dependencies once (uses this checkout's lockfile):
+
+    npm ci
+
 Build the self-contained bundle (esm, `ws` inlined; dependencies come from this
 checkout's pinned install):
 
