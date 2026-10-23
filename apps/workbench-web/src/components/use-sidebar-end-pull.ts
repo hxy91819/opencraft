@@ -44,7 +44,7 @@ export function useSidebarEndPull(footerRef: RefObject<HTMLDivElement | null>, e
       const previous = root === lastViewport ? lastScrollTop : 0;
       lastViewport = root;
       lastScrollTop = root.scrollTop;
-      if (root.scrollTop <= previous) return;
+      if (root.scrollTop <= 0 || root.scrollTop < previous) return;
       // Scrollbar drags, keyboard navigation and touch momentum all arrive here.
       // A held touch still consumes at most one page, including its final scroll.
       if (!touch) consumed = false;

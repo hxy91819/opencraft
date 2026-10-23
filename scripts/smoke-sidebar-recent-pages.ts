@@ -23,7 +23,7 @@ const page=await browser.newPage({viewport:{width:touch?390:1000,height:900},has
 const waitRows=async(count:number)=>{await page.waitForFunction(n=>document.querySelectorAll('[aria-label="Recent"] .sidebar-activity-item, [aria-label="最近"] .sidebar-activity-item').length===n,count);};
 const pinned=page.getByRole('region',{name:/^(Pinned|置顶)$/,exact:true});const recent=page.getByRole('region',{name:/^(Recent|最近)$/,exact:true});const rows=recent.locator('.sidebar-activity-item');const more=recent.getByRole('button',{name:/^(Show more|查看更多)$/,exact:true});const less=recent.getByRole('button',{name:/^(Show less|收起)$/,exact:true});await rows.first().waitFor({timeout:60000});
 // Direct activation isolates click paging from scroll-to-control auto loading.
-const activate=async(button:any)=>{await button.evaluate((el:HTMLButtonElement)=>el.click());};
+const activate=async(button:any)=>{await page.waitForFunction((el:HTMLButtonElement)=>!el.disabled,await button.elementHandle());await button.evaluate((el:HTMLButtonElement)=>el.click());};
 assert.equal(await rows.count(),10,'selected recent row outside the page does not change page size');assert.equal(await less.count(),0);assert.equal(await pinned.locator('.sidebar-activity-item').count(),6);
 await activate(pinned.getByRole('button',{name:/^(Show more|查看更多)$/}));await page.waitForFunction(()=>document.querySelectorAll('[aria-label="Pinned"] .sidebar-activity-item, [aria-label="置顶"] .sidebar-activity-item').length===8);assert.equal(await pinned.locator('.sidebar-activity-item').count(),8);assert.equal(await rows.count(),10,'pinned paging is independent');
 const typography=await more.evaluate(el=>({size:getComputedStyle(el).fontSize,color:getComputedStyle(el).color,height:el.getBoundingClientRect().height}));assert.equal(typography.size,'12px');assert.ok(typography.height>=(touch?44:30));
@@ -67,7 +67,7 @@ await activate(less);
 await page.evaluate(()=>{
  const panel=document.querySelector('.sidebar-panel')!;const old=panel.closest('.shell-sidebar__column')!;
  const column=old.cloneNode(false) as HTMLElement;column.classList.add('owner-probe');column.style.position='fixed';column.style.inset='0';
- const scroll=document.createElement('div');scroll.className='shell-sidebar__scroll';column.append(scroll);document.body.append(column);scroll.append(panel);
+ const scroll=document.createElement('div');scroll.className='shell-sidebar__scroll';column.append(scroll);old.parentElement!.append(column);scroll.append(panel);
 });
 const movedScroll=page.locator(touch?'.owner-probe .shell-sidebar__scroll':'.owner-probe .sidebar-activity-list');
 await movedScroll.evaluate(el=>{el.scrollTop=0});await page.waitForTimeout(30);
