@@ -19,6 +19,7 @@ Examples:
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -517,6 +518,140 @@ else:
                     result = self.api_smoke(registry, npm)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn('does not match', result.stderr)
+
+    @contextmanager
+    def mint_and_exchange(self, mint, exchange):
+        """One HTTP fixture serving both the mint URL and the registry exchange."""
+        seen = []
+
+        class Handler(BaseHTTPRequestHandler):
+            def _send(self, status, payload):
+                data = payload if isinstance(payload, bytes) else json.dumps(payload).encode()
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("npm-request-id", "mock-request-id-1")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def _serve(self, method):
+                seen.append({"method": method, "path": self.path, "headers": dict(self.headers)})
+                if "/idtoken" in self.path:
+                    self._send(*mint)
+                else:
+                    index = min(sum(1 for entry in seen if entry["method"] == "POST" and "/exchange/" in entry["path"]) - 1, len(exchange) - 1)
+                    self._send(*exchange[index])
+
+            def do_GET(self):
+                self._serve("GET")
+
+            def do_POST(self):
+                self._serve("POST")
+
+            def log_message(self, *args):
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            yield f"http://127.0.0.1:{server.server_port}", seen
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join()
+
+    def minted_id_token(self):
+        import base64
+
+        def encode(part):
+            return base64.urlsafe_b64encode(part).rstrip(b"=").decode()
+
+        claims = {
+            "iss": "https://token.actions.githubusercontent.com",
+            "aud": ["npm:registry.npmjs.org"],
+            "repository": "opencraft-app/opencraft",
+            "repository_id": "1423986423",
+            "repository_owner_id": "330436527",
+            "job_workflow_ref": "opencraft-app/opencraft/.github/workflows/release.yml@refs/heads/main",
+            "ref": "refs/heads/main",
+            "environment": "npm-release",
+            "sub": "repo:opencraft-app@330436527/opencraft@1423986423:environment:npm-release",
+            "nonAllowlistedClaim": "dev@example.invalid",
+        }
+        signature = encode(("mock-signature-" + "x" * 40).encode())
+        return f"{encode(b'{}')}.{encode(json.dumps(claims).encode())}.{signature}"
+
+    def run_probe(self, registry, url_token, *, npm_version="11.18.0"):
+        environment = dict(os.environ)
+        environment["GITHUB_ACTIONS"] = "true"
+        environment["ACTIONS_ID_TOKEN_REQUEST_URL"] = f"{registry}/idtoken"
+        environment["ACTIONS_ID_TOKEN_REQUEST_TOKEN"] = url_token
+        environment.pop("ACTIONS_ID_TOKEN", None)
+        return subprocess.run(
+            (sys.executable, str(SCRIPT), "oidc-probe", "--package", "@opencraft-app/opencraft",
+             "--registry", registry, "--npm-version", npm_version),
+            cwd=self.repo, env=environment, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+        )
+
+    def test_oidc_probe_exchanges_verbatim_and_withholds_every_issued_token(self):
+        token = self.minted_id_token()
+        with self.mint_and_exchange((200, {"value": token}),
+                                    [(200, {"token": "ISSUED-NPM-TOKEN-never-print",
+                                            "verbose": "Bearer AAA.BBB.CCC should not print either"})]) as (registry, seen):
+            result = self.run_probe(registry, "mint-secret")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("exchange verdict: token issued (withheld)", result.stdout)
+        for secret in ("ISSUED-NPM-TOKEN", token, "mint-secret", "AAA.BBB", "dev@example.invalid"):
+            self.assertNotIn(secret, result.stdout)
+        exchange = seen[-1]
+        sent = {key.lower(): value for key, value in exchange["headers"].items()}
+        self.assertEqual(exchange["method"], "POST")
+        self.assertEqual(exchange["path"], "/-/npm/v1/oidc/token/exchange/package/@opencraft-app%2fopencraft")
+        self.assertEqual(sent.get("npm-command"), "publish")
+        self.assertEqual(sent.get("npm-auth-type"), "web")
+        self.assertEqual(sent.get("accept"), "*/*")
+        self.assertNotIn("content-type", sent)
+        mint = seen[0]
+        self.assertIn("/idtoken", mint["path"])
+        self.assertIn("audience=npm%3A", mint["path"])
+
+    def test_oidc_probe_denial_prints_only_the_structured_registry_fields(self):
+        with self.mint_and_exchange(
+                (200, {"value": self.minted_id_token()}),
+                [(404, {"message": "OIDC token exchange error - package not found"})]) as (registry, seen):
+            result = self.run_probe(registry, "mint-secret")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("exchange HTTP status: 404", result.stdout)
+        self.assertIn("mock-request-id-1", result.stdout)
+        self.assertIn("package not found", result.stdout)
+        self.assertNotIn("ISSUED", result.stdout)
+        self.assertNotIn("token\"", result.stdout.replace("exchange verdict", ""))
+
+    def test_oidc_probe_redacts_credential_shapes_inside_registry_fields(self):
+        poison = "message leaked AAAAeyJhbGciOiJIUzI1NiIsInR5cCI6.pAYLOAD-CONTENT-SIGNATURE and Bearer bb.aa.cc"
+        with self.mint_and_exchange((200, {"value": self.minted_id_token()}),
+                                    [(404, {"message": poison})]) as (registry, seen):
+            result = self.run_probe(registry, "mint-secret")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("pAYLOAD-CONTENT-SIGNATURE", result.stdout)
+        self.assertNotIn("Bearer bb.aa.cc", result.stdout)
+        self.assertIn("[redacted]", result.stdout)
+
+    def test_oidc_probe_requires_the_github_oidc_mint_environment(self):
+        environment = dict(os.environ)
+        environment.pop("ACTIONS_ID_TOKEN_REQUEST_URL", None)
+        environment.pop("ACTIONS_ID_TOKEN_REQUEST_TOKEN", None)
+        result = subprocess.run(
+            (sys.executable, str(SCRIPT), "oidc-probe", "--package", "@opencraft-app/opencraft",
+             "--registry", "http://127.0.0.1:1/"),
+            cwd=self.repo, env=environment, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("ACTIONS_ID_TOKEN_REQUEST_URL", result.stderr)
+        self.assertIn("ACTIONS_ID_TOKEN_REQUEST_TOKEN", result.stderr)
 
 
 if __name__ == "__main__":

@@ -11,6 +11,11 @@ on:
         description: Existing stable vX.Y.Z tag to publish
         required: true
         type: string
+      oidc_probe:
+        description: Run the publish job's OIDC exchange probe and skip publishing
+        required: false
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -243,7 +248,15 @@ jobs:
           name: npm-release-${{ needs.request.outputs.tag }}
           path: release
 
+      # TEMPORARY diagnosis (remove with the verbose line): one OIDC exchange
+      # under this exact job identity (same workflow ref, job and environment).
+      - name: OIDC exchange probe (temporary diagnosis)
+        if: ${{ inputs.oidc_probe == true }}
+        run: |
+          python3 "$KIT" oidc-probe --package "$(node -p "require('./packaging/web-server/package.json').name")" --registry "$NPM_REGISTRY" --npm-version "$NPM_VERSION"
+
       - name: Reverify and publish exact bytes
+        if: ${{ inputs.oidc_probe != true }}
         env:
           RELEASE_TAG: ${{ needs.request.outputs.tag }}
           NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/opencraft-npmrc
@@ -262,6 +275,7 @@ jobs:
           fi
 
       - name: Verify public metadata and clean npm installation
+        if: ${{ inputs.oidc_probe != true }}
         env:
           RELEASE_TAG: ${{ needs.request.outputs.tag }}
           NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/opencraft-npmrc
@@ -276,6 +290,7 @@ jobs:
 
   github-release:
     needs: [request, publish]
+    if: ${{ inputs.oidc_probe != true }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
