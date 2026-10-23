@@ -3,7 +3,6 @@
 .tasks-ai-follow-up {
   flex: 1; min-height: 0; min-width: 0; overflow: auto; overscroll-behavior: contain;
   padding-bottom: calc(var(--spacing) * 5); @include type.role(body);
-  &__intro { margin: 0 0 calc(var(--spacing) * 4); color: var(--color-text-secondary); }
   &__toolbar, &__filters { display: flex; flex-wrap: wrap; align-items: center; gap: calc(var(--spacing) * 3); }
   &__toolbar { justify-content: space-between; }
   &__filters { min-width: 0; }

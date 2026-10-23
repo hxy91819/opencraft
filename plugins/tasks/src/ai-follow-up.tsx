@@ -100,7 +100,6 @@ export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwne
   };
   const retry = () => { for (const [id, entry] of cache.current) if (entry.failed) cache.current.delete(id); setRefresh(n => n + 1); };
   return <section className="tasks-ai-follow-up" aria-label={text("AI 跟进", "AI follow-up")}>
-    <p className="tasks-ai-follow-up__intro">{text("让 AI 持续推进，让人及时判断。", "Keep work moving; make human decisions timely.")}</p>
     <div className="tasks-ai-follow-up__toolbar">
       <SegmentedControl label={text("跟进范围", "Follow-up scope")} value={selection.scope} onValueChange={scope => onSelectionChange({ ...selection, scope })} options={[
         { value: "all", label: text("全部事项", "All work") }, { value: "mine", label: text("待我判断", "Needs me") }, { value: "owned", label: text("我负责的", "My work") },
@@ -115,7 +114,6 @@ export function AIFollowUp({ tasks, members, activity, port, ownerFilter, onOwne
     </div>
     <div className="tasks-ai-follow-up__summary">
       <span>{text(`当前 ${active.length} 项`, `${active.length} tasks`)}{selection.scope !== "all" && !myMemberId ? text(" · 请先在任务筛选中关联我的成员身份", " · Link your member identity in task filters first") : ""}</span>
-      <span>{text("Needs you 按状态停留排序", "Needs you · longest dwell first")}</span>
     </div>
     <div className="tasks-ai-follow-up__feedback" role="status" aria-live="polite">
       {checking ? text("正在核实协作记录…", "Checking collaboration records…") : unavailable ? <>{text("部分协作记录暂不可用；未推断执行或停留时间。", "Some records are unavailable; execution and dwell are not inferred.")} {activity ? <SettingsButton variant="quiet" onClick={retry}>{text("重新核实", "Retry")}</SettingsButton> : null}</> : null}

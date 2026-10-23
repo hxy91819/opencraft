@@ -492,6 +492,9 @@ subtle outline; state and action rows have no additional separators. Owner and
 chat share a lightweight bottom row. The shared quiet control owns pointer,
 keyboard focus and touch density; only its text receives accent emphasis.
 
+The view starts directly with its filters. No introductory slogan or separate
+sort-order caption is displayed; the result count and Needs you ordering remain.
+
 Owner filtering supports all, a stored member ID and unassigned. All/Needs me/My
 work and material/title search apply to every lane and count. Needs me matches
 only an explicit judge and the established current member, never a guessed login.
