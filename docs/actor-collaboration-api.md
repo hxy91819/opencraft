@@ -19,6 +19,8 @@ Headless 的首期协作闭环：已认证自然人和 Session 共用消息、�
 
 Session bearer 仍被旧共享 HTTP / WebSocket 入口拒绝。自然人原有共享入口保持兼容；本接口不证明旧原生接口、Shell、文件或进程已经具备租户隔离。不要把部署在共同高权限系统账号下的敌对执行者视为隔离租户。
 
+通用 `Collaboration` 和进程内 `createConversationExecution` 要求执行端明确提供 `hostId`；缺失或非法时在打开存储或连接 Host 前拒绝，不能根据缺省值推断执行引擎。当前 Headless 装配仍明确选择上述原生适配，不扩大 Session 绑定能力。新绑定和请求保存声明的 Host，用量恢复按该 Host 或明确 Server 身份匹配。已发布 v2 SQL 的旧默认值与既有记录不改写；只读恢复历史 nullable 请求时保留原先的本地原生身份，不把它用作新请求默认值。
+
 ## HTTP 操作
 
 以下路径相对接口前缀。返回 JSON 使用私有、禁止缓存策略。ID 是不透明值；请求者从返回结果引用，不从显示名推导。

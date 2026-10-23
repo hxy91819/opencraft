@@ -13,7 +13,7 @@ export interface RunBinding { actorId: string; hostId: string; threadId: string;
 export interface ExecutionReceipt { id: string; state: string; targetTurnId: string | null }
 export interface ConversationExecutionPort {
   readonly serverId?: string;
-  readonly hostId?: string;
+  readonly hostId: string;
   owns?(serverId: string): boolean;
   hostForServer?(serverId: string): string;
   discover?(search: string, cursor: string | null): Promise<unknown>;
@@ -56,6 +56,8 @@ CREATE TABLE conversation_tool_budget(authority_id TEXT PRIMARY KEY, sent INTEGE
 `;
 
 type Row = Record<string, unknown>;
+// Only pre-existing nullable request rows use this historical identity.
+const legacyRequestHostId = 'local-codex';
 const terminal = new Set(['submitted', 'injected', 'rejected', 'cancelled']);
 function text(value: unknown, max = 256): string {
   if (typeof value !== 'string' || !value.trim() || value.length > max || /[\x00-\x08\x0b\x0c\x0e-\x1f]/u.test(value)) throw new CollaborationError(400, 'invalid_field');
@@ -89,6 +91,7 @@ export class Collaboration {
   #operations: Promise<unknown> = Promise.resolve();
   #timer: ReturnType<typeof setInterval> | null = null;
   constructor(path: string, readonly actors: ActorStore, readonly execution: ConversationExecutionPort, readonly now = Date.now, readonly admittedActor: (actorId: string) => boolean = () => true) {
+    if (typeof execution.hostId !== 'string' || !execution.hostId.trim() || execution.hostId.length > 256 || /[\x00-\x1f]/u.test(execution.hostId)) throw new CollaborationError(500, 'execution_host_required');
     const managed = openManagedDatabase({ path, legacyPolicy: 'reject', migrations: [{ version: 1, name: 'actor-collaboration', sql: SCHEMA }, { version: 2, name: 'conversation-resources', sql: V2 }], validateSchema: createSchemaValidator(SCHEMA + V2) });
     this.database = managed.database; this.outcome = managed.outcome;
     this.#unregisterAuthority = actors.registerResourceAuthority(resource => { const ref = parseConversationRef(resource); return !!ref && this.#owns(ref.serverId); });
@@ -115,7 +118,7 @@ export class Collaboration {
   async bind(actorId: string, threadId: string, expectedEpoch: number, assertAdmission: () => void, changedBy = 'local-operator'): Promise<RunBinding> {
     if (this.actors.get(actorId)?.kind !== 'session' || !this.actors.get(actorId)?.enabled) throw new CollaborationError(400, 'session_required');
     text(threadId); if (!Number.isSafeInteger(expectedEpoch) || expectedEpoch < 0) throw new CollaborationError(400, 'invalid_epoch');
-    const binding: RunBinding = { actorId, hostId: this.execution.hostId ?? 'local-codex', threadId, epoch: expectedEpoch + 1 };
+    const binding: RunBinding = { actorId, hostId: this.execution.hostId, threadId, epoch: expectedEpoch + 1 };
     await this.execution.validate(binding);
     assertAdmission();
     if (!this.actors.get(actorId)?.enabled) throw new CollaborationError(403, 'actor_action_denied');
@@ -176,7 +179,7 @@ export class Collaboration {
   #owns(serverId: string) { return this.execution.owns?.(serverId) ?? serverId === this.execution.serverId; }
   #executionBinding(row: Row): RunBinding {
     const serverId = row.target_kind === 'conversation' ? String(row.server_id) : undefined;
-    return { actorId: String(row.target_id), hostId: serverId ? this.execution.hostForServer?.(serverId) ?? this.execution.hostId ?? 'local-codex' : String(row.host_id ?? 'local-codex'),
+    return { actorId: String(row.target_id), hostId: serverId ? this.execution.hostForServer?.(serverId) ?? this.execution.hostId : String(row.host_id ?? legacyRequestHostId),
       threadId: String(row.thread_id), epoch: Number(row.binding_epoch), mode: row.mode as InputMode, ...(serverId ? { serverId } : {}) };
   }
   #conversation(context: ActorContext, value: unknown, action: string): ConversationRef {
@@ -248,8 +251,8 @@ export class Collaboration {
    * not grant execution or statistics access, and never reads message bodies. */
   usageSubmission(threadId: string, inputId: string) {
     const authority=this.database.prepare("SELECT actor_id,created_at FROM conversation_authorities WHERE thread_id=? AND input_id=?").get(threadId,inputId);
-    const request=inputId.startsWith(ACTOR_INPUT_PREFIX) ? this.database.prepare("SELECT requester_id,mode,created_at FROM actor_execution_requests WHERE id=? AND thread_id=? AND (server_id=? OR (server_id IS NULL AND host_id='local-codex'))")
-      .get(inputId.slice(ACTOR_INPUT_PREFIX.length),threadId,this.execution.serverId??null) : null;
+    const request=inputId.startsWith(ACTOR_INPUT_PREFIX) ? this.database.prepare("SELECT requester_id,mode,created_at FROM actor_execution_requests WHERE id=? AND thread_id=? AND (server_id=? OR (server_id IS NULL AND host_id=?))")
+      .get(inputId.slice(ACTOR_INPUT_PREFIX.length),threadId,this.execution.serverId??null,this.execution.hostId) : null;
     const actorId=authority?.actor_id??request?.requester_id;
     const actor=typeof actorId === "string" ? this.actors.get(actorId):null;
     if (!actor) return null;

@@ -18,6 +18,7 @@ The retained engine classes are reviewed separately in [class naming](class-nami
 | Message metadata | `projectThreadMessageResult` / `projectThreadMessageNotification` and `projectThreadAttachmentResult` / `projectThreadAttachmentNotification`; consumers import their canonical modules directly. |
 | Thread-tool presentation | `ThreadToolNavigationTarget`, `threadToolNavigationTarget` and `thread-tools.ts`; presenters use `thread-tools` / `settings-tools` names and `thread-tool:` summary keys. |
 | Storage source constants | `OPENCRAFT_HOST_*` and `OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE`; SQL contents and migration identity stay at the existing database owner. |
+| Collaboration execution ownership | Execution ports declare `hostId`; new bindings and usage recovery use that identity, with no engine inferred from a missing value. |
 | Inline image metadata | `inline-image-url` describes Web and Native Composer attachments carried as data URLs. The compiler selects image input from the MIME type and URI, independently of this diagnostic label. |
 
 The typography checker, browser selectors, fixtures, tests and documentation
@@ -41,6 +42,11 @@ consume these same names. Host queue, Host state and message-metadata tests use
 - Generated protocol files, native error/approval metadata, `CODEX_HOME`, native
   executable and provider IDs, credential formats, transport options and actual
   engine-facing services retain accurate integration names.
+- The collaboration v2 SQL keeps its published `local-codex` default, and
+  historical nullable request rows retain that exact recovery identity. These
+  are old storage inputs; generic execution ports must explicitly declare their
+  Host before opening storage or connecting. Current native composition supplies
+  its real Host identity rather than relying on a generic fallback.
 - Live Host queue/catalog and attachment tables use owned names through appended
   migrations; published migration names/SQL and historical upgrade inputs remain
   immutable. Fresh files use owned names and existing file paths remain readable.
