@@ -1,4 +1,6 @@
 {
+  "chat.composer.reconnecting": "Reconnecting…",
+  "chat.composer.loading": "Loading…",
   "chat.recovery.progress.connecting": "Connecting to server",
   "chat.recovery.progress.initializing": "Initializing connection",
   "chat.recovery.progress.backoff": "Waiting to retry",
