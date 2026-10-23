@@ -3,19 +3,19 @@ import {writeFile,stat,readFile} from "node:fs/promises";
 import {join} from "node:path";
 import {performance} from "node:perf_hooks";
 import {cpus,totalmem} from "node:os";
-import {OpenCraftHostStateDatabase} from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import {TokenUsageStateDatabase} from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import {OpenCraftTokenUsageLedger} from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import {TokenUsageQueryService} from "../apps/opencraft-daemon/src/token-usage-query-service.js";
 const directory=process.env.OPENCRAFT_USAGE_BENCH_DIRECTORY;
 if(!directory)throw new Error("An explicit generated benchmark directory is required");
 const samples=Number(process.env.OPENCRAFT_USAGE_BENCH_SAMPLES??1000);
 if(!Number.isSafeInteger(samples)||samples<1000||samples%10!==0)throw new Error("Use at least 1000 samples, in batches of ten");
-const state=new OpenCraftHostStateDatabase(directory),db=state.database;
+const state=new TokenUsageStateDatabase(directory),db=state.database;
 if(db.prepare("SELECT count(*) AS n FROM token_usage_turns WHERE server_id='benchmark'").get()!.n!==100000)throw new Error("Wrong benchmark dataset");
 const ledger=new OpenCraftTokenUsageLedger(state,"benchmark");
 const workerEntry=join(directory,"query-worker.mjs");
 await build({entryPoints:[new URL("../apps/opencraft-daemon/src/token-usage-query-worker.ts",import.meta.url).pathname],outfile:workerEntry,bundle:true,platform:"node",format:"esm",target:"node26",logLevel:"silent"});
-const service=new TokenUsageQueryService({entry:workerEntry,databasePath:join(directory,"codex-host-queue.sqlite"),serverId:"benchmark"});
+const service=new TokenUsageQueryService({entry:workerEntry,databasePath:join(directory,"token-usage.sqlite"),serverId:"benchmark"});
 const baselineRevision=ledger.coverage().revision;
 const failures:unknown[]=[],groups:unknown[]=[];
 const eventVersions=new Map<number,number>();
@@ -77,6 +77,6 @@ try{
  const consistent=await Promise.all(Array.from({length:1000},(_,n)=>service.read({from:"2026-09-22",through:"2026-10-21",scope:"team",limit:1},()=>({actorId:"consistency-admin"+n,administrator:true}))));
  for(const response of consistent){verify(response);if(response.snapshotRevision!==before)throw new Error("Concurrent reads split snapshot revision");}
  db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
- const result={stage:"controlled load measurement; all acceptance still requires source/constraint audit",seed:20261021,directory,workerMode:"bundled-release-equivalent",host:{cpu:cpus()[0]?.model,logicalCPUs:cpus().length,memory:totalmem()},constraints,groups,writes,baselineRevision,finalRevision:before,loadElapsedMs:performance.now()-loadStarted,writeLatencyMs:{p95:percentile(writeLatency,.95),p99:percentile(writeLatency,.99),max:Math.max(...writeLatency)},eventLoopLagMs:{p95:percentile(loopLag,.95),p99:percentile(loopLag,.99),max:Math.max(...loopLag)},concurrentConsistencyReads:1000,conservationFailures:0,sqliteBytes:(await stat(join(directory,"codex-host-queue.sqlite"))).size,failures};
+ const result={stage:"controlled load measurement; all acceptance still requires source/constraint audit",seed:20261021,directory,workerMode:"bundled-release-equivalent",host:{cpu:cpus()[0]?.model,logicalCPUs:cpus().length,memory:totalmem()},constraints,groups,writes,baselineRevision,finalRevision:before,loadElapsedMs:performance.now()-loadStarted,writeLatencyMs:{p95:percentile(writeLatency,.95),p99:percentile(writeLatency,.99),max:Math.max(...writeLatency)},eventLoopLagMs:{p95:percentile(loopLag,.95),p99:percentile(loopLag,.99),max:Math.max(...loopLag)},concurrentConsistencyReads:1000,conservationFailures:0,sqliteBytes:(await stat(join(directory,"token-usage.sqlite"))).size,failures};
  await writeFile(join(directory,"load-results.json"),JSON.stringify(result,null,2));console.log(JSON.stringify(result));
 }finally{clearInterval(timer);service.close();state.close();}

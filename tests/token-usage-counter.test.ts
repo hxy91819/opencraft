@@ -3,9 +3,9 @@ import test from "node:test";
 import {mkdtemp,rm} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
-import {OpenCraftHostStateDatabase} from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import {TokenUsageStateDatabase} from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import {OpenCraftTokenUsageLedger} from "../apps/opencraft-daemon/src/token-usage-ledger.js";
-async function fixture(body:(ledger:OpenCraftTokenUsageLedger,state:OpenCraftHostStateDatabase)=>void){const path=await mkdtemp(join(tmpdir(),"oc-counter-")),state=new OpenCraftHostStateDatabase(path);try{body(new OpenCraftTokenUsageLedger(state,"server",()=>1000),state);}finally{state.close();await rm(path,{recursive:true,force:true});}}
+async function fixture(body:(ledger:OpenCraftTokenUsageLedger,state:TokenUsageStateDatabase)=>void){const path=await mkdtemp(join(tmpdir(),"oc-counter-")),state=new TokenUsageStateDatabase(path);try{body(new OpenCraftTokenUsageLedger(state,"server",()=>1000),state);}finally{state.close();await rm(path,{recursive:true,force:true});}}
 const key={threadId:"ephemeral",turnId:"one"};
 const counts=(n:number)=>({totalTokens:String(n),inputTokens:String(n*.8),cachedInputTokens:String(n*.3),cacheWriteInputTokens:"0",outputTokens:String(n*.2),reasoningOutputTokens:String(n*.1)});
 function participant(ledger:OpenCraftTokenUsageLedger,target=key){ledger.recordInput(target,{inputId:target.turnId+"A",actorId:"A",actorKind:"human",mode:"start",admission:"confirmed"});}

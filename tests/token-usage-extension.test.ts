@@ -8,12 +8,12 @@ import { ExtensionManager, ExtensionSupervisor, MemoryExtensionInstallationPersi
 import { PlatformViewRendererRegistry } from "@opencraft/extension-react";
 import { createPlatformViewRendererContributionAdapter } from "../apps/workbench-web/src/runtime/platform-view-renderers";
 import { tokenUsageBuiltin } from "../apps/workbench-web/src/runtime/token-usage-builtin";
-import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database";
+import { TokenUsageStateDatabase } from "../apps/opencraft-daemon/src/token-usage-state-database";
 import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger";
 
 for (const platform of ["web", "electron"] as const) test(`F-14/NF-11: ${platform} view retires 20 times while Host meters`, async () => {
   const directory = await mkdtemp(join(tmpdir(), "oc-token-extension-"));
-  const state = new OpenCraftHostStateDatabase(directory);
+  const state = new TokenUsageStateDatabase(directory);
   const at = Date.parse("2026-10-21T00:00:00Z");
   const ledger = new OpenCraftTokenUsageLedger(state, "server", () => at);
   const key = { threadId: "thread", turnId: "turn" };

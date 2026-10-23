@@ -5,7 +5,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {build} from "esbuild";
 import {TokenUsageTelemetry} from "../apps/opencraft-daemon/src/token-usage-telemetry.js";
-import {OpenCraftHostStateDatabase} from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import {TokenUsageStateDatabase} from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import {OpenCraftTokenUsageLedger} from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import {TokenUsageQueryService} from "../apps/opencraft-daemon/src/token-usage-query-service.js";
 
@@ -20,7 +20,7 @@ test("diagnostics retain a bounded latency window and return detached, identifie
 });
 
 test("only committed sources, deduplication and reconciliation update collection diagnostics; queries authorize diagnostics again",async()=>{
- const root=await mkdtemp(join(tmpdir(),"oc-usage-telemetry-")),state=new OpenCraftHostStateDatabase(root),telemetry=new TokenUsageTelemetry();
+ const root=await mkdtemp(join(tmpdir(),"oc-usage-telemetry-")),state=new TokenUsageStateDatabase(root),telemetry=new TokenUsageTelemetry();
  const at=Date.parse("2026-10-21T00:00:00Z"),ledger=new OpenCraftTokenUsageLedger(state,"server",()=>at,telemetry),key={threadId:"thread",turnId:"turn"};
  let service:TokenUsageQueryService|undefined;
  try{
@@ -35,7 +35,7 @@ test("only committed sources, deduplication and reconciliation update collection
   ledger.reconcile(key,{executionState:"completed",participantsComplete:true,usageComplete:true,responsesComplete:true});
   assert.equal(telemetry.snapshot().counts.reconciled,1);assert.ok(telemetry.snapshot().lastSourceSuccessAt);assert.ok(telemetry.snapshot().lastReconcileAt);
   const entry=join(root,"worker.mjs");await build({entryPoints:[new URL("../apps/opencraft-daemon/src/token-usage-query-worker.ts",import.meta.url).pathname],outfile:entry,bundle:true,platform:"node",format:"esm",target:"node26",logLevel:"silent"});
-  service=new TokenUsageQueryService({entry,databasePath:join(root,"codex-host-queue.sqlite"),serverId:"server",telemetry});
+  service=new TokenUsageQueryService({entry,databasePath:join(root,"token-usage.sqlite"),serverId:"server",telemetry});
   const params={from:"2026-10-21",through:"2026-10-21"};
   const personal=await service.read(params,()=>({actorId:"A",administrator:false}));assert.equal(personal.diagnostics,undefined);
   const admin=await service.read({...params,scope:"team"},()=>({actorId:"admin",administrator:true}));
