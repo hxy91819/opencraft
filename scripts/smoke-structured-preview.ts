@@ -25,6 +25,7 @@ import {FilePreviewProvider} from '@opencraft/file-preview-web';
 import React,{useSyncExternalStore,useState} from 'react';import {Context} from '@deepseek-ai/cordis';import {BlobResourceService} from '@opencraft/blob-resources';
 import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
 import {createIntlTestRoot} from '/tests/fixtures/intl-root.tsx';
+import {embeddedLocaleCatalogs} from '/apps/workbench-web/src/i18n/catalogs.ts';
 import {useUiPreferencesRuntime} from '/apps/workbench-web/src/runtime/ui-preferences-runtime.tsx';
 import {createWorkbenchPanelReactRuntime} from '@opencraft/workbench-panels-react';
 import {BuiltinWorkbenchPanelPlugin} from '/apps/workbench-web/src/panels/builtin-panel-plugin.tsx';
@@ -41,7 +42,7 @@ window.fixture={panels,state,setCwd,setThemePreference,previews:runtime.context.
 const panel=<RightPanel hostPresentationActive={innerWidth<700?true:undefined} state={state} presentationId='view' renderers={runtime.renderers.getSnapshot()} toolbarActions={panels.getToolbarActionSnapshot()} toolbarActionContext={{ownerId:'scope',resourceOwnerId:'scope',hostId:'tree-fixture',cwd}} onAction={a=>panels.dispatch('scope',a)} onCloseTab={t=>panels.close('scope',t.region,t.id)}/>;
 return <AppShell layoutScope='scope' header={<span>Workspace</span>} floatingSidebarHeader={()=>null} leftPanel={null} sidebarOpen={false} sidebarWidth={260} onSidebarCollapse={()=>{}} onSidebarExpand={()=>{}} onSidebarResizeEnd={()=>{}} windowChrome={{kind:'browser',platform:'linux',safeArea:{left:0,right:0}}} rightPanel={innerWidth<700?null:panel} rightPanelOpen={state.right.open} rightPanelFullWidth={state.rightPanelFullWidth} onRightPanelOpenChange={open=>panels.dispatch('scope',{type:'set-region-open',region:'right',open,allowEmpty:true})}>{innerWidth<700?panel:<p>Conversation</p>}</AppShell>
 }
-createIntlTestRoot(document.getElementById('root')).render(<QueryClientProvider client={new QueryClient()}><FilePreviewProvider service={runtime.context.filePreviews}><App/></FilePreviewProvider></QueryClientProvider>);`;
+createIntlTestRoot(document.getElementById('root'),undefined,'en-US',embeddedLocaleCatalogs).render(<QueryClientProvider client={new QueryClient()}><FilePreviewProvider service={runtime.context.filePreviews}><App/></FilePreviewProvider></QueryClientProvider>);`;
 // Reuse production dependency ownership, without crawling generated Expo HTML.
 const workbenchConfig=await loadConfigFromFile({command:'serve',mode:'development'},resolve('apps/workbench-web/vite.config.ts'));
 if(!workbenchConfig)throw new Error('Workbench Vite configuration unavailable');
