@@ -234,3 +234,34 @@ for (const method of ["initialize", "thread/list", "model/list"]) test(`closing 
     await new Promise<void>(resolve => backend.close(() => resolve()));
   }
 });
+
+
+test("legacy forwarding preserves typed archive, missing and retryable RPC failures", async () => {
+  const server = createServer(), sockets = new WebSocketServer({ server });
+  const failures = [
+    { code: -32071, message: "Archived", data: { code: "THREAD_ARCHIVED", retryable: false } },
+    { code: -32004, message: "Missing", data: { code: "THREAD_NOT_FOUND", retryable: false } },
+    { code: -32070, message: "Bridge warming up", data: { code: "DSH_RESTARTING", retryable: true } },
+  ];
+  sockets.on("connection", socket => socket.on("message", data => {
+    const frame = JSON.parse(String(data));
+    socket.send(JSON.stringify({ jsonrpc: "2.0", id: frame.id, error: failures[frame.params.index] }));
+  }));
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  const target = `ws://127.0.0.1:${(server.address() as { port: number }).port}`;
+  const host = await startEngineHost({ providers: [], defaultEngine: "dsh",
+    legacy: { id: "dsh", label: "DSH", start: async () => ({ websocketUrl: target, async close() {} }) } });
+  const socket = new WebSocket(host.websocketUrl); await once(socket, "open");
+  try {
+    for (let index = 0; index < failures.length; index++) {
+      const response = once(socket, "message");
+      socket.send(JSON.stringify({ jsonrpc: "2.0", id: index, method: "thread/resume", params: { threadId: "dsh-thread", index }, [LOGICAL_CLIENT_FIELD]: "logical" }));
+      const frame = JSON.parse(String((await response)[0]));
+      assert.equal(frame.id, index); assert.equal(frame[LOGICAL_CLIENT_FIELD], "logical"); assert.deepEqual(frame.error, failures[index]);
+    }
+    assert.equal(socket.readyState, WebSocket.OPEN);
+  } finally {
+    socket.terminate(); await host.close(); for (const socket of sockets.clients) socket.terminate();
+    await new Promise<void>(resolve => sockets.close(() => resolve())); await new Promise<void>(resolve => server.close(() => resolve()));
+  }
+});

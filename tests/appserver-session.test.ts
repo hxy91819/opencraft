@@ -43,6 +43,8 @@ interface HarnessOptions {
   failResume?: boolean;
   resumeErrorData?: unknown;
   oversizedFullPage?: boolean;
+  historySizeError?: import("@opencraft/appserver-protocol").JsonRpcErrorObject;
+  maxItemsLimit?: number;
   oversizedResumePage?: boolean;
   malformedResume?: boolean;
   emitDuringResume?: boolean;
@@ -137,7 +139,7 @@ async function createHarness(options: HarnessOptions = {}): Promise<{
       }
       if (message.method === "thread/resume") {
         if (options.oversizedResumePage && params.initialTurnsPage) {
-          peer.send(encodeJsonRpcMessage({ id: message.id, error: { code: -32000, message: "decoded message length too large" } }));
+          peer.send(encodeJsonRpcMessage({ id: message.id, error: options.historySizeError ?? { code: -32000, message: "decoded message length too large" } }));
           return;
         }
         if (options.emitDuringResume) {
@@ -178,7 +180,7 @@ async function createHarness(options: HarnessOptions = {}): Promise<{
       }
       if (message.method === "thread/turns/list") {
         if (options.oversizedFullPage && params.itemsView === "full") {
-          peer.send(encodeJsonRpcMessage({ id: message.id, error: { code: -32000, message: "decoded message length too large" } }));
+          peer.send(encodeJsonRpcMessage({ id: message.id, error: options.historySizeError ?? { code: -32000, message: "decoded message length too large" } }));
           return;
         }
         const key = typeof params.cursor === "string" ? params.cursor : "null";
@@ -195,11 +197,18 @@ async function createHarness(options: HarnessOptions = {}): Promise<{
       if (message.method === "thread/items/list") {
         const turnId = String(params.turnId);
         const items = options.itemsByTurnId?.[turnId] ?? [];
+        if (options.maxItemsLimit !== undefined && Number(params.limit) > options.maxItemsLimit) {
+          peer.send(encodeJsonRpcMessage({ id: message.id, error: options.historySizeError ?? { code: -32000, message: "decoded message length too large" } })); return;
+        }
+        const ordered = options.maxItemsLimit !== undefined && params.sortDirection === "desc" ? [...items].reverse() : items;
+        const offset = options.maxItemsLimit !== undefined && typeof params.cursor === "string" && /^items:\d+$/.test(params.cursor) ? Number(params.cursor.slice(6)) : 0;
+        const selected = options.maxItemsLimit === undefined ? items : ordered.slice(offset, offset + Number(params.limit));
         peer.send(encodeJsonRpcMessage({
           id: message.id,
           result: {
-            data: items.map((item) => ({ turnId, item, ...options.itemClocksById?.[String(item.id)] })),
-            nextCursor: options.repeatItemCursor && typeof params.cursor === "string" ? params.cursor : null,
+            data: selected.map((item) => ({ turnId, item, ...options.itemClocksById?.[String(item.id)] })),
+            nextCursor: options.repeatItemCursor && typeof params.cursor === "string" ? params.cursor
+              : options.maxItemsLimit !== undefined && offset + selected.length < ordered.length ? `items:${offset + selected.length}` : null,
           },
         }));
         return;
@@ -1855,4 +1864,37 @@ test("command completions update known executions and do not invent an untimed t
     items = harness.runtime.views.get("thread-one")!.turns.find(turn => turn.id === "late")!.items;
     assert.equal(items.find(item => item.id === "recoverable")?.startedAtMs, 200);
   } finally { await harness.close(); }
+});
+
+const typedHistoryBudgetError = { code: -32072, message: "History response is too large; use a smaller history page",
+  data: { code: "HISTORY_RESPONSE_TOO_LARGE", retryable: false } };
+for (const hostKind of ["local", "durable"] as const) test(`typed history budgets adapt Resume and Item pages without losing ${hostKind} history`, async () => {
+  const h = await createHarness({ hostKind, historyMode: "paginated", oversizedResumePage: true, oversizedFullPage: true,
+    historySizeError: typedHistoryBudgetError, maxItemsLimit: 1,
+    historyRecovery: { mode: "replace", checkpoint: { epoch: "engine", nextSeq: 4 } },
+    turnsPages: Object.fromEntries(["null", "turns:head"].map(cursor => [cursor, { data: [{ id: "tail", itemsView: "notLoaded", items: [] }], nextCursor: null }])),
+    itemsByTurnId: { tail: ["one", "two", "three"].map(id => ({ id, type: "agentMessage", text: id })) } });
+  try {
+    const view = await h.runtime.resume.resume({ threadId: "thread-one" });
+    assert.deepEqual(view.turns[0]?.items?.map(item => item.id), ["one", "two", "three"]);
+    assert.equal(view.resumeState, "resumed");
+    assert.deepEqual(h.requests.filter(r => r.method === "thread/resume").map(r => Boolean(r.params.initialTurnsPage)), [true, false]);
+    const reads = h.requests.filter(r => r.method === "thread/items/list");
+    assert.equal(reads[0]?.params.limit, 100); assert.equal(reads.at(-1)?.params.limit, 1); assert(reads.length < 12);
+    assert.equal(h.requests.filter(r => r.method === "turn/start").length, 0);
+  } finally { await h.close(); }
+});
+
+test("a single oversized history Item fails finitely without repeatedly resuming", async () => {
+  const h = await createHarness({ hostKind: "durable", historyMode: "paginated", oversizedResumePage: true,
+    historySizeError: typedHistoryBudgetError, maxItemsLimit: 0,
+    historyRecovery: { mode: "replace", checkpoint: { epoch: "engine", nextSeq: 4 } },
+    turnsPages: { null: { data: [{ id: "tail", itemsView: "notLoaded", items: [] }], nextCursor: null } } });
+  try {
+    await assert.rejects(h.runtime.resume.resume({ threadId: "thread-one" }), (error: any) => error.data?.code === "HISTORY_RESPONSE_TOO_LARGE");
+    const count = h.requests.length;
+    await assert.rejects(h.runtime.resume.resume({ threadId: "thread-one" })); assert.equal(h.requests.length, count);
+    assert.equal(h.requests.filter(r => r.method === "thread/resume").length, 2);
+    const reads = h.requests.filter(r => r.method === "thread/items/list"); assert.equal(reads.at(-1)?.params.limit, 1); assert(reads.length <= 8);
+  } finally { await h.close(); }
 });

@@ -114,7 +114,7 @@ export async function startEngineHost(options: {
         const pending = internal.get(String(message.id));
         if (pending && !message.method) {
           internal.delete(String(message.id)); clearTimeout(pending.timer);
-          message.error ? pending.reject(new Error(message.error.message)) : pending.resolve(message.result);
+          message.error ? pending.reject(new AppServerRpcError(message.error)) : pending.resolve(message.result);
         } else send(message);
       });
       connection.on("close", () => failBackend(connection)); connection.on("error", () => failBackend(connection));

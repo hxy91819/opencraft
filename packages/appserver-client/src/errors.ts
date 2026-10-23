@@ -118,3 +118,12 @@ export function isRetryableAppServerRpcError(error: unknown): boolean {
     && typeof error.data === "object" && error.data !== null
     && "retryable" in error.data && error.data.retryable === true;
 }
+
+/** A smaller history read may fit even though retrying the same response cannot.
+ * Keep native transport compatibility; do not generalize to arbitrary RPC errors. */
+export function isHistoryResponseTooLargeError(error: unknown): boolean {
+  return error instanceof AppServerRpcError && (error.code === -32072
+    || typeof error.data === "object" && error.data !== null
+      && "code" in error.data && error.data.code === "HISTORY_RESPONSE_TOO_LARGE")
+    || error instanceof Error && error.message.includes("decoded message length too large");
+}

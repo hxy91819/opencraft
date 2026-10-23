@@ -271,6 +271,11 @@ An early event is retained only for the unfinished occurrence and must match its
 acknowledged native turn before settling it; an older inspection cannot overwrite
 native completion. Four per-conversation flights bound active admission/inspection.
 A blocked conversation does not hold the tick or completion handling of peers.
+The per-conversation flight owns a 30-second transient failure cooldown covering
+its entire advance, including initial occurrence persistence and expiry writes.
+Native completion is retained but cannot clear a failed persistence cooldown;
+only an ordinary observation deadline can be cleared by a native event.
+Persistence failure never authorizes resubmission.
 Closing unsubscribes first, drains active work, then releases storage.
 
 Codex reuses its durable queue and acknowledged turn ID; queue delivery is not
@@ -544,6 +549,14 @@ an 8 MiB UTF-8 reply budget. Oversized legacy reads or individual pages return
 client identity, without truncating data or closing peer subscriptions. A single
 item may still exceed the budget and must fail explicitly. Execution mutations
 and streamed notifications are not subject to this history reply transformer.
+The Session reader recognizes both this typed rejection and the native decoded
+message size rejection. It retries a merged Resume without initial history, then
+uses smaller read pages, halving the item limit down to one and retaining the
+accepted limit across pages. A full Turn page may fall back to summaries before
+item hydration. These are new bounded reads, not permission to retry the same
+oversized response or replay an execution mutation. The DSH forwarding boundary
+preserves JSON-RPC code and data, including unavailable-thread and retryability
+classification, instead of flattening failures to their message.
 Native Codex read sockets retain their independent bounded read fault domain.
 The boundaries isolate requests; they do not separate tenant data or Core CPU.
 
