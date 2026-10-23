@@ -2011,7 +2011,7 @@ test("authoritative steering baseline survives refresh and hands off once to dur
   runtime.dispose();
 });
 
-test("a restarted Codex steering claim is shown as unconfirmed, not sent", () => {
+test("a restarted Host steering claim is shown as unconfirmed, not sent", () => {
   const runtime = createReplicaConversationRuntime({
     key: createConversationKey("local", "thread-one"),
     replica: new FakeReplica(threadView({ pendingInteractions: [] })),

@@ -1758,12 +1758,12 @@ export class CodexEngineAdapter implements DuplexTransport {
   }
 
   private queueStore(): OpenCraftHostQueue {
-    if (!this.queue) throw new Error("Codex Host queue is unavailable");
+    if (!this.queue) throw new Error("Host queue is unavailable");
     return this.queue;
   }
 
   private attachmentRecords(): OpenCraftMessageAttachments {
-    if (!this.messageAttachments) throw new Error("Codex message attachments are unavailable");
+    if (!this.messageAttachments) throw new Error("Message attachment storage is unavailable");
     return this.messageAttachments;
   }
 

@@ -120,7 +120,7 @@ advertising these capabilities; no renderer-only delivery fallback is provided.
 
 `conversation-collaboration.test.ts` verifies identity, grants, idempotency,
 revocation, restart and delegation budgets. `actor-collaboration-codex.test.ts`
-uses the real core, AppHost and persistent Codex queue with a synthetic native
+uses the real core, AppHost and persistent Host queue with a synthetic native
 engine, including detached-viewer tools and untrusted reference context.
 `smoke-conversation-interoperability.ts` exercises real browser components and
 that core/queue with fixture human authentication and model output. It covers
