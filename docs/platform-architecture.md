@@ -3431,3 +3431,7 @@ gap: ordinary output remains a skipped non-fact, possible facts retain the
 existing missing-source reconciliation, and the committed cursor resumes after
 the complete line. The observer has one typed call shape, never a second
 object-shaped compatibility invocation.
+
+### Native history read fault boundary
+
+Codex Core history reads (`thread/read`, `thread/turns/list`, `thread/items/list`) use bounded, individually initialized read-only native sockets with capped concurrency and queue depth. They do not subscribe, resume, run tools or own the Core process. An oversized response or read socket failure resolves only its originating RPC; it cannot publish failure on the shared execution/subscription socket. Payload limits stay bounded, with a non-retryable `HISTORY_RESPONSE_TOO_LARGE` response for oversized pages. Host queue/Goal/tool-configuration resumes explicitly exclude history. Capacity retries inspect one summary turn, and schedule inspection scans bounded summary pages, retaining unknown when the target is unavailable. This is a failure-domain boundary, not tenant data separation or process-level resource isolation.
