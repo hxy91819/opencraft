@@ -103,16 +103,25 @@ try {
   // Lose the ACK after the server has accepted a message: the receipt restored
   // from queue/list must retire local uncertainty without a second queue/add.
   online = true; rows = []; holdAck = false;
-  const page = await browser.newPage(); await page.addInitScript("window.__name = value => value"); await page.goto(origin);
+  const page = await browser.newPage(); activePage = page; await page.addInitScript("window.__name = value => value"); await page.goto(origin);
   await page.waitForSelector('[data-authoritative="true"]'); online = false;
   for (const ws of sockets.clients) ws.close(1012, "restart"); await page.waitForSelector('[data-authoritative="false"]');
   await page.locator(".opencraft-composer-editor").fill("lost ack message"); await page.locator("[data-composer-primary-action]").click();
   const before = calls.filter(call => call.method === "thread/queue/add").length;
   holdAck = true; online = true;
   await page.waitForFunction(() => (window as any).fixture.snapshot().queuedSubmissions.some((row: any) => row.local && row.state === "unknown"));
-  holdAck = false; online = true; await page.reload(); await page.waitForSelector('[data-authoritative="true"]');
+  await page.locator(".opencraft-composer-editor").fill("after lost ack");
+  await page.locator("[data-composer-primary-action]").click();
+  await page.waitForFunction(() => (window as any).fixture.snapshot().queuedSubmissions.filter((row: any) => row.local).length === 2);
+  holdAck = false; online = true; await page.waitForSelector('[data-authoritative="true"]');
+  // Queue proof arrives after baseline recovery. No reload, unrelated timeline
+  // update, or extra message may be required to wake the second input.
   await page.waitForFunction(() => (window as any).fixture.snapshot().queuedSubmissions.every((row: any) => !row.local));
-  assert.equal(calls.filter(call => call.method === "thread/queue/add").length, before + 1);
+  assert.deepEqual(calls.filter(call => call.method === "thread/queue/add").slice(before).map(call => call.params.input[0].text),
+    ["lost ack message", "after lost ack"]);
+  await page.reload(); await page.waitForSelector('[data-authoritative="true"]');
+  await page.waitForFunction(() => (window as any).fixture.snapshot().queuedSubmissions.every((row: any) => !row.local));
+  assert.equal(calls.filter(call => call.method === "thread/queue/add").length, before + 2);
   await page.close();
   await writeFile(`${output}/results.json`, JSON.stringify({ results, lostAckReconciled: true, actualEngine: false }, null, 2));
   console.log(JSON.stringify({ results, lostAckReconciled: true }));

@@ -450,6 +450,7 @@ interface ConversationBinding {
   removeQueueListener: () => void;
   queueRefreshOperation: Promise<void> | null;
   queueRefreshRequested: boolean;
+  refreshQueue: () => Promise<void>;
   retainCount: number;
   visibleCount: number;
   touchedAt: number;
@@ -1099,6 +1100,7 @@ export function createAppServerWorkbenchRuntime(
         removeQueueListener: () => undefined,
         queueRefreshOperation: null,
         queueRefreshRequested: false,
+        refreshQueue: () => Promise.resolve(),
         retainCount: 0,
         visibleCount: 0,
         touchedAt: ++logicalClock,
@@ -1160,6 +1162,7 @@ export function createAppServerWorkbenchRuntime(
         const operation = (async () => {
           do {
             binding.queueRefreshRequested = false;
+            const queueGeneration = currentClient.connectionGeneration;
             const submissions: ProtocolQueuedSubmission[] = [];
             const steering: ProtocolSteeringSubmission[] = [];
             let cursor: string | null = null;
@@ -1180,7 +1183,8 @@ export function createAppServerWorkbenchRuntime(
             // A change notification received during this read invalidates its
             // snapshot. Publish only the next complete read, keeping the current
             // queue visible while it refreshes (including optimistic additions).
-            if (!disposed && !binding.disposed && !binding.queueRefreshRequested) {
+            if (!disposed && !binding.disposed && client === currentClient
+              && queueGeneration === currentClient.connectionGeneration && !binding.queueRefreshRequested) {
               conversation!.replaceQueuedSubmissions(submissions, steering);
             }
           } while (
@@ -1191,11 +1195,14 @@ export function createAppServerWorkbenchRuntime(
         })().finally(() => {
           if (binding.queueRefreshOperation === operation) {
             binding.queueRefreshOperation = null;
+            if (binding.queueRefreshRequested && !disposed && !binding.disposed && phase === "ready")
+              void refreshQueue().catch(() => undefined);
           }
         });
         binding.queueRefreshOperation = operation;
         return operation;
       };
+      binding.refreshQueue = refreshQueue;
       binding.removeQueueListener = currentClient.subscribeNotification(
         (notification) => {
           if (
@@ -1331,6 +1338,11 @@ export function createAppServerWorkbenchRuntime(
         );
         await recovery.span("replica-ready", () => binding.replica.synchronize(source));
         if (!current()) return;
+        // Queue notifications can be lost with the old connection, including
+        // the receipt for a locally persisted input. Reconcile independently
+        // after history authority returns; do not wait for another queue event.
+        if (force && !ephemeralThreadIds.has(binding.threadId))
+          void binding.refreshQueue().catch(() => undefined);
         binding.phase = "resident";
         touchBinding(binding);
       })
