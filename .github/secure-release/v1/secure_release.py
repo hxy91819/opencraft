@@ -472,14 +472,13 @@ def _mint_github_id_token(registry: str, npm_version: str) -> str:
 
 
 def oidc_probe(args: argparse.Namespace) -> None:
-    """One trusted-publisher exchange attempt under the caller's job identity.
+    """Handwritten trusted-publisher exchange under the caller's job identity.
 
-    Mints the same audience-scoped OIDC token the pinned npm CLI exchanges and
-    repeats the exchange verbatim (npa-escaped package path, npm-command and
-    npm-auth-type headers). Only an allowlist is printed: fixed claims, the
-    HTTP code, the registry's structured error fields and request identifiers.
-    Minted and issued tokens, full response bodies and authentication headers
-    are never printed, written or handed to another step. Nothing publishes.
+    Contrast only: this is not the pinned npm CLI. It mints the same audience
+    and repeats the exchange path/headers, but its User-Agent puts
+    platform.python_version() in node/v and ends at ci/github-actions. The
+    native diagnosis is oidc-dry-run. Only an allowlist is printed. Nothing
+    publishes.
     """
     id_token = _mint_github_id_token(args.registry, args.npm_version)
     claims = _decode_checked_id_token(id_token)
@@ -530,6 +529,144 @@ def oidc_probe(args: argparse.Namespace) -> None:
         print("exchange verdict: no token issued; registry fields:", json.dumps(fields, ensure_ascii=False))
     else:
         print("exchange verdict: no token issued; body withheld")
+
+
+# npm/cli v11.18.0 oidc.js logs these on GitHub mint and registry exchange.
+# Verbose HTTP lines include the method, URL, and status; the exchange
+# failure includes the registry body message. CLI exit 0 is not a verdict.
+OIDC_HTTP_LINE = re.compile(
+    r"^(?:npm http fetch|http fetch)\s+(GET|POST|PUT|DELETE)\s+(\S+)\s+(\d{3})\b",
+    re.MULTILINE | re.IGNORECASE,
+)
+OIDC_EXCHANGE_FAIL = re.compile(
+    r"verbose oidc Failed token exchange request with body message: (.+)$",
+    re.MULTILINE,
+)
+OIDC_EXCHANGE_OK = re.compile(
+    r"verbose oidc Successfully retrieved and set token\s*$",
+    re.MULTILINE,
+)
+OIDC_SKIPPED = re.compile(
+    r"verbose oidc (Skipped because .+|Failed to fetch id_token from GitHub: .+)$",
+    re.MULTILINE,
+)
+NPM_USER_AGENT_LINE = re.compile(
+    r"^(?:npm )?verbose cli (npm/\S+ node/\S+ \S+ \S+ workspaces/\S+(?: ci/\S+)?)\s*$",
+    re.MULTILINE,
+)
+EXCHANGE_PATH_MARKER = "/-/npm/v1/oidc/token/exchange/package/"
+PUBLISH_PUT_MARKER = "/-/npm/v1/packages/"
+
+
+def _combined_cli_text(result: subprocess.CompletedProcess[str]) -> str:
+    return f"{result.stdout}\n{result.stderr}"
+
+
+def _oidc_http_events(text: str) -> list[tuple[str, str, str]]:
+    events: list[tuple[str, str, str]] = []
+    for method, url, status in OIDC_HTTP_LINE.findall(text):
+        events.append((method.upper(), url, status))
+    return events
+
+
+def _exchange_status(text: str) -> str | None:
+    statuses = [status for method, url, status in _oidc_http_events(text)
+                if method == "POST" and EXCHANGE_PATH_MARKER in url]
+    return statuses[-1] if statuses else None
+
+
+def _redact_cli_allowlist(text: str) -> str:
+    return _redact_secrets_text(text)
+
+
+def oidc_dry_run(args: argparse.Namespace) -> None:
+    """Pinned npm CLI publish --dry-run against one exact tarball.
+
+    npm/cli v11.18.0 publish.js calls oidc() before the dry-run/auth check and
+    only calls libpub inside if (!dryRun). ignore-scripts is required so a
+    directory publish path cannot run lifecycle scripts. The handwritten
+    oidc-probe is not treated as equivalent. Exit 0 from npm is not an
+    authentication success.
+    """
+    regular_file(args.artifact)
+    userconfig = Path(args.userconfig)
+    userconfig.parent.mkdir(parents=True, exist_ok=True)
+    userconfig.write_text(f"registry={args.registry.rstrip('/')}/\n", encoding="utf-8")
+    isolated_home = userconfig.parent / "home"
+    isolated_home.mkdir(parents=True, exist_ok=True)
+    environment = dict(os.environ)
+    environment.pop("NPM_ID_TOKEN", None)
+    environment["HOME"] = str(isolated_home)
+    environment["NPM_CONFIG_USERCONFIG"] = str(userconfig)
+    environment["NPM_CONFIG_LOGLEVEL"] = "verbose"
+    command = [
+        args.npm,
+        "publish",
+        str(args.artifact),
+        "--dry-run",
+        "--ignore-scripts",
+        "--access",
+        args.access,
+        "--tag",
+        args.dist_tag,
+        "--provenance" if args.provenance == "true" else "--provenance=false",
+        "--registry",
+        args.registry,
+        "--loglevel",
+        "verbose",
+        "--userconfig",
+        str(userconfig),
+    ]
+    if command[1:4] != ["publish", str(args.artifact), "--dry-run"] or "--ignore-scripts" not in command:
+        raise ReleaseError("internal: diagnosis command omitted dry-run or ignore-scripts")
+    result = subprocess.run(
+        command,
+        cwd=None,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=environment,
+    )
+    text = _combined_cli_text(result)
+    redacted = _redact_cli_allowlist(text)
+    if PUBLISH_PUT_MARKER in text and any(
+        method == "PUT" for method, url, _status in _oidc_http_events(text)
+        if PUBLISH_PUT_MARKER in url
+    ):
+        raise ReleaseError("native OIDC diagnosis issued a package write; aborting")
+    print(f"native npm exit: {result.returncode}")
+    print("native npm dry-run: true")
+    print(f"native npm ignore-scripts: true")
+    print(f"native npm id-token-env: {'present' if 'NPM_ID_TOKEN' in environment else 'absent'}")
+    print(f"native npm actions-oidc-mint: {'present' if os.environ.get('ACTIONS_ID_TOKEN_REQUEST_URL') and os.environ.get('ACTIONS_ID_TOKEN_REQUEST_TOKEN') else 'absent'}")
+    agent = NPM_USER_AGENT_LINE.search(redacted)
+    if agent:
+        print(f"native npm user-agent: {agent.group(1)}")
+    for method, url, status in _oidc_http_events(redacted):
+        if EXCHANGE_PATH_MARKER in url or "audience=" in url or "/idtoken" in url.lower():
+            path = urlsplit(url).path or url
+            if EXCHANGE_PATH_MARKER in url:
+                path = urlsplit(url).path
+            print(f"native npm http: {method} {path} {status}")
+    exchange_status = _exchange_status(text)
+    if exchange_status:
+        print(f"native npm exchange HTTP status: {exchange_status}")
+    skipped = OIDC_SKIPPED.search(redacted)
+    if skipped:
+        print(f"native npm oidc skipped: {_redact_secrets_text(skipped.group(1).strip()[:300])}")
+    fail = OIDC_EXCHANGE_FAIL.search(redacted)
+    if fail:
+        print(f"native npm exchange verdict: no token issued; registry fields: {json.dumps({'message': _redact_secrets_text(fail.group(1).strip()[:300])}, ensure_ascii=False)}")
+        raise ReleaseError("native npm OIDC exchange did not issue a token")
+    if OIDC_EXCHANGE_OK.search(text):
+        print("native npm exchange verdict: token issued (withheld)")
+        return
+    if exchange_status and exchange_status != "201" and exchange_status != "200":
+        print("native npm exchange verdict: no token issued; body withheld")
+        raise ReleaseError(f"native npm OIDC exchange HTTP {exchange_status}")
+    print("native npm exchange verdict: unproven; CLI produced no OIDC success or failure signal")
+    raise ReleaseError("native npm OIDC exchange signal missing; dry-run exit is not authentication")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -617,11 +754,27 @@ def parser() -> argparse.ArgumentParser:
     command.add_argument("--npm", default="npm")
     command.set_defaults(handler=npm_publish)
 
-    command = commands.add_parser("oidc-probe", help="One trusted-publisher exchange verdict under the job identity, without publishing.")
+    command = commands.add_parser(
+        "oidc-probe",
+        help="Handwritten trusted-publisher exchange contrast; not the pinned npm CLI.",
+    )
     command.add_argument("--package", required=True, help="Published package name; its slash is npa-escaped for the exchange path.")
     command.add_argument("--registry", default="https://registry.npmjs.org/")
     command.add_argument("--npm-version", default="11.18.0", help="Pinned CLI version mirrored in the User-Agent and mint audience policy.")
     command.set_defaults(handler=oidc_probe)
+
+    command = commands.add_parser(
+        "oidc-dry-run",
+        help="Pinned npm publish --dry-run against one tarball; never writes the package.",
+    )
+    command.add_argument("--artifact", required=True, type=Path)
+    command.add_argument("--registry", default="https://registry.npmjs.org/")
+    command.add_argument("--access", choices=("public", "restricted"), default="public")
+    command.add_argument("--dist-tag", default="latest")
+    command.add_argument("--provenance", choices=("true", "false"), default="true")
+    command.add_argument("--npm", default="npm")
+    command.add_argument("--userconfig", required=True, type=Path, help="Isolated npmrc path; diagnosis never reads the runner userconfig.")
+    command.set_defaults(handler=oidc_dry_run)
     return root
 
 

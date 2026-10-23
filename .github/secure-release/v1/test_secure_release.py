@@ -641,14 +641,11 @@ else:
 
     def test_tagged_kit_without_oidc_probe_cannot_satisfy_the_temporary_command(self):
         tagged = self.root / "tagged-kit.py"
-        tagged.write_text(
-            SCRIPT.read_text(encoding="utf-8").replace(
-                'commands.add_parser("oidc-probe"',
-                'commands.add_parser("oidc-probe-absent"',
-                1,
-            ),
-            encoding="utf-8",
-        )
+        source = SCRIPT.read_text(encoding="utf-8")
+        renamed = source.replace('"oidc-probe"', '"oidc-probe-absent"', 1)
+        if renamed == source:
+            self.fail("tagged-kit fixture did not find oidc-probe")
+        tagged.write_text(renamed, encoding="utf-8")
         result = subprocess.run(
             (sys.executable, str(tagged), "oidc-probe", "--package", "@opencraft-app/opencraft"),
             cwd=self.repo, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
@@ -661,6 +658,7 @@ else:
         )
         self.assertEqual(workflow.returncode, 0, workflow.stderr)
         self.assertIn("oidc-probe", workflow.stdout)
+        self.assertIn("oidc-dry-run", workflow.stdout)
         self.assertIn("npm-publish", workflow.stdout)
 
     def test_oidc_probe_help_does_not_offer_npm_publish(self):
@@ -685,6 +683,135 @@ else:
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("ACTIONS_ID_TOKEN_REQUEST_URL", result.stderr)
         self.assertIn("ACTIONS_ID_TOKEN_REQUEST_TOKEN", result.stderr)
+
+    def write_fake_npm(self, script: str) -> tuple[Path, Path, Path]:
+        artifact = self.repo / "intended.tgz"
+        artifact.write_bytes(b"publish bytes")
+        arguments = self.root / "dry-run-arguments"
+        fake_npm = self.root / "npm-dry-run"
+        fake_npm.write_text("#!/bin/sh\nset -eu\n" + script.replace("{arguments}", str(arguments)), encoding="utf-8")
+        fake_npm.chmod(0o755)
+        return artifact, arguments, fake_npm
+
+    def run_dry_run(self, fake_npm: Path, artifact: Path, extra_env: dict[str, str] | None = None):
+        environment = dict(os.environ)
+        environment.pop("NPM_ID_TOKEN", None)
+        if extra_env:
+            environment.update(extra_env)
+        userconfig = self.root / "isolated.npmrc"
+        return subprocess.run(
+            (sys.executable, str(SCRIPT), "oidc-dry-run", "--artifact", str(artifact),
+             "--npm", str(fake_npm), "--userconfig", str(userconfig),
+             "--registry", "https://registry.npmjs.org/"),
+            cwd=self.repo, env=environment, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+        )
+
+    def test_oidc_dry_run_invokes_native_publish_with_dry_run_and_ignore_scripts(self):
+        artifact, arguments, fake_npm = self.write_fake_npm(
+            "printf '%s\\n' \"$@\" > '{arguments}'\n"
+            "printf '%s\\n' 'verbose cli npm/11.18.0 node/v24.15.0 linux x64 workspaces/false ci/github-actions/dotcom-hosted'\n"
+            "printf '%s\\n' 'http fetch POST https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@opencraft-app%2fopencraft 201'\n"
+            "printf '%s\\n' 'verbose oidc Successfully retrieved and set token'\n"
+        )
+        result = self.run_dry_run(fake_npm, artifact)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        observed = arguments.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(observed[0:4], ["publish", str(artifact), "--dry-run", "--ignore-scripts"])
+        self.assertIn("--provenance", observed)
+        self.assertIn("--access", observed)
+        self.assertIn("public", observed)
+        self.assertIn("--userconfig", observed)
+        self.assertNotIn("ISSUED", result.stdout)
+        self.assertIn("native npm dry-run: true", result.stdout)
+        self.assertIn("native npm exchange verdict: token issued (withheld)", result.stdout)
+        self.assertIn(
+            "native npm user-agent: npm/11.18.0 node/v24.15.0 linux x64 workspaces/false ci/github-actions/dotcom-hosted",
+            result.stdout,
+        )
+        self.assertIn("native npm exchange HTTP status: 201", result.stdout)
+        self.assertIn("native npm id-token-env: absent", result.stdout)
+
+    def test_oidc_dry_run_does_not_treat_cli_exit_zero_as_authentication(self):
+        artifact, arguments, fake_npm = self.write_fake_npm(
+            "printf '%s\\n' \"$@\" > '{arguments}'\n"
+            "printf '%s\\n' 'Publishing to https://registry.npmjs.org/ with tag latest and public access (dry-run)'\n"
+            "exit 0\n"
+        )
+        result = self.run_dry_run(fake_npm, artifact)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("native npm exit: 0", result.stdout)
+        self.assertIn("unproven", result.stdout)
+        self.assertIn("dry-run exit is not authentication", result.stderr)
+
+    def test_oidc_dry_run_reports_exchange_404_and_does_not_write_the_package(self):
+        artifact, arguments, fake_npm = self.write_fake_npm(
+            "printf '%s\\n' \"$@\" > '{arguments}'\n"
+            "printf '%s\\n' 'http fetch POST https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@opencraft-app%2fopencraft 404'\n"
+            "printf '%s\\n' 'verbose oidc Failed token exchange request with body message: OIDC token exchange error - package not found'\n"
+            "printf '%s\\n' 'This command requires you to be logged in to https://registry.npmjs.org/ (dry-run)'\n"
+            "exit 0\n"
+        )
+        result = self.run_dry_run(fake_npm, artifact)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("native npm exchange HTTP status: 404", result.stdout)
+        self.assertIn("package not found", result.stdout)
+        self.assertIn("did not issue a token", result.stderr)
+        self.assertNotIn("exchange verdict: token issued", result.stdout)
+        observed = arguments.read_text(encoding="utf-8")
+        self.assertIn("--dry-run", observed)
+
+    def test_oidc_dry_run_redacts_jwt_shapes_from_cli_text(self):
+        poison = "verbose oidc Failed token exchange request with body message: leaked AAAAeyJhbGciOiJIUzI1NiIsInR5cCI6.pAYLOAD-CONTENT-SIGNATURE"
+        artifact, arguments, fake_npm = self.write_fake_npm(
+            "printf '%s\\n' \"$@\" > '{arguments}'\n"
+            f"printf '%s\\n' '{poison}'\n"
+            "exit 0\n"
+        )
+        result = self.run_dry_run(fake_npm, artifact)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("pAYLOAD-CONTENT-SIGNATURE", result.stdout)
+        self.assertNotIn("pAYLOAD-CONTENT-SIGNATURE", result.stderr)
+        self.assertIn("[redacted]", result.stdout)
+
+    def test_oidc_dry_run_strips_preexisting_id_token_and_isolates_userconfig(self):
+        envdump = self.root / "child-env"
+        artifact, arguments, fake_npm = self.write_fake_npm(
+            f"env | grep -E '^(NPM_ID_TOKEN|HOME|NPM_CONFIG_USERCONFIG)=' | sort > '{envdump}'\n"
+            "printf '%s\\n' \"$@\" > '{arguments}'\n"
+            "printf '%s\\n' 'http fetch POST https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@opencraft-app%2fopencraft 201'\n"
+            "printf '%s\\n' 'verbose oidc Successfully retrieved and set token'\n"
+        )
+        result = self.run_dry_run(fake_npm, artifact, extra_env={"NPM_ID_TOKEN": "must-not-survive"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("must-not-survive", result.stdout)
+        self.assertNotIn("must-not-survive", result.stderr)
+        self.assertIn("native npm id-token-env: absent", result.stdout)
+        dumped = envdump.read_text(encoding="utf-8")
+        self.assertIn("HOME=", dumped)
+        self.assertIn("NPM_CONFIG_USERCONFIG=", dumped)
+        self.assertNotIn("NPM_ID_TOKEN=", dumped)
+        self.assertNotIn("must-not-survive", dumped)
+
+    def test_oidc_dry_run_aborts_if_cli_writes_the_package(self):
+        artifact, arguments, fake_npm = self.write_fake_npm(
+            "printf '%s\\n' \"$@\" > '{arguments}'\n"
+            "printf '%s\\n' 'http fetch PUT https://registry.npmjs.org/-/npm/v1/packages/@opencraft-app%2fopencraft 200'\n"
+            "printf '%s\\n' 'verbose oidc Successfully retrieved and set token'\n"
+            "exit 0\n"
+        )
+        result = self.run_dry_run(fake_npm, artifact)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("issued a package write", result.stderr)
+
+    def test_oidc_dry_run_help_does_not_offer_npm_publish(self):
+        result = subprocess.run(
+            (sys.executable, str(SCRIPT), "oidc-dry-run", "--help"),
+            cwd=self.repo, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("npm-publish", result.stdout)
+        self.assertIn("oidc-dry-run", result.stdout)
 
 
 if __name__ == "__main__":
