@@ -80,7 +80,7 @@ test('managed Web is selected for update UI, deployment, protocol and Vite chang
     'apps/workbench-web/vite.config.ts', 'apps/workbench-web/public/opencraft-host-proxy-sw.js',
     'scripts/web-deployment/server.mjs', 'scripts/server-deployment/gateway.mjs',
     'packages/web-update-protocol/src/index.mjs', 'tests/web-deployment-source.test.mjs',
-    'playwright.web-updates.config.mjs', 'packaging/web-server/package.json']) {
+    'config/playwright.web-updates.config.mjs', 'config/playwright.web-updates.live.config.mjs', 'packaging/web-server/package.json']) {
     assert.equal(planChanges([path]).managedWeb, true, path);
   }
 });

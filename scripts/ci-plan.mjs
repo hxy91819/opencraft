@@ -66,7 +66,7 @@ export function planChanges(paths, { event = 'pull_request', unknownDiff = false
     if (/^(packages|plugins)\//.test(path)) { web(); managedWeb = true; headlessTests = true; continue; }
     if (/^(scripts\/(web-deployment|server-deployment)\/|packaging\/web-server\/)/.test(path)
       || /^(scripts|tests)\/(.*web-(updates|deployment|release)|.*server-(updates|deployment)|.*public-release)/.test(path)
-      || /^playwright\.web-updates/.test(path)) { web(); managedWeb = true; headlessTests = true; continue; }
+      || /^config\/playwright\.web-updates/.test(path)) { web(); managedWeb = true; headlessTests = true; continue; }
     // Unknown inputs retain Web and server coverage, not the opt-in platform matrix.
     web(); managedWeb = true; headlessTests = true;
   }

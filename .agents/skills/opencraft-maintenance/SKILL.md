@@ -50,7 +50,7 @@ description: 创建、修改或评审 OpenCraft 界面（设置页、列表、�
 | Browser、Terminal、远程回环地址 | `docs/browser-workbench-architecture.md`；Host 路由与资源 owner |
 | 登录、账户、环境目录 | `docs/platform-architecture.md` 的认证、环境和 Sidecar 部分 |
 | 自定义模型与默认模型 | `docs/local-agent-custom-providers.md` |
-| 上游复用、生成闭包 | `UPSTREAM_HISTORY.md`；根入口指向的 upstream 规则 |
+| 上游复用、生成闭包 | `docs/upstream-history.md`；根入口指向的 upstream 规则 |
 | 打包、桌面预览、多端交付 | `docs/build-matrix.md`、`config/build-matrix.json` |
 
 ## 每次维护先定四件事

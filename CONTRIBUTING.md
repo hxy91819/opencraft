@@ -45,6 +45,9 @@ for the affected boundary rather than inventing another migration harness.
 
 ## Develop and validate
 
+Follow the [repository layout](docs/repository-layout.md) when adding files. Keep
+task-specific plans and findings with their topic rather than at the root.
+
 Read [AGENTS.md](AGENTS.md) for ownership and [the build matrix](docs/build-matrix.md)
 for the target platform. Use the pinned Node version in `.nvmrc` and `npm ci` in
 your own checkout. Run checks relevant to the changed contract; describe actual
