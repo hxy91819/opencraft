@@ -63,6 +63,8 @@ try {
     });
     for (const sample of ["text", "code", "long"]) {
       await show(sample);
+      assert.equal(await page.getByRole("status").count(), 0, "pending submission has no redundant startup status");
+      assert.equal(await page.getByText("Starting task…", { exact: true }).count(), 0);
       const pending = await metrics();
       assert.notEqual(pending.background, "rgba(0, 0, 0, 0)", "pending bubble has a visible surface");
       assert.ok(pending.x >= 0 && pending.x + pending.width <= width, "bubble stays inside viewport");
@@ -88,7 +90,7 @@ try {
     assert.equal(await page.evaluate(() => (window as any).fixture.retryCount()), 1);
     assert.deepEqual(await metrics(), failed, "retry preserves message geometry");
     await show("text", "promoting");
-    assert.equal(await page.getByRole("status").count(), 1);
+    assert.equal(await page.getByRole("status").count(), 0, "promoting has no redundant startup status");
     assert.equal(await page.locator('[contenteditable="true"]').count(), 0, "submitted draft has no second Composer");
     assert.deepEqual(identityRequests, [], "rendering never fetches identity");
     assert.deepEqual(errors, []);
