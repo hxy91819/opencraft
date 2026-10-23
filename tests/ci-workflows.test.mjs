@@ -12,6 +12,7 @@ function job(name) {
 const gate = job('build-checks').match(/        run: \|\n([\s\S]*)/)[1].replace(/^          /gm, '');
 const selected = {
   EXTENSIONS_SELECTED: 'false', EXTENSIONS_RESULT: 'skipped',
+  HOVER_RESULT: 'success',
   PLAN_RESULT: 'success', BUILD_SELECTED: 'true', BUILD_RESULT: 'success',
   NATIVE_SELECTED: 'false', NATIVE_RESULT: 'skipped', PACKAGE_SELECTED: 'false', PACKAGE_RESULT: 'skipped',
   HEADLESS_SELECTED: 'true', HEADLESS_RESULT: 'success',
@@ -30,6 +31,7 @@ test('the real aggregate script accepts Web/server and documentation-only plans'
 test('a selected build cannot pass by failing, cancelling, or being skipped', () => {
   for (const result of ['failure', 'cancelled', 'skipped', '']) {
     assert.notEqual(check({ PLAN_RESULT: result }), 0, `plan: ${result}`);
+    assert.notEqual(check({ HOVER_RESULT: result }), 0, `hover: ${result}`);
     for (const name of ['BUILD', 'NATIVE', 'PACKAGE', 'HEADLESS', 'EXTENSIONS']) {
       assert.notEqual(check({ [`${name}_SELECTED`]: 'true', [`${name}_RESULT`]: result }), 0, `${name}: ${result}`);
     }
@@ -53,4 +55,13 @@ test('server regressions run independently of archive build, smoke and upload', 
     assert.ok(step, start);
     assert.match(step, /if: needs\.plan\.outputs\.headless-package == 'true'/, start);
   }
+});
+
+test('hover checks run independently of the build plan and scan failures', () => {
+  const hover = job('hover-policy');
+  assert.doesNotMatch(hover, /needs: plan|if: needs\.plan/);
+  assert.match(hover, /run: npm run check:hover/);
+  assert.match(hover, /run: npm run test:hover-policy\n\s+if: always\(\) && steps\.dependencies\.outcome == 'success'/);
+  assert.match(hover, /run: npm run smoke:touch-hover\n\s+if: always\(\) && steps\.browser\.outcome == 'success'/);
+  assert.match(job('build-checks'), /needs: \[[^\]]*hover-policy\]/);
 });
