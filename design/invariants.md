@@ -346,8 +346,10 @@ in `scripts/smoke-disclosure-reflow.ts`.
   and unloading an employee provider restores the product entrance.
 - No fixed employee login URL, synthetic identity or unsupported logout control
   is presented. Authoritative 401/expiration clears the footer; details remain
-  available for refresh. Covered by `tests/enterprise-identity.test.ts` and the real footer
-  controls in `scripts/smoke-enterprise-identity.ts`; live gateway evidence is separate.
+  available for refresh. Historical product coverage named
+  `tests/enterprise-identity.test.ts` and `scripts/smoke-enterprise-identity.ts`.
+  Neither probe is shipped in this standalone checkout; this record is not a
+  runnable core check. Live gateway evidence still requires a separate product run.
 
 ## Embedded panel host presentation
 
@@ -623,7 +625,7 @@ the list viewport and the existing application Router authority.
 
 历史记录只持有聊天引用，不拥有草稿的存活事实。启动与历史恢复必须先由 Host 配置、ScopeRegistry 和 BindingStore 校验/规范化，再让 Router 与激活层消费同一个目标；有效当前 entry 优先于跨标签页共享的最后使用偏好。失效 Draft 不按旧 ID 重建，已提交 Draft 经持久 alias 找回 Thread。Router 唯一写回纠正结果并保留 Settings/Extension 目的地；失效引用回到当前实际保留的 View 与输入，View 不能跨 Scope 复用。规范化为 REPLACE 的 POP 仍须被资源事务消费。
 
-返回同一个保留 View 不依赖远端就绪：Chat、当前会话入口与 POP 共用本地呈现/后台续接语义，晚到结果受导航代次和释放约束；提交中的草稿仍拥有导航。侧栏只表达 `selectConversation`，不自行解释活动 Thread、pending 或设置页返回；重复目标合并、保留 View 复用与可见项早退都由导航事务决定。显式 `navigate` 不等于选择，不能按 Thread ID 合并独立历史 View 的输入。后台草稿准备、返回、POP 与提交转换共享 intent/释放/Router revision 资格及接受或释放路径；非活动草稿不得获得当前导航权。嵌入式 memory Router 不读写外层页面历史。责任与入口见 [Application Router authority](../docs/platform-architecture.md#application-router-authority)、`workbench-location-restoration`；验证使用 `test:application-route-restoration` 与 `smoke:application-route-restoration`，不将隔离 Host 替身验收冒充手机或完整账号启动实测。
+返回同一个保留 View 不依赖远端就绪：Chat、当前会话入口与 POP 共用本地呈现/后台续接语义，晚到结果受导航代次和释放约束；提交中的草稿仍拥有导航。侧栏只表达 `selectConversation`，不自行解释活动 Thread、pending 或设置页返回；重复目标合并、保留 View 复用与可见项早退都由导航事务决定。显式 `navigate` 不等于选择，不能按 Thread ID 合并独立历史 View 的输入。后台草稿准备、返回、POP 与提交转换共享 intent/释放/Router revision 资格及接受或释放路径；非活动草稿不得获得当前导航权。嵌入式 memory Router 不读写外层页面历史。责任与入口见 [Application Router authority](../docs/architecture/platform/shell-and-navigation.md#application-router-authority)、`workbench-location-restoration`；验证使用 `test:application-route-restoration` 与 `smoke:application-route-restoration`，不将隔离 Host 替身验收冒充手机或完整账号启动实测。
 
 ## 工作区契约
 
@@ -686,7 +688,7 @@ Bot 的空展示页与历史耗尽分开：仍有更早源记录时，视口可�
 按一次恢复意图最多推进三页，串行且有界；额度耗尽或失败在原状态槽提供继续／重试，
 不呈现新会话欢迎页、不自动排空全历史。重同步保留有持久锚点的已加载前缀及独立
 本地提交，不以展示缓存恢复执行权限。协议所有权见
-[Hermes message windows](../docs/chat-ui-architecture.md#hermes-message-windows-and-bot-history-continuity)；
+[Hermes message windows](../docs/architecture/chat-ui/history-and-recovery.md#hermes-message-windows-and-bot-history-continuity)；
 `hermes-bot-history-integration.test.ts` 和 `smoke-hermes-bot-history.ts` 验证真实组件与模拟远端端口，
 不代表已替换运行预览或实测远端 Hermes。
 
@@ -790,7 +792,7 @@ WSP-29/30 所有权补充：Renderer 的 capability 声明接受与 Engine 挂�
 模型成立、编译通过、真实控件通过、真实 Host 通过、Mac 产物通过是不同级别。未经相应验证不得提升状态。不得擅自增加未经定义和验证的行为约束；结构互斥、稳定前缀和同步移交本身可构成合法保证。
 # 会话生命周期补充（2026-09-15）
 
-文件更改呈现补充（2026-10-06）：Turn 变更汇总是独立资源，不是消息或工作结束边界。Web 实际 Composer 是指定 active Turn 的唯一运行中入口 presenter，主/浮动 mini transcript 按相同身份避免重复；结束卡再进入消息区。资源更新保留数字、展开与 Review 的身份，展开重排由 viewport lease 协调；卡片/悬浮用主题与成熟 Button/Radix，不新增 Host 写权。实现与真实组件验收见 [ChatUI Changed-file review](../docs/chat-ui-architecture.md#changed-file-review)，当前不是生产替换或 Native 实机验收。
+文件更改呈现补充（2026-10-06）：Turn 变更汇总是独立资源，不是消息或工作结束边界。Web 实际 Composer 是指定 active Turn 的唯一运行中入口 presenter，主/浮动 mini transcript 按相同身份避免重复；结束卡再进入消息区。资源更新保留数字、展开与 Review 的身份，展开重排由 viewport lease 协调；卡片/悬浮用主题与成熟 Button/Radix，不新增 Host 写权。实现与真实组件验收见 [ChatUI Changed-file review](../docs/architecture/chat-ui/files-and-resources.md#changed-file-review)，当前不是生产替换或 Native 实机验收。
 
 Interrupt interaction policy is a pure protocol projection: decline/dismiss
 legacy blocking requests with fresh payloads; dynamic tools await server resolution.
@@ -824,10 +826,10 @@ Connector 目录浏览不套用设置行：采用限宽品牌卡片，已配置�
 - 一个执行轮次可以有多个有序问答与活动片段；执行所有者唯一，不等于折叠组唯一。问答、追问与交互边界不得被“回答区/活动区”重新分桶。Renderer 只消费共享呈现计划。
 - 异步提问的可见文字与原生 phase 不赋予最终回答资格；折叠边界、最终回答资格和执行完成相互独立。折叠只控制连续片段的显隐，不改变消息位置。
 - 源消息与边界身份决定显示 key；流式、完成与补历史不按数组索引重建已有回复。历史片段保持结束状态，当前响应最多一个 Thinking owner；总用时与完成信息不因分段而重复。
-- 引擎实际返回的思考摘要/文本与 Bash/Read 工具记录是同一连续响应工作容器内的独立 Item 折叠面，不是工具标题的正文，也不是与“用时”平级的工作区。各引擎默认接入且内层初始折叠；无实际内容不暴露空按钮，不切开工作区或制造“历史消息”标题。真实思考仅分开相邻内层工具组，不重建外层身份；有效最终回答授予该连续工作容器一个外层折叠，最终回答保留在外面。只有真实思考、没有工具也属于有内容的工作，完成后可在真实用时下折叠；不得伪造时间。用户输入、异步提问与交互边界保持原顺序，不同已完成响应保留独立折叠。Turn 用时与实时 Thinking 各只有一个 owner，不跨响应回派。流式、完成及外层收起不改内层用户选择；Web View 与 Native 稳定外层组件按 Item 身份保存选择，动画组件只管理过渡。共享 `chat-core` 选择一份非空内容、保留时序和唯一实时 owner，Web/Native 只消费；契约与证据见 [Returned thinking content](../docs/chat-ui-architecture.md#returned-thinking-content)。
+- 引擎实际返回的思考摘要/文本与 Bash/Read 工具记录是同一连续响应工作容器内的独立 Item 折叠面，不是工具标题的正文，也不是与“用时”平级的工作区。各引擎默认接入且内层初始折叠；无实际内容不暴露空按钮，不切开工作区或制造“历史消息”标题。真实思考仅分开相邻内层工具组，不重建外层身份；有效最终回答授予该连续工作容器一个外层折叠，最终回答保留在外面。只有真实思考、没有工具也属于有内容的工作，完成后可在真实用时下折叠；不得伪造时间。用户输入、异步提问与交互边界保持原顺序，不同已完成响应保留独立折叠。Turn 用时与实时 Thinking 各只有一个 owner，不跨响应回派。流式、完成及外层收起不改内层用户选择；Web View 与 Native 稳定外层组件按 Item 身份保存选择，动画组件只管理过渡。共享 `chat-core` 选择一份非空内容、保留时序和唯一实时 owner，Web/Native 只消费；契约与证据见 [Returned thinking content](../docs/architecture/chat-ui/activities-and-tools.md#returned-thinking-content)。
 - 思考折叠行以脑形轮廓图标区分状态，不用 Bot 图标暗示另一个智能体；短状态文案须完整可读，嵌入式聊天按宿主站点语言本地化，空间不足时由后面的内容预览收缩并省略，不挤压状态文案。实际返回的思考正文保留引擎原文。
 - 回归须覆盖同轮次的异步提问→用户回答→工作→回答→多次追问，包含桌面/触控、折叠、刷新、补历史和正在输出期间的 DOM 身份。
-- 2026-10-06 折叠资格补充：共享 `AgentActivitySegmentEnd` 只记录时序结束原因；插话、异步问题、审批、图片及 Turn 完成不赋予折叠资格，旧回答也不赋予后续工作段资格。普通任务段须到达自身有效非异步最终回答，才可默认折叠；取消保留正文。资格、默认值、用户选择与临时强制展开独立，显隐结果不得反写选择；禁止收起按钮的呈现必须保留完整有序正文，不丢失/重复 persistent 项。最终回答保留独立槽位，内层分区也不得隐藏有效最终回答。两端消费唯一 reducer，保留既有 ID、时钟与视口 lease。契约/测试见 [Activity closure and disclosure authority](../docs/chat-ui-architecture.md#activity-closure-and-disclosure-authority)。
+- 2026-10-06 折叠资格补充：共享 `AgentActivitySegmentEnd` 只记录时序结束原因；插话、异步问题、审批、图片及 Turn 完成不赋予折叠资格，旧回答也不赋予后续工作段资格。普通任务段须到达自身有效非异步最终回答，才可默认折叠；取消保留正文。资格、默认值、用户选择与临时强制展开独立，显隐结果不得反写选择；禁止收起按钮的呈现必须保留完整有序正文，不丢失/重复 persistent 项。最终回答保留独立槽位，内层分区也不得隐藏有效最终回答。两端消费唯一 reducer，保留既有 ID、时钟与视口 lease。契约/测试见 [Activity closure and disclosure authority](../docs/architecture/chat-ui/activities-and-tools.md#activity-closure-and-disclosure-authority)。
 
 ## 图片附件呈现（2026-09-27）
 
@@ -1302,7 +1304,7 @@ and does not receive the standard task-flow continuation button.
 
 ### Shared floating material
 
-Participant popovers and model/toolbar menus consume `menu.web.scss` `material`: elevated-secondary at 90%, 8px backdrop blur, shared border/radius/shadow. Page/sidebar backgrounds may be translucent and are not floating-surface tokens. Material is independent of menu geometry, typography and selection behavior; the participant popover retains its Radix and content ownership. Browser evidence: `scripts/smoke-participant-menu-material.ts` compares computed material across Neutral/Frost/Lavender light/dark and desktop/touch.
+Participant popovers and model/toolbar menus consume `menu.web.scss` `material`: elevated-secondary at 90%, 8px backdrop blur, shared border/radius/shadow. Page/sidebar backgrounds may be translucent and are not floating-surface tokens. Material is independent of menu geometry, typography and selection behavior; the participant popover retains its Radix and content ownership. Historical browser evidence named `scripts/smoke-participant-menu-material.ts` for computed material across Neutral/Frost/Lavender light/dark and desktop/touch. That probe is absent from this standalone checkout; the material contract above remains an acceptance requirement.
 
 ### Desktop navigation surface (2026-10-15)
 
@@ -1345,12 +1347,13 @@ only to project overlap; it introduces no scroll writer, scroll state or extra
 scrollport. Row badges and avatar stacks cannot tint or paint over the disclosure.
 Participant popover portals retain their existing floating-surface ownership.
 There are no duplicate headings.
-Real Shell coverage: OPENCRAFT_SIDEBAR_STICKY_ONLY=1 in
-scripts/smoke-sidebar-topology.ts.
+Historical Shell coverage used `OPENCRAFT_SIDEBAR_STICKY_ONLY=1` in
+`scripts/smoke-sidebar-topology.ts`. That probe is absent from this standalone
+checkout; this record does not establish a current passing sticky-geometry check.
 
 ### Consolidated conversation filters
 
-The conversation heading's single Filters button contains the existing display-mode radios, optional Only my conversations checkbox, and server radios. The separate participation/server chips are removed on desktop and mobile. Checked items reflect the existing plugin participation preference and Shell server preference; the closed button emphasizes active filters through its foreground and summarizes them in its tooltip, without a resting fill. Missing identity still omits participation filtering, and a saved server absent during loading never broadens the result scope. Radix owns keyboard/focus/dismissal and viewport-constrained menu scrolling. Evidence: `scripts/smoke-sidebar-thread-catalog.ts` (filter operation, offline continuity, reload persistence) and `scripts/smoke-sidebar-topology.ts` (desktop/mobile/touch scroll geometry).
+The conversation heading's single Filters button contains the existing display-mode radios, optional Only my conversations checkbox, and server radios. The separate participation/server chips are removed on desktop and mobile. Checked items reflect the existing plugin participation preference and Shell server preference; the closed button emphasizes active filters through its foreground and summarizes them in its tooltip, without a resting fill. Missing identity still omits participation filtering, and a saved server absent during loading never broadens the result scope. Radix owns keyboard/focus/dismissal and viewport-constrained menu scrolling. Core probe: `scripts/smoke-sidebar-thread-catalog.ts` (filter operation, offline continuity, reload persistence). Historical desktop/mobile/touch scroll-geometry coverage named `scripts/smoke-sidebar-topology.ts`, which is absent from this standalone checkout.
 
 Conversations has equal block spacing from the existing navigation section token.
 Desktop New chat is an unfilled quiet action with no extra top margin; the mobile
@@ -1372,8 +1375,9 @@ Shell alone resolves sidebar commands (button and Cmd/Ctrl+B); route App shortcu
 handlers do not write visibility. Layout-transition/exit states only retain physical
 content ownership, never create a third user-selectable visibility state. Shared
 portal content, draft and scroll survive fast reversals and responsive transfer.
-Verification: `scripts/smoke-sidebar-topology.ts` covers pointer pauses after collapse,
-animated reversal, threshold+16px explicit recovery and automatic drawer-to-dock.
+Historical verification used `scripts/smoke-sidebar-topology.ts` for pointer
+pauses after collapse, animated reversal, threshold+16px explicit recovery and
+automatic drawer-to-dock. That probe is absent from this standalone checkout.
 
 ## UI-TYPE-1 — Semantic typography ownership
 
@@ -1399,7 +1403,7 @@ The built-in resource plugin owns one Files creation action for both empty-panel
   rejection must reach the storage recovery boundary; early recovery retains
   saved data, gives a reload action, and does not expose raw storage diagnostics.
 
-分支会话的参与者不继承父会话：新分支头像先显示已认证创建者，后续实际接收的用户消息增加参与者。历史消息继续保留原作者。继承来源由Host持久化，刷新、重连与再次分支不能将历史作者恢复为新分支成员；创建者在头像列表去重。证据：`tests/enterprise-identity-participants.test.ts`、`tests/chat/opencraft-message-senders.test.ts`、`scripts/smoke-fork-participants.ts`。
+分支会话的参与者不继承父会话：新分支头像先显示已认证创建者，后续实际接收的用户消息增加参与者。历史消息继续保留原作者。继承来源由Host持久化，刷新、重连与再次分支不能将历史作者恢复为新分支成员；创建者在头像列表去重。核心发送者回归入口：`tests/chat/opencraft-message-senders.test.ts`。历史产品记录另引用 `tests/enterprise-identity-participants.test.ts`、`scripts/smoke-fork-participants.ts`；这两项未随独立公开核心交付，不能作为本仓库当前可运行的验收证据。
 
 - Workspace resource panels default to a collapsed file tree for all file types; the header folder
   toggle remains available. Manual visibility takes precedence for that panel
@@ -1544,7 +1548,7 @@ ancestors may grow. Sibling margins, unrelated dimensions, order and identity
 remain stable throughout animation and streaming; closing restores geometry.
 The list must not classify a row from a deep descendant's disclosure state.
 Content/prose boundaries are based on stable content roles, not open state.
-See [spacing ownership](../docs/chat-ui-architecture.md#activity-disclosure-spacing-ownership)
+See [spacing ownership](../docs/architecture/chat-ui/activities-and-tools.md#activity-disclosure-spacing-ownership)
 and `scripts/smoke-activity-spacing.ts` for real Conversation frame sampling.
 
 ### Markdown table scroll ownership
@@ -1621,9 +1625,11 @@ selection, grouping, menus and busy feedback without a custom cache comparator.
 Participant badge styles are a lazy module CSS dependency, shared by all rows;
 embedded ShadowRoots consume the existing feature stylesheet mirror.
 
-Acceptance: `node --import tsx scripts/smoke-sidebar-render-isolation.ts` checks
+Historical acceptance named `scripts/smoke-sidebar-render-isolation.ts` for
 zero list rebuilds during four mobile swipes, live business updates, selection
 and New Chat dismissal, DOM/draft continuity, and document/Shadow badge styles.
+That probe is absent from this standalone checkout; these invariants remain
+requirements, and this record does not establish a current passing regression.
 
 For the mobile drawer, offscreen conversation rows may skip layout and paint via
 `content-visibility: auto`. The complete touch row reserves 56px before its

@@ -1,7 +1,7 @@
 # Internationalization across OpenCraft
 
 All first-party user interfaces in `apps/`, `packages/` and bundled `plugins/`
-follow the [locale authority](platform-architecture.md#internationalization-authority).
+follow the [locale authority](architecture/platform/presentation-and-input.md#internationalization-authority).
 This includes Web, Electron renderer and native menus, embedded surfaces, Expo,
 settings, accessibility labels, empty/loading/error states and notifications.
 A feature being a plugin does not make its UI exempt.
