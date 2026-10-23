@@ -4,6 +4,7 @@ import { mkdtemp, readFile, rm, mkdir, symlink, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WebSocketServer, WebSocket } from 'ws';
+import { createHash } from 'node:crypto';
 import { c } from 'tar';
 import { request as httpRequest } from 'node:http';
 import { createConnection } from 'node:net';
@@ -154,4 +155,89 @@ test('unsafe release archive is rejected before launching its worker', async () 
     await c({ file: join(directory, 'unsafe.tgz'), cwd: directory, gzip: true }, ['package']);
     await assert.rejects(() => unpackRelease(join(directory, 'unsafe.tgz'), join(directory, 'unpacked')), /Unsafe/);
   } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+
+test('public install and rollback preserve the legacy daemon profile without admitting other profiles', { timeout: 120_000 }, async t => {
+  const root = await mkdtemp(join(tmpdir(), 'web-legacy-profile-'));
+  const fixture = await releaseFixture(root);
+  t.after(async () => { await fixture.close(); await rm(root, { recursive: true, force: true }); });
+  // Website-only deployments can serve packages built for another execution host.
+  // Host platform/ABI admission remains the execution adapter's responsibility.
+  const legacy = { protocolVersion: 1, platform: process.platform === 'darwin' ? 'linux' : 'darwin', arch: 'arm64', nodeAbi: '999' };
+  const daemon = { ...legacy, profile: 'daemon' };
+  const files = ['gateway.mjs', 'daemon.cjs', 'dsh-capability-plugin.mjs'];
+  async function release(version, metadata, missing = null, empty = null, headlessWeb = false) {
+    const item = fixture.releases.get(version);
+    const manifest = JSON.parse(await readFile(join(item.packageRoot, 'package.json'), 'utf8'));
+    if (metadata === undefined) delete manifest.opencraftExecution;
+    else manifest.opencraftExecution = metadata;
+    await writeFile(join(item.packageRoot, 'package.json'), JSON.stringify(manifest));
+    const webPath = join(item.packageRoot, 'web/version.json');
+    const web = JSON.parse(await readFile(webPath, 'utf8'));
+    if (headlessWeb) web.headlessServer = true; else delete web.headlessServer;
+    await writeFile(webPath, JSON.stringify(web));
+    await rm(join(item.packageRoot, 'execution'), { recursive: true, force: true });
+    await mkdir(join(item.packageRoot, 'execution'));
+    for (const file of files) if (file !== missing) await writeFile(join(item.packageRoot, 'execution', file), file === empty ? '' : '// fixture daemon payload\n');
+    await c({ file: item.archive, gzip: true, cwd: join(item.packageRoot, '..') }, ['package']);
+    const integrity = 'sha512-' + createHash('sha512').update(await readFile(item.archive)).digest('base64');
+    item.manifest = { ...manifest, dist: { ...item.manifest.dist, integrity } };
+    return item;
+  }
+  async function exercise(name, seed, candidate, { rejected = false, missing = null, empty = null, headlessWeb = false } = {}) {
+    await t.test(name, async () => {
+      const initial = await release('1.0.0', seed);
+      await release('1.1.0', candidate, missing, empty, headlessWeb);
+      fixture.select('1.1.0');
+      const app = await createManagedWebServer({ initialRelease: initial.packageRoot, stateDirectory: join(root, 'state-' + name), source: fixture.source });
+      try {
+        const base = 'http://127.0.0.1:' + (await app.listen({ port: 0 })).port;
+        let cookie = '';
+        const status = async () => (await fetch(base + '/__opencraft_updates', { headers: { cookie } })).json();
+        const post = (action, input = {}) => fetch(base + '/__opencraft_updates/' + action, {
+          method: 'POST', headers: { origin: base, cookie, 'content-type': 'application/json' }, body: JSON.stringify(input),
+        });
+        const login = await post('login', { key: (await readFile(app.adminKeyPath, 'utf8')).trim() });
+        assert.equal(login.status, 200); cookie = login.headers.get('set-cookie').split(';')[0];
+        assert.equal((await post('check')).status, 202);
+        await until(status, s => !s.checking && s.latest?.version === '1.1.0');
+        assert.equal((await post('install', { version: '1.1.0' })).status, 202);
+        const installed = await until(status, s => ['failed', 'completed'].includes(s.job?.phase));
+        assert.equal(installed.execution, null, 'profile compatibility must not enable execution deployment');
+        if (rejected) {
+          assert.equal(installed.job.phase, 'failed');
+          assert.equal(installed.current.version, '1.0.0');
+          assert.match(installed.job.error, /execution profile/);
+          assert.equal((await (await fetch(base + '/version.json')).json()).buildId, 'build-1.0.0');
+        } else {
+          assert.equal(installed.job.phase, 'completed', installed.job.error);
+          assert.equal(installed.current.version, '1.1.0');
+          assert.equal((await (await fetch(base + '/version.json')).json()).buildId, 'build-1.1.0');
+          assert.equal((await post('rollback')).status, 202);
+          const rolled = await until(status, s => s.job?.version === '1.0.0' && ['failed', 'completed'].includes(s.job?.phase));
+          assert.equal(rolled.job.phase, 'completed', rolled.job.error);
+          assert.equal(rolled.current.version, '1.0.0');
+          assert.equal((await (await fetch(base + '/version.json')).json()).buildId, 'build-1.0.0');
+        }
+      } finally { await app.close(); }
+    });
+  }
+  await exercise('headless-without-profile', daemon, legacy, { rejected: true, headlessWeb: true });
+  await exercise('legacy-to-daemon', legacy, daemon);
+  await exercise('daemon-to-legacy', daemon, legacy);
+  await exercise('web-to-legacy', undefined, legacy, { rejected: true });
+  await exercise('legacy-to-web', legacy, undefined, { rejected: true });
+  await exercise('headless-to-legacy', { ...daemon, profile: 'headless' }, legacy, { rejected: true });
+  await exercise('legacy-to-headless', legacy, { ...daemon, profile: 'headless' }, { rejected: true });
+  for (const [name, metadata] of [
+    ['protocol', { ...legacy, protocolVersion: 2 }], ['platform', { ...legacy, platform: null }],
+    ['arch', { ...legacy, arch: '' }], ['abi', { ...legacy, nodeAbi: 'invalid' }],
+    ['empty-metadata', {}], ['null-metadata', null],
+    ['headless-capability', { ...legacy, independentDshHost: 1 }],
+    ['null-profile', { ...legacy, profile: null }], ['unknown-profile', { ...legacy, profile: 'future' }],
+  ]) await exercise('invalid-' + name, daemon, metadata, { rejected: true });
+  for (const file of files) await exercise('missing-' + file, daemon, legacy, { rejected: true, missing: file });
+  await exercise('empty-daemon-payload', daemon, legacy, { rejected: true, empty: 'daemon.cjs' });
+  await exercise('invalid-legacy-baseline', { ...legacy, protocolVersion: 2 }, daemon, { rejected: true });
 });

@@ -9,6 +9,7 @@ import semver from 'semver';
 import { createHeadlessBackendProxy, isHeadlessBackendPath, validHeadlessBackendRoutes } from './headless-backend.mjs';
 import { loadLocalMachineAccess } from '../local-machine-access.mjs';
 import { acquireDeploymentLock } from './lock.mjs';
+import { resolveExecutionProfile } from '../server-deployment/execution.mjs';
 import { WEB_UPDATE_PATH } from '../../packages/web-update-protocol/src/index.mjs';
 import { createNpmReleaseSource, inspectRelease, unpackRelease, PACKAGE_NAME, isNewerVersion } from './releases.mjs';
 
@@ -33,7 +34,11 @@ async function body(request) {
 async function assertReleaseProfile(release, current) {
   const manifest = async root => JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
   const [candidate, installed] = await Promise.all([manifest(release.releaseRoot), manifest(current.releaseRoot)]);
-  if ((candidate.opencraftExecution?.profile || null) !== (installed.opencraftExecution?.profile || null))
+  const [candidateProfile, installedProfile] = await Promise.all([
+    resolveExecutionProfile(release.releaseRoot, candidate.opencraftExecution),
+    resolveExecutionProfile(current.releaseRoot, installed.opencraftExecution),
+  ]);
+  if (candidateProfile !== installedProfile)
     throw new Error('Release execution profile differs from this website; select the matching npm update channel');
 }
 async function startWorker(release, environment) {
