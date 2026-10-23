@@ -50,8 +50,9 @@ through runtime/diagnostics/read instead of no-op hooks.
 
 Owned-engine permission projections read actual runtime services. Named profile
 selection writes through permissionPresets and is carried into a new generation;
-unknown policy is not silently widened. DSH file enforcement is not mislabeled
-as Codex workspace enforcement. Custom knob and external-host cases remain open.
+unknown policy is not silently widened. DSH file enforcement projects its own
+runtime policy without claiming OS process isolation. Custom knob and
+external-host cases remain open.
 
 Pre-checkpoint native creation is now protected by a durable exact-seed intent.
 An existing unpublished generation is resumed only after its persisted prefix
