@@ -4,6 +4,7 @@ import { OPENCRAFT_HOST_TOKEN_USAGE_ATTEMPTS } from "./token-usage-attempt-schem
 import { OPENCRAFT_HOST_TOKEN_USAGE_QUERY } from "./token-usage-query-schema.js";
 import { OPENCRAFT_HOST_TOKEN_USAGE_COUNTERS } from "./token-usage-counter-schema.js";
 import { ownedDatabasePath } from "./owned-database-path.js";
+import { acquireOwnedStorageLease } from "./owned-storage-lease.js";
 import type { DatabaseSync } from "node:sqlite";
 import { openManagedDatabase, createSchemaValidator, createMissingLegacyObjects, type DatabaseOutcome } from "@opencraft/sqlite-node";
 import { OPENCRAFT_HOST_TOKEN_USAGE } from "./token-usage-schema.js";
@@ -175,17 +176,22 @@ export class OpenCraftHostStateDatabase {
   readonly database: DatabaseSync;
   readonly outcome: DatabaseOutcome;
   readonly path: string;
+  private readonly releaseLease: () => void;
   constructor(directory: string) {
-    const path = this.path = ownedDatabasePath(directory, "opencraft-host-state.sqlite", "codex-host-queue.sqlite");
-    const managed = openManagedDatabase({ path, legacyPolicy: "reject-unknown", validateSchema: createSchemaValidator(FULL_SCHEMA),
-      migrations: OPENCRAFT_HOST_STATE_MIGRATIONS, legacyMigration });
-    this.database = managed.database;
-    this.outcome = managed.outcome;
+    ownedDatabasePath(directory, "opencraft-host-state.sqlite", "codex-host-queue.sqlite");
+    this.releaseLease = acquireOwnedStorageLease(directory);
+    try {
+      const path = this.path = ownedDatabasePath(directory, "opencraft-host-state.sqlite", "codex-host-queue.sqlite");
+      const managed = openManagedDatabase({ path, legacyPolicy: "reject-unknown", validateSchema: createSchemaValidator(FULL_SCHEMA),
+        migrations: OPENCRAFT_HOST_STATE_MIGRATIONS, legacyMigration });
+      this.database = managed.database;
+      this.outcome = managed.outcome;
+    } catch (error) { this.releaseLease(); throw error; }
   }
   transaction<T>(write: () => T): T {
     this.database.exec("BEGIN IMMEDIATE");
     try { const result = write(); this.database.exec("COMMIT"); return result; }
     catch (error) { this.database.exec("ROLLBACK"); throw error; }
   }
-  close(): void { this.database.close(); }
+  close(): void { try { this.database.close(); } finally { this.releaseLease(); } }
 }
