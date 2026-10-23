@@ -254,7 +254,8 @@
     "test:pi-engine": "tsx --test tests/pi-durable-engine.test.ts tests/pi-model-configuration.test.ts tests/pi-runtime-packaging.test.mjs",
     "test:im": "tsx --test tests/im-switchboard.test.ts tests/im-programmable.test.ts tests/im-tool-reply.test.ts tests/session-capabilities.test.ts tests/wecom-plugin.test.ts",
     "test:session-capabilities": "tsx --test tests/session-capabilities.test.ts",
-    "smoke:structured-preview": "tsx scripts/smoke-structured-preview.ts"
+    "smoke:structured-preview": "tsx scripts/smoke-structured-preview.ts",
+    "smoke:headless-connectors": "tsx scripts/smoke-headless-connectors.ts"
   },
   "dependencies": {
     "react": "19.3.1",

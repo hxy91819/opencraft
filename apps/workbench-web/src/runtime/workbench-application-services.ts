@@ -46,7 +46,7 @@ import { SidebarLayoutStore } from "@opencraft/sidebar-layout";
 import {
   AgentRuntimeDirectory,
   AuthenticationFlowService,
-  ConnectorApprovalQueue, ConnectorManager,
+  ConnectorApprovalPresentation, ConnectorManager,
   ConnectorRuntime,
   createWorkbenchDraftLocation,
   createWorkbenchSubmissionPipeline,
@@ -100,7 +100,7 @@ export interface AppServerHostCatalog {
   readonly extensionRuntime: Pick<ExtensionSupervisor, "subscribe" | "getSnapshot" | "contributions">;
   readonly connectors: ConnectorRuntime;
   readonly connectorManager: ConnectorManager;
-  readonly connectorApprovals: ConnectorApprovalQueue;
+  readonly connectorApprovals: ConnectorApprovalPresentation;
   readonly agentRuntimes: AgentRuntimeAccess;
   readonly threadManagement: {
     capabilities(hostId: string, threadId?: string): { fork: boolean; rename: boolean; archive: boolean; delete: boolean; pin?: boolean; reference?: boolean };
@@ -421,7 +421,7 @@ export interface WebWorkbenchApplicationBase {
   readonly setConversationPresentationActive?: (active: boolean) => void;
   readonly connectors: ConnectorRuntime;
   readonly connectorManager: ConnectorManager;
-  readonly connectorApprovals: ConnectorApprovalQueue;
+  readonly connectorApprovals: ConnectorApprovalPresentation;
   readonly agentRuntimes: AgentRuntimeDirectory;
   readonly authenticationFlows: AuthenticationFlowService;
   readonly environmentDirectory: EnvironmentDirectory;

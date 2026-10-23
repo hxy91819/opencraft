@@ -1,3 +1,4 @@
+import { BrowserHeadlessConnectors, connectorApprovals as createConnectorApprovals } from "./headless-connectors";
 import { installClientObservation } from "./observability";
 import { tokenUsageBuiltin } from "./token-usage-builtin";
 import { createHostComposerCommandPort } from "@opencraft/workbench-runtime";
@@ -203,7 +204,9 @@ export async function createWebWorkbenchApplicationSupervisor(
     const authenticationFiber = cordis.plugin(AuthenticationService);
     startupRollback.push(() => authenticationFiber.dispose());
     await authenticationFiber;
-    const connectorApprovals = new ConnectorApprovalQueue();
+    const headlessConnectors = await BrowserHeadlessConnectors.open();
+    startupRollback.push(() => headlessConnectors.dispose());
+    const connectorApprovals = createConnectorApprovals(headlessConnectors);
     startupRollback.push(() => connectorApprovals.dispose());
     const connectors = new ConnectorRuntime(cordis.authentication, 30000, { approvals: connectorApprovals });
     startupRollback.push(() => connectors.dispose());
@@ -216,7 +219,7 @@ export async function createWebWorkbenchApplicationSupervisor(
       const client = appServerRegistry.clients.get(hostId);
       if (!client) throw new Error("Connector Host unavailable");
       return client;
-    });
+    }, headlessConnectors);
     startupRollback.push(() => connectorManager.dispose());
     const authenticationFlowFiber = cordis.plugin(AuthenticationFlowService);
     startupRollback.push(() => authenticationFlowFiber.dispose());

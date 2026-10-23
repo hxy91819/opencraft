@@ -204,3 +204,15 @@ Skill contribution 目前接收已有安装服务提供的 `installationId + ref
 尚未交付：真实第三方账号接入与各服务权限范围验收、远端 MCP 配置/安装器、内置 Skill 安装 Provider、Expo 装配。Host 需要实际实现原生 MCP/OAuth 方法；本轮未给 DSH/Hermes 新增这些方法。恢复的是配置和期望选择，不是旧连接或执行授权。
 
 已取消的正文版本更新与 Hermes 自动热刷新不恢复。参考 [实施任务](../design/platform-connectors/task_plan.md)；上述剩余项要按具体产品接入逐项推进，不以“机制建立”冒充全部 Connector 已上线。
+
+## Headless 运行所有权
+
+共享的 `packages/connector-runtime` 复用原运行时、渐进披露、临时 handle、撤销和逐次写审批，不依赖 Workbench、引擎或 Node。Workbench 原路径保留兼容导出。
+
+Headless 装配 `HeadlessConnectors`，每个人类 Actor 的配置由既有 `ManagedConnectorService` 存入独立 managed SQLite；不复制另一份 OAuth、凭据或外部协议实现。`/__opencraft_connectors` 只提供管理、连接、显式会话选择、状态与审批，没有公开原始工具调用端口。所有修改要求当前人类身份与同源 JSON，模型参数不能选择 Actor、Host 或 Thread。数据库没有凭据加密承诺。
+
+已协商的本机 Codex/Pi/DSH 使用统一 SessionCapabilities 出口，按 `(canonical serverId, threadId)` 注入 `connectors_search_tools`、`connectors_get_tool`、`connectors_call_tool`。只有明确选择的当前连接可见，工具引用和调用 handle 仍按 scope、目录摘要与连接代次隔离。每次调用以及审批后复核原授予者的当前身份和实例权限；停用、删除、变更身份或撤销登录使旧调用失效。外部效果已发出后的取消不保证撤销，不自动重试。
+
+网页对这些托管实例只读后端状态并发送管理意图。关闭浏览器不撤销已明确授予的会话使用权；写审批仍由服务端限时等待，网页重连能看到同一个待批准项。进程重启恢复配置，不恢复会话使用授权、临时 handle 或一次性审批。原生引擎 MCP 与旧 Host 仍由原适配器运行；它们与 Headless 托管实例具有不同 owner，不会把同一托管实例注册到浏览器运行时。
+
+本阶段不提供任意远端 MCP URL 配置、连接池、自动迁移旧机器级凭据或所有账户共享连接器。现有机器级数据库保持原 owner，不猜测其所属人类；新 Headless 配置按已验证的人类 Actor 隔离。匿名模式仍可使用原工作区，但不能创建人类名下的后端连接器授权。

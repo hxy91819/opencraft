@@ -53,6 +53,12 @@ test('verified external human identity does not require an enterprise provider n
     createIdentity: async () => ({ providers: [{ authenticate: request => current && request.headers['x-fixture-proof'] === 'verified' ? principal : null }], close() {} }),
   }); t.after(() => app.close());
   const headers = { 'x-fixture-proof': 'verified' };
+  const connectorOwner = await (await fetch(app.url + '/__opencraft_connectors')).json();
+  assert.deepEqual(Object.keys(connectorOwner.hosts).sort(), ['local-codex', 'opencraft-server']);
+  const connectorState = await fetch(app.url + '/__opencraft_connectors', {method:'POST',
+    headers:{...headers,origin:app.url,'content-type':'application/json'},body:JSON.stringify({hostId:'local-codex',method:'state',params:{}})});
+  assert.equal(connectorState.status,200);assert.deepEqual((await connectorState.json()).instances,[]);
+
   assert.equal((await fetch(app.url)).status, 401);
   const response = await fetch(app.url + '/__opencraft_actors/me', { headers });
   assert.equal(response.status, 200); const first = await response.json(); assert.equal(first.actor.kind, 'human');

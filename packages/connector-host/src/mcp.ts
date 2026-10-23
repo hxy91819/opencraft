@@ -28,9 +28,11 @@ export const toolsDigest = (tools: readonly ConnectorNativeTool[]) => createHash
 export class ConnectorMcp {
   constructor(private readonly db: ConnectorDatabase, private readonly oauth: ConnectorOAuth,
     private readonly endpoint = mcpEndpoint, private readonly fetchOverride?: typeof fetch) {}
-  private async use<T>(id: string, work: (client: Client, row: StoredConnection) => Promise<T>): Promise<T> {
+  private async use<T>(id: string, work: (client: Client, row: StoredConnection) => Promise<T>, signal?: AbortSignal): Promise<T> {
+    signal?.throwIfAborted();
     const before = this.db.get(id); if (!before.enabled) throw new ConnectorHostError("unavailable");
     await this.oauth.refresh(id);
+    signal?.throwIfAborted();
     const row = this.db.get(id); if (row.revision !== before.revision) throw new ConnectorHostError("conflict");
     const endpoint = this.endpoint(row), headers = { ...endpoint.headers };
     const tokens = row.oauth.tokens ? record(row.oauth.tokens) : null;
@@ -38,8 +40,10 @@ export class ConnectorMcp {
     const options = { requestInit: { headers }, fetch: this.fetchOverride ?? connectorFetch([new URL(endpoint.url).origin], endpoint.private) };
     const transport = endpoint.sse ? new SSEClientTransport(new URL(endpoint.url), options) : new StreamableHTTPClientTransport(new URL(endpoint.url), options);
     const client = new Client({ name: "opencraft", version: "0.1.0" });
-    try { await client.connect(transport); return await work(client, row); }
-    finally { await client.close().catch(() => undefined); }
+    const abort = () => { void client.close().catch(() => undefined); };
+    signal?.addEventListener("abort", abort, { once: true });
+    try { signal?.throwIfAborted(); await client.connect(transport); signal?.throwIfAborted(); return await work(client, row); }
+    finally { signal?.removeEventListener("abort", abort); await client.close().catch(() => undefined); }
   }
   private async inventory(client: Client): Promise<ConnectorNativeTool[]> {
     let cursor: string | undefined; const tools: ConnectorNativeTool[] = [], seen = new Set<string>();
@@ -53,14 +57,15 @@ export class ConnectorMcp {
     if (new Set(tools.map(tool => tool.name)).size !== tools.length) throw new ConnectorHostError("unavailable");
     return tools.sort(compareTool);
   }
-  list(id: string) { return this.use(id, client => this.inventory(client)); }
-  call(id: string, revision: number, digest: string, tool: string, input: Record<string, unknown>) {
+  list(id: string, signal?: AbortSignal) { return this.use(id, client => this.inventory(client), signal); }
+  call(id: string, revision: number, digest: string, tool: string, input: Record<string, unknown>, signal?: AbortSignal) {
     return this.use(id, async (client, row) => {
       if (row.revision !== revision) throw new ConnectorHostError("conflict");
       const tools = await this.inventory(client);
       if (toolsDigest(tools) !== digest || !tools.some(item => item.name === tool)) throw new ConnectorHostError("conflict");
       if (this.db.get(id).revision !== revision) throw new ConnectorHostError("conflict");
-      return client.callTool({ name: tool, arguments: input }, undefined, { timeout: 90000 });
-    });
+      signal?.throwIfAborted();
+      return client.callTool({ name: tool, arguments: input }, undefined, { timeout: 90000, signal });
+    }, signal);
   }
 }
