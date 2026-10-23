@@ -14,8 +14,8 @@ import { RemoteBrowserService } from '../scripts/remote-browser-service.mjs';
 class FixtureService extends RemoteBrowserService {
   commands = []; physical = new Map(); pendingNavigation = false;
   async start() { await this.load(); }
-  async request(id, method, input) {
-    this.commands.push({ id, method, input });
+  async request(id, method, input, control, document) {
+    this.commands.push({ id, method, input, control, document });
     let p = this.physical.get(id);
     if (method === 'create') {
       if (!p) this.physical.set(id, p = { width: 1280, height: 720, deviceProfile: 'desktop', url: 'about:blank', memory: randomUUID() });
@@ -41,7 +41,7 @@ async function fixture() {
     const events = [], frames = [];
     ws.on('message', (bytes, binary) => { if (binary) { frames.push(bytes); return; } const m = JSON.parse(bytes); events.push(m); const p = pending.get(m.id); if (p) { pending.delete(m.id); m.error ? p.reject(Object.assign(new Error(m.error.message), { code: m.error.code })) : p.resolve(m.value); } });
     ws.on('close', () => { for(const p of pending.values())p.reject(new Error('Connection closed')); pending.clear(); });
-    const call = (method, input, control) => new Promise((resolve, reject) => { const id = randomUUID(); pending.set(id, { resolve, reject }); ws.send(JSON.stringify({ id, method, input, control })); });
+    const call = (method, input, control, document) => new Promise((resolve, reject) => { const id = randomUUID(); pending.set(id, { resolve, reject }); ws.send(JSON.stringify({ id, method, input, control, document })); });
     return { ws, call, events, frames, quiet(method, input, control) { ws.send(JSON.stringify({id:randomUUID(),method,input,control})); }, async detach() { if(ws.readyState===WebSocket.CLOSED)return; ws.close(); await once(ws, 'close'); await new Promise(resolve => setImmediate(resolve)); } };
   }
   return { directory, get service() { return service; }, connect,
@@ -404,7 +404,7 @@ test('control generations fence writes, Agent never preempts a human, and only c
   const f=await fixture();
   try {
     const lease=randomUUID(),a=await f.connect('owner'),b=await f.connect('owner');
-    await a.call('open',{lease,multiView:true}); await b.call('open',{lease,multiView:true});
+    await a.call('open',{lease,multiView:true,visible:true}); await b.call('open',{lease,multiView:true,visible:true});
     const page=[...f.service.pages.values()][0],one=await a.call('control',{action:'human',takeover:true});
     await assert.rejects(b.call('control',{action:'agent'}),{code:'CONTROL_BUSY'});
     assert.equal(await b.call('automation',{method:'inspect'}),undefined); assert.equal(page.controlToken,one.token);
@@ -466,7 +466,7 @@ test('input acknowledgements are negotiated per viewer and follow native dispatc
   const f = await fixture(); let release;
   try {
     const a = await f.connect('owner'), b = await f.connect('owner');
-    const opened = await a.call('open', { lease: randomUUID(), multiView: true, inputAcknowledgements: true });
+    const opened = await a.call('open', { lease: randomUUID(), multiView: true, visible: true, inputAcknowledgements: true });
     assert.equal(opened.inputAcknowledgements, true);
     const grant = await a.call('control', { action: 'human', takeover: true });
     const request = f.service.request.bind(f.service), gate = new Promise(resolve => { release = resolve; });
@@ -476,7 +476,7 @@ test('input acknowledgements are negotiated per viewer and follow native dispatc
     await new Promise(resolve => setTimeout(resolve, 30)); assert.equal(acknowledged, false);
     release(); await input; assert.equal(acknowledged, true);
     await assert.rejects(a.call('input', { type: 'mouseMove' }, 'stale-token'), { code: 'CONTROL_LOST' });
-    const legacy = await b.call('open', { lease: randomUUID(), multiView: true });
+    const legacy = await b.call('open', { lease: randomUUID(), multiView: true, visible: true });
     assert.equal(legacy.inputAcknowledgements, false);
     const legacyGrant = await b.call('control', { action: 'human', takeover: true });
     const results = b.events.filter(x => x.type === 'result').length;
@@ -512,13 +512,25 @@ test('hiding invalidates an in-flight human grant, even after reveal; invisible 
 test('document-aware peers cannot send missing or old document input; legacy admission still captures identity', async () => {
   const f=await fixture();
   try{
-    const request=f.service.request.bind(f.service),document=randomUUID();
+    const request=f.service.request.bind(f.service),document=randomUUID(),lease=randomUUID();
     f.service.request=async(...args)=>{const result=await request(...args);return ['create','snapshot'].includes(args[1])?{...result,document}:result};
-    const a=await f.connect('owner');await a.call('open',{lease:randomUUID(),multiView:true,visible:true,documentInput:true,inputAcknowledgements:true});
+    const a=await f.connect('owner');await a.call('open',{lease,multiView:true,visible:true,documentInput:true,inputAcknowledgements:true});
     const grant=await a.call('control',{action:'human',takeover:true});
     await assert.rejects(a.call('input',{type:'char',keyCode:'x'},grant.token),{code:'DOCUMENT_CHANGED'});
     const p=[...f.service.pages.values()][0];assert.equal(p.document,document);
     assert(!f.service.commands.some(c=>c.method==='input'));
-    await a.detach();
+    await assert.rejects(a.call('input',{type:'char',keyCode:'x'},grant.token,randomUUID()),{code:'DOCUMENT_CHANGED'});
+    await a.call('input',{type:'char',keyCode:'x'},grant.token,document);
+    assert.equal(f.service.commands.at(-1).document,document);
+    const replacement=randomUUID();f.service.receive({type:'input-reset',page:p.id,document:replacement});
+    await assert.rejects(a.call('input',{type:'char',keyCode:'y'},grant.token,document),{code:'DOCUMENT_CHANGED'});
+    const modernInputs=f.service.commands.filter(c=>c.method==='input').length;
+    assert.equal(modernInputs,1,'stale and missing input never reaches native transport');
+    await a.call('control',{action:'release',token:grant.token});
+    const legacy=await f.connect('owner');await legacy.call('open',{lease,multiView:true,visible:true,inputAcknowledgements:true});
+    const legacyGrant=await legacy.call('control',{action:'human',takeover:true});
+    await legacy.call('input',{type:'char',keyCode:'z'},legacyGrant.token);
+    assert.equal(f.service.commands.at(-1).document,replacement,'legacy identity is captured at service admission');
+    await legacy.detach();await a.detach();
   }finally{await f.close()}
 });
