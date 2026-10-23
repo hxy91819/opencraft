@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.16
+
+- Keep conversation reading position, retained tool/image/plan/subagent choices, and command/diff views when a Conversation View is hidden or remounts; localize command result and empty output labels.
+- Stabilize composer, sidebar, and queue interactions, including scroll autoload, rail and files launcher icons, queue handle width, hover policy, composer recovery placeholders, and Safari glass rendering.
+- Recover unavailable threads and execution lifecycle/outbox boundaries; keep browser session resources, stream continuity, and state convergence on the owned session path.
+- Add file preview formats with PPTX thumbnail restore and slide navigation, plus document preview polish; raise relay stream and tunnel capacity.
+- Add an optional workbench task information module and the headless connector runtime on the public server path.
+- Preview draft composer image attachments with retained editing state, and keep catalog successful pages through refresh and retry.
+
 ## v0.1.15
 
 - Fix sidebar menus to a single exclusive owner: opening the list Filters menu closes any open row menu and opening a row menu closes the Filters menu, and a row menu whose target became disabled, removed or hidden closes instead of lingering.
