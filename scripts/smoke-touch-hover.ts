@@ -13,7 +13,10 @@ import '/packages/chat-render-web/src/renderers/code/code-block.scss';
 import '/packages/chat-render-web/src/renderers/table/table.scss';
 import '/packages/chat-render-web/src/extensions/mermaid/mermaid.scss';
 import '/plugins/tasks/src/styles.scss';`;
-const vite = await createServer({configFile:false, root:process.cwd(), cacheDir:"node_modules/.vite-touch-hover", logLevel:"error", esbuild:{jsx:"automatic"}, resolve:{dedupe:["react","react-dom"]}, server:{host:"127.0.0.1",port:0,hmr:false}, plugins:[{
+const vite = await createServer({configFile:false, root:process.cwd(), cacheDir:"node_modules/.vite-touch-hover", logLevel:"error", esbuild:{jsx:"automatic"}, resolve:{dedupe:["react","react-dom"]},
+  // Scan the actual fixture before publishing its dependency graph. The default
+  // root HTML scan also reaches unrelated applications and late re-optimization.
+  optimizeDeps:{entries:["tests/fixtures/home-composer-focus.tsx"]}, server:{host:"127.0.0.1",port:0,hmr:false}, plugins:[{
   name:"touch-hover-fixture", resolveId:id=>id==="/hover-fixture.tsx"?id:null, load:id=>id==="/hover-fixture.tsx"?entry:null,
   configureServer(server){server.middlewares.use((req,res,next)=>{if(!req.url?.startsWith('/?'))return next();res.setHeader('content-type','text/html');res.end('<meta name="viewport" content="width=device-width,initial-scale=1"><div id="root"></div><script type="module" src="/hover-fixture.tsx"></script>');});}
 }]});
@@ -24,7 +27,7 @@ const results: unknown[] = [];
 try {
   for (const touch of [false,true]) for (const theme of ["light","dark"]) {
     const context=await browser.newContext({viewport:{width:touch?390:1280,height:844},hasTouch:touch,isMobile:touch});
-    const page=await context.newPage();page.setDefaultTimeout(60000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+    const page=await context.newPage();page.setDefaultTimeout(60000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.stack ?? e.message));
     const failedResources: { path: string; status: number }[] = [];
     page.on('response', response => { if (response.status() >= 400) failedResources.push({ path: new URL(response.url()).pathname, status: response.status() }); });
     await page.addInitScript('window.__name=value=>value');
