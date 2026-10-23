@@ -52,14 +52,18 @@ this naming does not add another provider.
 
 The rename changes TypeScript symbols and internal module paths. It preserves:
 
-- Existing `codex-host-queue.sqlite` and `codex-message-attachments.sqlite` paths,
-  tables, indices, migration names, versions and SQL checksums.
+- Existing `codex-host-queue.sqlite` and `codex-message-attachments.sqlite` file paths,
+  and all published migration names, versions and SQL checksums. Host-state v13
+  and attachment v2 migrate active tables and indices to `opencraft_*`; see
+  [the storage upgrade contract](../sqlite-lifecycle.md#owned-live-table-names).
 - Native Codex queue import format, delivery reconciliation and source records.
 - Host IDs, environment variables, capability/RPC identifiers and generated
   Codex protocol types.
 - Account credentials, installation state and conversation identities.
 
-The remaining engine-specific names describe actual integrations. Future generic
+Current active storage names describe OpenCraft ownership. The old file paths
+remain a separate migration concern; they are not native engine contracts.
+The engine-specific classes above describe actual integrations. Future generic
 implementations should obtain their own owner and verified capability contract;
 renaming a native adapter alone cannot establish engine independence.
 

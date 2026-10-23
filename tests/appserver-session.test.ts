@@ -763,7 +763,7 @@ test("Durable hydration loads Turn Items separately with full projections", asyn
 
 test("server-owned legacy Codex restores full history without paginated Item requests", async () => {
   const harness = await createHarness({
-    hostId: "local-codex", hostKind: "durable", historyMode: "legacy",
+    hostId: "history-host", hostKind: "durable", historyMode: "legacy",
     fallbackTurns: [{ id: "native-turn", items: [{ id: "native-message", type: "userMessage", content: [{ type: "inputText", text: "Linked task history" }] }] }],
   });
   try {

@@ -39,20 +39,20 @@ async function fixture(t: test.TestContext) {
   });
   await new Promise<void>(resolve => external.listen(0, "127.0.0.1", resolve));
   const url = `http://127.0.0.1:${(external.address() as { port: number }).port}/mcp`;
-  const hosts = { "local-codex": "server:fixture:codex", "local-pi": "server:fixture:pi", "local-dsh": "server:fixture:dsh" };
+  const hosts = { "host-a": "server:fixture:a", "host-b": "server:fixture:b", "host-c": "server:fixture:c" };
   const open = () => new HeadlessConnectors(join(root, "connectors"), access, hosts, capabilities, () => true, path => new ManagedConnectorService(path, (_input, init) => fetch(url, init)));
   let service = open();
   const http = createServer(async (req, res) => { if (!await service.handle(req, res)) { res.writeHead(404); res.end(); } });
   await new Promise<void>(resolve => http.listen(0, "127.0.0.1", resolve));
   const origin = `http://127.0.0.1:${(http.address() as { port: number }).port}`;
-  const request = async (user: string, method: string, params: unknown = {}, hostId = "local-codex", extra: Record<string, string> = {}) => fetch(origin + "/__opencraft_connectors", {
+  const request = async (user: string, method: string, params: unknown = {}, hostId = "host-a", extra: Record<string, string> = {}) => fetch(origin + "/__opencraft_connectors", {
     method: "POST", headers: { "content-type": "application/json", origin, ...(user ? { "x-fixture-human": user } : {}), ...extra }, body: JSON.stringify({ hostId, method, params }),
   });
-  const manage = async (user: string, method: string, params: unknown = {}, hostId = "local-codex") => {
+  const manage = async (user: string, method: string, params: unknown = {}, hostId = "host-a") => {
     const response = await request(user, method, params, hostId); const value = await response.json(); assert.equal(response.status, 200, JSON.stringify(value)); return value;
   };
   const save = (user: string) => manage(user, "connectors/managed/save", { id: "docs", definitionId: "tencent-docs", title: "Documents", expectedRevision: 0, values: {}, secrets: { token: "synthetic-private-token" } });
-  const session = (threadId = "one", hostId: keyof typeof hosts = "local-codex") => ({ serverId: hosts[hostId], threadId });
+  const session = (threadId = "one", hostId: keyof typeof hosts = "host-a") => ({ serverId: hosts[hostId], threadId });
   const model = async (session: CapabilitySession, name: string, args: unknown) => {
     const result = await capabilities.call(session, name, args, new AbortController().signal); return JSON.parse(result.contentItems[0].text);
   };
@@ -61,7 +61,7 @@ async function fixture(t: test.TestContext) {
     const ref = page.items.find((item: { name: string }) => item.name === name).toolRef;
     return (await model(s, "connectors_get_tool", { toolRefs: [ref] })).items[0].handle;
   };
-  const select = async (user = "alice", threadId = "one", hostId: keyof typeof hosts = "local-codex") => {
+  const select = async (user = "alice", threadId = "one", hostId: keyof typeof hosts = "host-a") => {
     await manage(user, "connect", { id: "docs" }, hostId); await manage(user, "select", { id: "docs", threadId, enabled: true }, hostId);
   };
   t.after(async () => { await service.close(); actors.close(); for (const server of [http, external]) { server.closeAllConnections(); await new Promise<void>(resolve => server.close(() => resolve())); } await rm(root, { recursive: true, force: true }); });
@@ -69,14 +69,14 @@ async function fixture(t: test.TestContext) {
     restart: async () => { await service.close(); service = open(); } };
 }
 
-test("browser-independent real MCP execution is isolated by Actor, engine and Thread", async t => {
+test("browser-independent real MCP execution is isolated by Actor, Server and Thread", async t => {
   const f = await fixture(t); await f.save("alice");
   assert.equal((await f.manage("bob", "state")).instances.length, 0);
   await assert.rejects(f.manage("bob", "connect", { id: "docs" }));
   await f.select();
   assert.equal(f.capabilities.tools(f.session()).length, 3);
   assert.equal(f.capabilities.tools(f.session("two")).length, 0);
-  assert.equal(f.capabilities.tools(f.session("one", "local-pi")).length, 0);
+  assert.equal(f.capabilities.tools(f.session("one", "host-b")).length, 0);
   const handle = await f.handle(f.session());
   // No browser, no browser-owned AppServer dynamic tool handler: the signed session MCP is sufficient.
   const gateway = new SessionCapabilityMcp(f.capabilities, randomBytes(32)); await gateway.listen(); t.after(() => gateway.close());
@@ -88,7 +88,7 @@ test("browser-independent real MCP execution is isolated by Actor, engine and Th
   assert.equal(f.calls(), 1);
   await f.manage("alice", "select", { id: "docs", threadId: "two", enabled: true });
   await assert.rejects(f.model(f.session("two"), "connectors_call_tool", { handle, arguments: {} }), /stale-handle/);
-  for (const host of ["local-pi", "local-dsh"] as const) {
+  for (const host of ["host-b", "host-c"] as const) {
     await f.select("alice", "one", host);
     await f.model(f.session("one", host), "connectors_call_tool", { handle: await f.handle(f.session("one", host)), arguments: {} });
   }
@@ -119,11 +119,11 @@ test("writes wait for one exact approval; deselection cancels pending effects an
 test("management rejects raw calls, anonymous/session bearers, cross-origin requests; logout and revision changes revoke handles", async t => {
   const f = await fixture(t); await f.save("alice"); await f.select();
   assert.equal((await f.request("", "state")).status, 401);
-  assert.equal((await f.request("alice", "state", {}, "local-codex", { origin: "https://foreign.test" })).status, 403);
+  assert.equal((await f.request("alice", "state", {}, "host-a", { origin: "https://foreign.test" })).status, 403);
   assert.equal((await f.request("alice", "connectors/managed/call", {})).status, 400);
   assert.equal((await f.request("alice", "state", {}, "foreign-host")).status, 400);
   const actor = f.actors.createSession("session", "fixture"), token = f.actors.issueCredential(actor.id, Date.now() + 60000, "fixture").token;
-  assert.equal((await f.request("", "state", {}, "local-codex", { authorization: `Bearer ${token}` })).status, 401);
+  assert.equal((await f.request("", "state", {}, "host-a", { authorization: `Bearer ${token}` })).status, 401);
   const handle = await f.handle(f.session());
   await f.manage("alice", "connectors/managed/setEnabled", { id: "docs", revision: 1, enabled: false });
   assert.equal(f.capabilities.tools(f.session()).length, 0);

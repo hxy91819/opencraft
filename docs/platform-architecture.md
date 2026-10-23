@@ -928,7 +928,7 @@ detaches one logical subscriber; another subscriber is unaffected. Idle durable
 threads unload after a 30-minute no-subscriber activity grace; a temporary thread
 releases after its final subscriber. Unload and resume transitions serialize.
 
-The Codex Daemon has one physical AppServer stdio subscription per Thread, while
+The daemon’s native engine adapter has one physical AppServer stdio subscription per Thread, while
 each browser lease owns a separate logical read subscription. A logical
 `thread/unsubscribe` or lease disconnect removes only that Client; it never
 forwards a native unsubscribe. A pending `thread/resume` is a provisional read
@@ -1119,7 +1119,7 @@ physical paths and exclusive owners stay separate. A configured Local Agent open
 its five foundational stores plus the existing Tasks file before listening. Its
 failure releases handles and rejects startup. OpenCraft Host state opens queue, sender and
 enterprise identity tables through one connection/migration owner; attachments have their own file.
-Codex-private Tasks remain lazy and validate storage before capability success.
+Host-private Tasks remain lazy and validate storage before capability success.
 SSH management opens only for the configured feature. Private Host failures cannot
 publish that Host open; unused optional owners do not prevent default embedded or
 headless operation. Electron Main's three stores remain lazy; account-pool belongs

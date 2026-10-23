@@ -14,7 +14,7 @@ const actors = new ActorStore(join(output, "actors.sqlite")), capabilities = new
 const principal = { provider: "fixture", subject: "alice", displayName: "Alice", expiresAt: Date.now() + 600000 };
 const access = new ActorAccess(actors, { authenticateHuman: () => principal, admitted: () => true, administrator: () => false });
 let calls = 0;
-const service = new HeadlessConnectors(join(output, "connectors"), access, { "local-codex": "server:ui:codex" }, capabilities, () => true,
+const service = new HeadlessConnectors(join(output, "connectors"), access, { "connector-host": "server:ui:connectors" }, capabilities, () => true,
   path => new ManagedConnectorService(path, async (_input, init) => {
     assert.equal(new Headers(init?.headers).get("ima-openapi-apikey"), "synthetic-ui-key"); calls++; return Response.json({ code: 0, note_id: "fixture-note" });
   }));
@@ -43,7 +43,7 @@ try {
   assert.equal(await page.evaluate(() => (window as any).connectorProbe.localProviders()), 0, "the browser never owns this connector execution");
   await page.locator(".connector-status-chip").waitFor();
   await page.screenshot({ path: join(output, "selected.png") });
-  const session = { serverId: "server:ui:codex", threadId: "library-thread" };
+  const session = { serverId: "server:ui:connectors", threadId: "library-thread" };
   const model = async (name: string, args: unknown) => JSON.parse((await capabilities.call(session, name, args, new AbortController().signal)).contentItems[0].text);
   const handle = async (name: string) => {
     const page = await model("connectors_search_tools", { query: name });

@@ -17,6 +17,20 @@ CREATE TABLE codex_message_attachments (
         ON codex_message_attachments(thread_id, client_message_id, ordinal);
 `;
 
+/** v2 changes owned live names without rewriting the published v1 baseline. */
+export const OPENCRAFT_MESSAGE_ATTACHMENTS_OWNED_NAMES = `
+ALTER TABLE codex_message_attachments RENAME TO opencraft_message_attachments;
+DROP INDEX codex_message_attachments_message;
+CREATE INDEX opencraft_message_attachments_message
+  ON opencraft_message_attachments(thread_id, client_message_id, ordinal);
+`;
+export const OPENCRAFT_MESSAGE_ATTACHMENTS_MIGRATIONS = [
+  { version: 1, name: "codex-message-attachments", sql: OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE },
+  { version: 2, name: "opencraft-message-attachments-owned-names", sql: OPENCRAFT_MESSAGE_ATTACHMENTS_OWNED_NAMES },
+] as const;
+const FULL_SCHEMA = OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE + OPENCRAFT_MESSAGE_ATTACHMENTS_OWNED_NAMES;
+const legacy = createMissingLegacyObjects(OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE);
+
 /** Durable display metadata; Codex's native `mention` remains the execution input. */
 export class OpenCraftMessageAttachments {
   private readonly db: DatabaseSync;
@@ -24,8 +38,8 @@ export class OpenCraftMessageAttachments {
 
   constructor(dataDirectory: string) {
     const path = join(dataDirectory, "codex-message-attachments.sqlite");
-    const managed = openManagedDatabase({ path, legacyPolicy: "reject-unknown", validateSchema: createSchemaValidator(OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE), migrations: [{ version: 1, name: "codex-message-attachments", sql: OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE }],
-      legacyMigration: createMissingLegacyObjects(OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE) });
+    const managed = openManagedDatabase({ path, legacyPolicy: "reject-unknown", validateSchema: createSchemaValidator(FULL_SCHEMA), migrations: OPENCRAFT_MESSAGE_ATTACHMENTS_MIGRATIONS,
+      legacyMigration: { accepts: legacy.accepts, migrate(database) { legacy.migrate(database); database.exec(OPENCRAFT_MESSAGE_ATTACHMENTS_OWNED_NAMES); } } });
     this.db = managed.database;
     this.outcome = managed.outcome;
   }
@@ -45,7 +59,7 @@ export class OpenCraftMessageAttachments {
     }
     this.db.exec("BEGIN IMMEDIATE");
     try {
-      const insert = this.db.prepare(`INSERT INTO codex_message_attachments
+      const insert = this.db.prepare(`INSERT INTO opencraft_message_attachments
         (thread_id,client_message_id,attachment_id,ordinal,ref_json) VALUES(?,?,?,?,?)`);
       refs.forEach((ref, ordinal) => insert.run(threadId, clientMessageId, ref.id, ordinal, JSON.stringify(ref)));
       this.db.exec("COMMIT");
@@ -56,24 +70,24 @@ export class OpenCraftMessageAttachments {
   }
 
   list(threadId: string, clientMessageId: string): AttachmentRef[] {
-    return this.db.prepare(`SELECT ref_json FROM codex_message_attachments
+    return this.db.prepare(`SELECT ref_json FROM opencraft_message_attachments
       WHERE thread_id=? AND client_message_id=? ORDER BY ordinal`)
       .all(threadId, clientMessageId)
       .map(row => JSON.parse(String(row.ref_json)) as AttachmentRef);
   }
 
   hasReference(attachmentId: string): boolean {
-    return this.db.prepare("SELECT 1 FROM codex_message_attachments WHERE attachment_id=? LIMIT 1")
+    return this.db.prepare("SELECT 1 FROM opencraft_message_attachments WHERE attachment_id=? LIMIT 1")
       .get(attachmentId) !== undefined;
   }
 
   /** A fork keeps historical messages but receives a new Thread identity. */
   cloneThread(sourceThreadId: string, targetThreadId: string): void {
     if (!sourceThreadId || !targetThreadId || sourceThreadId === targetThreadId) return;
-    this.db.prepare(`INSERT OR IGNORE INTO codex_message_attachments
+    this.db.prepare(`INSERT OR IGNORE INTO opencraft_message_attachments
       (thread_id,client_message_id,attachment_id,ordinal,ref_json)
       SELECT ?,client_message_id,attachment_id,ordinal,ref_json
-      FROM codex_message_attachments WHERE thread_id=?`)
+      FROM opencraft_message_attachments WHERE thread_id=?`)
       .run(targetThreadId, sourceThreadId);
   }
 }

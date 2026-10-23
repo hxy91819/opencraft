@@ -391,10 +391,10 @@ export class CodexEngineAdapter implements DuplexTransport {
 
   get storageOutcomes(): readonly { name: string; outcome: DatabaseOutcome }[] {
     return [
-      ...(this.hostState ? [{ name: "codex-host-state", outcome: this.hostState.outcome }] : []),
+      ...(this.hostState ? [{ name: "opencraft-host-state", outcome: this.hostState.outcome }] : []),
       ...(this.tokenUsageState ? [{ name: "token-usage", outcome: this.tokenUsageState.outcome }] : []),
       ...(this.schedules ? [{ name: "conversation-schedules", outcome: this.schedules.outcome }] : []),
-      ...(this.messageAttachments ? [{ name: "codex-message-attachments", outcome: this.messageAttachments.outcome }] : []),
+      ...(this.messageAttachments ? [{ name: "opencraft-message-attachments", outcome: this.messageAttachments.outcome }] : []),
       ...(this.tasks?.outcome ? [{ name: "tasks", outcome: this.tasks.outcome }] : []),
       ...(this.poolStore ? [{ name: "account-pool", outcome: this.poolStore.outcome }] : []),
     ];
@@ -1758,12 +1758,12 @@ export class CodexEngineAdapter implements DuplexTransport {
   }
 
   private queueStore(): OpenCraftHostQueue {
-    if (!this.queue) throw new Error("Codex Host queue is unavailable");
+    if (!this.queue) throw new Error("Host queue is unavailable");
     return this.queue;
   }
 
   private attachmentRecords(): OpenCraftMessageAttachments {
-    if (!this.messageAttachments) throw new Error("Codex message attachments are unavailable");
+    if (!this.messageAttachments) throw new Error("Message attachment storage is unavailable");
     return this.messageAttachments;
   }
 

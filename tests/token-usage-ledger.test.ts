@@ -140,7 +140,7 @@ test("v6 metering sources survive the additive v7/v8 recovery upgrade with their
     previous.database.close();
     const upgraded=new OpenCraftHostStateDatabase(directory);
     try {
-      assert.equal(upgraded.outcome.appliedVersion,12);
+      assert.equal(upgraded.outcome.appliedVersion,13);
       assert.equal(upgraded.database.prepare("SELECT checksum FROM schema_migrations WHERE version=6").get()!.checksum,checksum);
       const source=upgraded.database.prepare("SELECT counts_json,observed_ms FROM token_usage_sources").get()!;
       assert.equal(JSON.parse(String(source.counts_json)).totalTokens,"123");
@@ -250,7 +250,7 @@ test("NF-11: upgrade from the published v5 preserves queue/sender data and rejec
     old.database.prepare("INSERT INTO message_senders VALUES(?,?,?,?)").run("old-thread", "old-input", '{"kind":"synthetic"}', 42);
     old.database.close();
     const upgraded = new OpenCraftHostStateDatabase(root);
-    assert.equal(upgraded.outcome.status, "migrated"); assert.equal(upgraded.outcome.appliedVersion, 12);
+    assert.equal(upgraded.outcome.status, "migrated"); assert.equal(upgraded.outcome.appliedVersion, 13);
     assert.equal(upgraded.database.prepare("SELECT accepted_at_ms FROM message_senders").get()?.accepted_at_ms, 42);
     assert.equal(upgraded.database.prepare("SELECT COUNT(*) AS n FROM token_usage_sources").get()?.n, 0);
     upgraded.database.exec("UPDATE schema_migrations SET checksum='synthetic-invalid-checksum' WHERE version=5");

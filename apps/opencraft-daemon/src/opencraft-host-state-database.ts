@@ -81,7 +81,20 @@ CREATE TABLE ioa_presence_sync (
 ) STRICT;
 `;
 const PRE_TOKEN_USAGE_SCHEMA = LEGACY_SCHEMA + OPENCRAFT_HOST_IOA_CREATORS + OPENCRAFT_HOST_SENDER_ORIGINS + OPENCRAFT_HOST_CATALOG;
-const FULL_SCHEMA = PRE_TOKEN_USAGE_SCHEMA + OPENCRAFT_HOST_TOKEN_USAGE + OPENCRAFT_HOST_TOKEN_USAGE_RUNTIME + OPENCRAFT_HOST_TOKEN_USAGE_COUNTERS + OPENCRAFT_HOST_TOKEN_USAGE_QUERY + OPENCRAFT_HOST_TOKEN_USAGE_ATTEMPTS + OPENCRAFT_HOST_TOKEN_USAGE_ACTORS + OPENCRAFT_HOST_TOKEN_USAGE_FROZEN;
+const LEGACY_FULL_SCHEMA = PRE_TOKEN_USAGE_SCHEMA + OPENCRAFT_HOST_TOKEN_USAGE + OPENCRAFT_HOST_TOKEN_USAGE_RUNTIME + OPENCRAFT_HOST_TOKEN_USAGE_COUNTERS + OPENCRAFT_HOST_TOKEN_USAGE_QUERY + OPENCRAFT_HOST_TOKEN_USAGE_ATTEMPTS + OPENCRAFT_HOST_TOKEN_USAGE_ACTORS + OPENCRAFT_HOST_TOKEN_USAGE_FROZEN;
+/** v13 changes owned live names; published v1–v12 SQL remains byte-for-byte intact. */
+export const OPENCRAFT_HOST_STATE_OWNED_NAMES = `
+ALTER TABLE codex_host_queue RENAME TO opencraft_host_queue;
+DROP INDEX codex_host_queue_order;
+DROP INDEX codex_host_queue_state;
+CREATE INDEX opencraft_host_queue_order ON opencraft_host_queue(thread_id, position, created_at_ms);
+CREATE INDEX opencraft_host_queue_state ON opencraft_host_queue(state, thread_id);
+ALTER TABLE codex_thread_catalog RENAME TO opencraft_thread_catalog;
+DROP INDEX codex_thread_catalog_recency;
+CREATE INDEX opencraft_thread_catalog_recency ON opencraft_thread_catalog(archived,deleted,updated_at DESC,thread_id);
+ALTER TABLE codex_catalog_sync RENAME TO opencraft_catalog_sync;
+`;
+const FULL_SCHEMA = LEGACY_FULL_SCHEMA + OPENCRAFT_HOST_STATE_OWNED_NAMES;
 // The early surviving source and deployed CREATE/ALTER sequence prove these
 // room layouts. Only known objects/constraints are accepted; records are retained.
 const LEGACY_ROOM_COLUMNS = [
@@ -97,11 +110,21 @@ const legacyCandidates = LEGACY_ROOM_COLUMNS.map(columns => createMissingLegacyO
 // upgrade input. Do not broaden this to arbitrary subsets of later schemas.
 const previousLegacy = createMissingLegacyObjects(PRE_TOKEN_USAGE_SCHEMA);
 const previousObjectCount = (PRE_TOKEN_USAGE_SCHEMA.match(/CREATE (?:TABLE|INDEX) /g) ?? []).length;
+const priorFullLegacy = createMissingLegacyObjects(LEGACY_FULL_SCHEMA);
+const priorFullObjectCount = (LEGACY_FULL_SCHEMA.match(/CREATE (?:TABLE|INDEX) /g) ?? []).length;
 const legacyMigration = {
   accepts: (fingerprint: string, objects: Parameters<(typeof legacyCandidates)[number]["accepts"]>[1]) =>
     legacyCandidates.some(candidate => candidate.accepts(fingerprint, objects)) ||
-    (objects.length === previousObjectCount && previousLegacy.accepts(fingerprint, objects)),
+    (objects.length === previousObjectCount && previousLegacy.accepts(fingerprint, objects)) ||
+    (objects.length === priorFullObjectCount && priorFullLegacy.accepts(fingerprint, objects)),
   migrate: (database: DatabaseSync) => {
+    // A complete previous schema was formerly adopted without replaying its ALTERs.
+    const objects = database.prepare("SELECT type,name,sql FROM sqlite_master WHERE name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name!='schema_migrations' ORDER BY type,name")
+      .all() as Array<{ type: string; name: string; sql: string }>;
+    if (objects.length === priorFullObjectCount && priorFullLegacy.accepts("", objects)) {
+      database.exec(OPENCRAFT_HOST_STATE_OWNED_NAMES);
+      return;
+    }
     const columns = database.prepare("PRAGMA table_info(codex_bot_rooms)").all().map(row => String(row.name));
     if (columns.length && columns.join(",") !== "thread_id,created_ms,cwd,draft,native_thread_id") {
       database.exec("ALTER TABLE codex_bot_rooms RENAME TO codex_bot_rooms_legacy");
@@ -111,7 +134,8 @@ const legacyMigration = {
         SELECT thread_id,created_ms,${existing("cwd", "NULL")},${existing("draft", "0")},${existing("native_thread_id", "NULL")}
         FROM codex_bot_rooms_legacy; DROP TABLE codex_bot_rooms_legacy;`);
     }
-    database.exec(FULL_SCHEMA.replace(/CREATE (TABLE|INDEX) /g, "CREATE $1 IF NOT EXISTS "));
+    database.exec(LEGACY_FULL_SCHEMA.replace(/CREATE (TABLE|INDEX) /g, "CREATE $1 IF NOT EXISTS "));
+    database.exec(OPENCRAFT_HOST_STATE_OWNED_NAMES);
   },
 };
 
@@ -129,6 +153,7 @@ export const OPENCRAFT_HOST_STATE_MIGRATIONS = [
   { version: 10, name: "token-usage-delivery-attempts", sql: OPENCRAFT_HOST_TOKEN_USAGE_ATTEMPTS },
   { version: 11, name: "token-usage-actor-projections", sql: OPENCRAFT_HOST_TOKEN_USAGE_ACTORS },
   { version: 12, name: "token-usage-frozen-coverage", sql: OPENCRAFT_HOST_TOKEN_USAGE_FROZEN },
+  { version: 13, name: "opencraft-host-state-owned-names", sql: OPENCRAFT_HOST_STATE_OWNED_NAMES },
 ] as const;
 
 export class OpenCraftHostStateDatabase {

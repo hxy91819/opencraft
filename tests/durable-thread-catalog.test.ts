@@ -31,8 +31,9 @@ test("v4 to v5 migration preserves every existing row and checksum history; tamp
       INSERT INTO ioa_thread_creators VALUES('t','alice'); INSERT INTO ioa_message_presence VALUES('t','m','alice');
       INSERT INTO ioa_participant_state VALUES('t',7); INSERT INTO message_sender_origins VALUES('t','m','parent');
       INSERT INTO codex_host_queue VALUES('q','t','client','[]',1,1,1,'queued',NULL,NULL);`);
-    const tables = ["message_senders", "ioa_thread_creators", "ioa_message_presence", "ioa_participant_state", "message_sender_origins", "codex_host_queue"];
-    const before = tables.map(table => old.prepare(`SELECT * FROM ${table}`).all());
+    const oldTables = ["message_senders", "ioa_thread_creators", "ioa_message_presence", "ioa_participant_state", "message_sender_origins", "codex_host_queue"];
+    const tables = oldTables.map(table => table === "codex_host_queue" ? "opencraft_host_queue" : table);
+    const before = oldTables.map(table => old.prepare(`SELECT * FROM ${table}`).all());
     const history = old.prepare("SELECT * FROM schema_migrations ORDER BY version").all(); old.close();
     let owner = new OpenCraftHostStateDatabase(root);
     assert.equal(owner.outcome.status, "migrated"); assert.ok(owner.outcome.backupPath); assert.deepEqual(owner.outcome.movedAsidePaths, []);
@@ -56,7 +57,7 @@ test("server catalog persists only metadata; deterministic local pagination and 
   const second = await catalog.list({...query, limit: 1, cursor: first.nextCursor}); assert.deepEqual(second.data.map(t=>t.id),["b"]);
   assert.deepEqual((await catalog.list({...query,cursor:second.nextCursor})).data.map(t=>t.id),["c"]);
   assert.deepEqual((await catalog.list({...query,archived:true})).data.map(t=>t.id),["archived"]);
-  const stored = owner.database.prepare("SELECT metadata_json FROM codex_thread_catalog").all().map(r=>String(r.metadata_json)).join();
+  const stored = owner.database.prepare("SELECT metadata_json FROM opencraft_thread_catalog").all().map(r=>String(r.metadata_json)).join();
   assert.ok(!stored.includes("MUST NOT persist") && !stored.includes("not metadata")); assert.deepEqual(first.data[0]!.turns,[]);
   catalog.close();
   const restarted = new DurableThreadCatalog(owner.database, {list: () => new Promise(()=>{}),changed:()=>{}}); t.after(()=>restarted.close());
@@ -94,7 +95,7 @@ test("closing synchronization revokes late results before the owner closes its D
   const {owner}=await fixture(t);let release:(v:unknown)=>void=()=>{};
   const catalog=new DurableThreadCatalog(owner.database,{list:()=>new Promise(resolve=>{release=resolve}),changed:()=>assert.fail("closed service cannot publish")});
   const job=catalog.refresh();catalog.close();release({data:[row("late",1)],nextCursor:null});await job;
-  assert.equal(owner.database.prepare("SELECT COUNT(*) AS n FROM codex_thread_catalog").get()?.n,0);
+  assert.equal(owner.database.prepare("SELECT COUNT(*) AS n FROM opencraft_thread_catalog").get()?.n,0);
 });
 
 test("real remote adapter serves its server-owned catalog and keeps advanced native queries separate", async t => {

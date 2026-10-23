@@ -25,21 +25,21 @@ for (const [index, columns] of layouts.entries()) test(`known deployed Bot layou
   old.close();
   const owner = new OpenCraftHostStateDatabase(root);
   assert.equal(owner.outcome.status, "migrated");
-  assert.equal(owner.outcome.appliedVersion, 12); assert.ok(owner.outcome.backupPath); assert.deepEqual(owner.outcome.movedAsidePaths, []);
+  assert.equal(owner.outcome.appliedVersion, 13); assert.ok(owner.outcome.backupPath); assert.deepEqual(owner.outcome.movedAsidePaths, []);
   const row = owner.database.prepare("SELECT * FROM codex_bot_rooms").get()!;
   assert.equal(row.thread_id, "room"); assert.equal(row.created_ms, 42);
   assert.equal(row.native_thread_id, index ? "native" : null); assert.equal(row.draft, index ? 1 : 0);
   assert.equal(owner.database.prepare("SELECT result_json FROM codex_bot_commands").get()?.result_json, null);
   assert.equal(owner.database.prepare("SELECT native_id FROM codex_bot_message_slots").get()?.native_id, "item");
   const ledger = owner.database.prepare("SELECT version,name,checksum FROM schema_migrations ORDER BY version").all();
-  assert.equal(ledger.length, 12); assert.equal(ledger[0]?.name, "codex-host-state");
+  assert.equal(ledger.length, 13); assert.equal(ledger[0]?.name, "codex-host-state");
   assert.equal(ledger[0]?.checksum, "c2508ef065ded8821d7c071fab1603b403b4e5e9220569916f1cee53f82025c3", "published v1 checksum is immutable");
   owner.close();
-  // Exact old constructor/SQL ignores the additive ledger and still accepts this code rollback.
-  const rollback = new DatabaseSync(path);
-  rollback.exec("CREATE TABLE IF NOT EXISTS codex_bot_rooms (thread_id TEXT PRIMARY KEY, created_ms INTEGER NOT NULL);");
-  rollback.prepare("INSERT INTO codex_bot_rooms(thread_id,created_ms,cwd,draft) VALUES (?,?,?,?)").run("rollback-room", 50, "/retained", 1);
-  assert.equal(rollback.prepare("SELECT thread_id FROM codex_bot_rooms WHERE thread_id='room'").get()?.thread_id, "room"); rollback.close();
+  // Historical Bot tables remain readable; this is not permission to roll back the live queue schema.
+  const historical = new DatabaseSync(path);
+  historical.exec("CREATE TABLE IF NOT EXISTS codex_bot_rooms (thread_id TEXT PRIMARY KEY, created_ms INTEGER NOT NULL);");
+  historical.prepare("INSERT INTO codex_bot_rooms(thread_id,created_ms,cwd,draft) VALUES (?,?,?,?)").run("rollback-room", 50, "/retained", 1);
+  assert.equal(historical.prepare("SELECT thread_id FROM codex_bot_rooms WHERE thread_id='room'").get()?.thread_id, "room"); historical.close();
   const reopened = new OpenCraftHostStateDatabase(root); assert.equal(reopened.outcome.status, "up-to-date"); reopened.close();
 }));
 
@@ -63,5 +63,5 @@ test("known room conversion failure rolls back records and leaves a pre-write sn
   const read = new DatabaseSync(path, { readOnly: true });
   assert.equal(read.prepare("SELECT thread_id FROM codex_bot_rooms").get()?.thread_id, "room");
   assert.equal(read.prepare("SELECT name FROM sqlite_master WHERE name='schema_migrations'").get(), undefined); read.close();
-  assert.ok((await readdir(root)).some(name => name.includes(".pre-v12-")));
+  assert.ok((await readdir(root)).some(name => name.includes(".pre-v13-")));
 }));

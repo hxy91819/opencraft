@@ -54,20 +54,20 @@ export class OpenCraftHostQueue {
     this.owner = database === undefined ? new OpenCraftHostStateDatabase(dataDirectory) : null;
     this.db = database ?? this.owner!.database;
     this.outcome = this.owner?.outcome;
-    this.db.prepare("UPDATE codex_host_queue SET state='unknown', paused_reason='steer-delivery-unconfirmed', updated_at_ms=? WHERE state='dispatching'").run(Date.now());
+    this.db.prepare("UPDATE opencraft_host_queue SET state='unknown', paused_reason='steer-delivery-unconfirmed', updated_at_ms=? WHERE state='dispatching'").run(Date.now());
   }
 
   close(): void { this.owner?.close(); }
 
   private row(threadId: string, id: string): HostQueuedSubmission | null {
-    const row = this.db.prepare("SELECT * FROM codex_host_queue WHERE thread_id=? AND id=?").get(threadId, id);
+    const row = this.db.prepare("SELECT * FROM opencraft_host_queue WHERE thread_id=? AND id=?").get(threadId, id);
     return row ? fromRow(row) : null;
   }
 
   find(threadId: string, id: string): HostQueuedSubmission | null { return this.row(threadId, id); }
 
   findByClientId(threadId: string, clientId: string): HostQueuedSubmission | null {
-    const row = this.db.prepare("SELECT * FROM codex_host_queue WHERE thread_id=? AND client_id=?").get(threadId, clientId);
+    const row = this.db.prepare("SELECT * FROM opencraft_host_queue WHERE thread_id=? AND client_id=?").get(threadId, clientId);
     return row ? fromRow(row) : null;
   }
 
@@ -81,44 +81,44 @@ export class OpenCraftHostQueue {
       return existing;
     }
     const now = Date.now();
-    const position = Number((this.db.prepare("SELECT COALESCE(MAX(position), 0) AS position FROM codex_host_queue WHERE thread_id=?").get(threadId) as { position: number }).position) + 1;
+    const position = Number((this.db.prepare("SELECT COALESCE(MAX(position), 0) AS position FROM opencraft_host_queue WHERE thread_id=?").get(threadId) as { position: number }).position) + 1;
     const id = randomUUID();
-    this.db.prepare("INSERT INTO codex_host_queue(id,thread_id,client_id,input_json,position,created_at_ms,updated_at_ms,state) VALUES(?,?,?,?,?,?,?,'queued')")
+    this.db.prepare("INSERT INTO opencraft_host_queue(id,thread_id,client_id,input_json,position,created_at_ms,updated_at_ms,state) VALUES(?,?,?,?,?,?,?,'queued')")
       .run(id, threadId, clientId, JSON.stringify(input), position, now, now);
     return this.row(threadId, id)!;
   }
 
   list(threadId: string): HostQueuedSubmission[] {
-    return this.db.prepare("SELECT * FROM codex_host_queue WHERE thread_id=? AND state IN ('queued','dispatching','steering','unknown') ORDER BY position,created_at_ms,id")
+    return this.db.prepare("SELECT * FROM opencraft_host_queue WHERE thread_id=? AND state IN ('queued','dispatching','steering','unknown') ORDER BY position,created_at_ms,id")
       .all(threadId).map(fromRow);
   }
 
   observationCount(threadId: string): number {
-    return Number(this.db.prepare("SELECT count(*) AS n FROM codex_host_queue WHERE thread_id=? AND state IN ('queued','dispatching','unknown')").get(threadId)!.n);
+    return Number(this.db.prepare("SELECT count(*) AS n FROM opencraft_host_queue WHERE thread_id=? AND state IN ('queued','dispatching','unknown')").get(threadId)!.n);
   }
 
   pendingThreads(): string[] {
-    return this.db.prepare("SELECT DISTINCT thread_id FROM codex_host_queue WHERE state IN ('queued','dispatching','steering','unknown')")
+    return this.db.prepare("SELECT DISTINCT thread_id FROM opencraft_host_queue WHERE state IN ('queued','dispatching','steering','unknown')")
       .all().map(row => requiredText(row.thread_id, "thread id"));
   }
 
   firstUnsettled(threadId: string): HostQueuedSubmission | null { return this.list(threadId)[0] ?? null; }
 
   firstAwaitingAdmission(threadId: string): HostQueuedSubmission | null {
-    const row = this.db.prepare("SELECT * FROM codex_host_queue WHERE thread_id=? AND state IN ('queued','dispatching','unknown') ORDER BY position,created_at_ms,id LIMIT 1")
+    const row = this.db.prepare("SELECT * FROM opencraft_host_queue WHERE thread_id=? AND state IN ('queued','dispatching','unknown') ORDER BY position,created_at_ms,id LIMIT 1")
       .get(threadId);
     return row ? fromRow(row) : null;
   }
 
   update(threadId: string, id: string, input: readonly unknown[]): HostQueuedSubmission | null {
     parseInput(input);
-    const result = this.db.prepare("UPDATE codex_host_queue SET input_json=?,updated_at_ms=? WHERE thread_id=? AND id=? AND state='queued'")
+    const result = this.db.prepare("UPDATE opencraft_host_queue SET input_json=?,updated_at_ms=? WHERE thread_id=? AND id=? AND state='queued'")
       .run(JSON.stringify(input), Date.now(), threadId, id);
     return result.changes === 1 ? this.row(threadId, id) : null;
   }
 
   delete(threadId: string, id: string): boolean {
-    return this.db.prepare("UPDATE codex_host_queue SET state='discarded',updated_at_ms=? WHERE thread_id=? AND id=? AND state='queued'")
+    return this.db.prepare("UPDATE opencraft_host_queue SET state='discarded',updated_at_ms=? WHERE thread_id=? AND id=? AND state='queued'")
       .run(Date.now(), threadId, id).changes === 1;
   }
 
@@ -132,30 +132,30 @@ export class OpenCraftHostQueue {
     }
     this.db.exec("BEGIN IMMEDIATE");
     try {
-      const update = this.db.prepare("UPDATE codex_host_queue SET position=?,updated_at_ms=? WHERE thread_id=? AND id=? AND state='queued'");
+      const update = this.db.prepare("UPDATE opencraft_host_queue SET position=?,updated_at_ms=? WHERE thread_id=? AND id=? AND state='queued'");
       for (const [index, id] of ids.entries()) update.run(index + 1, Date.now(), threadId, id);
       this.db.exec("COMMIT");
     } catch (error) { this.db.exec("ROLLBACK"); throw error; }
   }
 
   claim(threadId: string, id: string, targetTurnId: string | null): HostQueuedSubmission | null {
-    const result = this.db.prepare("UPDATE codex_host_queue SET state='dispatching',target_turn_id=?,paused_reason=NULL,updated_at_ms=? WHERE thread_id=? AND id=? AND state='queued'")
+    const result = this.db.prepare("UPDATE opencraft_host_queue SET state='dispatching',target_turn_id=?,paused_reason=NULL,updated_at_ms=? WHERE thread_id=? AND id=? AND state='queued'")
       .run(targetTurnId, Date.now(), threadId, id);
     return result.changes === 1 ? this.row(threadId, id) : null;
   }
 
   settle(threadId: string, id: string, state: "queued" | "steering" | "unknown" | "delivered" | "discarded", reason: string | null = null, turnId: string | null = null): boolean {
-    return this.db.prepare("UPDATE codex_host_queue SET state=?,paused_reason=?,target_turn_id=COALESCE(?,target_turn_id),updated_at_ms=? WHERE thread_id=? AND id=? AND state IN ('dispatching','steering','unknown')")
+    return this.db.prepare("UPDATE opencraft_host_queue SET state=?,paused_reason=?,target_turn_id=COALESCE(?,target_turn_id),updated_at_ms=? WHERE thread_id=? AND id=? AND state IN ('dispatching','steering','unknown')")
       .run(state, reason, turnId, Date.now(), threadId, id).changes === 1;
   }
 
   discardUnknown(threadId: string, id: string, expectedTurnId: string): boolean {
-    return this.db.prepare("UPDATE codex_host_queue SET state='discarded',updated_at_ms=? WHERE thread_id=? AND id=? AND state='unknown' AND target_turn_id=?")
+    return this.db.prepare("UPDATE opencraft_host_queue SET state='discarded',updated_at_ms=? WHERE thread_id=? AND id=? AND state='unknown' AND target_turn_id=?")
       .run(Date.now(), threadId, id, expectedTurnId).changes === 1;
   }
 
   discardThread(threadId: string): number {
-    return Number(this.db.prepare("UPDATE codex_host_queue SET state='discarded',updated_at_ms=? WHERE thread_id=? AND state IN ('queued','dispatching','steering','unknown')")
+    return Number(this.db.prepare("UPDATE opencraft_host_queue SET state='discarded',updated_at_ms=? WHERE thread_id=? AND state IN ('queued','dispatching','steering','unknown')")
       .run(Date.now(), threadId).changes);
   }
 
@@ -172,7 +172,7 @@ export class OpenCraftHostQueue {
       if (rows.length === 0) return 0;
       this.db.exec("BEGIN IMMEDIATE");
       try {
-        const insert = this.db.prepare("INSERT OR IGNORE INTO codex_host_queue(id,thread_id,client_id,input_json,position,created_at_ms,updated_at_ms,state,target_turn_id,paused_reason) VALUES(?,?,?,?,?,?,?,?,?,?)");
+        const insert = this.db.prepare("INSERT OR IGNORE INTO opencraft_host_queue(id,thread_id,client_id,input_json,position,created_at_ms,updated_at_ms,state,target_turn_id,paused_reason) VALUES(?,?,?,?,?,?,?,?,?,?)");
         for (const row of rows) {
           const payload = JSON.parse(requiredText(row.payload_json, "native queue payload")) as { UserInput?: { content?: unknown; client_id?: unknown } };
           const user = payload.UserInput;

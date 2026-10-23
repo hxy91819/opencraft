@@ -190,7 +190,7 @@ test('IM list traverses relay, managed Web proxy, verified human admission and c
   const im=await ImChannelService.open([],{dataDirectory:dir,actors,actorAccess:human,collaboration:{execution:{serverId:'im-server',hostId:'im-host'}},getAppHost:()=>null,admittedActor:id=>access.admitsActor(id)});t.after(()=>im.close());
   const {HeadlessConnectors}=await import('../packages/connector-host/src/headless');
   const {SessionCapabilities}=await import('../packages/session-capabilities/src/index');
-  const connectors=new HeadlessConnectors(join(dir,'connectors'),human,{'local-codex':'server:relay:codex'},new SessionCapabilities(),id=>access.admitsActor(id));t.after(()=>connectors.close());
+  const connectors=new HeadlessConnectors(join(dir,'connectors'),human,{'connector-host':'server:relay:connectors'},new SessionCapabilities(),id=>access.admitsActor(id));t.after(()=>connectors.close());
   const web=await createWorkbenchWebServer({root:dir,appServerTarget:null,loopbackOnly:true,accessService:access,actorService:human,getImService:()=>im,connectorService:connectors});t.after(()=>web.close());
   const address=await web.listen({host:'127.0.0.1',port:0});const proxy=createHeadlessBackendProxy(`http://127.0.0.1:${address.port}`);
   // Match the managed entry dispatch: an omitted API route would first consume
@@ -206,7 +206,7 @@ test('IM list traverses relay, managed Web proxy, verified human admission and c
   const base=`http://127.0.0.1:${(relay.server.address() as any).port}`;const client=connectRelay({relay:base,credential:route.credential,targetPort:route.targetPort,allowLoopbackInsecure:true});t.after(()=>client.close());await waitFor(()=>relay.connected('im'));
   const response=await virtualFetch(base+'/__opencraft_im',{method:'POST',headers:{host:'im.test',origin:scope.origin,'content-type':'application/json',...signed()},body:Buffer.from(JSON.stringify({action:'list'}))});
   const document=await response.json();assert.equal(response.status,200,JSON.stringify(document));assert.deepEqual(document.channels,[]);assert.equal(document.serverId,'im-server');assert.equal(actors.get(document.actorId)?.kind,'human');
-  const connectorResponse=await virtualFetch(base+'/__opencraft_connectors',{method:'POST',headers:{host:'im.test',origin:scope.origin,'content-type':'application/json',...signed()},body:Buffer.from(JSON.stringify({hostId:'local-codex',method:'state',params:{}}))});
+  const connectorResponse=await virtualFetch(base+'/__opencraft_connectors',{method:'POST',headers:{host:'im.test',origin:scope.origin,'content-type':'application/json',...signed()},body:Buffer.from(JSON.stringify({hostId:'connector-host',method:'state',params:{}}))});
   assert.equal(connectorResponse.status,200);assert.deepEqual((await connectorResponse.json()).instances,[],'connector route survives managed proxy and one-use relay assertion');
 
 });
