@@ -164,6 +164,15 @@ source rebranding. Mac builds now produce `OpenCraft.app`, and scripts use
 explicit `OPENCRAFT_MAC_*` settings. Builds must be deployed separately; source renaming
 does not replace the running production website or Mac application.
 
+## Native Replica identity
+
+Expo native Replica files use the owned `opencraft-*.db` names. Exact former
+files are snapshot inputs; existing current caches win, and a complete SQLite
+snapshot is installed without overwriting a competing destination. Old files
+remain recoverable and current cache clears do not revive them. See
+[native Replica migration](../native-replica-identity-migration.md) for the native
+owner, WAL, recovery and verification boundaries.
+
 ## Browser metadata identity
 
 Page, tab and conversation-binding metadata now writes `opencraft.*` keys.
