@@ -938,6 +938,8 @@ export function Conversation({
     const responseRestore = scrollPolicyRef.current === "response-placement"
       ? responseApiRef.current?.captureRestoreSnapshot() ?? responseRestoreRef.current
       : null;
+    const virtualizerRestore = virtualizerApiRef.current?.captureRestoreSnapshot()
+      ?? virtualizerRestoreSnapshotRef.current;
     restoreCallbackRef.current?.({
       agentActivityCollapsedById: activityCollapsedByIdRef.current,
       chatReadingPositions: Object.fromEntries(chatReadingPositions),
