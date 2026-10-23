@@ -51,6 +51,14 @@ consume these same names. Host queue, Host state and message-metadata tests use
   attachment metadata remain compatible. A CSS class is not a route or storage
   key. Native-engine tests and operational documentation retain the engine name
   where it identifies what they exercise.
+- Reading old appearance preferences copies them to `opencraft.appearance-theme`
+  and `opencraft.appearance-theme-id`, normalizing exact built-in aliases. Current
+  keys take precedence; old entries remain available for recovery. An unreadable
+  current key is never treated as missing for migration writes. Opaque extension
+  IDs remain unchanged even while the extension is unavailable; displaying a
+  fallback does not persist that fallback as the requested theme. Fresh defaults
+  are not written as user choices, and denied storage writes do not reset the
+  in-memory selection. Old input aliases remain readable for offline upgrades.
 - Previously saved inline-image transport labels remain readable without a
   migration; the compiler does not use them to select an engine. Native uploaded
   file IDs retain their existing metadata and protocol representation.
