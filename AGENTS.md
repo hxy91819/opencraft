@@ -60,7 +60,7 @@ GitHub `opencraft-app/opencraft` 是目标核心上游，产品身份来源、�
 - 修改 iOS Shell 或内置 Bot 功能时，先读 [Expo 局部 Agent 入口](apps/workbench-expo/AGENTS.md)，由它路由 [Shell 状态](docs/mobile-shell.md)与[原生／DOM 桥接](docs/mobile-bot-bridge.md)；优先修改现有过时规则，避免把旧底栏、旧网页套壳等已失效方案追加成并列事实。
 - App 内功能的 JS/CSS 与 Worker 必须预制在安装包中；远程只提供 API 数据和媒体，禁止以网页或动态代码作为功能回退。原生设备能力经平台端口接入，外部账号、实名与订阅页面交给系统浏览器。具体边界见 [Embedded Bot bridge](docs/mobile-bot-bridge.md#native-audio-and-packaged-code)。
 - 手机端请求、缓存和离线写入先按 [移动数据协调契约](docs/mobile-data-architecture.md) 区分读取、在线事务与可持久化草稿；不得把 TanStack Query 的内存缓存、WebView 的独立 JS 环境或普通重试称为全 App 持久请求队列。账号展示缓存必须按会话与区域隔离，退出登录清除。
-- 会话连续性按 [ChatUI 架构](docs/chat-ui-architecture.md#跨桌面手机和平板的会话连续性)维护一个共享语义模型：Scope/View 身份、草稿保存与丢弃、前台追平条件属于共享包；桌面浏览器和手机/平板只适配存储、生命周期、手势与布局。V3 连接代次不能当持久 Replica 游标，旧消息缓存只可展示，不能授权发送或交互；任何私有缓存都要按账号和 Host 隔离，退出账号撤销对应作用域。不要因屏幕宽度另造一套业务状态机。
+- 会话连续性按 [ChatUI 架构](docs/architecture/chat-ui/composer-and-drafts.md#跨桌面手机和平板的会话连续性)维护一个共享语义模型：Scope/View 身份、草稿保存与丢弃、前台追平条件属于共享包；桌面浏览器和手机/平板只适配存储、生命周期、手势与布局。V3 连接代次不能当持久 Replica 游标，旧消息缓存只可展示，不能授权发送或交互；任何私有缓存都要按账号和 Host 隔离，退出账号撤销对应作用域。不要因屏幕宽度另造一套业务状态机。
 - 手机端读取状态按“可展示数据、最后成功时间、后台刷新、错误、会话有效性”分别建模：已有同会话数据时，后台刷新不得清空数据或切回全屏 loading；短暂失败保留旧布局并给轻量重试。只有冷启动且没有可用数据时显示与最终页面结构接近的静态占位，避免卡片消失、列表跳动和闪动菊花。缓存身份只能用于展示；实名、支付及账号安全操作在当前服务端状态核实前不可凭旧缓存放行。成功写入后精确失效相关查询，401、退出或切换账号/区域清除对应作用域。头像等媒体的缓存键只在资源确实改变时更新，不能每次普通刷新都强制重载。
 - 修改手机读取页时先列出 `cold-loading / cached-refreshing / fresh / cached-error / session-expired` 五态，确认每态的数据来源、占位几何、可用动作和退出条件；实现中把 `data` 与 `isFetching` 分开，刷新只更新数据和轻量状态槽位，不能卸载整页、重置滚动位置或清空已渲染列表。重复进入时，首帧就从当前会话的内存缓存取值；不能等 `useEffect` 异步读取后才用缓存，否则仍会闪一帧占位。真正冷启动的占位按实际卡片和行高排布，禁用未核实的敏感操作。验收至少覆盖首次进入、30 秒内重复进入、后台恢复、断网再联网、刷新失败、401 与切换账号；逐帧查看是否出现短页、跳动或旧账号资料。细化策略见 [移动数据协调契约](docs/mobile-data-architecture.md)。
 - 当需求指定 HeroUI Native/NextUI Native 的抽屉、弹层或其他交互控件时，要求涵盖**容器本身**的手势、遮罩、关闭、可访问性和动画；仅在手写 `Animated.View`、`PanResponder` 或普通 `View` 里放 HeroUI 按钮，不算使用该原生控件。实现前核对当前安装版本实际导出的组件及 Expo Go 支持；若库没有对应控件，选用可在 Expo Go 运行的成熟原生交互原语，并在 Task Pack 与交接中明确组件来源及例外，不能把它标为 HeroUI Native 抽屉。禁止引入 Unistyles。
@@ -74,7 +74,7 @@ GitHub `opencraft-app/opencraft` 是目标核心上游，产品身份来源、�
 - 在系统边界解析并校验未知数据，内部传递已收窄类型；一次性类型留在调用方，只有真实跨包 contract 才进入 `packages/`。
 - Optional/nullable 字段必须表示真实缺失。默认值只在 authority 边界填充；声明但忽略的 capability、route、command 或 wire 字段必须删除或端到端实现。
 - 协议变化必须同时检查声明、生成类型、Host/provider adapter、持久化/恢复、失败语义和兼容测试。共享 TypeScript 能编译不等于已部署 Host 兼容。
-- 内建 UI Preferences 统一消费 `UiPreferencesRuntime`；插件的个人本地呈现偏好可消费可选 `api.localPreferences`，由平台隔离产品/插件/账号与激活生命周期、插件持有 schema；不代替业务文档 CAS 或共享账号 authority。React 不直接选择 localStorage、IndexedDB、SQLite 或远端存储。scope、adapter、CAS 和正式 key 以 [UI preference authority](docs/platform-architecture.md#ui-preference-authority) 为准。
+- 内建 UI Preferences 统一消费 `UiPreferencesRuntime`；插件的个人本地呈现偏好可消费可选 `api.localPreferences`，由平台隔离产品/插件/账号与激活生命周期、插件持有 schema；不代替业务文档 CAS 或共享账号 authority。React 不直接选择 localStorage、IndexedDB、SQLite 或远端存储。scope、adapter、CAS 和正式 key 以 [UI preference authority](docs/architecture/platform/storage-and-preferences.md#ui-preference-authority) 为准。
 - Desktop 路径必须消费 [Directory identity charter](docs/architecture/product-identity.md#directory-identity-charter) 的唯一 resolver：生产数据根不得含 `vela`，旧 `@vela/*` 只允许作为幂等迁移输入；Main/Daemon/DSH 显式使用 runtime cwd，Thread workspace cwd 必须来自 Project/Thread，禁止回退 `process.cwd()`。
 - Hermes 的 Console 适配源码和生成工具属于下游产品，不是独立核心的安装或默认检查依赖。下游产品工作区持有机械生成层；不得直接编辑，须修改其前端真源后运行该产品的同步及只读漂移检查，连同 `UPSTREAM.json` 提交。详见 [历史与消费契约](docs/upstream-history.md)。
 - SQLite 表结构变更只在该库 owner 的 migrations 列表追加连续 version N+1；不得改写已发布迁移的 SQL 原文、名称或版本。生命周期与恢复契约见 [sqlite-lifecycle](docs/sqlite-lifecycle.md)。
@@ -85,7 +85,7 @@ GitHub `opencraft-app/opencraft` 是目标核心上游，产品身份来源、�
 
 ## 国际化
 
-OpenCraft 所有自有客户端及内置插件的用户界面遵循[全项目国际化约束](docs/internationalization.md)与[locale authority](docs/platform-architecture.md#internationalization-authority)。新增或调整的可见/无障碍文案必须消费既有应用 IntlRuntime/IntlPort 和稳定 ID、英文 defaultMessage，包含动态状态、空态、错误和通知；不得把文案写死后依赖英文回退。用户内容/实体身份/协议/诊断不翻译。现有全项目检查与显式存量清单不表示所有旧界面已完成迁移，不为新增硬编码扩增 baseline。运行 check:i18n/test:i18n，并验证相关入口切语言保留草稿/焦点/选区；不要添加全局翻译器或重挂载编辑器。各客户端支持语言和原生 provider 接线以实际实现为准。
+OpenCraft 所有自有客户端及内置插件的用户界面遵循[全项目国际化约束](docs/internationalization.md)与[locale authority](docs/architecture/platform/presentation-and-input.md#internationalization-authority)。新增或调整的可见/无障碍文案必须消费既有应用 IntlRuntime/IntlPort 和稳定 ID、英文 defaultMessage，包含动态状态、空态、错误和通知；不得把文案写死后依赖英文回退。用户内容/实体身份/协议/诊断不翻译。现有全项目检查与显式存量清单不表示所有旧界面已完成迁移，不为新增硬编码扩增 baseline。运行 check:i18n/test:i18n，并验证相关入口切语言保留草稿/焦点/选区；不要添加全局翻译器或重挂载编辑器。各客户端支持语言和原生 provider 接线以实际实现为准。
 
 ## 界面图标禁止 Lucide
 
