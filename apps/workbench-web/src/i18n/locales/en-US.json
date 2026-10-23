@@ -866,5 +866,12 @@
   "preview.noMatch": "No matches",
   "preview.columnWidth": "Column width",
   "preview.selectCell": "Select a cell to read its full contents",
-  "preview.cellContents": "Cell contents"
+  "preview.cellContents": "Cell contents",
+  "chat.command.outputUnavailable": "Execution result unavailable",
+  "chat.command.noOutput": "No output",
+  "chat.command.resultUnknown": "Result unknown",
+  "chat.command.stopped": "Stopped",
+  "chat.command.success": "Success",
+  "chat.command.exitCode": "Exit code {code}",
+  "chat.command.exitUnknown": "Exit code unknown"
 }

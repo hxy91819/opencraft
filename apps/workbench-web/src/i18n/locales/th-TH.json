@@ -868,5 +868,12 @@
   "preview.noMatch": "ไม่พบผลลัพธ์",
   "preview.columnWidth": "ความกว้างคอลัมน์",
   "preview.selectCell": "เลือกเซลล์เพื่ออ่านเนื้อหาทั้งหมด",
-  "preview.cellContents": "เนื้อหาเซลล์"
+  "preview.cellContents": "เนื้อหาเซลล์",
+  "chat.command.outputUnavailable": "ไม่พบผลการทำงาน",
+  "chat.command.noOutput": "ไม่มีเอาต์พุต",
+  "chat.command.resultUnknown": "ไม่ทราบผลลัพธ์",
+  "chat.command.stopped": "หยุดแล้ว",
+  "chat.command.success": "สำเร็จ",
+  "chat.command.exitCode": "รหัสออก {code}",
+  "chat.command.exitUnknown": "ไม่ทราบรหัสออก"
 }
