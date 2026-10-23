@@ -168,7 +168,7 @@ test("resource policies reject restricted external resources and can be overridd
     false,
   );
   assert.equal(runtime.resources.resolve("javascript:alert(1)", context).allowed, false);
-  assert.equal(runtime.resources.resolve("src/main.ts", { ...context, cwd: "/vela" }).target, "file:///vela/src/main.ts");
+  assert.equal(runtime.resources.resolve("src/main.ts", { ...context, cwd: "/opencraft" }).target, "file:///opencraft/src/main.ts");
   const removeHostRestriction = runtime.resources.register({
     name: "host-restricted-domain",
     priority: 100,
@@ -185,7 +185,7 @@ test("resource policies reject restricted external resources and can be overridd
     resolve: (target) => ({ allowed: true, target }),
   });
   assert.equal(
-    runtime.resources.resolve("file:///vela/a.ts", restricted).allowed,
+    runtime.resources.resolve("file:///opencraft/a.ts", restricted).allowed,
     true,
   );
   remove();
@@ -194,11 +194,11 @@ test("resource policies reject restricted external resources and can be overridd
 });
 
 test("Chat URLs distinguish navigation, workspace files, external links and unsafe schemes", () => {
-  const context = { cwd: "/vela", externalResourcePolicy: "allow" as const };
+  const context = { cwd: "/opencraft", externalResourcePolicy: "allow" as const };
   assert.deepEqual(resolveStandardChatResource("src/main.ts", context), {
     allowed: true,
     kind: "workspace-file",
-    target: "file:///vela/src/main.ts",
+    target: "file:///opencraft/src/main.ts",
   });
   assert.equal(
     resolveStandardChatResource("https://example.com", context).kind,
@@ -216,7 +216,7 @@ test("Chat URLs distinguish navigation, workspace files, external links and unsa
     {
       allowed: true,
       kind: "workspace-file",
-      target: "file:///vela/src/main.ts#L12C4-L18C9",
+      target: "file:///opencraft/src/main.ts#L12C4-L18C9",
     },
   );
   assert.equal(

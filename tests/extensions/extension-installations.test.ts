@@ -81,7 +81,7 @@ function barrier() {
 }
 
 test("manager retirement closes installation admission before owned cleanup", async () => {
-  const seed = installation("vela.owned", true);
+  const seed = installation("opencraft.owned", true);
   const runtime = await repository(new MemoryExtensionInstallationPersistence([seed]));
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   const entered = barrier(), cleanup = barrier();
@@ -92,7 +92,7 @@ test("manager retirement closes installation admission before owned cleanup", as
         return async () => { entered.release(); await cleanup.wait; };
       } };
       candidateLoads++;
-      return { manifest: manifest("vela.too-late"), activate() { candidateStarts++; } };
+      return { manifest: manifest("opencraft.too-late"), activate() { candidateStarts++; } };
     },
   } });
   try {
@@ -113,7 +113,7 @@ test("manager retirement closes installation admission before owned cleanup", as
 });
 
 test("manager retirement shares cleanup failure and still retires every owned extension", async () => {
-  const good = installation("vela.a-good", true), bad = installation("vela.z-bad", true);
+  const good = installation("opencraft.a-good", true), bad = installation("opencraft.z-bad", true);
   const runtime = await repository(new MemoryExtensionInstallationPersistence([good, bad]));
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   const entered = barrier(), cleanup = barrier();
@@ -151,14 +151,14 @@ test("manager retirement drains entered loading, rejects queued work and preserv
   const runtime = await repository(new MemoryExtensionInstallationPersistence());
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   let foreignCleanups = 0, ownedCleanups = 0, loads = 0, finished = false;
-  await supervisor.activate({ manifest: manifest("vela.foreign"), activate() {
+  await supervisor.activate({ manifest: manifest("opencraft.foreign"), activate() {
     return () => { foreignCleanups++; };
   } });
   const entered = barrier(), loading = barrier();
   const manager = new ExtensionManager({ installations: runtime.repository, supervisor, loader: {
     async load() {
       loads++; entered.release(); await loading.wait;
-      return { manifest: manifest("vela.admitted"), activate() { return () => { ownedCleanups++; }; } };
+      return { manifest: manifest("opencraft.admitted"), activate() { return () => { ownedCleanups++; }; } };
     },
   } });
   try {
@@ -177,12 +177,12 @@ test("manager retirement drains entered loading, rejects queued work and preserv
     assert.equal(loads, 1);
     assert.equal(ownedCleanups, 1);
     assert.equal(foreignCleanups, 0, "Manager does not own unrelated Supervisor activations");
-    assert.deepEqual(supervisor.getSnapshot().extensions.filter(row => row.status === "active").map(row => row.id), ["vela.foreign"]);
+    assert.deepEqual(supervisor.getSnapshot().extensions.filter(row => row.status === "active").map(row => row.id), ["opencraft.foreign"]);
     assert.equal(installation.enabled, true);
     assert.equal(runtime.repository.getSnapshot().records[0]!.enabled, true);
     // Saved intent is usable by a fresh manager over the same repository.
     const replacement = new ExtensionManager({ installations: runtime.repository, supervisor,
-      loader: loaderFor({ [installation.source.url]: { manifest: manifest("vela.admitted"), activate() {} } }),
+      loader: loaderFor({ [installation.source.url]: { manifest: manifest("opencraft.admitted"), activate() {} } }),
     });
     await replacement.restore();
     assert.equal(replacement.getSnapshot().extensions[0]!.status, "active");
@@ -194,25 +194,25 @@ test("manager retirement drains entered loading, rejects queued work and preserv
 
 test("optional built-in failure is recorded while another built-in activates", async () => {
   const supervisor = new ExtensionSupervisor({ platform: "web" });
-  assert.equal(await supervisor.activateOptional({ manifest: manifest("vela.failed"), activate() { throw Error("unavailable"); } }), false);
-  assert.equal(await supervisor.activateOptional({ manifest: manifest("vela.healthy"), activate() {} }), true);
-  assert.equal(supervisor.getSnapshot().extensions.find(row => row.id === "vela.failed")!.status, "failed");
-  assert.equal(supervisor.getSnapshot().extensions.find(row => row.id === "vela.healthy")!.status, "active");
+  assert.equal(await supervisor.activateOptional({ manifest: manifest("opencraft.failed"), activate() { throw Error("unavailable"); } }), false);
+  assert.equal(await supervisor.activateOptional({ manifest: manifest("opencraft.healthy"), activate() {} }), true);
+  assert.equal(supervisor.getSnapshot().extensions.find(row => row.id === "opencraft.failed")!.status, "failed");
+  assert.equal(supervisor.getSnapshot().extensions.find(row => row.id === "opencraft.healthy")!.status, "active");
   await supervisor.dispose();
 });
 
 test("optional module import and definition factory failures are isolated", async () => {
   const supervisor = new ExtensionSupervisor({ platform: "web", activationTimeoutMs: 10 });
-  assert.equal(await supervisor.loadOptional("vela.import", async () => { throw Error("module unavailable"); }), false);
-  assert.equal(await supervisor.loadOptional("vela.timeout", () => new Promise(() => {})), false);
-  assert.equal(await supervisor.loadOptional("vela.factory", () => { throw Error("factory unavailable"); }), false);
-  assert.equal(await supervisor.loadOptional("vela.healthy", () => ({ manifest: manifest("vela.healthy"), activate() {} })), true);
+  assert.equal(await supervisor.loadOptional("opencraft.import", async () => { throw Error("module unavailable"); }), false);
+  assert.equal(await supervisor.loadOptional("opencraft.timeout", () => new Promise(() => {})), false);
+  assert.equal(await supervisor.loadOptional("opencraft.factory", () => { throw Error("factory unavailable"); }), false);
+  assert.equal(await supervisor.loadOptional("opencraft.healthy", () => ({ manifest: manifest("opencraft.healthy"), activate() {} })), true);
   assert.deepEqual(supervisor.getSnapshot().extensions.map(row => row.status), ["failed", "failed", "failed", "active"]);
   await supervisor.dispose();
 });
 
 test("cleanup failure reports failed instead of a phantom active installation and permits explicit retry", async () => {
-  const seed = installation("vela.cleanup-failure", true);
+  const seed = installation("opencraft.cleanup-failure", true);
   const runtime = await repository(new MemoryExtensionInstallationPersistence([seed]));
   const supervisor = new ExtensionSupervisor({ platform: "web", cleanupTimeoutMs: 10 });
   let hangs = true;
@@ -232,7 +232,7 @@ test("cleanup failure reports failed instead of a phantom active installation an
 });
 
 test("persisted third-party identity cannot claim a built-in activation", async () => {
-  const seed = installation("vela.builtin", true);
+  const seed = installation("opencraft.builtin", true);
   const runtime = await repository(new MemoryExtensionInstallationPersistence([seed]));
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   let destroyed = false;
@@ -249,8 +249,8 @@ test("persisted third-party identity cannot claim a built-in activation", async 
 });
 
 test("a module that never resolves cannot block another installation from restoring", async () => {
-  const stuck = installation("vela.a-stuck", true);
-  const good = installation("vela.z-good", true);
+  const stuck = installation("opencraft.a-stuck", true);
+  const good = installation("opencraft.z-good", true);
   const runtime = await repository(new MemoryExtensionInstallationPersistence([stuck, good]));
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   let finish!: (value: TrustedExtensionDefinition) => void;
@@ -284,22 +284,22 @@ test("activation timeout revokes staged contributions and late API while allowin
   let disposed = 0;
   try {
     await assert.rejects(supervisor.activate({
-      manifest: manifest("vela.slow"),
+      manifest: manifest("opencraft.slow"),
       async activate(api) {
         lateApi = api;
-        api.commands.register({ id: "vela.slow.run", title: "Run" }, () => "wrong");
+        api.commands.register({ id: "opencraft.slow.run", title: "Run" }, () => "wrong");
         await delayed;
         return () => { disposed += 1; };
       },
     }), /activation exceeded/);
     assert.equal(supervisor.contributions.getSnapshot().commands.length, 0);
-    assert.throws(() => lateApi.commands.register({ id: "vela.slow.late", title: "Late" }, () => {}), /no longer accepting/);
-    await supervisor.activate({ manifest: manifest("vela.healthy"), activate() {} });
+    assert.throws(() => lateApi.commands.register({ id: "opencraft.slow.late", title: "Late" }, () => {}), /no longer accepting/);
+    await supervisor.activate({ manifest: manifest("opencraft.healthy"), activate() {} });
     finish();
     await new Promise(resolve => setTimeout(resolve, 0));
     assert.equal(disposed, 1);
     assert.equal(supervisor.contributions.getSnapshot().commands.length, 0);
-    assert.equal(supervisor.getSnapshot().extensions.find(row => row.id === "vela.healthy")!.status, "active");
+    assert.equal(supervisor.getSnapshot().extensions.find(row => row.id === "opencraft.healthy")!.status, "active");
   } finally {
     finish();
     await supervisor.dispose();
@@ -310,18 +310,18 @@ test("hung cleanup does not skip remaining disposers or block the next activatio
   const supervisor = new ExtensionSupervisor({ platform: "web", cleanupTimeoutMs: 10 });
   let cleaned = 0;
   try {
-    await supervisor.activate({ manifest: manifest("vela.cleanup"), activate(api) {
-      api.commands.register({ id: "vela.cleanup.run", title: "Run" }, () => "old");
+    await supervisor.activate({ manifest: manifest("opencraft.cleanup"), activate(api) {
+      api.commands.register({ id: "opencraft.cleanup.run", title: "Run" }, () => "old");
       api.subscriptions.add(() => { cleaned += 1; });
       api.subscriptions.add(() => new Promise<void>(() => {}));
     } });
-    await assert.rejects(supervisor.deactivate("vela.cleanup"), /Failed to deactivate/);
+    await assert.rejects(supervisor.deactivate("opencraft.cleanup"), /Failed to deactivate/);
     assert.equal(cleaned, 1);
     assert.equal(supervisor.contributions.getSnapshot().commands.length, 0);
-    await supervisor.activate({ manifest: manifest("vela.cleanup"), activate(api) {
-      api.commands.register({ id: "vela.cleanup.run", title: "Run" }, () => "new");
+    await supervisor.activate({ manifest: manifest("opencraft.cleanup"), activate(api) {
+      api.commands.register({ id: "opencraft.cleanup.run", title: "Run" }, () => "new");
     } });
-    assert.equal(await supervisor.contributions.executeCommand("vela.cleanup.run"), "new");
+    assert.equal(await supervisor.contributions.executeCommand("opencraft.cleanup.run"), "new");
   } finally {
     await supervisor.dispose();
   }
@@ -331,12 +331,12 @@ test("command finishing after retirement deadline cannot return a successful sta
   const supervisor = new ExtensionSupervisor({ platform: "web", cleanupTimeoutMs: 10 });
   let finish!: (value: string) => void;
   const delayed = new Promise<string>(resolve => { finish = resolve; });
-  await supervisor.activate({ manifest: manifest("vela.drain"), activate(api) {
-    api.commands.register({ id: "vela.drain.run", title: "Run" }, () => delayed);
+  await supervisor.activate({ manifest: manifest("opencraft.drain"), activate(api) {
+    api.commands.register({ id: "opencraft.drain.run", title: "Run" }, () => delayed);
   } });
-  const running = supervisor.contributions.executeCommand("vela.drain.run");
+  const running = supervisor.contributions.executeCommand("opencraft.drain.run");
   const rejected = assert.rejects(running, /no longer accepting/);
-  await assert.rejects(supervisor.deactivate("vela.drain"), /Failed to deactivate/);
+  await assert.rejects(supervisor.deactivate("opencraft.drain"), /Failed to deactivate/);
   finish("stale");
   await rejected;
   await supervisor.dispose();
@@ -353,8 +353,8 @@ test("late internal commit is retired after timeout and never publishes public c
     },
   });
   try {
-    await assert.rejects(supervisor.activate({ manifest: manifest("vela.commit"), activate(api) {
-      api.commands.register({ id: "vela.commit.run", title: "Run" }, () => "wrong");
+    await assert.rejects(supervisor.activate({ manifest: manifest("opencraft.commit"), activate(api) {
+      api.commands.register({ id: "opencraft.commit.run", title: "Run" }, () => "wrong");
       api.internal.register("first", {});
       api.internal.register("delayed", {});
     } }), /commit delayed exceeded/);
@@ -363,7 +363,7 @@ test("late internal commit is retired after timeout and never publishes public c
     finish(() => { events.push("retire-late"); });
     await new Promise(resolve => setTimeout(resolve, 0));
     assert.deepEqual(events, ["first", "retire-first", "retire-late"]);
-    await supervisor.activate({ manifest: manifest("vela.commit"), activate() {} });
+    await supervisor.activate({ manifest: manifest("opencraft.commit"), activate() {} });
   } finally {
     await supervisor.dispose();
   }
@@ -373,13 +373,13 @@ test("public lifetime signal cancels plugin work before cleanup and active subsc
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   let api!: Parameters<TrustedExtensionDefinition["activate"]>[0];
   const events: string[] = [];
-  await supervisor.activate({ manifest: manifest("vela.lifetime"), activate(value) {
+  await supervisor.activate({ manifest: manifest("opencraft.lifetime"), activate(value) {
     api = value;
     api.signal.addEventListener("abort", () => events.push("aborted"), { once: true });
   } });
   api.subscriptions.add(() => { events.push("cleanup"); });
   assert.equal(api.signal.aborted, false);
-  await supervisor.deactivate("vela.lifetime");
+  await supervisor.deactivate("opencraft.lifetime");
   assert.deepEqual(events, ["aborted", "cleanup"]);
   assert.throws(() => api.subscriptions.add(() => {}), /no longer accepting/);
   await supervisor.dispose();
@@ -387,35 +387,35 @@ test("public lifetime signal cancels plugin work before cleanup and active subsc
 
 test("installation repository isolates corrupt rows and publishes only persisted writes", async () => {
   const persistence = new MemoryExtensionInstallationPersistence([
-    installation("vela.valid", false),
+    installation("opencraft.valid", false),
     { extensionId: "bad", source: { kind: "module-url", url: "x" }, enabled: true },
   ]);
   const runtime = await repository(persistence);
-  assert.deepEqual(runtime.repository.getSnapshot().records.map((item) => item.extensionId), ["vela.valid"]);
+  assert.deepEqual(runtime.repository.getSnapshot().records.map((item) => item.extensionId), ["opencraft.valid"]);
   assert.equal(runtime.repository.getSnapshot().loadErrors.length, 1);
 
   persistence.put = async () => { throw new Error("persistence unavailable"); };
-  await assert.rejects(runtime.repository.put(installation("vela.other", true)), /persistence unavailable/u);
-  assert.deepEqual(runtime.repository.getSnapshot().records.map((item) => item.extensionId), ["vela.valid"]);
+  await assert.rejects(runtime.repository.put(installation("opencraft.other", true)), /persistence unavailable/u);
+  assert.deepEqual(runtime.repository.getSnapshot().records.map((item) => item.extensionId), ["opencraft.valid"]);
   await runtime.fiber.dispose();
 });
 
 test("manager restores enabled plugins while isolating individual load failures", async () => {
-  const good = installation("vela.good", true);
-  const bad = installation("vela.bad", true);
+  const good = installation("opencraft.good", true);
+  const bad = installation("opencraft.bad", true);
   const runtime = await repository(new MemoryExtensionInstallationPersistence([good, bad]));
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   const manager = new ExtensionManager({
     installations: runtime.repository,
     supervisor,
     loader: loaderFor({
-      [good.source.url]: { manifest: manifest("vela.good"), activate: () => undefined },
+      [good.source.url]: { manifest: manifest("opencraft.good"), activate: () => undefined },
     }),
   });
   await manager.restore();
   assert.deepEqual(manager.getSnapshot().extensions.map((item) => [item.installation.extensionId, item.status]), [
-    ["vela.bad", "failed"],
-    ["vela.good", "active"],
+    ["opencraft.bad", "failed"],
+    ["opencraft.good", "active"],
   ]);
   await manager.dispose();
   await supervisor.dispose();
@@ -424,7 +424,7 @@ test("manager restores enabled plugins while isolating individual load failures"
 
 test("enable persists only after activation; disable persists before unload", async () => {
   const events: string[] = [];
-  const seed = installation("vela.order", false);
+  const seed = installation("opencraft.order", false);
   const base = new MemoryExtensionInstallationPersistence([seed]);
   const persistence: ExtensionInstallationPersistence = {
     load: () => base.load(),
@@ -438,7 +438,7 @@ test("enable persists only after activation; disable persists before unload", as
     supervisor,
     loader: loaderFor({
       [seed.source.url]: {
-        manifest: manifest("vela.order"),
+        manifest: manifest("opencraft.order"),
         activate: () => {
           events.push("activate");
           return () => { events.push("dispose"); };
@@ -446,10 +446,10 @@ test("enable persists only after activation; disable persists before unload", as
       },
     }),
   });
-  await manager.setEnabled("vela.order", true);
+  await manager.setEnabled("opencraft.order", true);
   assert.deepEqual(events, ["activate", "persist:true"]);
   events.length = 0;
-  await manager.setEnabled("vela.order", false);
+  await manager.setEnabled("opencraft.order", false);
   assert.deepEqual(events, ["persist:false", "dispose"]);
   await manager.dispose();
   await supervisor.dispose();
@@ -458,32 +458,32 @@ test("enable persists only after activation; disable persists before unload", as
 
 test("IndexedDB installation persistence survives a browser restart", async () => {
   const factory = new IDBFactory();
-  const databaseName = "vela-extension-installations-test";
+  const databaseName = "opencraft-extension-installations-test";
   const firstBackend = await openIndexedDbExtensionPersistence(databaseName, factory);
   const firstPersistence = await createPersistentExtensionInstallations(firstBackend);
   const first = await repository(firstPersistence);
-  await first.repository.put(installation("vela.persisted", true));
+  await first.repository.put(installation("opencraft.persisted", true));
   await first.fiber.dispose();
   await firstBackend.close();
 
   const secondBackend = await openIndexedDbExtensionPersistence(databaseName, factory);
   const secondPersistence = await createPersistentExtensionInstallations(secondBackend);
   const second = await repository(secondPersistence);
-  assert.equal(second.repository.getSnapshot().records[0]?.extensionId, "vela.persisted");
+  assert.equal(second.repository.getSnapshot().records[0]?.extensionId, "opencraft.persisted");
   assert.equal(second.repository.getSnapshot().records[0]?.enabled, true);
   await second.fiber.dispose();
   await secondBackend.close();
 });
 
 test("failed replacement restores commands and preserves persisted enable intent and version", async () => {
-  const seed = installation("vela.update", true);
+  const seed = installation("opencraft.update", true);
   const persistence = new MemoryExtensionInstallationPersistence([seed]);
   const runtime = await repository(persistence);
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   let candidate: TrustedExtensionDefinition = {
     manifest: manifest(seed.extensionId),
     activate(api) {
-      api.commands.register({ id: "vela.update.run", title: "Run" }, () => "old");
+      api.commands.register({ id: "opencraft.update.run", title: "Run" }, () => "old");
     },
   };
   const manager = new ExtensionManager({
@@ -495,22 +495,22 @@ test("failed replacement restores commands and preserves persisted enable intent
     candidate = {
       manifest: manifest(seed.extensionId, "2.0.0"),
       activate(api) {
-        api.commands.register({ id: "vela.update.run", title: "Broken" }, () => "new");
+        api.commands.register({ id: "opencraft.update.run", title: "Broken" }, () => "new");
         throw new Error("candidate failed");
       },
     };
     await assert.rejects(manager.reload(seed.extensionId), /candidate failed/);
-    assert.equal(await supervisor.contributions.executeCommand("vela.update.run"), "old");
+    assert.equal(await supervisor.contributions.executeCommand("opencraft.update.run"), "old");
     assert.notEqual(supervisor.getSnapshot().extensions[0]!.activationId, oldIdentity);
     assert.deepEqual(runtime.repository.getSnapshot().records[0], seed);
     assert.equal(manager.getSnapshot().extensions[0]!.status, "active");
     assert.match(manager.getSnapshot().extensions[0]!.error!, /candidate failed/);
     candidate = {
       manifest: manifest(seed.extensionId, "2.0.0"),
-      activate(api) { api.commands.register({ id: "vela.update.run", title: "Run" }, () => "new"); },
+      activate(api) { api.commands.register({ id: "opencraft.update.run", title: "Run" }, () => "new"); },
     };
     await manager.reload(seed.extensionId);
-    assert.equal(await supervisor.contributions.executeCommand("vela.update.run"), "new");
+    assert.equal(await supervisor.contributions.executeCommand("opencraft.update.run"), "new");
     assert.equal(runtime.repository.getSnapshot().records[0]!.lastResolvedManifest!.version, "2.0.0");
     assert.equal(manager.getSnapshot().extensions[0]!.error, undefined);
   } finally {
@@ -521,7 +521,7 @@ test("failed replacement restores commands and preserves persisted enable intent
 });
 
 test("replacement persistence failure restores old instance and disabled reinstall stays disabled", async () => {
-  const seed = installation("vela.persistfailure", true);
+  const seed = installation("opencraft.persistfailure", true);
   const persistence = new MemoryExtensionInstallationPersistence([seed]);
   const runtime = await repository(persistence);
   const supervisor = new ExtensionSupervisor({ platform: "web" });
@@ -551,8 +551,8 @@ test("replacement persistence failure restores old instance and disabled reinsta
 });
 
 test("future API installation survives restore and is rejected without activating or blocking another plugin", async () => {
-  const future = { ...installation("vela.future", true), lastResolvedManifest: { ...manifest("vela.future"), apiVersion: 2 } };
-  const good = installation("vela.supported", true);
+  const future = { ...installation("opencraft.future", true), lastResolvedManifest: { ...manifest("opencraft.future"), apiVersion: 2 } };
+  const good = installation("opencraft.supported", true);
   const runtime = await repository(new MemoryExtensionInstallationPersistence([future, good]));
   const supervisor = new ExtensionSupervisor({ platform: "web" });
   let futureActivated = false;

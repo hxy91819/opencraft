@@ -29,7 +29,7 @@ test("proxy waits for its own activation, never document.ready or an unrelated c
   });
   Object.defineProperty(container, "ready", { get: () => { throw new Error("Document ready must not be read"); } });
   const restore = installGlobals({ navigator: { serviceWorker: container }, isSecureContext: true,
-    window: { location: { origin: "https://lightvela.com" } } });
+    window: { location: { origin: "https://opencraft.example" } } });
   const broker = new WebHostProxyBroker(async () => new Response("ok"));
   try {
     const started = broker.start();

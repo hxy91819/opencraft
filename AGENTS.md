@@ -87,6 +87,10 @@ GitHub `opencraft-app/opencraft` 是目标核心上游，产品身份来源、�
 
 OpenCraft 所有自有客户端及内置插件的用户界面遵循[全项目国际化约束](docs/internationalization.md)与[locale authority](docs/platform-architecture.md#internationalization-authority)。新增或调整的可见/无障碍文案必须消费既有应用 IntlRuntime/IntlPort 和稳定 ID、英文 defaultMessage，包含动态状态、空态、错误和通知；不得把文案写死后依赖英文回退。用户内容/实体身份/协议/诊断不翻译。现有全项目检查与显式存量清单不表示所有旧界面已完成迁移，不为新增硬编码扩增 baseline。运行 check:i18n/test:i18n，并验证相关入口切语言保留草稿/焦点/选区；不要添加全局翻译器或重挂载编辑器。各客户端支持语言和原生 provider 接线以实际实现为准。
 
+## 界面图标禁止 Lucide
+
+OpenCraft 界面图标禁止使用 Lucide，包括 `lucide-react`、其他平台适配包及直接搬用其 SVG 路径。新增、替换与维护图标统一使用项目共享自绘组件（Web 为 `@opencraft/design-system-web/action-icons`），缺少语义时在共享图标 owner 补齐，业务插件不另造一份。此要求覆盖此前允许 Lucide 的决定；既有残留应明确记录并迁移，不能以规则更新宣称已经全仓清除。
+
 ## UI 与设计系统
 
 新增或修改界面前，先读 [设计入口](design.md)，选择最接近的 Settings、任务/对象目录、Chat、Sidebar 或嵌入 App 范式，并查看对应真实消费者。执行方法见维护 Skill 的 [UI 工作流](.agents/skills/opencraft-maintenance/references/ui-design.md)：把范式落实为可见组合，从相关真实使用状态复核，记录实际看过的画面及判断；目录页继续按[组合规范与正反例](design/ui/collections.md)设计。默认延续 OpenCraft 现有设计语言，优先复用共享组件、交互原语和语义 token；缺少可复用能力时在正确 owner 扩展。用户明确指定视觉方向时按该方向调整，并保留可访问性与工作连续性。Token 数值仍由设计系统源码持有；隔离 App 的可用样式以实际宿主能力为准。不以无溢出、组件导入或生成截图代替视觉复核，不新增用户审批步骤。

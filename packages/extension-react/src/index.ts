@@ -4,6 +4,7 @@ import type { ViewContribution } from "@opencraft/extension-contract";
 import type { HostConnectionProfile, ProvisionHostInput, ThreadReadReceiptPort, AccountModelDefaultsPort } from "@opencraft/workbench-runtime";
 
 export * from "./composer-actions";
+export * from "./image-editor";
 export * from "./settings-controls";
 export * from "./settings-panel";
 export * from "./adaptive-panel";

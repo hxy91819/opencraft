@@ -10,7 +10,7 @@ import {
 } from "@opencraft/extension-runtime";
 import { openIndexedDbExtensionPersistence } from "../../apps/workbench-web/src/runtime/indexeddb-extension-persistence.ts";
 
-const settingsId = "vela.settings-test.preferences";
+const settingsId = "opencraft.settings-test.preferences";
 
 function contributionBatch() {
   return {
@@ -59,7 +59,7 @@ function registerSettings(
   activationId: string,
 ) {
   const owner = {
-    extensionId: "vela.settings-test",
+    extensionId: "opencraft.settings-test",
     activationId,
     generation: 1,
   };
@@ -130,7 +130,7 @@ test("failed persistence never publishes an in-memory setting", async () => {
 
 test("IndexedDB adapter restores settings after application restart", async () => {
   const factory = new IDBFactory();
-  const databaseName = "vela-extension-settings-test";
+  const databaseName = "opencraft-extension-settings-test";
   const firstContributions = new ExtensionContributionStore();
   registerSettings(firstContributions, "activation-1");
   const firstBackend = await openIndexedDbExtensionPersistence(databaseName, factory);

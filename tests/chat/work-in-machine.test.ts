@@ -47,8 +47,8 @@ test("old Hosts and malformed responses remain unknown rather than blocking conn
 test("reported IDs group engines, physical address and labels do not; cloud stays separate", () => {
   const a = profile("local"), b = profile("local-codex"), c = profile("other", { ...machine, machineId: "22345678-1234-4123-8123-123456789abc" });
   const unknown = { ...profile("unknown", null), providerId: "opencraft.ssh", hostKind: "remote-ssh" as const }, unknown2 = { ...profile("unknown2", null), providerId: "opencraft.websocket", hostKind: "remote-control" as const }, cloud = { ...profile("cloud"), enabled: false };
-  const entry: EnvironmentEntry = { id: "cloud", sourceId: "lightvela", name: "cloud", location: "region", profile: cloud, connectable: true,
-    resource: { providerId: "lightvela", phase: "suspended", rawPhase: "stopped", message: null, capabilities: { suspend: false, resume: true, remove: true } } };
+  const entry: EnvironmentEntry = { id: "cloud", sourceId: "fixture-cloud", name: "cloud", location: "region", profile: cloud, connectable: true,
+    resource: { providerId: "fixture-cloud", phase: "suspended", rawPhase: "stopped", message: null, capabilities: { suspend: false, resume: true, remove: true } } };
   const groups = groupWorkInMachines([unknown, cloud, a, unknown2, b, c], [entry]);
   assert.equal(groups.length, 5);
   assert.deepEqual(groups[0]!.hosts.map(host => host.hostId), ["local", "local-codex"]);

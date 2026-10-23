@@ -13,6 +13,35 @@ function createController() {
   });
 }
 
+test("edited pixels replace one attachment in place, retire old upload and reject stale/different draft results", async () => {
+  const composer = createController(), session = attachmentPreviewSession(composer);
+  let oldComplete!: (value: ComposerAttachment) => void;
+  let oldSignal: AbortSignal | undefined;
+  session.addFiles([new File(["original"], "photo.png", { type: "image/png" })], (_file, _pending, signal) => {
+    oldSignal = signal; return new Promise(resolve => { oldComplete = resolve; });
+  });
+  await Promise.resolve();
+  const { draft } = composer.getSnapshot(), attachment = draft.attachments[0]!;
+  const oldSource = session.previewUrl(draft.id, attachment.id)!;
+  composer.updateDraftAttachment(draft.id, attachment.id, { metadata: { originalPath: "old-image" } });
+  const edited = new File(["edited pixels"], "photo-edited.png", { type: "image/png" });
+  assert.equal(session.replaceImage(draft.id, attachment.id, oldSource, edited, async (file, pending) => {
+    assert.equal(file, edited); return { ...pending, lifecycle: "ready", uri: "file:///edited.png" };
+  }), true);
+  assert.equal(oldSignal?.aborted, true);
+  assert.notEqual(session.previewUrl(draft.id, attachment.id), oldSource);
+  oldComplete({ ...attachment, lifecycle: "ready", uri: "file:///original.png" });
+  await new Promise(resolve => setImmediate(resolve));
+  const current = composer.getSnapshot().draft.attachments;
+  assert.equal(current.length, 1); assert.equal(current[0]?.id, attachment.id);
+  assert.equal(current[0]?.uri, "file:///edited.png"); assert.deepEqual(current[0]?.metadata, {});
+  assert.equal(session.replaceImage(draft.id, attachment.id, oldSource, edited, undefined), false);
+  const source = session.previewUrl(draft.id, attachment.id)!;
+  composer.dispatch({ type: "switch-target", target: { type: "existing-thread", key: createConversationKey("local", "elsewhere") } });
+  assert.equal(session.replaceImage(draft.id, attachment.id, source, edited, undefined), false);
+  composer.dispose();
+});
+
 test("image preview remains owned by the cached Draft across View remount and target switch", async () => {
   const composer = createController();
   const session = attachmentPreviewSession(composer);

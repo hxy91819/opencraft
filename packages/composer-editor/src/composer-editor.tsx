@@ -2257,6 +2257,12 @@ export const OpenCraftComposer = forwardRef<
           selectedId={selectedPreview.attachmentId}
           onSelect={attachmentId => setImagePreview({ ...selectedPreview, attachmentId })}
           onClose={() => setImagePreview(null)}
+          onEditComplete={disabled || onResolveAttachment === undefined ? undefined : (id, source, file) => {
+            if (disabledRef.current || editorControllerRef.current !== controller) return false;
+            const replaced = attachmentSession.replaceImage(selectedPreview.draftId, id, source, file, onResolveAttachment);
+            if (replaced) setImagePreview(null);
+            return replaced;
+          }}
           onReturnFocus={() => {
             if (editorControllerRef.current !== controller || controller.getSnapshot().draft.id !== selectedPreview.draftId) return;
             const target = selectedPreview.returnFocus;
