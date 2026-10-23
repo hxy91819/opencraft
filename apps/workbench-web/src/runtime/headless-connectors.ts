@@ -96,8 +96,6 @@ export class BrowserHeadlessConnectors implements HeadlessConnectorPort {
           } else if (response.status === 403) {
             // Protocol/origin and resource authorization errors are local to this Host.
             this.blockedHosts.add(hostId); this.unavailable(hostId);
-          } else {
-            this.retryAt = Date.now() + Math.min(60000, 2000 * 2 ** Math.min(this.failures++, 5));
           }
         }
         throw new Error(error?.error === "same_origin_json_required" ? "Connector origin unavailable" : "Connector request unavailable; refresh state before retrying a mutation");

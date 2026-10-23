@@ -164,6 +164,22 @@ test('authentication recovery backs off and still allows explicit retry', async 
   denied = false; await remote.refresh('first'); assert.deepEqual(remote.state('first'), state);
 });
 
+test('transient HTTP failures advance the recovery backoff once per request', async t => {
+  let tick!: () => void, now = 0, calls = 0;
+  t.mock.method(Date, 'now', () => now);
+  t.mock.method(globalThis, 'setInterval', (fn: () => void) => { tick = fn; return 1 as any; });
+  t.mock.method(globalThis, 'clearInterval', () => {});
+  t.mock.method(globalThis, 'fetch', async (_url: unknown, init?: RequestInit) => {
+    if (!init?.method) return Response.json({ protocolVersion: 1, hosts: { first: 'fixture' } });
+    calls++; return Response.json({}, { status: 503 });
+  });
+  const remote = await BrowserHeadlessConnectors.open(); t.after(() => remote.dispose());
+  remote.client('first').subscribeNotification(() => {});
+  for (const [at, expected] of [[0, 1], [1999, 1], [2000, 2], [5999, 2], [6000, 3], [13999, 3], [14000, 4]]) {
+    now = at; tick(); await settled(); assert.equal(calls, expected, `at ${at}ms`);
+  }
+});
+
 test('slow lists coalesce and releasing the view cancels its read', async t => {
   let listCalls = 0, signal: AbortSignal | undefined;
   t.mock.method(globalThis, 'fetch', async (_url: unknown, init?: RequestInit) => {
