@@ -1,6 +1,6 @@
 import { createConversationKey, type ConversationKey } from "@opencraft/chat-core";
 
-const RESOURCE_PROTOCOL = "vela-bot:";
+const RESOURCE_PROTOCOL = "opencraft-bot:";
 
 export type BotConversationViewResource =
   | {
@@ -28,7 +28,7 @@ export function parseBotConversationViewResource(
   if (resourceUri === null) return null;
   try {
     const url = new URL(resourceUri);
-    if (url.protocol !== RESOURCE_PROTOCOL) return null;
+    if (url.protocol !== RESOURCE_PROTOCOL && url.protocol !== "vela-bot:") return null;
     const hostId = requiredParameter(url, "hostId");
     if (hostId === null) return null;
     if (url.pathname === "conversation") {
