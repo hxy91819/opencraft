@@ -87,6 +87,9 @@
     --size-application-navigation-icon: 16px;
     --radius-application-navigation-control: var(--radius-md);
   }
+  .shell-sidebar__navigation {
+    --size-application-navigation-icon: 20px;
+  }
   .shell-sidebar__rail-footer .shell-navigation__entrance {
     border-radius: var(--radius-md);
     .sidebar-account__avatar { width: 18px; height: 18px; flex-basis: 18px; }
