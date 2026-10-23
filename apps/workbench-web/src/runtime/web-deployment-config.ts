@@ -1,3 +1,4 @@
+import { readSelectionPreference, writeSelectionPreference } from "./selection-preferences";
 // Website-owned data, injected before the application module starts. Electron
 // never reads this contract; a static/Vite deployment has no injected element.
 import { createWorkbenchDraftLocation, createWorkbenchThreadLocation, type WorkbenchLocation } from "@opencraft/workbench-runtime";
@@ -19,11 +20,15 @@ export function resolveLegacyWebsiteLocation(location: WorkbenchLocation | null)
 
 /** Additive migration of the legacy Web selection authority, never overwrite local intent. */
 export function restoreLegacyWebsiteSelection(storage: Storage) {
-  for (const prefix of ["vela.active-thread-id:", "vela.selected-project-id:"]) {
-    const old = storage.getItem(`${prefix}hypernode`);
-    if (old !== null && storage.getItem(`${prefix}local`) === null) storage.setItem(`${prefix}local`, old);
+  const scope = (key: string) => key;
+  for (const prefix of ["opencraft.active-thread-id:", "opencraft.selected-project-id:"]) {
+    const localKey = `${prefix}local`;
+    const local = readSelectionPreference(storage, localKey, scope);
+    const previous = readSelectionPreference(storage, `${prefix}hypernode`, scope);
+    if (local === null && previous !== null) writeSelectionPreference(storage, localKey, previous, scope);
   }
-  if (storage.getItem("vela.active-host-id") === "hypernode") storage.setItem("vela.active-host-id", "local");
+  const hostKey = "opencraft.active-host-id";
+  if (readSelectionPreference(storage, hostKey, scope) === "hypernode") writeSelectionPreference(storage, hostKey, "local", scope);
 }
 
 export function parseWebDeploymentConfig(raw: string | null): WebDeploymentConfig | null {

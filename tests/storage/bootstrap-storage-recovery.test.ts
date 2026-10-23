@@ -7,7 +7,8 @@ const html = readFileSync(new URL("../../apps/workbench-web/index.html", import.
 const bootstrap = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)]
   .map(match => match[1]).find(script => script.includes("isResizeObserverDeliveryWarning"))!;
 
-function fixture({ recoverySupported = false, recovered = false } = {}) {
+function fixture({ recoverySupported = false, recovered = false, latestBuildId = "same-build",
+  stored = new Map<string, string>() } = {}) {
   const listeners = new Map<string, (event: any) => void>();
   const reports: { url: string; body?: any }[] = [];
   const elements = new Map<string, any>();
@@ -29,12 +30,12 @@ function fixture({ recoverySupported = false, recovered = false } = {}) {
     },
     fetch: async (url: string, options?: { body?: string }) => {
       reports.push({ url, body: options?.body ? JSON.parse(options.body) : undefined });
-      return { ok: true, json: async () => ({ buildId: "same-build" }) };
+      return { ok: true, json: async () => ({ buildId: latestBuildId }) };
     },
     URL,
     location: { href: `https://example.test/local/thread?keep=1${recovered ? "&opencraft-resource-recovery=prior" : ""}`, reload: () => { ++reloads; }, replace: (url: string) => { navigations.push(url); } },
     localStorage: { getItem: () => null },
-    sessionStorage: { getItem: () => null, setItem() {} },
+    sessionStorage: { getItem: (key: string) => stored.get(key) ?? null, setItem: (key: string, value: string) => stored.set(key, value) },
     setTimeout() {},
   });
   vm.runInContext(bootstrap, context);
@@ -117,4 +118,33 @@ test("CSS preload failures recover the graph once and preserve persistent-failur
   assert.equal(retry.field("[data-recovery-title]").textContent, "界面资源未能加载");
   retry.field("button").onclick();
   assert.equal(retry.navigations.length, 1, "explicit retry gets a fresh graph");
+});
+
+
+test("a newer release marks only the current session identity and reloads once", async () => {
+  const stored = new Map<string, string>();
+  const first = fixture({ latestBuildId: "next-build", stored });
+  await vm.runInContext(`__opencraftRecoverRelease(new Error('chunk unavailable'))`, first.context);
+  assert.equal(first.reloads(), 1);
+  assert.deepEqual([...stored], [["opencraft.release-recovery:same-build->next-build", "attempted"]]);
+  const retry = fixture({ latestBuildId: "next-build", stored });
+  await vm.runInContext(`__opencraftRecoverRelease(new Error('chunk unavailable'))`, retry.context);
+  assert.equal(retry.reloads(), 0);
+  assert.equal(retry.field("[data-recovery-title]").textContent, "界面资源未能加载");
+});
+
+test("exact former session attempts prevent a second upgrade reload; current presence wins", async () => {
+  const key = "opencraft.release-recovery:same-build->next-build";
+  const old = "vela.release-recovery:same-build->next-build";
+  for (const current of [null, "attempted", "new-attempt"]) {
+    const stored = new Map([[old, "attempted"], ["vela.release-recovery:other->next-build", "attempted"]]);
+    if (current !== null) stored.set(key, current);
+    const f = fixture({ latestBuildId: "next-build", stored });
+    await vm.runInContext(`__opencraftRecoverRelease(new Error('chunk unavailable'))`, f.context);
+    assert.equal(f.reloads(), current === "new-attempt" ? 1 : 0);
+    assert.equal(stored.get(old), "attempted");
+  }
+  const differentTransition = fixture({ latestBuildId: "next-build", stored: new Map([["vela.release-recovery:other->next-build", "attempted"]]) });
+  await vm.runInContext(`__opencraftRecoverRelease(new Error('chunk unavailable'))`, differentTransition.context);
+  assert.equal(differentTransition.reloads(), 1);
 });
