@@ -890,5 +890,12 @@
   "preview.noMatch": "没有匹配项",
   "preview.columnWidth": "列宽",
   "preview.selectCell": "选择单元格查看完整内容",
-  "preview.cellContents": "单元格内容"
+  "preview.cellContents": "单元格内容",
+  "chat.command.outputUnavailable": "执行结果不可用",
+  "chat.command.noOutput": "无输出",
+  "chat.command.resultUnknown": "结果未知",
+  "chat.command.stopped": "已停止",
+  "chat.command.success": "成功",
+  "chat.command.exitCode": "退出码 {code}",
+  "chat.command.exitUnknown": "退出码未知"
 }

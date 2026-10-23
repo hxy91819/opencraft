@@ -193,7 +193,10 @@ function CommandOutput({ block, running }: { readonly block: Extract<TimelineBlo
     followOutput.current = viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop <= 2;
     rememberReading(viewport);
   }, [views, block.id]);
-  const displayOutput = /\S/u.test(output) ? output : running ? "" : block.resultMissing ? "Execution result unavailable" : "No output";
+  const displayOutput = /\S/u.test(output) ? output
+    : running ? "" : block.resultMissing
+      ? intl.formatMessage({ id: "chat.command.outputUnavailable", defaultMessage: "Execution result unavailable" })
+      : intl.formatMessage({ id: "chat.command.noOutput", defaultMessage: "No output" });
   return <div className="thread-shell-output" title={block.cwd === null ? undefined : `cwd\n${block.cwd}`}>
     <div className="thread-shell-output__command"><code><span aria-hidden="true">$ </span><span>{block.command}</span></code>
       <TerminalCopyButton value={block.command} label={intl.formatMessage({ id: "chat.command.copy", defaultMessage: "Copy command" })} />
@@ -207,7 +210,11 @@ function CommandOutput({ block, running }: { readonly block: Extract<TimelineBlo
       {output ? <TerminalCopyButton value={output} label={intl.formatMessage({ id: "chat.output.copy", defaultMessage: "Copy output" })} /> : null}
     </div>
     {!running ? <div className="thread-shell-output__footer" data-status={block.status}><span>
-      {block.resultMissing ? "Result unknown" : block.status === "interrupted" ? "Stopped" : block.exitCode === 0 ? <><Check aria-hidden="true" size={12} /> Success</> : `Exit code ${block.exitCode ?? "unknown"}`}
+      {block.resultMissing ? intl.formatMessage({ id: "chat.command.resultUnknown", defaultMessage: "Result unknown" })
+        : block.status === "interrupted" ? intl.formatMessage({ id: "chat.command.stopped", defaultMessage: "Stopped" })
+        : block.exitCode === 0 ? <><Check aria-hidden="true" size={12} /> {intl.formatMessage({ id: "chat.command.success", defaultMessage: "Success" })}</>
+        : block.exitCode === null ? intl.formatMessage({ id: "chat.command.exitUnknown", defaultMessage: "Exit code unknown" })
+        : intl.formatMessage({ id: "chat.command.exitCode", defaultMessage: "Exit code {code}" }, { code: block.exitCode })}
     </span></div> : null}
   </div>;
 }

@@ -868,5 +868,12 @@
   "preview.noMatch": "Tiada padanan",
   "preview.columnWidth": "Lebar lajur",
   "preview.selectCell": "Pilih sel untuk membaca kandungan penuh",
-  "preview.cellContents": "Kandungan sel"
+  "preview.cellContents": "Kandungan sel",
+  "chat.command.outputUnavailable": "Hasil pelaksanaan tidak tersedia",
+  "chat.command.noOutput": "Tiada output",
+  "chat.command.resultUnknown": "Hasil tidak diketahui",
+  "chat.command.stopped": "Dihentikan",
+  "chat.command.success": "Berjaya",
+  "chat.command.exitCode": "Kod keluar {code}",
+  "chat.command.exitUnknown": "Kod keluar tidak diketahui"
 }

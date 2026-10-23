@@ -106,6 +106,38 @@ try {
   await page.evaluate(() => (window as any).__localeFixture.switch("en-US"));
   await page.getByRole("button", { name: "Close image preview", exact: true }).click();
   await page.evaluate(() => (window as any).__localeFixture.switch("zh-CN"));
+  // Host result labels translate; native output and the reader's work stay intact.
+  const commandResults = page.locator("[data-command-results]");
+  const reading = commandResults.locator('[data-command-result="reading"] pre');
+  await reading.waitFor();
+  const rawOutput = await reading.textContent();
+  assert.match(rawOutput, /^Success\nNo output\n/);
+  await editor.fill("command draft"); await page.keyboard.press("End");
+  await page.keyboard.down("Shift"); await page.keyboard.press("ArrowLeft"); await page.keyboard.press("ArrowLeft"); await page.keyboard.press("ArrowLeft"); await page.keyboard.up("Shift");
+  await reading.evaluate((node: HTMLElement) => { node.scrollTop = 120; node.scrollLeft = 80; });
+  await page.waitForFunction(() => { const node = document.querySelector<HTMLElement>('[data-command-result="reading"] pre'); return node?.scrollTop === 120 && node.scrollLeft === 80; });
+  await page.evaluate(() => { (window as any).__commandLog = document.querySelector('[data-command-result="reading"] pre'); (window as any).__commandEditor = document.querySelector('.ProseMirror'); });
+  const commandScreenshots = await mkdtemp(join(tmpdir(), "opencraft-command-locale-"));
+  for (const [language, labels] of Object.entries({
+    "zh-CN": { empty: "无输出", success: "成功", stopped: "已停止", failed: "退出码 7", unknown: "退出码未知", unavailable: "执行结果不可用", missing: "结果未知" },
+    "en-US": { empty: "No output", success: "Success", stopped: "Stopped", failed: "Exit code 7", unknown: "Exit code unknown", unavailable: "Execution result unavailable", missing: "Result unknown" },
+  })) {
+    await page.evaluate((value: string) => (window as any).__localeFixture.switch(value), language);
+    await page.waitForFunction((value: string) => document.documentElement.lang === value, language);
+    console.log("Command result labels:", language, JSON.stringify(await commandResults.locator('.thread-shell-output__footer').allTextContents()));
+    for (const [id, footer] of Object.entries({ success: labels.success, stopped: labels.stopped, failed: labels.failed, unknown: labels.unknown, missing: labels.missing })) {
+      const result = commandResults.locator(`[data-command-result="${id}"]`);
+      assert.equal((await result.locator('.thread-shell-output__footer').textContent())?.trim(), footer);
+      assert.equal(await result.locator('pre').textContent(), id === "missing" ? labels.unavailable : labels.empty);
+    }
+    assert.equal(await reading.textContent(), rawOutput, "native stdout is never translated");
+    assert.deepEqual(await reading.evaluate((node: HTMLElement) => ({ top: node.scrollTop, left: node.scrollLeft, same: node === (window as any).__commandLog })), { top: 120, left: 80, same: true });
+    assert.equal(await editor.textContent(), "command draft");
+    assert.deepEqual(await page.evaluate(() => ({ same: document.querySelector('.ProseMirror') === (window as any).__commandEditor, focused: document.activeElement === (window as any).__commandEditor, selection: window.getSelection()?.toString() })), { same: true, focused: true, selection: "aft" });
+    await commandResults.screenshot({ path: join(commandScreenshots, `${language}.png`) });
+  }
+  console.log(`PASS localized command results and unchanged stdout, log/editor identity, both scroll axes, draft, focus and selection. Screenshots: ${commandScreenshots}`);
+  await page.evaluate(() => (window as any).__localeFixture.switch("zh-CN"));
   const output = await mkdtemp(join(tmpdir(), "opencraft-i18n-"));
   await page.screenshot({ path: join(output, "zh-CN.png") });
   assert.deepEqual(errors, []);

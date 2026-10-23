@@ -3491,3 +3491,10 @@ PendingConversationPage shows the submitted message and attachments without a
 startup status row or spinner. A rejected submission still exposes its error and
 explicit retry action. This presentation does not change creation, binding,
 queuing, or the Conversation footer's ownership of follow-up input.
+
+### Command result language
+
+Host-owned command result and empty-output labels use the existing application
+locale service. Command text, native stdout and exit codes remain source values.
+A language change updates labels in place, retaining the same log viewport,
+reading coordinates and follow-output intent, and the existing composer state.
