@@ -39,7 +39,7 @@ GitHub `opencraft-app/opencraft` 是目标核心上游，产品身份来源、�
 |---|---|
 | 新增功能含 UI，或界面、设置页、列表、表单、弹窗的实现/改版/评审 | [维护 Skill 的 UI 路径](.agents/skills/opencraft-maintenance/SKILL.md#ui-任务先进入设计路径) → [设计入口](design.md)；按需读取专项，不等用户另外提出设计要求 |
 | 平台、AppServer、Chat Runtime、Workbench、扩展 | [platform-architecture](docs/platform-architecture.md) 与命中的专题文档 |
-| 工作区、工具面板、浮动聊天、Side Chat | [design](design/README.md)；实现变更同步维护 `design/invariants.md` |
+| 工作区、工具面板、浮动聊天、Side Chat | [design](design/README.md)；实现变更通过 `design/invariants.md` 索引维护对应专题 |
 | OpenCraft 架构、交互、布局、平台适配或预览 | [opencraft-maintenance](.agents/skills/opencraft-maintenance/SKILL.md)，按任务读取其验证清单 |
 | iPhone 通过 Cloudflare Tunnel 打开 Expo Go 开发预览 | [opencraft-expo-cf-preview](.agents/skills/opencraft-expo-cf-preview/SKILL.md)；先轻量核对 Metro、隧道与外网 iOS manifest，再给完整明文 `exps://` 链接，提醒用 Safari 打开；不为日常预览下载完整 bundle。手机操作见 [Expo README](apps/workbench-expo/README.md#iphone-真机快速体验) |
 | Android 内测、正式 APK，或 iOS 测试 IPA | 先读 [手机端路线](apps/workbench-expo/README.md#手机端路线) 和 [构建矩阵](docs/build-matrix.md)；按目标选择签名、包名及验证步骤 |

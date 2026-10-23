@@ -500,7 +500,7 @@ work and material/title search apply to every lane and count. Needs me matches
 only an explicit judge and the established current member, never a guessed login.
 Selections persist across Board/List/conversation remounts in the same activation,
 scoped to task authority and verified account. Ordinary board filters stay
-independent. Needs you sorts by oldest current round; other lanes use stable task
+independent. Needs you sorts by the displayed lane-dwell origin; other lanes use stable task
 order/ID. Five columns stay in one horizontal row; only the board scrollport scrolls horizontally when the Tasks container is narrow.
 Narrow layouts may hide the redundant Owner text label, never the shared select wrapper or its accessible control.
 Typography, colors, focus, touch targets, shared controls and Radix behavior come
