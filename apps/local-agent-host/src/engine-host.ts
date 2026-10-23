@@ -5,7 +5,7 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { WebSocket, WebSocketServer } from "ws";
 import { LOGICAL_CLIENT_FIELD } from "@opencraft/app-host-protocol";
-import type { ExecutionEngineClient, ExecutionEngineProvider } from "@opencraft/appserver-client";
+import { AppServerRpcError, serializeHistoryReply, type ExecutionEngineClient, type ExecutionEngineProvider } from "@opencraft/appserver-client";
 
 type Value = Record<string, any>;
 interface LegacyHost { websocketUrl: string; resolveWebsocketUrl?: () => Promise<string>; close(): Promise<void>; storageOutcomes?: readonly unknown[] }
@@ -78,7 +78,7 @@ export async function startEngineHost(options: {
     };
     const subscriptions = options.providers.map(provider => provider.subscribe((method, params) => {
       const threadId = params.threadId ?? params.thread?.id;
-      for (const state of clients.values()) if (threadId && state.opened.has(threadId)) state.owner.notify(method, params);
+      for (const state of clients.values()) if (method === "opencraft/schedules/changed" || threadId && state.opened.has(threadId)) state.owner.notify(method, params);
     }));
     // A frontend connection owns one backend incarnation. Replacing only the
     // backend would lose its connection-scoped Thread attachments while the
@@ -150,7 +150,10 @@ export async function startEngineHost(options: {
         const clientId = typeof frame[LOGICAL_CLIENT_FIELD] === "string" ? frame[LOGICAL_CLIENT_FIELD] : "";
         if (clientId.length > 4096) { socket.close(1008); return; }
         const state = client(clientId);
-        const reply = (result: unknown) => send({ jsonrpc: "2.0", id: frame.id, result, [LOGICAL_CLIENT_FIELD]: clientId });
+        const reply = (result: unknown) => {
+          if (!stopped && socket.readyState === WebSocket.OPEN) socket.send(serializeHistoryReply(
+            { jsonrpc: "2.0", id: frame.id, result, [LOGICAL_CLIENT_FIELD]: clientId }, frame.method));
+        };
         try {
           if (!frame.method) {
             const request = platform.get(String(frame.id));
@@ -177,7 +180,7 @@ export async function startEngineHost(options: {
           if (method === "initialize") {
             const piInitialization = {
               userAgent: "opencraft-pi-durable/1.3.0", platformFamily: "unix", platformOs: process.platform,
-              capabilities: { extensions: { "opencraft/thread-lifecycle": { version: 1, fork: false, ephemeral: false, injectItems: false, rename: true, archive: true, unsubscribe: true, pin: true }, "opencraft/host-capabilities": { version: 1 } } },
+              capabilities: { extensions: registry.get(options.defaultEngine)?.extensions ?? {} },
             };
             // A configured legacy backend supplies this Host's negotiated
             // capabilities. Failure must reject initialization, not silently
@@ -189,6 +192,17 @@ export async function startEngineHost(options: {
               "opencraft/execution-engines": { version: 1, defaultEngine: options.defaultEngine, providers: options.providers.map(provider => ({ id: provider.id, threadPrefix: provider.threadPrefix, modelPrefix: provider.modelPrefix, extensions: provider.extensions })) },
               "opencraft/thread-pins": { version: 1 },
               "opencraft/scoped-model-catalog": { version: 1 } } } }); return;
+          }
+          if (method === "opencraft/schedules/list") {
+            const providers = options.providers.filter(provider => (provider.extensions?.["opencraft/conversation-schedules"] as Value)?.summary === true);
+            const outcomes = await Promise.allSettled([
+              ...(options.legacy ? [callLegacy(method, params, clientId)] : []),
+              ...providers.map(provider => provider.request(method, params, state.owner)),
+            ]);
+            const pages = outcomes.flatMap(outcome => outcome.status === "fulfilled" ? [outcome.value] : []);
+            if (!pages.length) throw new Error("No scheduling engine catalog is available");
+            const ids = [...(options.legacy ? [options.legacy.id] : []), ...providers.map(provider => provider.id)];
+            reply({ schedules: pages.flatMap(page => page.schedules), unavailableEngines: outcomes.flatMap((value, i) => value.status === "rejected" ? [ids[i]] : []) }); return;
           }
           if (method === "opencraft/thread-pins/list") {
             const outcomes = await Promise.allSettled([
@@ -229,7 +243,7 @@ export async function startEngineHost(options: {
               ?? (options.defaultEngine !== options.legacy?.id ? registry.get(options.defaultEngine) : undefined);
             if (target) { reply(await target.request(method, params, state.owner)); return; }
           }
-          if (method === "permissionProfile/list" && !options.legacy) { reply({ data: [], nextCursor: null }); return; }
+          if (method === "permissionProfile/list" && !options.legacy) { reply(await registry.get(options.defaultEngine)!.request(method, params, state.owner)); return; }
           const provider = typeof params.threadId === "string" ? options.providers.find(provider => provider.ownsThread(params.threadId))
             : typeof params.model === "string" ? options.providers.find(provider => provider.ownsModel(params.model))
             : method === "thread/start" ? registry.get(options.defaultEngine) : undefined;
@@ -259,7 +273,7 @@ export async function startEngineHost(options: {
             reply(catalog); return;
           }
           if (provider) {
-            if (params.threadId && !["thread/read", "thread/resume", "opencraft/thread-pins/set", "thread/name/set", "thread/archive", "thread/unarchive", "thread/delete"].includes(method) && !state.opened.has(params.threadId)) throw new Error("Open the thread before mutating it");
+            if (params.threadId && !["thread/read", "thread/resume", "opencraft/thread-pins/set", "thread/name/set", "thread/archive", "thread/unarchive", "thread/delete"].includes(method) && !method.startsWith("opencraft/schedules/") && !state.opened.has(params.threadId)) throw new Error("Open the thread before mutating it");
             const result = await provider.request(method, params, state.owner);
             if (["thread/start", "thread/resume", "thread/fork"].includes(method) && result.thread?.id) state.opened.add(result.thread.id);
             if (method === "thread/unsubscribe") state.opened.delete(params.threadId);
@@ -274,7 +288,8 @@ export async function startEngineHost(options: {
           reply(await callLegacy(method, params, clientId));
         } catch (error) {
           if (frame.id !== undefined) send({ jsonrpc: "2.0", id: frame.id, [LOGICAL_CLIENT_FIELD]: clientId,
-            error: { code: -32000, message: error instanceof Error ? error.message : "Engine request failed" } });
+            error: error instanceof AppServerRpcError ? { code: error.code, message: error.message, data: error.data }
+              : { code: typeof (error as Value)?.code === "number" ? (error as Value).code : -32000, message: error instanceof Error ? error.message : "Engine request failed" } });
         }
       })();
     });
@@ -284,7 +299,7 @@ export async function startEngineHost(options: {
   await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(0, "127.0.0.1", resolve); });
   return {
     websocketUrl: `ws://127.0.0.1:${(server.address() as AddressInfo).port}/rpc?token=${token}`,
-    get storageOutcomes() { return [] as unknown[]; },
+    get storageOutcomes() { return options.providers.flatMap(provider => [...provider.storageOutcomes ?? []]); },
     async close() {
       closing = true;
       for (const socket of sockets.clients) socket.terminate();

@@ -9,3 +9,6 @@ export type { ThreadMetadataContext, ThreadMetadataExtension } from "./thread-me
 
 export type { ExecutionEngineClient, ExecutionEngineProvider } from "./execution-engine";
 export { executionEngineExtension } from "./execution-engine";
+
+export * from "./projected-history";
+export * from "./bounded-history";
