@@ -112,6 +112,21 @@ test('CLI fails on incompatible evidence and never reuses an existing output dir
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('formal runner dispatches existing source files through both sidebar receipt stages', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'opencraft performance dispatch-'));
+  try {
+    const result = spawnSync(process.execPath, [fileURLToPath(new URL('../support/performance-runner-probe.mjs', import.meta.url)),
+      '--output', dir, '--record-baseline', path.join(dir, 'candidate.json')], { encoding: 'utf8', timeout: 30_000 });
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const report = JSON.parse(readFileSync(path.join(dir, 'report.json'), 'utf8'));
+    assert.equal(report.passed, true);
+    assert.ok(report.checks.some(row => row.id === 'sidebar-update' && row.passed));
+    assert.ok(report.checks.some(row => row.id === 'sidebar-menu' && row.passed));
+    const invocations = readFileSync(path.join(dir, 'invocations.jsonl'), 'utf8').trim().split('\n').map(line => JSON.parse(line));
+    assert.equal(invocations.length, report.checks.length, 'Every stage resolved a real entrypoint');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('navigation regressions name the metric, budget and delta in release notifications', () => {
   const rows = evidence(); rows.find(row => row.id === 'session-navigation-cached-desktop').samples[9].firstPaintMs = 3000;
   const report = compare(summarize(rows), baseline(), workload);

@@ -57,8 +57,8 @@ try {
   assert.equal(workbench.workloadVersion, 1); environment.browser = workbench.browser;
   report.evidence.push(...workbench.evidence);
   for (const [id, script, variable, filename] of [
-    ['sidebar-update', 'smoke-sidebar-conversation-latency.ts', 'OPENCRAFT_SIDEBAR_UPDATE_OUTPUT', 'results.json'],
-    ['sidebar-menu', 'smoke-sidebar-menu-latency.ts', 'OPENCRAFT_MENU_LATENCY_OUTPUT', 'result.json'],
+    ['sidebar-update', 'smoke/shell/smoke-sidebar-conversation-latency.ts', 'OPENCRAFT_SIDEBAR_UPDATE_OUTPUT', 'results.json'],
+    ['sidebar-menu', 'smoke/shell/smoke-sidebar-menu-latency.ts', 'OPENCRAFT_MENU_LATENCY_OUTPUT', 'result.json'],
   ]) {
     await run(id, ['--import', 'tsx', `scripts/${script}`], { [variable]: path.join(options.output, id) });
     const rows = JSON.parse(await readFile(path.join(options.output, id, filename), 'utf8'));
