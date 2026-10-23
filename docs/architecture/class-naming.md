@@ -14,7 +14,15 @@ rename does not introduce support for another engine or migrate stored data.
 | [OpenCraftTokenUsageLedger](../../apps/opencraft-daemon/src/token-usage-ledger.ts) | OpenCraft owns metering facts, allocation, recovery checkpoints and query authority; engine collectors supply verified source facts. Native-counter and rollout state remain explicit source records. |
 | [OpenCraftQueueRpcError](../../apps/opencraft-daemon/src/codex-engine-adapter.ts) | This local error carries OpenCraft queue admission and dispatch failures. |
 | [OpenCraftMessageSenders](../../apps/opencraft-daemon/src/opencraft-message-senders.ts) | OpenCraft owns sender provenance; all internal consumers use this shared implementation directly. |
-| `SshConnectionError` | Shared SSH connection and SFTP failure classification, carrying stable codes and retryability. The transport also uses it for native proxy failures. |
+| [`SshConnectionError`](../../apps/opencraft-daemon/src/ssh-connection.ts) | Shared SSH trust/authentication and SFTP failure classification, carrying stable codes and retryability. The native transport adds its own proxy-failure classification. |
+
+`SshConnectionOptions`, endpoint validation and the password helper live in
+`ssh-connection.ts`, shared by SFTP, managed connection storage and the native
+transport. File transfer neither constructs an execution adapter nor validates
+its executable/home/socket settings. Missing remote files or an unavailable SFTP
+subsystem are transfer failures, never a request to install an execution engine.
+Codex proxy commands, WebSocket framing and `SSH_CODEX_UNAVAILABLE` stay in the
+native transport; saved connection and credential formats are unchanged.
 
 The daemon workspace is private. These source files are internal implementation
 entries, not Extension API V1. All in-repository imports, scripts and tests move

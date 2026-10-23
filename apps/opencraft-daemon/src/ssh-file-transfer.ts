@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { createSshPasswordAgent, classifySshFailure, SshConnectionError, SshCodexTransport, type SshCodexTransportOptions } from "./ssh-codex-transport.js";
+import { createSshPasswordAgent, classifySshFailure, SshConnectionError, validateSshConnection, type SshConnectionOptions } from "./ssh-connection.js";
 
 /** SFTP has its own quoting rules, distinct from a shell or JSON. */
 export function quoteSftpPath(path: string): string {
@@ -10,7 +10,7 @@ export function quoteSftpPath(path: string): string {
 }
 
 export interface SshFileTransferOptions {
-  readonly connection: SshCodexTransportOptions;
+  readonly connection: SshConnectionOptions;
   readonly timeoutMs?: number;
   readonly spawnSftp?: (args: readonly string[], env: NodeJS.ProcessEnv) => ChildProcessWithoutNullStreams;
 }
@@ -20,7 +20,7 @@ export class SshFileTransfer {
   private readonly lifetime = new AbortController();
   private readonly operations = new Set<Promise<void>>();
   constructor(private readonly options: SshFileTransferOptions) {
-    new SshCodexTransport(options.connection); // Endpoint validation without connecting.
+    validateSshConnection(options.connection);
   }
 
   upload(sourcePath: string, targetPath: string, timeoutMs?: number): Promise<void> {
@@ -96,7 +96,7 @@ export class SshFileTransfer {
         child.once("close", code => {
           if (killTimer) return; // Cancellation/timeout has a specific outcome.
           if (code === 0) { finish(); return; }
-          const classified = classifySshFailure(stderr, code);
+          const classified = classifySshFailure(stderr);
           finish(classified.code === "SSH_LINK_LOST"
             ? new SshConnectionError("SSH_FILE_TRANSFER_FAILED", true, "Remote file transfer failed; retry the same attachment")
             : classified);

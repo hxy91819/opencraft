@@ -22,6 +22,9 @@ test("Desktop/HyperNode command uses eight octal sentinel bytes and attach-only 
   assert.match(command, /codex app-server proxy --sock/u);
   assert.doesNotMatch(command, /pkill|nohup|bootstrap|daemon start/u);
   assert.throws(() => buildCodexProxyCommand({ socketPath: "relative" }, Buffer.alloc(8)), /absolute/u);
+  for (const config of [{ codexExecutable: "relative" }, { codexHome: "relative" }, { socketPath: "relative" }]) {
+    assert.throws(() => synthetic(config), /absolute/u, "Native execution settings remain validated at their own adapter");
+  }
 });
 test("fragmented banner/sentinel, real HTTP/WebSocket upgrade and RPC roundtrip", async () => {
   const transport = synthetic();
