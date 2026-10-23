@@ -22,6 +22,7 @@ import { WorkbenchShortcutHelp } from "./components/workbench-shortcut-help";
 import { WorkbenchPresentationActivityProvider } from "./components/workbench-presentation-activity";
 import { ConversationSearch, type ConversationSearchTarget } from "./components/conversation-search";
 import { ConversationOverview, useConversationOverview } from "./features/conversation-overview";
+import { ImageEditorContext } from "@opencraft/extension-react";
 import { IdentityAvatarContext } from "@opencraft/extension-react";
 import { submitEmbeddedPrompt } from "./embedded-chat/embedded-prompt-submission";
 import { isEmbeddedConversationPainted } from "./embedded-chat/embedded-paint";
@@ -275,6 +276,10 @@ export interface EmbeddedWorkbenchAppPresentation {
   }) => void;
   readonly bindActions: (actions: EmbeddedWorkbenchAppActions) => (() => void);
 }
+
+const EMPTY_IMAGE_EDITOR = Object.freeze({ contribution: null });
+const NO_IMAGE_EDITOR_SUBSCRIPTION = () => () => {};
+const NO_IMAGE_EDITOR_SNAPSHOT = () => EMPTY_IMAGE_EDITOR;
 
 export function App({
   embedded,
@@ -552,6 +557,7 @@ export function App({
     replaceViewResource: workbenchNavigation.replaceExtensionViewResource,
     prepareImageUpload: async (blob) => (await images.compress(blob)).blob,
   }), [extensionPlatform, hostCatalog, images, snapshot.hostId, workbenchNavigation]);
+  const imageEditor = useSyncExternalStore(hostCatalog.imageEditors?.subscribe ?? NO_IMAGE_EDITOR_SUBSCRIPTION, hostCatalog.imageEditors?.getSnapshot ?? NO_IMAGE_EDITOR_SNAPSHOT).contribution;
   const identityAvatar = useSyncExternalStore(hostCatalog.identityAvatars.subscribe, hostCatalog.identityAvatars.getSnapshot).contribution;
   const threadListGrouping = useSyncExternalStore(hostCatalog.threadListGrouping.subscribe, hostCatalog.threadListGrouping.getSnapshot).contribution;
   const branding = useSyncExternalStore(hostCatalog.applicationBranding.subscribe, hostCatalog.applicationBranding.getSnapshot).contribution ?? DEFAULT_APPLICATION_BRANDING;
@@ -1881,6 +1887,7 @@ export function App({
     hostCatalog.extensionContributions, selectSettingsSection]);
 
   return (
+    <ImageEditorContext.Provider value={imageEditor}>
     <IdentityAvatarContext.Provider value={identityAvatar}>
     <ScheduledTaskCatalogContext.Provider value={{ ...multiHostCatalog,
       openConversation: (hostId, threadId) => hostCatalog.selectConversation(createWorkbenchThreadLocation(hostId, threadId)),
@@ -2338,5 +2345,6 @@ export function App({
     </ConversationReferenceSurface>
     </ScheduledTaskCatalogContext.Provider>
     </IdentityAvatarContext.Provider>
+    </ImageEditorContext.Provider>
   );
 }

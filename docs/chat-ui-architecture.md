@@ -3529,3 +3529,26 @@ ProseMirror selection and draft. Pointer entry from the editor returns focus to
 that editor; keyboard entry returns to its thumbnail. Stale draft cleanup never
 focuses a replacement editor. Embedded consumers supply their presentation root
 through the existing Composer portal container.
+
+## Optional browser image editing
+
+The trusted `imageEditor` contribution supplies a View through `ImageEditorContext`.
+The independent image-editor plugin owns local drawing, emoji/text placement,
+crop/rotation, pixelation and operation history. Composer supplies only one image
+source/name and a guarded File result port. It keeps the existing gallery/modal,
+portal and return-focus ownership; absence or deactivation of the contribution
+leaves ordinary preview available. The plugin has no controller, Host or submit port.
+
+Done exports composited PNG pixels and replaces the selected draft attachment in
+place through AttachmentPreviewSession. The session validates active draft,
+attachment and source, retires its old upload/preview, clears old resource metadata
+and starts normal preparation for the derived File. Failed preparation retains the
+new local image for retry. Cancel, Escape, removal, source replacement or draft
+switch discard the transient editor; late exports cannot write into another draft.
+One completed stroke, text/sticker placement, crop or quarter turn is one history
+step. New operations after undo retire the redo branch. Pointer cancellation drops
+an unfinished gesture. Input coordinates use current image pixels; viewport fitting
+does not change export resolution. Oversized/unsupported images fail locally while
+preserving the draft; the editor does not load a remote/native editing fallback.
+
+Touch editing separates document and viewport intent: one pointer edits; a second touch cancels the incomplete operation and begins bounded pinch/pan until all fingers lift. Text/stickers commit on release. Zoom/pan and fit do not enter undo history or change export pixels. The modal owner follows visualViewport for mobile keyboard placement; the plugin uses shared mobile-input typography, safe-area spacing and 44px minimum targets.
