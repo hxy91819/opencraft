@@ -29,7 +29,7 @@ Headless startup 通过已有 AppHost owner 完成一次内部 initialize 并释
 ## Codex 原生会话与保留数据
 
 Codex 使用原生 Thread/Turn 协议。旧 Codex Bot bridge 已删除；Headless 不再启用或
-声明 Codex 的 `vela/bot-conversations` 能力，也不再把 `bot/*` 请求翻译为原生会话操作。
+声明 `opencraft/bot-conversations` 或其旧版别名能力，也不再把 `bot/*` 请求翻译为原生会话操作。
 通用 Bot 协议及其他引擎提供的 Bot 能力不受影响。
 
 `OpenCraftHostStateDatabase` 仍由 Host 独占。v14 将历史 `codex_bot_rooms`、

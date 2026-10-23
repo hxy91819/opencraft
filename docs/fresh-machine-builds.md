@@ -53,8 +53,8 @@ OPENCRAFT_MAC_SSH_PORT=22 npm run update:mac
 ```
 
 No developer username, home path or internal service IP is a build default.
-Historical `/vela` paths in test fixtures are synthetic identity data; they are
-not read from the host filesystem. Persisted application identity remains stable
+Paths in identity test fixtures are synthetic data; they are not read from the
+host filesystem. Persisted application identity remains stable
 as explained in [product identity](architecture/product-identity.md).
 
 Build outputs, installed dependencies, runtime data, private keys, and `.env`
