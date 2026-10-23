@@ -141,10 +141,14 @@ export class RemoteBrowserService {
     return next;
   }
   control(page, ws, input, authorize) {
+    const viewer = this.viewers(page).get(ws), intent = viewer?.visibilityEpoch ?? 0;
+    const humanCurrent = () => input?.action !== 'human'
+      || viewer?.visible && (viewer.visibilityEpoch ?? 0) === intent;
     return this.controlQueue(page, async () => {
       authorize();
       if (page.closing || !this.viewers(page).has(ws) || ws.readyState !== WebSocket.OPEN) throw new Error('Browser viewer closed');
       if (!['human', 'agent', 'release'].includes(input?.action)) throw new Error('Invalid browser control request');
+      if (!humanCurrent()) throw Object.assign(new Error('Browser interaction ended'), { code: 'CONTROL_LOST', retryable: true });
       const release = input.action === 'release';
       if (release && (page.controller !== ws || input.token !== page.controlToken)) return this.controlState(page, ws);
       if (!release && page.controller === ws && page.controlKind === input.action) return this.controlState(page, ws);
@@ -157,9 +161,9 @@ export class RemoteBrowserService {
       // Ordered with native input/automation: old queued commands are fenced at
       // dispatch, and pressed contacts/keys/composition retire before the grant.
       await this.request(page.id, 'control', { token }); authorize();
-      if (page.closing || !this.viewers(page).has(ws) || ws.readyState !== WebSocket.OPEN) {
+      if (page.closing || this.viewers(page).get(ws) !== viewer || ws.readyState !== WebSocket.OPEN || !humanCurrent()) {
         await this.request(page.id, 'control', { token: null });
-        throw new Error('Browser viewer closed');
+        throw Object.assign(new Error('Browser interaction ended'), { code: 'CONTROL_LOST', retryable: true });
       }
       if (!release) { page.controller = ws; page.controlToken = token; page.controlKind = input.action; }
       this.controlChanged(page);
@@ -336,6 +340,7 @@ export class RemoteBrowserService {
     if (p && !p.recovering && message.type === 'navigation' && !message.state.isLoading) { p.url = checkpointUrl(message.state.url); this.checkpoint(); }
     if (p && message.type === 'viewport') { p.viewport = { width: message.width, height: message.height, deviceProfile: message.deviceProfile }; this.checkpoint(); }
     if (!p) return;
+    if (message.type === 'input-reset' && typeof message.document === 'string') p.document = message.document;
     const privateEvent = ['ime-state', 'context-menu', 'new-window'].includes(message.type);
     const packet = message.type === 'frame' ? Buffer.from(message.bytes, 'base64') : null;
     const { page, ...event } = message;
@@ -358,7 +363,7 @@ export class RemoteBrowserService {
       ...(Number.isInteger(detail?.exitCode) && Math.abs(detail.exitCode) < 2147483648 ? { exitCode: detail.exitCode } : {}),
       pendingRequests: this.requests.size }));
   }
-  request(page, method, input, control) {
+  request(page, method, input, control, document) {
     if (!this.child || (this.isolated ? this.child.stdin.destroyed : !this.child.connected)) return Promise.reject(unavailable('Browser unavailable'));
     const id = randomUUID();
     return new Promise((resolve, reject) => {
@@ -366,8 +371,8 @@ export class RemoteBrowserService {
       timer.unref(); this.requests.set(id, { page, resolve, reject, timer });
       const failed = error => { if (error) { clearTimeout(timer); this.requests.delete(id); reject(unavailable('Browser disconnected')); } };
       try {
-        if (this.isolated) this.child.stdin.write(JSON.stringify({ id, page, method, input, control }) + '\n', failed);
-        else this.child.send({ id, page, method, input, control }, failed);
+        if (this.isolated) this.child.stdin.write(JSON.stringify({ id, page, method, input, control, document }) + '\n', failed);
+        else this.child.send({ id, page, method, input, control, document }, failed);
       } catch (error) { failed(error); }
     });
   }
@@ -435,7 +440,7 @@ export class RemoteBrowserService {
             if (this.retiredLeases.has(key)) throw new Error('Browser tab is closed');
             if (ws.readyState !== WebSocket.OPEN) return;
             page = existing ?? { id: createHash('sha256').update(key).digest('hex'), key, ownerId, controller: null, live: false, viewport: message.input?.viewport, zoom: 100, url: null };
-            this.viewers(page).set(ws, { visible: !modern || message.input.visible === true, modern, inputAcknowledgements: message.input.inputAcknowledgements === true, authorize, ready: false }); this.pages.set(key, page);
+            this.viewers(page).set(ws, { visible: !modern || message.input.visible === true, visibilityEpoch: 0, modern, documentInput: message.input.documentInput === true, inputAcknowledgements: message.input.inputAcknowledgements === true, authorize, ready: false }); this.pages.set(key, page);
             let config;
             const resumed = page.live, recoveryUrl = page.url, recoveryZoom = page.zoom;
             page.recovering = !resumed && !!existing;
@@ -444,6 +449,7 @@ export class RemoteBrowserService {
                 : this.request(page.id, 'create', (modern && existing ? page.viewport : message.input?.viewport) ?? page.viewport
                   ?? { deviceProfile: message.input?.defaultDeviceProfile ?? 'desktop' });
               config = await page.creating; page.live = true;
+              if ((!resumed || !page.document) && typeof config.document === 'string') page.document = config.document;
               if (page.closing) throw new Error('Browser tab closed');
               if (!resumed && existing) {
                 if (recoveryZoom !== 100) await this.request(page.id, 'zoom', { percent: recoveryZoom });
@@ -468,7 +474,7 @@ export class RemoteBrowserService {
               if (ws.readyState !== WebSocket.OPEN) { this.detach(page, ws); return; }
               if (!modern) await this.control(page, ws, { action: 'human', takeover: true }, authorize);
               this.controlChanged(page);
-              reply(message.id, { ...config, inputAcknowledgements: message.input.inputAcknowledgements === true, resumed, restored: !!existing && !resumed, multiView: true, initialized: modern && !existing, control: this.controlState(page, ws) });
+              reply(message.id, { ...config, document: page.document ?? config.document, documentInput: typeof (page.document ?? config.document) === 'string', inputAcknowledgements: message.input.inputAcknowledgements === true, resumed, restored: !!existing && !resumed, multiView: true, initialized: modern && !existing, control: this.controlState(page, ws) });
               const attached = this.viewers(page).get(ws); if (attached) { attached.ready = true; if (attached.visible) this.keyframe(page); }
             } catch (error) {
               page.recovering = false;
@@ -490,6 +496,7 @@ export class RemoteBrowserService {
           if (target.closing) throw new Error('Browser tab is closing');
           if (message.method === 'visible') {
             viewer.visible = message.input?.visible === true;
+            if (!viewer.visible) viewer.visibilityEpoch = (viewer.visibilityEpoch ?? 0) + 1;
             if (!viewer.visible && target.controller === ws && target.controlKind === 'human')
               await this.control(target, ws, { action: 'release', token: target.controlToken }, authorize);
             await this.visibility(target);
@@ -501,7 +508,11 @@ export class RemoteBrowserService {
           const control = viewer.modern ? message.control : target.controlToken;
           if (!readOnly && (target.controller !== ws || !control || control !== target.controlToken))
             throw Object.assign(new Error('Browser control changed; start a new interaction'), { code: 'CONTROL_LOST', retryable: true });
-          const value = await this.request(target.id, message.method, message.input, readOnly ? undefined : control);
+          const documentBound = ['input', 'text', 'ime'].includes(message.method);
+          const document = documentBound ? viewer.documentInput ? message.document : target.document : undefined;
+          if (documentBound && viewer.documentInput && (typeof document !== 'string' || document !== target.document))
+            throw Object.assign(new Error('Browser document changed'), { code: 'DOCUMENT_CHANGED', retryable: true });
+          const value = await this.request(target.id, message.method, message.input, readOnly ? undefined : control, document);
           authorize();
           if (page !== target || !this.viewers(target).has(ws) || this.pages.get(target.key) !== target || ws.readyState !== WebSocket.OPEN) return;
           if (message.method === 'zoom') { target.zoom = Number(message.input.percent); await this.persist(); }

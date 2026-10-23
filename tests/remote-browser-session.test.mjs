@@ -486,3 +486,39 @@ test('input acknowledgements are negotiated per viewer and follow native dispatc
     await a.detach(); await b.detach();
   } finally { release?.(); await f.close(); }
 });
+
+test('hiding invalidates an in-flight human grant, even after reveal; invisible Agent still works', async () => {
+  for(const reveal of [false,true]) {
+    const f=await fixture();let release,entered;
+    const gate=new Promise(r=>release=r),started=new Promise(r=>entered=r);
+    try {
+      const a=await f.connect('owner'),b=await f.connect('owner'),lease=randomUUID();
+      await a.call('open',{lease,multiView:true,visible:true});await b.call('open',{lease,multiView:true,visible:true});
+      const original=f.service.request.bind(f.service);let held=false;
+      f.service.request=async(...args)=>{if(args[1]==='control'&&args[2].token&&!held){held=true;entered();await gate}return original(...args)};
+      const failed=assert.rejects(a.call('control',{action:'human',takeover:true}),{code:'CONTROL_LOST'});await started;
+      a.quiet('visible',{visible:false});
+      const p=[...f.service.pages.values()][0];
+      while([...f.service.viewers(p).values()].every(v=>v.visible))await new Promise(r=>setImmediate(r));
+      if(reveal){a.quiet('visible',{visible:true});while([...f.service.viewers(p).values()].some(v=>!v.visible))await new Promise(r=>setImmediate(r));}
+      release();await failed;assert.equal(p.controller,null);
+      b.quiet('visible',{visible:false});while([...f.service.viewers(p).values()].every(v=>v.visible))await new Promise(r=>setImmediate(r));
+      const agent=await b.call('control',{action:'agent'});assert.equal(agent.kind,'agent');assert.equal(agent.controller,true);
+      await a.detach();await b.detach();
+    }finally{release?.();await f.close()}
+  }
+});
+
+test('document-aware peers cannot send missing or old document input; legacy admission still captures identity', async () => {
+  const f=await fixture();
+  try{
+    const request=f.service.request.bind(f.service),document=randomUUID();
+    f.service.request=async(...args)=>{const result=await request(...args);return ['create','snapshot'].includes(args[1])?{...result,document}:result};
+    const a=await f.connect('owner');await a.call('open',{lease:randomUUID(),multiView:true,visible:true,documentInput:true,inputAcknowledgements:true});
+    const grant=await a.call('control',{action:'human',takeover:true});
+    await assert.rejects(a.call('input',{type:'char',keyCode:'x'},grant.token),{code:'DOCUMENT_CHANGED'});
+    const p=[...f.service.pages.values()][0];assert.equal(p.document,document);
+    assert(!f.service.commands.some(c=>c.method==='input'));
+    await a.detach();
+  }finally{await f.close()}
+});

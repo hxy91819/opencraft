@@ -9,11 +9,13 @@ import { RemoteBrowserIme } from './remote-browser-ime';
 import { BrowserLocalMenuController } from './browser-local-menu';
 import { remoteBrowserDeviceProfile } from './remote-browser-device';
 import { RemoteBrowserInputQueue } from './remote-browser-input-queue';
+import { RemoteBrowserEditInput } from './remote-browser-edit-input';
 
 interface RemoteKeyboardPolicy { kind: string; secure: boolean; inputMode: string; enterKeyHint: string; multiline: boolean; autoKeyboard: boolean; }
 type Pending = { resolve(value: any): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> };
 interface Control { epoch: number; active: boolean; controller: boolean; kind: 'human' | 'agent' | null; token?: string; }
 interface Page {
+  document: string | undefined;
   inputAcknowledgements: boolean; inputQueue: RemoteBrowserInputQueue | null;
   control: Control; controlGeneration: number; acquiring: { kind: 'human' | 'agent'; promise: Promise<string>; generation: number } | null; agentQueue: Promise<unknown>; serverInitialNavigation: boolean; gestureActive: boolean;
   media: H264MediaSource | null; video: HTMLVideoElement | null; cancelVideoReady: (() => void) | null; id: BrowserPageId; lease: string; container: HTMLDivElement; canvas: HTMLCanvasElement; receiver: HTMLInputElement; editor: string | null; keyboard: RemoteKeyboardPolicy | null; keyboardIntent: { pointer: number; x: number; y: number; editor: string | null; until: number; completed: boolean } | null; ime: RemoteBrowserIme | null; editable: boolean; nativeIme: boolean; multiTouch: boolean;
@@ -172,6 +174,7 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
   park(id: BrowserPageId) {
     const p = this.pages.get(id); if (!p) return;
     this.retireMenu(p);
+    if (p.acquiring?.kind === 'human') { ++p.controlGeneration; p.acquiring = null; }
     p.resetInput(); this.resetKeyboard(p); p.container.style.visibility = 'hidden'; p.container.style.pointerEvents = 'none';
     if (p.visible) { p.visible = false; this.run(p, 'visible', { visible: false }); }
   }
@@ -242,7 +245,7 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
     // inside the new shorter slot would briefly shrink the entire document.
     Object.assign(canvas.style, { display: 'block', width: '100%', height: 'auto', outline: 'none', touchAction: 'none' });
     container.append(canvas, receiver); this.root?.prepend(container);
-    const p: Page = { inputAcknowledgements: false, inputQueue: null, control: { epoch: 0, active: false, controller: false, kind: null }, controlGeneration: 0, acquiring: null, agentQueue: Promise.resolve(), serverInitialNavigation: false, gestureActive: false, media: null, video: null, cancelVideoReady: null, id, lease: (this.storageIds.get(id) ?? ('browser-' + crypto.randomUUID())).replace(':', '-'), container, canvas, receiver, ime: null, editor: null, keyboard: null, keyboardIntent: null, editable: false, nativeIme: false, multiTouch: false, events, navigation: 0, url: undefined, socket: null,
+    const p: Page = { document: undefined, inputAcknowledgements: false, inputQueue: null, control: { epoch: 0, active: false, controller: false, kind: null }, controlGeneration: 0, acquiring: null, agentQueue: Promise.resolve(), serverInitialNavigation: false, gestureActive: false, media: null, video: null, cancelVideoReady: null, id, lease: (this.storageIds.get(id) ?? ('browser-' + crypto.randomUUID())).replace(':', '-'), container, canvas, receiver, ime: null, editor: null, keyboard: null, keyboardIntent: null, editable: false, nativeIme: false, multiTouch: false, events, navigation: 0, url: undefined, socket: null,
       nativeCopy: false, interaction: 0, menuIntent: null, restored: false, resumed: false, ready: Promise.resolve(), opened: false, disconnected: false, displaced: false, closed: false, visible: false, blocked: false, pending: new Map(), decoder: null,
       viewportMeasured: false, width: 1280, height: 720, viewport: { width: 1280, height: 720 }, sentViewport: '', resizeTimer: null, resizing: false,
       latest: null, raf: 0, reconnect: null, connection: 0, retries: 0, needsKey: true, automation: null!, resetPointers: () => {}, resetInput: () => {}, inputDispose: () => {} };
@@ -268,7 +271,7 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
   }
   private rejectPending(p: Page) { for (const request of p.pending.values()) { clearTimeout(request.timer); request.reject(new BrowserAutomationError('PAGE_CLOSED', 'Browser disconnected', true)); } p.pending.clear(); }
   private resetTransport(p: Page) {
-    p.opened = false; p.inputAcknowledgements = false; ++p.controlGeneration; p.acquiring = null; p.control = { epoch: 0, active: false, controller: false, kind: null };
+    p.opened = false; p.document = undefined; p.inputAcknowledgements = false; ++p.controlGeneration; p.acquiring = null; p.control = { epoch: 0, active: false, controller: false, kind: null };
     for (const listener of this.controlListeners) listener();
     this.retireMenu(p); p.resetInput(); this.resetKeyboard(p); p.opened = false;
     if (p.resizeTimer) clearTimeout(p.resizeTimer);
@@ -293,7 +296,8 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
       const current = () => !p.closed && p.connection === generation;
       ws.onopen = () => { if (!current()) return; clearTimeout(timer);
         const viewport = p.viewportMeasured ? { ...p.viewport } : undefined;
-        void this.call(p, 'open', { lease: p.lease, multiView: true, inputAcknowledgements: true, visible: p.visible, initialUrl: p.url ?? null, viewport, defaultDeviceProfile: remoteBrowserDeviceProfile() }).then(async config => {
+        void this.call(p, 'open', { lease: p.lease, multiView: true, documentInput: true, inputAcknowledgements: true, visible: p.visible, initialUrl: p.url ?? null, viewport, defaultDeviceProfile: remoteBrowserDeviceProfile() }).then(async config => {
+          if (current()) this.applyDocument(p, config.document);
           if (!current()) return; p.inputAcknowledgements = config.inputAcknowledgements === true; p.serverInitialNavigation = config.multiView === true; this.setControl(p, config.control); p.resumed = config.resumed === true; p.restored = (config.resumed || config.restored) && !!config.navigation?.url && config.navigation.url !== 'about:blank'; p.nativeCopy = config.nativeCopy === true; p.nativeIme = config.nativeIme === true; p.multiTouch = config.multiTouch === true; this.keyboardChanged(); this.applyViewport(p, config);
           const effective = { width: config.width, height: config.height, deviceProfile: config.deviceProfile };
           if (!p.viewportMeasured) p.viewport = effective;
@@ -318,10 +322,12 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
           message.error ? request.reject(new BrowserAutomationError(message.error.code, message.error.message, message.error.retryable)) : request.resolve(message.value);
         } else if (message.type === 'control') this.setControl(p, message);
         else if (message.type === 'navigation') {
-          if (message.state.isLoading) { this.retireMenu(p); p.resetInput(); this.resetKeyboard(p); }
+          if (message.state.isLoading && !p.document) { this.retireMenu(p); p.resetInput(); this.resetKeyboard(p); }
           p.events.onNavigation?.(message.state);
           if (!message.state.isLoading) { if (message.state.url && message.state.url !== 'about:blank') p.url = message.state.url; p.events.onLoaded(message.state.title || null); }
-        } else if (message.type === 'input-reset') p.resetPointers();
+        } else if (message.type === 'input-reset') {
+          this.applyDocument(p, message.document); this.retireMenu(p); p.resetInput(); this.resetKeyboard(p);
+        }
         else if (message.type === 'viewport') this.applyViewport(p, message);
         else if (message.type === 'ime-state') {
           const oldEditor = p.editor;
@@ -421,7 +427,10 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
         .finally(() => { if (connection === p.connection) { p.resizing = false; this.queueViewport(p); } });
     }, 100);
   }
-  private call(p: Page, method: string, input?: unknown, expected = p.control.token): Promise<any> {
+  private applyDocument(p: Page, document: unknown) {
+    if (typeof document === 'string' && document.length <= 100) p.document = document;
+  }
+  private call(p: Page, method: string, input?: unknown, expected = p.control.token, document = p.document): Promise<any> {
     const readOnly = ['open', 'visible', 'keyframe', 'capture', 'copy'].includes(method)
       || method === 'automation' && ['inspect', 'readContext', 'wait'].includes((input as { method?: string })?.method ?? '');
     if (!readOnly && (!expected || !p.control.controller || p.control.token !== expected))
@@ -431,18 +440,18 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
       return p.inputQueue.barrier(() => {
         if (p.closed || p.controlGeneration !== generation || p.connection !== connection || !readOnly && (!p.control.controller || p.control.token !== expected))
           throw new BrowserAutomationError('CONTROL_LOST', 'Browser interaction ended', true);
-        return this.rawCall(p, method, input, readOnly ? undefined : expected);
+        return this.rawCall(p, method, input, readOnly ? undefined : expected, document);
       });
     }
-    return this.rawCall(p, method, input, readOnly ? undefined : expected);
+    return this.rawCall(p, method, input, readOnly ? undefined : expected, document);
   }
-  private rawCall(p: Page, method: string, input?: unknown, control?: string): Promise<any> {
+  private rawCall(p: Page, method: string, input?: unknown, control?: string, document = p.document): Promise<any> {
     if (p.closed || p.socket?.readyState !== WebSocket.OPEN) return Promise.reject(new BrowserAutomationError('PAGE_CLOSED', 'Browser disconnected', true));
     const id = crypto.randomUUID();
-    if (['text','visible','keyframe'].includes(method) || method === 'input' && !p.inputAcknowledgements) { p.socket.send(JSON.stringify({ id, method, input, control })); return Promise.resolve(); }
+    if (['text','visible','keyframe'].includes(method) || method === 'input' && !p.inputAcknowledgements) { p.socket.send(JSON.stringify({ id, method, input, control, document })); return Promise.resolve(); }
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => { p.pending.delete(id); reject(new BrowserAutomationError('TIMEOUT', `Browser operation timed out (${method})`, true)); }, method === 'open' ? 45000 : 25000);
-      p.pending.set(id, { resolve, reject, timer }); p.socket!.send(JSON.stringify({ id, method, input, control }));
+      p.pending.set(id, { resolve, reject, timer }); p.socket!.send(JSON.stringify({ id, method, input, control, document }));
     });
   }
   private run(p: Page, method: string, input?: unknown) { void p.ready.then(() => ['zoom', 'stop', 'back', 'forward'].includes(method) ? this.humanCall(p, method, input) : this.call(p, method, input)).catch(error => { if (!p.closed) p.events.onError(error.message); }); }
@@ -521,15 +530,22 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
       const token = p.control.controller && p.control.kind === 'human' ? p.control.token
         : p.acquiring?.kind === 'human' ? await p.acquiring.promise : undefined;
       if (!current() || !token || generation !== p.controlGeneration || !this.acceptsInput(p)) return;
-      await this.call(p, 'input', input, token);
+      const { document, ...event } = input;
+      await this.call(p, 'input', event, token, document);
     }, () => {
       // Too many non-coalescible edges: cancel the gesture, never discard only
       // its release. Normal motion/wheel bursts stay bounded by merging.
       p.resetInput();
       if (p.control.controller && p.control.kind === 'human') void this.call(p, 'input', { type: 'touchCancel' }).catch(() => {});
+    }, error => {
+      p.resetPointers(); p.ime?.retire();
+      if (p.control.controller && p.control.kind === 'human' && this.acceptsInput(p))
+        void this.call(p, 'input', { type: 'touchCancel' }).catch(() => {});
+      if (!['DOCUMENT_CHANGED', 'CONTROL_LOST', 'PAGE_CLOSED'].includes((error as BrowserAutomationError).code))
+        p.events.onError('Browser input failed; try the interaction again');
     });
     const send = (input: any) => {
-      if (this.acceptsInput(p) && (p.control.controller && p.control.kind === 'human' || p.acquiring?.kind === 'human')) inputQueue.push(input);
+      if (this.acceptsInput(p) && (p.control.controller && p.control.kind === 'human' || p.acquiring?.kind === 'human')) inputQueue.push({ ...input, document: p.document });
     };
     let move: PointerEvent | null = null, raf = 0, touchMoved = false;
     const captured = new Set<number>();
@@ -610,25 +626,18 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
     const ime = p.ime = new RemoteBrowserIme(receiver, input => this.call(p, 'ime', input),
       () => this.acceptsInput(p) && p.control.controller && p.control.kind === 'human', message => p.events.onError(message), () => p.editor);
     const textListen = (name: string, handler: (event: any) => void) => { receiver.addEventListener(name, handler); cleanup.push(() => receiver.removeEventListener(name, handler)); };
-    p.resetInput = () => { inputQueue.reset(); p.resetPointers(); ime.retire(); };
+    const editing = new RemoteBrowserEditInput(receiver,
+      () => this.acceptsInput(p) && p.control.controller && p.control.kind === 'human', () => ime.composing,
+      text => ime.commit(text), keyCode => {
+        send({ type: 'keyDown', keyCode }); if (keyCode === 'Return') send({ type: 'char', keyCode: '\r' }); send({ type: 'keyUp', keyCode });
+      });
+    p.resetInput = () => { inputQueue.reset(); p.resetPointers(); editing.retire(); ime.retire(); };
     textListen('blur', () => { cancel(); p.resetInput(); receiver.inputMode = 'none'; receiver.setAttribute('virtualkeyboardpolicy', 'manual'); });
-    textListen('compositionstart', () => ime.start());
+    textListen('compositionstart', () => { editing.retire(); ime.start(); });
     textListen('compositionupdate', (event: CompositionEvent) => ime.update(event.data));
     textListen('compositionend', (event: CompositionEvent) => ime.end(event.data));
-    textListen('beforeinput', (event: InputEvent) => {
-      if (ime.composing || event.isComposing || event.inputType.includes('Composition') || !this.acceptsInput(p)) return;
-      if (!event.cancelable) return; // Non-cancelable mobile edits are read once in input.
-      if (event.inputType === 'insertText' && event.data) { event.preventDefault(); ime.commit(event.data); }
-      else if (['deleteContentBackward', 'deleteContentForward', 'insertLineBreak', 'insertParagraph'].includes(event.inputType)) {
-        event.preventDefault(); const keyCode = event.inputType === 'deleteContentBackward' ? 'Backspace' : event.inputType === 'deleteContentForward' ? 'Delete' : 'Return';
-        send({ type: 'keyDown', keyCode }); if (keyCode === 'Return') send({ type: 'char', keyCode: '\r' }); send({ type: 'keyUp', keyCode });
-      }
-    });
-    textListen('input', (event: InputEvent) => {
-      if (ime.composing || event.isComposing) return;
-      const text = receiver.value; receiver.value = '';
-      if (text && this.acceptsInput(p)) ime.commit(text);
-    });
+    textListen('beforeinput', (event: InputEvent) => editing.beforeInput(event));
+    textListen('input', (event: InputEvent) => editing.input(event));
     textListen('paste', (event: ClipboardEvent) => { event.preventDefault(); const text = event.clipboardData?.getData('text/plain'); if (text && this.acceptsInput(p)) ime.commit(text.slice(0, 10000)); });
     const keys: Record<string, string> = { Enter: 'Return', Escape: 'Escape', ArrowLeft: 'Left', ArrowRight: 'Right', ArrowUp: 'Up', ArrowDown: 'Down', ' ': 'Space' };
     textListen('keydown', (event: KeyboardEvent) => { if (!p.control.controller || p.control.kind !== 'human') return; if (ime.composing || event.isComposing || ['Process', 'Unidentified'].includes(event.key) || event.keyCode === 229) return;
