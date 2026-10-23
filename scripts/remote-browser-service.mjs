@@ -6,6 +6,8 @@ import { access, mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import { join } from 'node:path';
 import { WebSocketServer, WebSocket } from 'ws';
 import nativeDiagnostics from './remote-browser/diagnostics.cjs';
+import displayFlow from './remote-browser/display.cjs';
+import { startBrowserOwner } from './remote-browser-owner.mjs';
 
 const methods = new Set(['viewport', 'navigate', 'reload', 'stop', 'back', 'forward', 'visible', 'keyframe', 'capture', 'zoom', 'input', 'text', 'ime', 'copy', 'automation', 'close']);
 const quietMethods = new Set(['visible', 'keyframe', 'input', 'text']);
@@ -26,19 +28,24 @@ function removedStorageLeases(previous, next) {
   const before = parse(previous), after = parse(next);
   return before && after ? [...before].filter(lease => !after.has(lease)) : [];
 }
-/** Gateway-owned process and page leases. A client gets only its own page port,
+/** Gateway-authorized page leases, with an independent managed Linux owner.
+ * A client gets only its own page port,
  * never a CDP endpoint, filesystem path or arbitrary JavaScript evaluator. */
 export class RemoteBrowserService {
-  constructor({ root, dataDirectory, executable, allowNoSandbox = false, spawnImpl = spawn }) {
+  constructor({ root, dataDirectory, executable, allowNoSandbox = false, spawnImpl = spawn,
+    ownerConnector = process.platform === 'linux' && process.getuid?.() === 0 && !allowNoSandbox && spawnImpl === spawn ? startBrowserOwner : null }) {
     this.directory = join(root, 'runtime/browser');
     this.executable = executable ?? join(this.directory, 'electron/electron');
     this.dataDirectory = join(dataDirectory, 'remote-browser');
     this.allowNoSandbox = allowNoSandbox;
     this.spawnImpl = spawnImpl;
+    this.ownerConnector = ownerConnector;
     this.pages = new Map(); this.requests = new Map(); this.sockets = new Set();
     this.attachments = new Map();
     this.states = new Map(); this.retiredLeases = new Set(); this.persistence = Promise.resolve();
     this.diagnosticCount = 0;
+    this.diagnosticCounts = new Map();
+    this.display = displayFlow.createDisplayFlow({ keyframe: page => this.keyframe(page), diagnose: event => this.diagnose(event) });
     this.server = new WebSocketServer({ noServer: true, perMessageDeflate: false, maxPayload: 128 * 1024 });
   }
   async load() {
@@ -141,10 +148,14 @@ export class RemoteBrowserService {
     return next;
   }
   control(page, ws, input, authorize) {
+    const viewer = this.viewers(page).get(ws), intent = viewer?.visibilityEpoch ?? 0;
+    const humanCurrent = () => input?.action !== 'human'
+      || viewer?.visible && (viewer.visibilityEpoch ?? 0) === intent;
     return this.controlQueue(page, async () => {
       authorize();
       if (page.closing || !this.viewers(page).has(ws) || ws.readyState !== WebSocket.OPEN) throw new Error('Browser viewer closed');
       if (!['human', 'agent', 'release'].includes(input?.action)) throw new Error('Invalid browser control request');
+      if (!humanCurrent()) throw Object.assign(new Error('Browser interaction ended'), { code: 'CONTROL_LOST', retryable: true });
       const release = input.action === 'release';
       if (release && (page.controller !== ws || input.token !== page.controlToken)) return this.controlState(page, ws);
       if (!release && page.controller === ws && page.controlKind === input.action) return this.controlState(page, ws);
@@ -157,9 +168,9 @@ export class RemoteBrowserService {
       // Ordered with native input/automation: old queued commands are fenced at
       // dispatch, and pressed contacts/keys/composition retire before the grant.
       await this.request(page.id, 'control', { token }); authorize();
-      if (page.closing || !this.viewers(page).has(ws) || ws.readyState !== WebSocket.OPEN) {
+      if (page.closing || this.viewers(page).get(ws) !== viewer || ws.readyState !== WebSocket.OPEN || !humanCurrent()) {
         await this.request(page.id, 'control', { token: null });
-        throw new Error('Browser viewer closed');
+        throw Object.assign(new Error('Browser interaction ended'), { code: 'CONTROL_LOST', retryable: true });
       }
       if (!release) { page.controller = ws; page.controlToken = token; page.controlKind = input.action; }
       this.controlChanged(page);
@@ -176,13 +187,47 @@ export class RemoteBrowserService {
       page.keyTimer.unref();
     }
   }
+  resetVisibility(page) {
+    page.visibilityGeneration = (page.visibilityGeneration ?? 0) + 1;
+    page.visibilityWake?.(); page.visibilityWake = null; page.visibilityJob = null;
+    page.painted = null;
+  }
   visibility(page) {
-    const visible = [...this.viewers(page).values()].some(viewer => viewer.visible);
-    if (page.painted === visible || !page.live || page.closing) return Promise.resolve();
-    page.painted = visible;
-    return this.request(page.id, 'visible', { visible });
+    if (page.visibilityJob) return page.visibilityJob;
+    const generation = page.visibilityGeneration ?? 0, child = this.child;
+    const current = () => !this.closed && !page.closing && page.live
+      && this.child === child && (page.visibilityGeneration ?? 0) === generation;
+    const job = (async () => {
+      let failures = 0;
+      while (current()) {
+        const visible = [...this.viewers(page).values()].some(viewer => viewer.visible);
+        if (page.painted === visible) return;
+        try {
+          await this.request(page.id, 'visible', { visible });
+          if (!current()) return;
+          page.painted = visible; failures = 0;
+        } catch (error) {
+          if (!current()) return;
+          // A failed/unknown outcome cannot be cached as applied. These setters
+          // are idempotent; input and composition are never retried here.
+          page.painted = null;
+          if (error.retryable === false) throw error;
+          if (++failures > 3)
+            throw unavailable('Browser display unavailable; reconnecting');
+          await new Promise(resolve => {
+            const timer = setTimeout(wake, 200 * 2 ** (failures - 1)); timer.unref();
+            function wake() { clearTimeout(timer); if (page.visibilityWake === wake) page.visibilityWake = null; resolve(); }
+            page.visibilityWake = wake;
+          });
+        }
+      }
+    })();
+    page.visibilityJob = job;
+    void job.finally(() => { if (page.visibilityJob === job) page.visibilityJob = null; }).catch(() => {});
+    return job;
   }
   detach(page, ws) {
+    this.display.detach(ws);
     if (!this.viewers(page).delete(ws)) return;
     if (page.controller === ws) {
       page.controller = null; page.controlToken = null; page.controlKind = null; page.controlEpoch = (page.controlEpoch ?? 0) + 1;
@@ -193,7 +238,7 @@ export class RemoteBrowserService {
   }
   retire(page, replying) {
     if (page.retirement) return page.retirement;
-    page.closing = true;
+    page.closing = true; this.resetVisibility(page);
     clearTimeout(page.keyTimer); page.keyTimer = null;
     for (const ws of this.viewers(page).keys()) if (ws !== replying) ws.close(1000, 'Browser tab closed');
     this.retiredLeases.add(page.key);
@@ -208,6 +253,12 @@ export class RemoteBrowserService {
       if (this.pages.get(page.key) === page) this.pages.delete(page.key);
       page.controller = null; this.viewers(page).clear();
       await this.persist();
+      // A stale runtime remains pinned while any Tab exists. Releasing an idle
+      // transport lets the next open safely upgrade an empty native owner.
+      if (this.ownerConnector && this.child?.runtimeCurrent === false && !this.pages.size
+        && !this.requests.size && !this.attachments.size) {
+        const child = this.child; this.child = null; this.starting = null; child.kill();
+      }
     })().catch(error => { page.retirement = null; this.retryRetirement(page); throw error; });
     return page.retirement;
   }
@@ -230,6 +281,45 @@ export class RemoteBrowserService {
       await this.load();
       if (!await this.available()) throw new Error('Bundled browser runtime unavailable');
       await mkdir(this.dataDirectory, { recursive: true, mode: 0o700 });
+      if (this.ownerConnector) {
+        let child;
+        try { child = await this.ownerConnector({ directory: this.directory, dataDirectory: this.dataDirectory }); }
+        catch (error) {
+          if (error.code === 'BROWSER_OWNER_INCOMPATIBLE') throw error;
+          this.diagnose('owner_attach_failed');
+          throw unavailable('Browser owner unavailable; reconnecting');
+        }
+        if (this.closed) { child.kill(); throw new Error('Browser service closed'); }
+        this.child = child; this.isolated = false;
+        const retire = event => {
+          if (this.child !== child) return;
+          this.child = null; this.starting = null; this.diagnose(event);
+          for (const request of this.requests.values()) { clearTimeout(request.timer); request.reject(unavailable('Browser owner disconnected')); }
+          this.requests.clear();
+          for (const page of this.pages.values()) {
+            this.resetVisibility(page); page.live = false; page.painted = false; page.controller = null; page.controlToken = null; page.controlKind = null; page.controlEpoch = (page.controlEpoch ?? 0) + 1;
+            for (const ws of this.viewers(page).keys()) ws.close(1011, 'Browser owner disconnected; reconnecting');
+          }
+          child.kill();
+        };
+        child.on('error', () => retire('owner_transport_error')); child.on('exit', () => retire('owner_detached'));
+        child.on('message', message => { if (this.child !== child) return;
+          if (message.type === 'owner-failure') this.lastBrowserFailure = { event: 'owner_exited', native: message.native };
+          else this.receive(message);
+        });
+        // Only durable logical pages may adopt a live native page. Unknown
+        // native IDs are orphans, never a source of new authorization.
+        const inventory = new Map(child.inventory.map(config => [config.id, config]));
+        for (const page of this.pages.values()) {
+          const config = inventory.get(page.id); if (!config) continue;
+          inventory.delete(page.id); page.live = true; page.painted = false; page.document = config.document;
+          page.viewport = { width: config.width, height: config.height, deviceProfile: config.deviceProfile };
+          page.url = checkpointUrl(config.navigation?.url); page.controller = null; page.controlToken = null; page.controlKind = null;
+          if (Number.isInteger(config.zoom)) page.zoom = config.zoom;
+        }
+        for (const id of inventory.keys()) await this.request(id, 'close');
+        return;
+      }
       const env = { ...process.env, OPENCRAFT_BROWSER_DATA_DIR: this.dataDirectory };
       // A trusted runtime needs no inherited Node hooks or ambient desktop.
       for (const name of ['ELECTRON_RUN_AS_NODE','NODE_OPTIONS','NODE_PATH','DISPLAY','WAYLAND_DISPLAY']) delete env[name];
@@ -272,7 +362,7 @@ export class RemoteBrowserService {
         failStartup?.(unavailable('Browser process exited during startup'));
         for (const request of this.requests.values()) { clearTimeout(request.timer); request.reject(unavailable('Browser process exited')); }
         this.requests.clear();
-        for (const p of this.pages.values()) { p.live = false; p.painted = false; p.controller = null; p.controlToken = null; p.controlKind = null; p.controlEpoch = (p.controlEpoch ?? 0) + 1; for (const ws of this.viewers(p).keys()) ws.close(1011, 'Browser process exited; reconnecting'); }
+        for (const p of this.pages.values()) { this.resetVisibility(p); p.live = false; p.painted = false; p.controller = null; p.controlToken = null; p.controlKind = null; p.controlEpoch = (p.controlEpoch ?? 0) + 1; for (const ws of this.viewers(p).keys()) ws.close(1011, 'Browser process exited; reconnecting'); }
         // Retire this transport only. EOF/disconnect asks a still-running owned
         // worker to quit; its late messages/errors cannot touch the replacement.
         child.stdin?.destroy();
@@ -323,7 +413,7 @@ export class RemoteBrowserService {
     const p = [...this.pages.values()].find(page => page.id === message.page);
     if (message.type === 'renderer-gone' && p) {
       this.diagnose('renderer_exited', undefined, message);
-      p.live = false; p.painted = false; p.controller = null; p.controlToken = null; p.controlKind = null;
+      this.resetVisibility(p); p.live = false; p.painted = false; p.controller = null; p.controlToken = null; p.controlKind = null;
       p.controlEpoch = (p.controlEpoch ?? 0) + 1;
       clearTimeout(p.keyTimer); p.keyTimer = null;
       for (const [id, request] of this.requests) if (request.page === p.id) {
@@ -336,19 +426,22 @@ export class RemoteBrowserService {
     if (p && !p.recovering && message.type === 'navigation' && !message.state.isLoading) { p.url = checkpointUrl(message.state.url); this.checkpoint(); }
     if (p && message.type === 'viewport') { p.viewport = { width: message.width, height: message.height, deviceProfile: message.deviceProfile }; this.checkpoint(); }
     if (!p) return;
+    if (message.type === 'input-reset' && typeof message.document === 'string') p.document = message.document;
     const privateEvent = ['ime-state', 'context-menu', 'new-window'].includes(message.type);
     const packet = message.type === 'frame' ? Buffer.from(message.bytes, 'base64') : null;
     const { page, ...event } = message;
     for (const [ws, viewer] of this.viewers(p)) {
       if (ws.readyState !== WebSocket.OPEN || privateEvent && ws !== p.controller || packet && (!viewer.visible || !viewer.ready)) continue;
       try { viewer.authorize(); } catch { ws.close(1008, 'Browser admission expired'); continue; }
-      if (ws.bufferedAmount > 128 * 1024) { ws.close(1013, 'Display behind'); ws.terminate(); continue; }
-      ws.send(packet ?? JSON.stringify(event), { binary: !!packet });
+      this.display.send(p, ws, viewer, packet, event);
     }
   }
 
   diagnose(event, method, detail) {
-    if (this.diagnosticCount >= 20) return;
+    // A noisy slow viewer must not consume the process/crash diagnostic budget.
+    const count = this.diagnosticCounts.get(event) ?? 0;
+    if (count >= 20) return;
+    this.diagnosticCounts.set(event, count + 1);
     this.diagnosticCount++;
     // Only owned enums and process counters: never request input, actor/page
     // identifiers, URLs, arbitrary native stderr or exception messages.
@@ -356,9 +449,10 @@ export class RemoteBrowserService {
       ...(method === 'create' || methods.has(method) ? { method } : {}),
       ...(['clean-exit','abnormal-exit','killed','crashed','oom','launch-failed','integrity-failure'].includes(detail?.reason) ? { reason: detail.reason } : {}),
       ...(Number.isInteger(detail?.exitCode) && Math.abs(detail.exitCode) < 2147483648 ? { exitCode: detail.exitCode } : {}),
+      ...(Number.isInteger(detail?.closeCode) && detail.closeCode >= 1000 && detail.closeCode < 5000 ? { closeCode: detail.closeCode } : {}),
       pendingRequests: this.requests.size }));
   }
-  request(page, method, input, control) {
+  request(page, method, input, control, document) {
     if (!this.child || (this.isolated ? this.child.stdin.destroyed : !this.child.connected)) return Promise.reject(unavailable('Browser unavailable'));
     const id = randomUUID();
     return new Promise((resolve, reject) => {
@@ -366,8 +460,8 @@ export class RemoteBrowserService {
       timer.unref(); this.requests.set(id, { page, resolve, reject, timer });
       const failed = error => { if (error) { clearTimeout(timer); this.requests.delete(id); reject(unavailable('Browser disconnected')); } };
       try {
-        if (this.isolated) this.child.stdin.write(JSON.stringify({ id, page, method, input, control }) + '\n', failed);
-        else this.child.send({ id, page, method, input, control }, failed);
+        if (this.isolated) this.child.stdin.write(JSON.stringify({ id, page, method, input, control, document }) + '\n', failed);
+        else this.child.send({ id, page, method, input, control, document }, failed);
       } catch (error) { failed(error); }
     });
   }
@@ -435,7 +529,7 @@ export class RemoteBrowserService {
             if (this.retiredLeases.has(key)) throw new Error('Browser tab is closed');
             if (ws.readyState !== WebSocket.OPEN) return;
             page = existing ?? { id: createHash('sha256').update(key).digest('hex'), key, ownerId, controller: null, live: false, viewport: message.input?.viewport, zoom: 100, url: null };
-            this.viewers(page).set(ws, { visible: !modern || message.input.visible === true, modern, inputAcknowledgements: message.input.inputAcknowledgements === true, authorize, ready: false }); this.pages.set(key, page);
+            this.viewers(page).set(ws, { visible: !modern || message.input.visible === true, visibilityEpoch: 0, modern, documentInput: message.input.documentInput === true, inputAcknowledgements: message.input.inputAcknowledgements === true, authorize, ready: false }); this.pages.set(key, page);
             let config;
             const resumed = page.live, recoveryUrl = page.url, recoveryZoom = page.zoom;
             page.recovering = !resumed && !!existing;
@@ -444,6 +538,7 @@ export class RemoteBrowserService {
                 : this.request(page.id, 'create', (modern && existing ? page.viewport : message.input?.viewport) ?? page.viewport
                   ?? { deviceProfile: message.input?.defaultDeviceProfile ?? 'desktop' });
               config = await page.creating; page.live = true;
+              if ((!resumed || !page.document) && typeof config.document === 'string') page.document = config.document;
               if (page.closing) throw new Error('Browser tab closed');
               if (!resumed && existing) {
                 if (recoveryZoom !== 100) await this.request(page.id, 'zoom', { percent: recoveryZoom });
@@ -468,7 +563,7 @@ export class RemoteBrowserService {
               if (ws.readyState !== WebSocket.OPEN) { this.detach(page, ws); return; }
               if (!modern) await this.control(page, ws, { action: 'human', takeover: true }, authorize);
               this.controlChanged(page);
-              reply(message.id, { ...config, inputAcknowledgements: message.input.inputAcknowledgements === true, resumed, restored: !!existing && !resumed, multiView: true, initialized: modern && !existing, control: this.controlState(page, ws) });
+              reply(message.id, { ...config, document: page.document ?? config.document, documentInput: typeof (page.document ?? config.document) === 'string', inputAcknowledgements: message.input.inputAcknowledgements === true, resumed, restored: !!existing && !resumed, multiView: true, initialized: modern && !existing, control: this.controlState(page, ws) });
               const attached = this.viewers(page).get(ws); if (attached) { attached.ready = true; if (attached.visible) this.keyframe(page); }
             } catch (error) {
               page.recovering = false;
@@ -490,6 +585,7 @@ export class RemoteBrowserService {
           if (target.closing) throw new Error('Browser tab is closing');
           if (message.method === 'visible') {
             viewer.visible = message.input?.visible === true;
+            if (!viewer.visible) viewer.visibilityEpoch = (viewer.visibilityEpoch ?? 0) + 1;
             if (!viewer.visible && target.controller === ws && target.controlKind === 'human')
               await this.control(target, ws, { action: 'release', token: target.controlToken }, authorize);
             await this.visibility(target);
@@ -501,17 +597,27 @@ export class RemoteBrowserService {
           const control = viewer.modern ? message.control : target.controlToken;
           if (!readOnly && (target.controller !== ws || !control || control !== target.controlToken))
             throw Object.assign(new Error('Browser control changed; start a new interaction'), { code: 'CONTROL_LOST', retryable: true });
-          const value = await this.request(target.id, message.method, message.input, readOnly ? undefined : control);
+          const documentBound = ['input', 'text', 'ime'].includes(message.method);
+          const document = documentBound ? viewer.documentInput ? message.document : target.document : undefined;
+          if (documentBound && viewer.documentInput && (typeof document !== 'string' || document !== target.document))
+            throw Object.assign(new Error('Browser document changed'), { code: 'DOCUMENT_CHANGED', retryable: true });
+          const value = await this.request(target.id, message.method, message.input, readOnly ? undefined : control, document);
           authorize();
           if (page !== target || !this.viewers(target).has(ws) || this.pages.get(target.key) !== target || ws.readyState !== WebSocket.OPEN) return;
           if (message.method === 'zoom') { target.zoom = Number(message.input.percent); await this.persist(); }
           if (['navigate', 'viewport'].includes(message.method)) await this.persist();
           if (!quietMethods.has(message.method) || message.method === 'input' && viewer.inputAcknowledgements) reply(message.id, value);
         } catch (error) { opening = false;
-          if (message?.id) reply(message.id, null, error); else ws.close(1008, 'Invalid browser request'); }
+          if (message?.id) reply(message.id, null, error); else ws.close(1008, 'Invalid browser request');
+          // Quiet setters have no client waiter. Exhausted display recovery
+          // must reattach rather than silently leave this viewer out of sync.
+          if (message?.method === 'visible' && error.code === 'BROWSER_UNAVAILABLE')
+            ws.close(1013, 'Browser display unavailable; reconnecting');
+        }
         finally { releaseAttachment?.(); pending--; }
       });
-      ws.on('close', () => {
+      ws.on('close', code => {
+        this.diagnose('viewer_disconnected', undefined, { closeCode: code });
         this.sockets.delete(ws);
         if (!page) return;
         this.detach(page, ws);
@@ -521,10 +627,16 @@ export class RemoteBrowserService {
   close() {
     if (this.closed) return;
     this.closed = true;
-    for (const ws of this.sockets) ws.terminate();
+    this.display.close();
+    this.diagnose('gateway_shutdown');
+    for (const ws of this.sockets) {
+      ws.close(1012, 'Browser connection restarting');
+      const timer = setTimeout(() => ws.terminate(), 2000); timer.unref();
+      ws.once('close', () => clearTimeout(timer));
+    }
     clearTimeout(this.checkpointTimer);
     if (this.loaded) void this.persist().catch(() => {});
-    for (const page of this.pages.values()) { clearTimeout(page.retirementTimer); clearTimeout(page.keyTimer); }
+    for (const page of this.pages.values()) { this.resetVisibility(page); clearTimeout(page.retirementTimer); clearTimeout(page.keyTimer); }
     for (const request of this.requests.values()) { clearTimeout(request.timer); request.reject(new Error('Browser service closed')); }
     this.requests.clear();
     if (this.isolated) this.child?.stdin.end(); else this.child?.kill();

@@ -118,7 +118,7 @@ function SidebarPagination({ total, visibleCount, pageSize, onChange, pullToLoad
   const intl = useIntl();
   const [pending, startTransition] = useTransition();
   const footerRef = useRef<HTMLDivElement>(null);
-  // Both inputs reveal one page of the existing catalog. The transition owns
+  // All inputs reveal one page of the existing catalog. The transition owns
   // pending presentation; it does not introduce a second data/request owner.
   const reveal = () => {
     if (!pending && visibleCount < total) startTransition(() => onChange(visibleCount + pageSize));
@@ -127,8 +127,7 @@ function SidebarPagination({ total, visibleCount, pageSize, onChange, pullToLoad
   const moreLabel = intl.formatMessage({ id: "sidebar.catalog.showMore", defaultMessage: "Show more" });
   return <div className="sidebar-activity-pagination" ref={footerRef} aria-busy={pending} hidden={total <= pageSize}>
     {visibleCount < total ? <button type="button" className="sidebar-activity-more" onClick={reveal} disabled={pending} aria-label={moreLabel}>
-      {pending ? <LoaderCircle size={14} className="is-spinning" aria-hidden="true" /> : null}
-      <span>{moreLabel}</span>
+      {pending ? <LoaderCircle size={14} className="is-spinning" aria-hidden="true" /> : <span>{moreLabel}</span>}
     </button> : pullToLoad ? <span className="sidebar-activity-empty" role="status">
       {intl.formatMessage({ id: "sidebar.catalog.end", defaultMessage: "No more conversations" })}
     </span> : null}

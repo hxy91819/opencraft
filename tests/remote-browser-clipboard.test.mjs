@@ -65,3 +65,32 @@ test('native denial or unsupported formats never become a success result', async
     await assert.rejects(f.port.copy(), /Selection changed|format is not supported/);
   }
 });
+
+test('unrelated and same-document navigation preserve copy; owning document replacement retires it', async () => {
+  const f=fixture();Object.assign(f.frame,{processId:10,routingId:20});
+  for(const args of [[{},'https://other.test/',false,false,30,40],[{},'https://same.test/#hash',true,true,10,20]]){
+    const menu=await f.menu();f.wc.emit('did-start-navigation',...args);
+    assert.equal((await f.port.copy(menu.context)).text,'网站复制结果');
+  }
+  for(const args of [[{},'https://same.test/new',false,false,10,20],[{},'https://top.test/new',false,true,99,88]]){
+    const menu=await f.menu();f.wc.emit('did-start-navigation',...args);
+    await assert.rejects(f.port.copy(menu.context),/Selection changed/);
+  }
+  f.port.dispose();assert.equal(f.wc.listenerCount('did-start-navigation'),0);
+});
+test('navigation fences capture and copy only when their owning frame is replaced', async () => {
+  for(const own of [false,true]){
+    const f=fixture();Object.assign(f.frame,{processId:10,routingId:20});
+    const capture=deferred();f.frame.getNativeClipboardContextForTesting=()=>capture.promise;
+    const copying=f.port.copy();const check=own?assert.rejects(copying,/Selection changed/):copying;
+    f.wc.emit('did-start-navigation',{},'https://frame.test/',false,false,own?10:30,own?20:40);
+    capture.resolve({available:true,token:'valid'});const result=await check;if(!own)assert.equal(result.text,'网站复制结果');f.port.dispose();
+  }
+  for(const own of [false,true]){
+    const f=fixture();Object.assign(f.frame,{processId:10,routingId:20});const menu=await f.menu(),pending=deferred();
+    f.frame.copyNativeClipboardForTesting=()=>pending.promise;const copying=f.port.copy(menu.context);
+    const check=own?assert.rejects(copying,/canceled/):copying;
+    f.wc.emit('did-start-navigation',{},'https://frame.test/',false,false,own?10:30,own?20:40);
+    pending.resolve({status:'ok',text:'native result'});const result=await check;if(!own)assert.equal(result.text,'native result');f.port.dispose();
+  }
+});

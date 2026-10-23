@@ -84,3 +84,17 @@ test('native capture must match observed document, node and input kind', async (
     }finally{f.port.dispose()}
   }
 });
+
+test('unrelated and same-document navigation preserve IME; replacement of the owned frame retires it', async () => {
+  const f=fixture();f.frame.processId=11;f.frame.routingId=22;
+  try {
+    await f.port.apply({id,type:'begin'});await f.port.apply({id,type:'compose',text:'ni'});
+    f.wc.emit('did-start-navigation',{},'https://example.test/ad',false,false,33,44);
+    f.wc.emit('did-start-navigation',{},'https://example.test/#section',true,true,11,22);
+    await f.port.apply({id,type:'commit',text:'你'});assert.equal(f.calls.at(-1).type,'commit');
+    await f.port.apply({id:other,type:'begin'});await f.port.apply({id:other,type:'compose',text:'hao'});
+    f.wc.emit('did-start-navigation',{},'https://example.test/changed',false,false,11,22);
+    await assert.rejects(f.port.apply({id:other,type:'commit',text:'好'}));
+    assert.equal(f.calls.at(-1).type,'cancel');
+  }finally{f.port.dispose()}
+});

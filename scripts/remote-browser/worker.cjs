@@ -32,7 +32,8 @@ function deviceProfile(input = {}) {
   if (!deviceProfiles.has(profile)) throw new Error('Invalid device profile');
   return profile;
 }
-const configuration = p => ({ navigation: navigation(p), width: p.width, height: p.height, dpr: 1, deviceProfile: p.deviceProfile, codec: 'avc1.42E028', nativeCopy: p.clipboard?.available() === true, nativeIme: p.ime?.available() === true, multiTouch: true });
+const configuration = p => ({ document: p.document, navigation: navigation(p), width: p.width, height: p.height, dpr: 1, deviceProfile: p.deviceProfile, codec: 'avc1.42E028', nativeCopy: p.clipboard?.available() === true, nativeIme: p.ime?.available() === true, multiTouch: true });
+const configuration = p => ({ navigation: navigation(p), width: p.width, height: p.height, zoom: Math.round(p.window.webContents.getZoomFactor() * 100), dpr: 1, deviceProfile: p.deviceProfile, codec: 'avc1.42E028', nativeCopy: p.clipboard?.available() === true, nativeIme: p.ime?.available() === true, multiTouch: true });
 function userAgent(p, profile) {
   const chrome = process.versions.chrome;
   if (profile === 'iphone') return 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
@@ -195,13 +196,17 @@ async function createPage(id, input) {
     desktopPlatformName:process.platform === 'darwin'?'macOS':process.platform === 'win32'?'Windows':'Linux', epoch: randomUUID(), visible: false, closed: false, key: true, encoderReady: false, document: randomUUID(), bridgeInstalled: null, interactive: false };
   pages.set(id, p);
   const wc = window.webContents;
-  p.touch = createTouchInput(createWidgetTouchDispatcher(wc.debugger, () => wc.getZoomFactor()));
-  p.wheel = createWidgetWheelDispatcher(wc.debugger, () => wc.getZoomFactor());
+  p.touch = createTouchInput(createWidgetTouchDispatcher(wc.debugger, () => wc.getZoomFactor(), () => p.document));
+  p.wheel = createWidgetWheelDispatcher(wc.debugger, () => wc.getZoomFactor(), () => p.document);
   p.clipboard = installClipboard(p, send); p.ime = installIme(p, send);
   wc.setFrameRate(2); wc.stopPainting();
   wc.setWindowOpenHandler(({ url }) => { try { send({ type: 'new-window', page: id, url: validUrl(url) }); } catch {} return { action: 'deny' }; });
   for (const event of ['will-navigate', 'will-redirect']) wc.on(event, (e, url) => { try { validUrl(url); } catch { e.preventDefault(); } });
-  wc.on('did-start-navigation', (_e, _url, inPlace, mainFrame) => { if (!p.closed && mainFrame && !inPlace) { p.document = randomUUID(); p.bridgeInstalled = null; p.domReady = false; send({ type: 'input-reset', page: id }); void p.touch.reset().catch(() => {}); } });
+  wc.on('did-start-navigation', (_e, _url, inPlace, mainFrame) => { if (!p.closed && mainFrame && !inPlace) {
+    p.document = randomUUID(); p.bridgeInstalled = null; p.domReady = false;
+    send({ type: 'input-reset', page: id, document: p.document });
+    p.inputReset = (p.inputReset ?? Promise.resolve()).then(() => resetInput(p)).catch(() => {});
+  } });
   for (const event of ['did-start-loading', 'did-stop-loading', 'did-navigate', 'did-navigate-in-page', 'page-title-updated']) wc.on(event, () => { if (!p.closed) { state(p); if (p.visible) activity(p); } });
   wc.on('dom-ready', () => { p.domReady = true; });
   wc.on('render-process-gone', (_event, details) => {
@@ -269,14 +274,22 @@ async function automation(p, method, input) {
 }
 async function command(message) {
   const { page: id, method, input = {} } = message;
+  if (method === 'inventory') return [...pages.values()].map(p => ({ id: p.id, ...configuration(p) }));
   if (method === 'create') return createPage(id, input);
   if (method === 'close') { closePage(id); return; }
   const p = pages.get(id); if (!p) throw new Error('Browser page closed');
   const wc = p.window.webContents;
+  const checkDocument = () => {
+    if (message.document !== undefined && message.document !== p.document)
+      throw Object.assign(new Error('Browser document changed'), { code: 'DOCUMENT_CHANGED', retryable: true });
+  };
+  checkDocument();
   if (message.control !== undefined && message.control !== p.controlToken)
     throw Object.assign(new Error('Browser control changed'), { code: 'CONTROL_LOST', retryable: true });
   if (method === 'viewport') return resize(p, input);
   if (method !== 'close') await p.viewportQueue;
+  await p.inputReset;
+  checkDocument();
   if (method === 'control') {
     if (input.token !== null && (typeof input.token !== 'string' || !/^[a-zA-Z0-9-]{20,100}$/.test(input.token))) throw new Error('Invalid control token');
     await resetInput(p); p.clipboard.retire(); p.controlToken = input.token; return;
@@ -325,6 +338,7 @@ async function command(message) {
     if (!allowed.includes(input.type)) throw new Error('Invalid input');
     if (['mouseDown', 'keyDown', 'touchStart'].includes(input.type)) {
       p.clipboard.retire(); await p.ime.retire();
+      checkDocument();
       p.contextIntent = typeof input.menuIntent === 'string' && /^[a-zA-Z0-9-]{20,100}$/.test(input.menuIntent) ? input.menuIntent : null;
     }
     // A held touch/drag is active work even without another down/up event.
@@ -368,7 +382,7 @@ app.whenReady().then(async () => {
   encoderWindow = new BrowserWindow({ show: false, width: 1, height: 1,
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false, preload: join(__dirname, 'encoder-preload.cjs') } });
   await encoderWindow.loadFile(join(__dirname, 'encoder.html'));
-  dispatch = createControls(command);
+  dispatch = createControls(command, id => pages.get(id)?.document);
   const receive = message => {
     const operation = dispatch(message);
     void operation.then(value => send({ type: 'result', id: message.id, value }), error => send({ type: 'result', id: message.id, error: { code: error.code || 'BROWSER_ERROR', message: error.message, retryable: !!error.retryable } })); };

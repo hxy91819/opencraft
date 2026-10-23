@@ -119,3 +119,12 @@ test('native wheel backlog adds distance only at the same hit point, direction, 
   assert.deepEqual(seen.map(m => m.input.type === 'mouseWheel' ? [m.input.deltaY, m.input.x, m.control, m.input.modifiers] : m.input.type),
     ['mouseDown', [-200, 10, 'grant', []], [3, 10, 'grant', []], [4, 11, 'grant', []], [5, 11, 'replacement', []], [6, 11, 'replacement', ['control']], 'mouseUp']);
 });
+
+test('document identity is captured at admission and checked before native dispatch', async () => {
+  let document='old', release;const gate=new Promise(r=>release=r),seen=[];
+  const dispatch=createControls(async message=>{seen.push(message);if(seen.length===1)await gate},()=>document);
+  const held=dispatch(input('mouseWheel'));await tick();
+  const old=assert.rejects(dispatch(input('char')), {code:'DOCUMENT_CHANGED'});
+  document='new';release();await Promise.all([held,old]);assert.equal(seen.length,1);
+  await dispatch(input('char'));assert.equal(seen.at(-1).document,'new');
+});

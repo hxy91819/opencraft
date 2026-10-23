@@ -30,3 +30,10 @@ test('wheel fails closed on invalid metrics or failed native ACK, without retry'
   scale = 1; await assert.rejects(wheel({ deltaY: -50 }), /document gone/);
   assert.equal(attempts, 1);
 });
+
+test('navigation during native wheel metrics cannot inject into its replacement document', async () => {
+  let document='old',release;const gate=new Promise(r=>release=r),calls=[];
+  const wheel=createWidgetWheelDispatcher({async sendCommand(method,input){calls.push(method);if(method==='Page.getLayoutMetrics'){await gate;return {cssVisualViewport:{scale:1}}}}},()=>1,()=>document);
+  const result=assert.rejects(wheel({x:10,y:20,deltaY:-1}),{code:'DOCUMENT_CHANGED'});
+  document='new';release();await result;assert.deepEqual(calls,['Page.getLayoutMetrics']);
+});

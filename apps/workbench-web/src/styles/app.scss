@@ -9217,13 +9217,15 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 }
 
 .opencraft-composer-queue-item {
+  --width-composer-queue-handle: calc(var(--spacing) * 6);
   display: grid;
   min-width: 0;
   min-height: var(--height-composer-queue-row);
-  grid-template-columns: 34px 20px minmax(0, 1fr) auto;
+  grid-template-columns: var(--width-composer-queue-handle) 20px minmax(0, 1fr) auto;
   align-items: center;
-  gap: calc(var(--spacing) * 2);
+  column-gap: 0;
   padding: var(--padding-composer-rail-row);
+  padding-inline-start: var(--spacing);
   border-radius: 8px;
   color: var(--color-text-secondary);
   font: var(--typography-body-font);
@@ -9270,7 +9272,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 
 .opencraft-composer-queue-item__drag {
   display: grid;
-  width: 34px;
+  width: 100%;
   height: var(--height-composer-queue-row);
   padding: 0;
   border: 0;
@@ -9336,17 +9338,17 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 @media (pointer: coarse) {
   .opencraft-composer-queue-item {
     padding-block: 0;
-    grid-template-columns: 44px 20px minmax(0, 1fr) auto;
+    --width-composer-queue-handle: calc(var(--spacing) * 11);
   }
 
   .opencraft-composer-queue-item__drag {
-    width: 44px;
     height: var(--height-composer-queue-row);
   }
 }
 
 .opencraft-composer-queue-item__preview {
   min-width: 0;
+  margin-inline-start: calc(var(--spacing) * 2);
   overflow: hidden;
   color: inherit;
   text-overflow: ellipsis;
@@ -9387,6 +9389,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 
 .opencraft-composer-queue-item__actions {
   display: flex;
+  margin-inline-start: calc(var(--spacing) * 2);
   align-items: center;
   gap: 1px;
 

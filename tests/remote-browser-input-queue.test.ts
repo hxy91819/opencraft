@@ -80,3 +80,26 @@ test('reset cancels samples still waiting for a control grant, without replaying
   queue.push({ type: 'mouseDown' }); await tick(); queue.reset(); queue.push({ type: 'touchStart' });
   grant(); await queue.idle(); assert.deepEqual(sent.map(x => x.type), ['touchStart']);
 });
+
+test('failed input retires dependent work, reports once and ignores late old ACKs', async () => {
+  const seen: string[] = [], failures: string[] = [];
+  let reject!: (error: Error) => void, release!: () => void;
+  const queue = new RemoteBrowserInputQueue(input => {
+    seen.push(input.type);
+    return input.type === 'touchStart' ? new Promise((_r, fail) => { reject = fail; })
+      : new Promise<void>(resolve => { release = resolve; });
+  }, () => assert.fail('overflow'), error => failures.push(error.message));
+  queue.push({type:'touchStart'}); queue.push({type:'touchMove'}); queue.push({type:'touchEnd'}); await tick();
+  const drain = queue.idle(); reject(new Error('native rejected input')); await tick();
+  assert.equal(await drain, false); assert.deepEqual(failures, ['native rejected input']);
+  assert.deepEqual(seen, ['touchStart','touchMove']);
+  release(); await tick(); assert.equal(queue.busy, false);
+});
+
+test('coalescing cannot replace an event from another document', () => {
+  const seen: any[] = [];
+  const queue = new RemoteBrowserInputQueue(async event => { seen.push(event); }, () => assert.fail('overflow'));
+  queue.push({type:'keyDown'});queue.push({type:'keyUp'});
+  queue.push({...wheel(),document:'old'});queue.push({...wheel(),document:'new'});
+  return queue.idle().then(() => assert.deepEqual(seen.slice(2).map(e=>[e.document,e.deltaY]),[['old',-1],['new',-1]]));
+});

@@ -10,6 +10,7 @@ import { CONVERSATION_SCHEDULES, CONVERSATION_SCHEDULES_EXTENSION, type Conversa
 import type { DatabaseOutcome } from "@opencraft/sqlite-node";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { createInterface, type Interface as ReadLineInterface } from "node:readline";
@@ -1779,7 +1780,7 @@ export class CodexEngineAdapter implements DuplexTransport {
     if (method === "thread/start") {
       const configuration = record(params.config)["mcp_servers.opencraft_session"];
       const threadId = string(record(record(result).thread).id);
-      if (configuration && threadId) this.sessionMcpConfigurations.set(threadId, JSON.stringify(configuration));
+      if (configuration && threadId) this.sessionMcpConfigurations.set(threadId, structuredClone(configuration));
     }
     this.threadTitles?.observeResult(method, params, result);
     this.durableCatalog?.observe(method, params, result);
@@ -1910,9 +1911,8 @@ export class CodexEngineAdapter implements DuplexTransport {
           this.clearCapacityRetry(threadId);
           return;
         }
-        const response = record(await this.requestPhysical("thread/read", { threadId, includeTurns: true }));
-        const turns = record(response.thread).turns;
-        const latest = Array.isArray(turns) ? record(turns.at(-1)) : {};
+        const response = record(await this.requestPhysical("thread/turns/list", { threadId, limit: 1, sortDirection: "desc", itemsView: "notLoaded" }));
+        const latest = Array.isArray(response.data) ? record(response.data[0]) : {};
         if (latest.id !== failedTurnId || latest.status !== "failed"
           || record(latest.error).codexErrorInfo !== "serverOverloaded") {
           this.clearCapacityRetry(threadId);
@@ -2022,13 +2022,28 @@ export class CodexEngineAdapter implements DuplexTransport {
     if (row.state === "queued") { this.scheduleQueueMaintenance(run.threadId); return { state: "running" }; }
     const turnId = row.targetTurnId;
     if (!turnId || turnId === "unknown") return { state: "unknown" };
-    const response = record(await this.requestPhysical("thread/read", { threadId: run.threadId, includeTurns: true }));
-    const turns = record(response.thread).turns;
-    const turn = Array.isArray(turns) ? turns.map(record).find(value => value.id === turnId) : undefined;
+    const turn = await this.findScheduledTurn(run.threadId, turnId);
     if (!turn) return { state: "unknown" };
     if (turn.status === "completed") return { state: "completed" };
     if (turn.status === "failed" || turn.status === "interrupted" || turn.error) return { state: "failed" };
     return { state: "running" };
+  }
+
+  private async findScheduledTurn(threadId: string, turnId: string): Promise<RpcRecord | undefined> {
+    let cursor: string | undefined;
+    const seen = new Set<string>();
+    for (let page = 0; page < 100; page += 1) {
+      const response = record(await this.requestPhysical("thread/turns/list", {
+        threadId, limit: 100, sortDirection: "desc", itemsView: "notLoaded", ...(cursor ? { cursor } : {}),
+      }));
+      if (!Array.isArray(response.data)) throw new Error("Codex turn history has no page");
+      const turn = response.data.map(record).find(value => value.id === turnId);
+      if (turn) return turn;
+      if (response.nextCursor == null) return undefined;
+      if (typeof response.nextCursor !== "string" || seen.has(response.nextCursor)) throw new Error("Codex turn history did not advance");
+      cursor = response.nextCursor; seen.add(cursor);
+    }
+    return undefined; // Old/unobserved schedules stay unknown; never fetch the full transcript.
   }
 
   private async threadStatus(threadId: string): Promise<string> {
@@ -2049,7 +2064,7 @@ export class CodexEngineAdapter implements DuplexTransport {
     if (status === "notLoaded" || this.nativeCore && !this.nativeSubscribedThreads.has(threadId)) {
       // A core-kept active thread is loaded, but this new physical connection
       // still needs completion events for queue and Goal continuation.
-      await this.requestPhysical("thread/resume", { threadId });
+      await this.requestPhysical("thread/resume", { threadId, excludeTurns: true });
       status = await this.threadStatus(threadId);
     }
     return status === "idle";
@@ -2308,14 +2323,45 @@ export class CodexEngineAdapter implements DuplexTransport {
     }
   }
 
-  private readonly sessionMcpConfigurations = new Map<string, string>();
+  // Confirmed configuration belongs to this physical connection. The in-flight
+  // map only coalesces preparation; neither map is a configuration authority.
+  private readonly sessionMcpConfigurations = new Map<string, unknown>();
+  private readonly sessionMcpRefreshes = new Map<string, Promise<void>>();
+  private sessionMcpGeneration = 0;
   private async prepareSessionMcp(threadId: string): Promise<void> {
     if (!threadId || !this.options.sessionMcp) return;
-    const configuration = await this.options.sessionMcp(threadId);
-    const revision = JSON.stringify(configuration);
+    for (;;) {
+      const pending = this.sessionMcpRefreshes.get(threadId);
+      if (pending) {
+        await pending;
+        // The provider may have changed while this caller waited. Resolve its
+        // current value rather than applying a captured, possibly older value.
+        continue;
+      }
+      const generation = this.sessionMcpGeneration;
+      const operation = Promise.resolve().then(() => this.refreshSessionMcp(threadId, generation)).finally(() => {
+        if (this.sessionMcpRefreshes.get(threadId) === operation) this.sessionMcpRefreshes.delete(threadId);
+      });
+      this.sessionMcpRefreshes.set(threadId, operation);
+      return operation;
+    }
+  }
+
+  private async refreshSessionMcp(threadId: string, generation: number): Promise<void> {
+    const current = () => {
+      if (generation !== this.sessionMcpGeneration) throw new Error("Session tool preparation belongs to an expired connection");
+    };
+    const configuration = structuredClone(await this.options.sessionMcp!(threadId));
+    current();
     const previous = this.sessionMcpConfigurations.get(threadId);
-    if (previous === revision || (configuration === null && previous === undefined)) return;
-    const read = record(await this.requestPhysical("thread/read", { threadId, includeTurns: false }));
+    if (isDeepStrictEqual(previous, configuration) || (configuration === null && previous === undefined)) return;
+    const request = async (method: string, params: RpcRecord): Promise<unknown> => {
+      current();
+      const result = await this.requestPhysical(method, params);
+      current();
+      return result;
+    };
+    const read = record(await request("thread/read", { threadId, includeTurns: false }));
     const thread = record(read.thread);
     if (thread.ephemeral === true) {
       if (configuration) throw new Error("Session capabilities require a durable Codex thread");
@@ -2324,7 +2370,7 @@ export class CodexEngineAdapter implements DuplexTransport {
     const status = string(record(thread.status).type);
     if (!["idle", "notLoaded"].includes(status)) throw new Error("Wait until the Codex thread is idle before changing its tools");
     this.cancelNativeRelease(threadId);
-    const live = status === "notLoaded" ? {} : record(await this.requestPhysical("thread/resume", { threadId, excludeTurns: true }));
+    const live = status === "notLoaded" ? {} : record(await request("thread/resume", { threadId, excludeTurns: true }));
     const resume: RpcRecord = {};
     for (const key of ["model", "modelProvider", "serviceTier", "cwd", "runtimeWorkspaceRoots", "approvalPolicy", "approvalsReviewer"])
       if (live[key] !== undefined) resume[key] = live[key];
@@ -2335,13 +2381,16 @@ export class CodexEngineAdapter implements DuplexTransport {
       if (sandbox.type && !modes[string(sandbox.type)]) throw new Error("Cannot preserve this Codex sandbox while refreshing tools");
       if (sandbox.type) resume.sandbox = modes[string(sandbox.type)];
     }
+    // Once native configuration can change, the old confirmation is no longer
+    // valid either. A partial failure must not make a later rollback look applied.
+    this.sessionMcpConfigurations.delete(threadId);
     if (status !== "notLoaded") {
-      await this.requestPhysical("thread/unsubscribe", { threadId });
+      await request("thread/unsubscribe", { threadId });
       // Native keeps durable threads in its catalog after unsubscribe. The
       // idle resume boundary rebuilds the session configuration without relying
       // on thread/read or loaded/list as an unloading acknowledgement.
     }
-    await this.requestPhysical("thread/resume", { ...resume, threadId, config: {
+    await request("thread/resume", { ...resume, threadId, excludeTurns: true, config: {
       "mcp_servers.opencraft_session": configuration ?? { enabled: false, url: "http://127.0.0.1:1/mcp" },
     } });
     if (Object.keys(live).length) {
@@ -2351,9 +2400,9 @@ export class CodexEngineAdapter implements DuplexTransport {
       for (const key of ["approvalPolicy", "approvalsReviewer", "model", "serviceTier", "collaborationMode"])
         if (live[key] !== undefined && live[key] !== null) settings[key] = live[key];
       if (live.reasoningEffort) settings.effort = live.reasoningEffort;
-      await this.requestPhysical("thread/settings/update", settings);
+      await request("thread/settings/update", settings);
     }
-    this.sessionMcpConfigurations.set(threadId, revision);
+    this.sessionMcpConfigurations.set(threadId, configuration);
   }
   private async writePhysical(message: RpcRecord): Promise<void> {
     if (message.method === "turn/start") await this.prepareSessionMcp(string(record(message.params).threadId));
@@ -2401,7 +2450,12 @@ export class CodexEngineAdapter implements DuplexTransport {
 
   private publishStatus(status: TransportStatus): void {
     this.statusValue = status;
-    if (["failed", "closing", "closed"].includes(status.state)) { this.threadTitles?.reset(); this.sessionMcpConfigurations.clear(); }
+    if (["failed", "closing", "closed"].includes(status.state)) {
+      this.threadTitles?.reset();
+      this.sessionMcpGeneration += 1;
+      this.sessionMcpConfigurations.clear();
+      this.sessionMcpRefreshes.clear();
+    }
     for (const listener of this.statusListeners) listener(status);
   }
 }

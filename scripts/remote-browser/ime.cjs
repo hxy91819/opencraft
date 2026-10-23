@@ -40,7 +40,7 @@ function installIme(p, send) {
       if (nextIdentity !== identity) {
         // Observation is a hint, never a reusable native write capability.
         // A focus/type transition retires the old local transaction identity.
-        identity = nextIdentity; editor = policy ? { id:randomUUID(), target:state.targetIdentity, type:state.type, policy } : null;
+        identity = nextIdentity; editor = policy ? { id:randomUUID(), target:state.targetIdentity, type:state.type, policy, frame:wc.focusedFrame } : null;
         void retire();
       }
       const editable = !!editor;
@@ -52,9 +52,15 @@ function installIme(p, send) {
     } catch {}
   };
   const timer = setInterval(observe, 150); timer.unref();
-  const onNavigation = () => { lastState = ''; identity = ''; editor = null; void retire(); };
+  const clearTarget = () => { lastState = ''; identity = ''; editor = null; void retire(); };
+  const onNavigation = (_event, _url, inPlace, mainFrame, processId, routingId) => {
+    if (inPlace) return;
+    const frame = transaction?.frame ?? editor?.frame;
+    if (mainFrame || frame && Number.isInteger(processId) && Number.isInteger(routingId)
+      && frame.processId === processId && frame.routingId === routingId) clearTarget();
+  };
   wc.on('did-start-navigation', onNavigation);
-  wc.on('render-process-gone', onNavigation);
+  wc.on('render-process-gone', clearTarget);
   return {
     available: () => supported(wc.mainFrame),
     observe() { lastState = ''; observe(); },
@@ -91,7 +97,7 @@ function installIme(p, send) {
       else current.native = result.context;
       observe();
     },
-    dispose() { clearInterval(timer); transaction = null; ++generation; wc.off('did-start-navigation', onNavigation); wc.off('render-process-gone', onNavigation); },
+    dispose() { clearInterval(timer); transaction = null; ++generation; wc.off('did-start-navigation', onNavigation); wc.off('render-process-gone', clearTarget); },
   };
 }
 module.exports = { installIme, keyboardPolicy };

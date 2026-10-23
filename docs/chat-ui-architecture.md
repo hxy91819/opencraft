@@ -87,7 +87,8 @@ own author tooltip and is never a drag target. Unknown authors and failed photos
 retain a same-size person icon. Hover, keyboard focus and held dragging do not
 fade the photo or place the grip over it. The warning indicator belongs to the
 sender slot; right-side Steer/Send, edit, delete and unconfirmed-delivery review
-stay distinct. Coarse pointers get a 44px handle contained in non-overlapping rows.
+stay distinct. Fine pointers use a compact 24px handle column with a centered
+12px grip; coarse pointers get a 44px handle contained in non-overlapping rows.
 ChatRuntime carries the original per-entry protocol sender. Exact-client local
 submission hints may paint a pending queue before acknowledgement; explicit server
 identity (including null) wins, and restored/unrelated entries never inherit the
@@ -3397,3 +3398,22 @@ an overlay, and streaming growth, shrinkage and width changes update that afford
 The existing View choice, completion defaults, copy/download and viewport ownership
 remain unchanged. `scripts/smoke-reasoning-disclosure.ts --plan-preview-only` covers
 short and long content, growth/shrinkage, expansion and View restoration.
+Queue row leading content is compact: the reorder hit area begins one spacing
+unit from the row edge and immediately precedes the independent sender slot.
+Keep the existing desktop/touch hit widths and row heights; only preview and
+trailing actions retain their normal text separation. Reducing leading whitespace
+must not put the photo inside the drag activator or overlap its target.
+### Archived and missing conversation restoration
+A confirmed archive/delete receipt or notification retires that Thread's live
+Replica authority and automatic recovery. A definite archived/not-found rejection
+from Thread metadata/Resume does the same, even if a provider also marks it
+retryable. Transport failures, missing models and unknown history failures never
+imply a missing conversation. Standard invalid-request/params/protocol RPC errors
+are deterministic and cannot opt into automatic history retries.
+The Host stays ready for other Threads. Recovery hints, reconnect and manual
+restore cannot resume a retired Thread; successful explicit unarchive reopens it.
+An archive fences pending hydration, so late success cannot restore authority.
+The Browser Application clears only matching Host/account selection memory and
+replaces an active invalid route with the existing Home and conversation list.
+Late failures cannot clear a newer selection or replace a newer navigation intent.
+This local draft does not create a remote Thread, unarchive it or replay input.

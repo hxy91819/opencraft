@@ -9,7 +9,7 @@ after(() => { if (previousReact) Object.defineProperty(globalThis, "React", prev
 import { createIntl, RawIntlProvider } from "react-intl";
 import { SidebarActivityItem } from "../apps/workbench-web/src/components/sidebar-activity-item";
 import { renderToStaticMarkup } from "react-dom/server";
-import { PaletteIcon as Palette, MessageIcon as MessageSquare, GlobeIcon as Globe2, PulseIcon as Activity, AddIcon as Plus, ServerIcon as Server, PersonSettingsIcon as UserRoundCog, SlidersIcon as SlidersHorizontal, PersonIcon as UserRound, TasksIcon as ListTodo, CollaborationIcon as MessagesSquare, ExtensionsIcon as Blocks, HelpIcon as CircleHelp } from "@opencraft/design-system-web/action-icons";
+import { PaletteIcon as Palette, MessageIcon as MessageSquare, GlobeIcon as Globe2, PulseIcon as Activity, AddIcon as Plus, FolderIcon as Folder, ServerIcon as Server, PersonSettingsIcon as UserRoundCog, SlidersIcon as SlidersHorizontal, PersonIcon as UserRound, TasksIcon as ListTodo, CollaborationIcon as MessagesSquare, ExtensionsIcon as Blocks, HelpIcon as CircleHelp } from "@opencraft/design-system-web/action-icons";
 import { WorkbenchProductContext, WorkbenchPresentationContext } from "../apps/workbench-web/src/workbench-product";
 import { WorkbenchIcon } from "../apps/workbench-web/src/components/ui/workbench-icon";
 import { NavigationIcon } from "../apps/workbench-web/src/components/shell-navigation/navigation-action";
@@ -38,7 +38,7 @@ test("New task uses the shared semantic action while panel toggles retain their 
   for (const product of ["classic", "standard"] as const) for(const sidebarOpen of [false,true]) assert.equal(render(createElement(SidebarToggleIcon,{sidebarOpen}),product),renderToStaticMarkup(createElement(ReferenceSidebarToggleIcon,{sidebarOpen})));
 });
 test("semantic settings/panel icons share artwork while retaining consumer-specific scale",()=>{
-  for(const [name,purpose,Icon,size] of [["appearance","settings",Palette,16],["chat","panel",MessageSquare,14],["browser","panel",Globe2,14],["activity","settings-page",Activity,16]] as const){
+  for(const [name,purpose,Icon,size] of [["folder","panel",Folder,14],["appearance","settings",Palette,16],["chat","panel",MessageSquare,14],["browser","panel",Globe2,14],["activity","settings-page",Activity,16]] as const){
     const actual=render(createElement(WorkbenchIcon,{name,purpose}));
     const old=renderToStaticMarkup(createElement(Icon,{size,strokeWidth:2}));
     assert.deepEqual(geometry(actual),geometry(old));assert.match(actual,new RegExp(`width="${size}"`));assert.match(actual,/stroke-width="2"/);
