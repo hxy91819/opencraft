@@ -40,7 +40,8 @@ try{
     await page.waitForTimeout(100);
     assert.equal(await page.getByRole('heading',{name:'选择服务器',exact:true}).isVisible(),false,'automatic entry never paints the chooser');
     assert.equal(await page.locator('[data-server="join"]').isVisible(),false,'automatic entry never exposes selectable targets');
-    await page.getByRole('status').waitFor();
+    assert.equal(await page.getByRole('status').count(),0,'automatic entry has no intermediate status');
+    assert.equal((await page.locator('body').innerText()).trim(),'','automatic entry stays silent until navigation');
     await page.screenshot({path:join(output,`automatic-entry-${width}-${colorScheme}.png`)});
   }
   releaseEntry();await page.unroute('**/__entry-probe-delay.js',holdEntry);await page.unroute(fixture.origin+'/',entryDocument);

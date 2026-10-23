@@ -94,13 +94,14 @@ test("resume preserves the requested initial page order and item view", async ()
   } finally { adapter.close(); }
 });
 
-test("cursor-only resume leaves the newest DSH page discoverable", async () => {
-  const { adapter } = fixture();
+test("cursor-only resume leaves the newest DSH page discoverable without reading history", async () => {
+  const { adapter, calls } = fixture();
   try {
     const resumed: any = await adapter.dispatch("thread/resume", { threadId: "s", excludeTurns: true });
     assert.deepEqual(resumed.thread.turns, []);
     assert.equal(resumed.initialTurnsPage, null);
     assert.ok(resumed.turnsBackwardsCursor);
+    assert.deepEqual(calls, [], "metadata-only resume must not read even the first native history page");
     const newest: any = await adapter.dispatch("thread/turns/list", {
       threadId: "s",
       cursor: resumed.turnsBackwardsCursor,
@@ -113,7 +114,7 @@ test("cursor-only resume leaves the newest DSH page discoverable", async () => {
   } finally { adapter.close(); }
 });
 
-test("cursor-only resume leaves an empty DSH history complete", async () => {
+test("cursor-only resume discovers empty DSH history lazily", async () => {
   const adapter = new DshAppServerAdapter({ call: async (method: string) => {
     if (method === "session.models") return { groups: [], failures: [], routable: true };
     if (method === "session.history") return { events: [], hasMore: false };
@@ -127,7 +128,9 @@ test("cursor-only resume leaves an empty DSH history complete", async () => {
     const resumed: any = await adapter.dispatch("thread/resume", { threadId: "empty", excludeTurns: true });
     assert.deepEqual(resumed.thread.turns, []);
     assert.equal(resumed.initialTurnsPage, null);
-    assert.equal(resumed.turnsBackwardsCursor, null);
+    assert.ok(resumed.turnsBackwardsCursor);
+    const page: any = await adapter.dispatch("thread/turns/list", { threadId: "empty", cursor: resumed.turnsBackwardsCursor, sortDirection: "desc" });
+    assert.deepEqual(page.data, []); assert.equal(page.nextCursor, null);
   } finally { adapter.close(); }
 });
 

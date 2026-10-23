@@ -1,3 +1,4 @@
+import { serializeHistoryReply } from "@opencraft/appserver-client";
 import { nodeObserver } from "../../../packages/observability-contract/node.mjs";
 import { labelUsagePeople } from "./token-usage-people.js";
 import { TokenUsageStateDatabase } from "./token-usage-state-database.js";
@@ -5,7 +6,7 @@ import { TokenUsageTelemetry } from "./token-usage-telemetry.js";
 import { TokenUsageQueryService } from "./token-usage-query-service.js";
 import { TokenUsageQueryError } from "./token-usage-query.js";
 import { COLLABORATION_METHOD, CONVERSATION_TOOLS } from "@opencraft/appserver-protocol/collaboration";
-import { ConversationSchedules, ScheduleFault, type ScheduleExecutionPort } from "./conversation-schedules.js";
+import { ConversationSchedules, ScheduleFault, type ScheduleExecutionPort, type ScheduleExecutionEvent } from "./conversation-schedules.js";
 import { CONVERSATION_SCHEDULES, CONVERSATION_SCHEDULES_EXTENSION, type ConversationScheduleRun } from "@opencraft/appserver-protocol";
 import type { DatabaseOutcome } from "@opencraft/sqlite-node";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
@@ -1222,7 +1223,7 @@ export class CodexEngineAdapter implements DuplexTransport {
             result: projectThreadAttachmentResult(this.messageAttachments, pending.method, pending.params, message.result),
           } : {}),
           id: pending.originalId,
-        }, pending.clientId);
+        }, pending.clientId, pending.method);
         if (["thread/start", "thread/fork", "thread/resume", "turn/start"].includes(pending.method)) {
           const threadId = pending.method === "thread/start" || pending.method === "thread/fork"
             ? string(record(record(message.result).thread).id) : string(pending.params.threadId);
@@ -1248,6 +1249,9 @@ export class CodexEngineAdapter implements DuplexTransport {
     if (message.method === "turn/completed" && threadId) {
       this.activeTurns.delete(threadId);
       const turn = record(record(message.params).turn);
+      if (["completed", "failed", "interrupted"].includes(string(turn.status))) for (const listener of this.scheduleObservers) listener({
+        threadId, turnId: string(turn.id), state: turn.status === "completed" && !turn.error ? "completed" : "failed",
+      });
       if (turn.status === "failed" && record(turn.error).codexErrorInfo === "serverOverloaded") {
         this.scheduleCapacityRetry(threadId, string(turn.id));
       } else this.clearCapacityRetry(threadId);
@@ -1970,8 +1974,10 @@ export class CodexEngineAdapter implements DuplexTransport {
   }
 
   /** Adapter only: scheduling policy and persistence live outside Codex. */
+  private readonly scheduleObservers = new Set<(event: ScheduleExecutionEvent) => void>();
   private scheduleExecutionPort(): ScheduleExecutionPort {
     return {
+      subscribe: listener => { this.scheduleObservers.add(listener); return () => { this.scheduleObservers.delete(listener); }; },
       validate: threadId => this.assertDurableQueueThread(threadId),
       permissionProfiles: async threadId => {
         const { thread } = record(await this.requestPhysical("thread/read", { threadId, includeTurns: false }));
@@ -2433,8 +2439,8 @@ export class CodexEngineAdapter implements DuplexTransport {
     this.child.stdin.write(`${JSON.stringify(message)}\n`);
   }
 
-  private emit(message: RpcRecord, clientId?: string): void {
-    const frame = JSON.stringify(clientId ? { ...message, [LOGICAL_CLIENT_FIELD]: clientId } : message);
+  private emit(message: RpcRecord, clientId?: string, method = ""): void {
+    const frame = serializeHistoryReply(clientId ? { ...message, [LOGICAL_CLIENT_FIELD]: clientId } : message, method);
     for (const listener of this.listeners) listener(frame);
   }
 

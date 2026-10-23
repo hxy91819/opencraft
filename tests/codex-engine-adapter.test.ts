@@ -1380,3 +1380,23 @@ test("ambiguous native rejection remains unknown and exposes a recovery gap",asy
   }finally{db.close();}
  }finally{await adapter.close();await rm(root,{recursive:true,force:true});}
 });
+
+test("scheduled Codex completion is observed from native events without a history read", async () => {
+  const root = await mkdtemp(join(tmpdir(), "opencraft-schedule-events-")), frames: Array<Record<string, unknown>> = [];
+  const adapter = createRoutingAdapter(root, frames); let seq = 0, inspections = 0;
+  const request = async (method: string, params: Record<string, unknown>) => {
+    const id = `schedule-event:${++seq}`; await adapter.send(JSON.stringify({ id, method, params, [LOGICAL_CLIENT_FIELD]: "writer" }));
+    const response = await waitFor(frames, f => f.id === id); assert.equal(response.error, undefined); return response.result as any;
+  };
+  try {
+    await adapter.connect(); await initializeClient(adapter, frames, "writer");
+    const threadId = (await request("thread/start", { cwd: root, testNoServerRequest: true })).thread.id;
+    (adapter as any).findScheduledTurn = async () => { inspections++; throw new Error("completion must not read history"); };
+    await request("opencraft/schedules/save", { threadId, expectedRevision: 0, prompt: "work", nextRunAt: Date.now(), intervalMinutes: null, timeZone: "UTC" });
+    await (adapter as any).schedules.tick();
+    const active = await request("opencraft/schedules/read", { threadId }); assert.equal(active.runs[0].state, "running");
+    await request("test/completeTurn", { threadId }); await (adapter as any).schedules.tick();
+    const done = await request("opencraft/schedules/read", { threadId }); assert.equal(done.runs[0].state, "completed");
+    assert.equal(inspections, 0); assert.equal((await request("test/readAcceptedInputs", {})).data.length, 1);
+  } finally { await adapter.close(); await rm(root, { recursive: true, force: true }); }
+});

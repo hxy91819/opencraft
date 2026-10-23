@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from "node:util";
 import { DshCapabilityBroker, type DshHostCapability } from "./dsh-capability-broker.js";
 import { DshExecutionAuthority } from "./dsh-execution-authority.js";
 import type { DshSessionRouting } from "./dsh-session-routing.js";
@@ -37,18 +38,22 @@ export class DshCapabilityLink {
   private controller = new AbortController();
   private calls = new Map<string, AbortController>();
   private endpoint: string | null = null;
+  private generation = 0;
   private task: Promise<void> | null = null;
   private inFlight = new Set<Promise<void>>();
   constructor(private readonly token: string, private readonly broker: DshCapabilityBroker, private readonly authority: DshExecutionAuthority, private readonly routing?: DshSessionRouting, private readonly onSkillsChanged?: () => void) {}
   attach(url: string) {
     if (this.endpoint === url) return;
     this.endpoint = url;
+    this.generation++;
+    this.mounted.clear();
     for (const call of this.calls.values()) call.abort();
     this.calls.clear();
     if (!this.task) this.task = this.poll();
   }
   private async request(path: string, body?: unknown, endpoint = this.endpoint) {
     if (!endpoint) throw new Error("DSH capability plugin is not ready");
+    const generation = this.generation;
     const response = await fetch(endpoint + path, {
       method: body === undefined ? "GET" : "POST",
       headers: { authorization: "Bearer " + this.token, "content-type": "application/json" },
@@ -56,25 +61,45 @@ export class DshCapabilityLink {
       signal: AbortSignal.any([this.controller.signal, AbortSignal.timeout(5000)]),
     });
     const text = await response.text();
-    if (endpoint !== this.endpoint) throw new Error("DSH bridge generation changed; retry required");
+    if (endpoint !== this.endpoint || generation !== this.generation) throw new Error("DSH bridge generation changed; retry required");
     if (!response.ok) {
       const detail = bridgeFailureDetail(text);
       throw new Error(`DSH capability bridge request failed: ${response.status}${detail === null ? "" : ` (${detail})`}`);
     }
     return text.length === 0 ? {} : JSON.parse(text);
   }
-  private readonly mounted = new Map<string, { endpoint: string | null; nativeId: string; signature: string }>();
-  async register(threadId: string): Promise<DshCapabilityRegistrationResult> {
-    const nativeId = this.routing?.native(threadId) ?? threadId;
-    const capabilities = this.broker.list(threadId), signature = JSON.stringify(capabilities);
-    const previous = this.mounted.get(threadId);
-    if (previous && previous.endpoint === this.endpoint && previous.nativeId === nativeId && previous.signature !== signature) {
-      if (this.authority.table.get(threadId)?.state === "running") throw new Error("Cannot replace capabilities of an active execution");
-      await this.unregister(threadId);
-    }
-    const result = await this.request("/register", { sessionId: nativeId, capabilities }) as DshCapabilityRegistrationResult;
-    if (!result.deferred) this.mounted.set(threadId, { endpoint: this.endpoint, nativeId, signature });
-    return result;
+  private readonly mounted = new Map<string, { endpoint: string; nativeId: string; capabilities: readonly DshHostCapability[]; result: DshCapabilityRegistrationResult }>();
+  private readonly registrations = new Map<string, Promise<unknown>>();
+  private serializeRegistration<T>(threadId: string, operation: () => Promise<T>): Promise<T> {
+    const current = (this.registrations.get(threadId) ?? Promise.resolve()).catch(() => {}).then(operation);
+    this.registrations.set(threadId, current);
+    void current.finally(() => { if (this.registrations.get(threadId) === current) this.registrations.delete(threadId); }).catch(() => {});
+    return current;
+  }
+  register(threadId: string): Promise<DshCapabilityRegistrationResult> {
+    return this.serializeRegistration(threadId, async () => {
+      const endpoint = this.endpoint, generation = this.generation;
+      if (this.controller.signal.aborted) throw new Error("DSH capability link is closed");
+      if (!endpoint) throw new Error("DSH capability plugin is not ready");
+      const nativeId = this.routing?.native(threadId) ?? threadId;
+      // Resolve after queued refreshes and snapshot provider-owned schemas.
+      const capabilities = structuredClone(this.broker.list(threadId));
+      const previous = this.mounted.get(threadId);
+      const sameGeneration = previous?.endpoint === endpoint && previous.nativeId === nativeId;
+      if (sameGeneration && isDeepStrictEqual(previous.capabilities, capabilities)) return previous.result;
+      if (sameGeneration && this.authority.table.get(threadId)?.state === "running")
+        throw new Error("Cannot replace capabilities of an active execution");
+      this.mounted.delete(threadId);
+      if (sameGeneration) await this.request("/unregister", { sessionId: nativeId }, endpoint);
+      if (endpoint !== this.endpoint || generation !== this.generation || nativeId !== (this.routing?.native(threadId) ?? threadId))
+        throw new Error("DSH capability generation changed; retry required");
+      const result = await this.request("/register", { sessionId: nativeId, capabilities }, endpoint) as DshCapabilityRegistrationResult;
+      if (endpoint !== this.endpoint || generation !== this.generation || nativeId !== (this.routing?.native(threadId) ?? threadId))
+        throw new Error("DSH capability generation changed; retry required");
+      if (!result.deferred && result.registered === capabilities.length)
+        this.mounted.set(threadId, { endpoint, nativeId, capabilities, result });
+      return result;
+    });
   }
   async validate(capabilities: readonly DshHostCapability[]) {
     await this.request("/validate-capabilities", { capabilities });
@@ -109,9 +134,11 @@ export class DshCapabilityLink {
   async createGeneration(input: { logicalSessionId: string; sourceSessionId: string; cwd: string; provider: string; model: string; legacyInstructions?: Record<string, unknown> }): Promise<{ sessionId: string; generation: number; interruptedTurns: number; seedThroughSeq: number; seedThroughTurn: number }> {
     return this.request("/generation", input) as Promise<{ sessionId: string; generation: number; interruptedTurns: number; seedThroughSeq: number; seedThroughTurn: number }>;
   }
-  async unregister(threadId: string) {
-    this.mounted.delete(threadId);
-    await this.request("/unregister", { sessionId: this.routing?.native(threadId) ?? threadId });
+  unregister(threadId: string): Promise<void> {
+    return this.serializeRegistration(threadId, async () => {
+      this.mounted.delete(threadId);
+      await this.request("/unregister", { sessionId: this.routing?.native(threadId) ?? threadId });
+    });
   }
   private async poll() {
     while (!this.controller.signal.aborted) {
@@ -150,6 +177,8 @@ export class DshCapabilityLink {
     this.controller.abort();
     for (const call of this.calls.values()) call.abort();
     await this.task;
+    await Promise.allSettled(this.registrations.values());
+    this.mounted.clear();
     await Promise.allSettled(this.inFlight);
   }
 }

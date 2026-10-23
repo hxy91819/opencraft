@@ -792,5 +792,8 @@
   "chat.question.failure": "ส่งคำตอบไม่สำเร็จ บันทึกตัวเลือกแล้ว โปรดลองอีกครั้ง",
   "chat.question.retry": "บันทึกตัวเลือกแล้ว ลองอีกครั้ง",
   "panel.sideChat": "แชทด้านข้างใหม่",
-  "settings.tokenUsage": "การใช้โทเคน"
+  "settings.tokenUsage": "การใช้โทเคน",
+  "sidebar.browser.tabs": "แท็บเบราว์เซอร์ {count} แท็บ",
+  "sidebar.browser.closeAll": "ปิดแท็บเบราว์เซอร์ทั้งหมด",
+  "sidebar.browser.failed": "ไม่สามารถอัปเดตแท็บเบราว์เซอร์ได้ โปรดลองอีกครั้ง"
 }

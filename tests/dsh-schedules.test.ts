@@ -30,3 +30,15 @@ test("unknown acceptance/recovered orphan is not resubmitted; archived/temporary
   f.prior({ state: "orphaned", turnId: "old" }); assert.equal((await f.port.submit(run, "task", () => true)).state, "unknown");
   for (const mutate of ["archived", "temporary"] as const) { const other = fixture(); other[mutate](); await assert.rejects(other.port.validate("s"), /durable thread/); }
 });
+
+test("DSH schedule observations use terminal native events without transcript fields", () => {
+  let callback!: (method: string, params: any) => void, detached = false;
+  const adapter: any = { subscribe: (listener: typeof callback) => { callback = listener; return () => { detached = true; }; } };
+  const port = dshScheduleExecutionPort(adapter, {} as any, {} as any, async () => {}), events: any[] = [];
+  const stop = port.subscribe!(event => events.push(event));
+  callback("item/completed", { threadId: "s", turn: { id: "t", status: "completed" } });
+  callback("turn/completed", { threadId: "s", turn: { id: "t", status: "completed", items: [{ text: "private content" }] } });
+  callback("turn/completed", { threadId: "s", turn: { id: "u", status: "interrupted" } });
+  assert.deepEqual(events, [{ threadId: "s", turnId: "t", state: "completed" }, { threadId: "s", turnId: "u", state: "failed" }]);
+  stop(); assert(detached);
+});

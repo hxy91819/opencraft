@@ -111,3 +111,12 @@ Verification entries: `tests/session-capabilities.test.ts`,
 `tests/im-tool-reply.test.ts`, `tests/pi-durable-engine.test.ts` and
 `tests/dsh-capability-broker.test.ts`. Real native fixtures with local synthetic
 models distinguish protocol/tool isolation evidence from real IM delivery.
+
+Host tool refresh in Pi confirms an immutable schema snapshot only after native
+installation. An installation failure invalidates that confirmation, including
+rollback to an older declaration; the next attempt must reinstall. DSH serializes
+registration per logical thread, resolves the current provider after waiting,
+and skips only a confirmed identical declaration for the current bridge and
+native generation. Bridge replacement clears confirmations and fences pending
+results. Partial/deferred/failed registrations cannot become confirmed cache hits.
+Configuration owners and permission checks remain unchanged.

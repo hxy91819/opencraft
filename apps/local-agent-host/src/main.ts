@@ -1,4 +1,5 @@
 import { nodeObserver } from "../../../packages/observability-contract/node.mjs";
+import { serializeHistoryReply } from "@opencraft/appserver-client";
 import { fileRequest } from "./host-resources.js";
 import { ConversationSchedules, ScheduleFault } from "@opencraft/host-schedules";
 import { CONVERSATION_SCHEDULES_EXTENSION } from "@opencraft/appserver-protocol";
@@ -87,11 +88,11 @@ function rpcError(error: unknown): { code: number; message: string; data?: unkno
   return { code: -32603, message: error instanceof Error ? error.message : String(error) };
 }
 
-function send(socket: WebSocket, value: unknown): void {
+function send(socket: WebSocket, value: unknown, method = ""): void {
   if (socket.readyState !== WebSocket.OPEN) return;
   const packet = value as Record<string, unknown>, client = replyClient.getStore();
-  socket.send(JSON.stringify(client && packet && "id" in packet && !(LOGICAL_CLIENT_FIELD in packet)
-    ? { ...packet, [LOGICAL_CLIENT_FIELD]: client } : value));
+  socket.send(serializeHistoryReply(client && packet && "id" in packet && !(LOGICAL_CLIENT_FIELD in packet)
+    ? { ...packet, [LOGICAL_CLIENT_FIELD]: client } : packet, method));
 }
 function sendClient(socket: WebSocket, clientId: string, packet: Record<string, unknown>): void {
   send(socket, { ...packet, [LOGICAL_CLIENT_FIELD]: clientId || undefined });
@@ -688,7 +689,7 @@ export async function startLocalAgentHost(options: {
         const capabilityThreadId = (result as { thread?: { id?: string } } | null)?.thread?.id
           ?? (request.params as { threadId?: string } | undefined)?.threadId;
         if (request.method === "turn/start" && typeof capabilityThreadId === "string") lifecycle.acceptedTurn(capabilityThreadId, request.params as Record<string, unknown>);
-        send(socket, { jsonrpc: "2.0", id: request.id, result });
+        send(socket, { jsonrpc: "2.0", id: request.id, result }, request.method);
         // Initialization (including preflight) must not claim another client's
         // user interactions. Only a connection opening a thread may answer it.
         if (["thread/start", "thread/resume", "thread/fork", "turn/start"].includes(request.method) && socket.readyState === WebSocket.OPEN) {

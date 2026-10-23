@@ -103,6 +103,9 @@ test("Pi-only Host routes models and threads without allocating a legacy Host", 
     socket.on("message", listener); socket.send(JSON.stringify({ jsonrpc: "2.0", id, method, params }));
   });
   const initialized = await call("initialize"); assert.equal(initialized.capabilities.extensions["opencraft/execution-engines"].defaultEngine, "pi");
+  assert.equal(initialized.capabilities.extensions["opencraft/permission-modes"].version, 1);
+  assert.deepEqual((await call("permissionProfile/list")).data.map((p: any) => p.openCraftLabel), ["Full access"]);
+  assert.equal((host.storageOutcomes[0] as any).name, "pi-conversation-schedules");
   const project = await call("project/create", { name: "Pi workspace", roots: [{ path: f.directory }], idempotencyKey: "pi-only-project" });
   assert.equal((await call("project/list")).data[0].id, project.project.id);
   assert.equal((await call("fs/getMetadata", { path: f.directory })).isDirectory, true);
@@ -204,7 +207,7 @@ test("workspace first submission accepts native full access and retains project 
     }
   }
   const instructed = await reopened.request("thread/start", { model: piModel("faux", "faux-1"), developerInstructions: "do not discard" }, noTools);
-  assert.equal(instructed.thread.historyMode, "legacy");
+  assert.equal(instructed.thread.historyMode, "paginated");
   assert.equal((await reopened.request("thread/read", { threadId: created.thread.id, includeTurns: true }, noTools)).thread.turns.length, 1);
 });
 
@@ -317,7 +320,7 @@ test("Pi applies saved defaults and durable resume overrides, rejects unsupporte
     excludeTurns: true, initialTurnsPage: { limit: 5, itemsView: "full", sortDirection: "desc" },
     runtimeWorkspaceRoots: [other], baseInstructions: "replacement", developerInstructions: "developer" }, noTools);
   assert.equal(resumed.model, piModel("faux", "first")); assert.equal(resumed.cwd, other);
-  assert.equal(resumed.thread.historyMode, "legacy"); assert.equal(resumed.initialTurnsPage, null);
+  assert.equal(resumed.thread.historyMode, "paginated"); assert.deepEqual(resumed.initialTurnsPage, { data: [], nextCursor: null, backwardsCursor: null, itemsPaginationByTurnId: {} });
   for (const fields of [{ outputSchema: { type: "object" } }, { serviceTier: "priority" }, { disabledPluginIds: ["opencraft"] },
     { runtimeWorkspaceRoots: [directory, other] }, { collaborationMode: { mode: "plan" } }]) {
     await assert.rejects(engine.request("turn/start", { threadId: created.thread.id, input: [{ type: "text", text: "question" }], ...fields }, noTools));
@@ -579,4 +582,74 @@ for (const ephemeral of [false,true]) test(`Host tools and browser tools coexist
  await engine.request("runtime/capabilities/register",{threadId:target,dynamicTools:[]},owner);engine.disconnect(owner);
  faux.setResponses([fauxAssistantMessage([fauxToolCall("opencraft_host_im_reply",{},{id:"host-again"})],{stopReason:"toolUse"}),fauxAssistantMessage("done")]);
  done=completed(engine);await engine.request("turn/start",{threadId:target,input:[{type:"text",text:"Host without browser"}]},noTools);assert.equal((await done).status,"completed");assert.equal(hostCalls,2);assert.equal(browserCalls,1);
+});
+
+test("Pi resumes a bounded tail and uses stable turn/item cursors across native reopen", async t => {
+  const f = await fixture(t, [fauxAssistantMessage("first"), fauxAssistantMessage("second"), fauxAssistantMessage("third")]);
+  const { thread } = await f.engine.request("thread/start", { model: piModel("faux", "faux-1") }, noTools);
+  for (let i = 0; i < 3; i++) { const done = completed(f.engine); await f.engine.request("turn/start", { threadId: thread.id, clientUserMessageId: `page-${i}`, input: [{ type: "text", text: `input ${i}` }] }, noTools); await done; }
+  const tail = await f.engine.request("thread/resume", { threadId: thread.id, excludeTurns: true, initialTurnsPage: { limit: 1, itemsView: "notLoaded", sortDirection: "desc" } }, noTools);
+  assert.deepEqual(tail.thread.turns, []); assert.equal(tail.initialTurnsPage.data.length, 1);
+  assert.match(tail.initialTurnsPage.data[0].id, /page-2$/); assert.deepEqual(tail.initialTurnsPage.data[0].items, []);
+  const cursor = tail.initialTurnsPage.nextCursor; assert(cursor);
+  await f.engine.close(); const engine = new PiEngine({ directory: f.directory, cwd: f.directory, models: fixtureModels([]).models }); t.after(() => engine.close());
+  const older = await engine.request("thread/turns/list", { threadId: thread.id, cursor, limit: 1, itemsView: "full", sortDirection: "desc" }, noTools);
+  assert.equal(older.data[0].itemsView, "full"); assert.match(older.data[0].id, /page-1$/); assert.equal(older.data[0].items.find((item: any) => item.type === "agentMessage").text, "second");
+  const items = await engine.request("thread/items/list", { threadId: thread.id, turnId: older.data[0].id, limit: 1, sortDirection: "asc" }, noTools);
+  assert.equal(items.data[0].item.type, "userMessage"); assert(items.nextCursor);
+  const next = await engine.request("thread/items/list", { threadId: thread.id, turnId: older.data[0].id, cursor: items.nextCursor, limit: 1, sortDirection: "asc" }, noTools);
+  assert.equal(next.data[0].item.type, "agentMessage");
+  await assert.rejects(engine.request("thread/turns/list", { threadId: thread.id, cursor: encodeURIComponent(JSON.stringify({ version: 1, kind: "thread/turns/list", threadId: "another", direction: "desc", anchor: "x" })) }, noTools), /does not match/);
+});
+
+test("Pi schedule completion uses native receipts and survives restart without history or resubmission", async t => {
+  const f = await fixture(t, [fauxAssistantMessage("scheduled result")]);
+  const { thread } = await f.engine.request("thread/start", { model: piModel("faux", "faux-1") }, noTools);
+  assert.equal(f.engine.extensions["opencraft/conversation-schedules"].summary, true);
+  const done = completed(f.engine);
+  await f.engine.request("opencraft/schedules/save", { threadId: thread.id, expectedRevision: 0, nextRunAt: Date.now(), intervalMinutes: null, timeZone: "UTC", prompt: "scheduled work", permissions: "opencraft:permission-mode:full" }, noTools);
+  await (f.engine as any).scheduleService.tick(); const turn = await done;
+  await (f.engine as any).scheduleService.tick();
+  assert.equal((await f.engine.request("opencraft/schedules/read", { threadId: thread.id }, noTools)).runs[0].state, "completed");
+  const receipt = await (f.engine as any).sessions.get(thread.id).native.execution(turn.id); assert.equal(receipt, "completed");
+  await f.engine.close(); const engine = new PiEngine({ directory: f.directory, cwd: f.directory, models: fixtureModels([]).models }); t.after(() => engine.close());
+  await engine.start(); await (engine as any).scheduleService.tick();
+  const view = await engine.request("opencraft/schedules/read", { threadId: thread.id }, noTools);
+  assert.equal(view.runs.length, 1); assert.equal(view.runs[0].turnId, turn.id); assert.equal(view.schedule.status, "completed");
+  (engine as any).refresh = () => { throw new Error("execution inspection must not project transcript"); };
+  assert.equal((await (engine as any).scheduleService.port.inspect(view.runs[0])).state, "completed");
+});
+
+test("Pi archive is terminal for resume and rejects scheduled targets without changing permissions", async t => {
+  const f = await fixture(t, []); const { thread } = await f.engine.request("thread/start", { model: piModel("faux", "faux-1") }, noTools);
+  await assert.rejects(f.engine.request("opencraft/schedules/save", { threadId: thread.id, expectedRevision: 0, nextRunAt: Date.now(), intervalMinutes: null, timeZone: "UTC", prompt: "task", permissions: "opencraft:permission-mode:read-only" }, noTools), /Invalid schedule/);
+  await f.engine.request("thread/archive", { threadId: thread.id }, noTools);
+  await assert.rejects(f.engine.request("thread/resume", { threadId: thread.id, excludeTurns: true }, noTools), (error: any) => error.data?.code === "THREAD_ARCHIVED" && error.data.retryable === false);
+  await assert.rejects(f.engine.request("opencraft/schedules/save", { threadId: thread.id, expectedRevision: 0, nextRunAt: Date.now(), intervalMinutes: null, timeZone: "UTC", prompt: "task" }, noTools), /unarchived/);
+  await f.engine.request("thread/unarchive", { threadId: thread.id }, noTools);
+  assert.equal((await f.engine.request("thread/resume", { threadId: thread.id, excludeTurns: true }, noTools)).thread.id, thread.id);
+});
+
+test("Pi confirms Host tools only after native installation and retries a failed rollback", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-tools-confirmed-"));
+  const declaration = { name: "reply", description: "v1", inputSchema: { type: "object", properties: { text: { type: "string" } } } };
+  let enabled = false;
+  const engine = new PiEngine({ directory, cwd: directory, models: fixtureModels([]).models,
+    sessionCapabilities: { tools: () => enabled ? [declaration] : [], async call() { return {}; } } });
+  t.after(async () => { await engine.close(); await rm(directory, { recursive: true, force: true }); });
+  const { thread } = await engine.request("thread/start", { model: piModel("faux", "faux-1") }, noTools);
+  const session = (engine as any).sessions.get(thread.id), native = session.native, install = native.tools.bind(native);
+  const calls: any[] = []; let fail = true;
+  native.tools = (tools: any[]) => { calls.push(structuredClone(tools)); install(tools); if (fail) throw new Error("partial install"); };
+  enabled = true;
+  await assert.rejects(engine.request("turn/start", { threadId: thread.id, input: [{ type: "text", text: "must not submit" }] }, noTools), /partial install/);
+  assert.equal(session.hostTools, undefined); assert.equal(session.turns.length, 0);
+  enabled = false; fail = false;
+  await (engine as any).refreshHostTools(session);
+  assert.deepEqual(calls[1], [], "rollback must reinstall even though it equals the old configuration");
+  enabled = true; await (engine as any).refreshHostTools(session);
+  declaration.inputSchema.properties.text.type = "number";
+  assert.equal(session.hostTools[0].inputSchema.properties.text.type, "string", "confirmed snapshot cannot alias provider schema");
+  await (engine as any).refreshHostTools(session); assert.equal(calls.length, 4);
+  await (engine as any).refreshHostTools(session); assert.equal(calls.length, 4, "identical configuration is installed once");
 });

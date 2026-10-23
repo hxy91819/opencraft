@@ -792,5 +792,8 @@
   "chat.question.failure": "Jawapan tidak dihantar. Pilihan anda disimpan; sila cuba lagi.",
   "chat.question.retry": "Pilihan disimpan. Cuba lagi.",
   "panel.sideChat": "Sembang sisi baharu",
-  "settings.tokenUsage": "Penggunaan token"
+  "settings.tokenUsage": "Penggunaan token",
+  "sidebar.browser.tabs": "{count} tab pelayar",
+  "sidebar.browser.closeAll": "Tutup semua tab pelayar",
+  "sidebar.browser.failed": "Tidak dapat mengemas kini tab pelayar. Cuba lagi."
 }

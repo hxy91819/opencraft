@@ -3435,3 +3435,15 @@ object-shaped compatibility invocation.
 ### Native history read fault boundary
 
 Codex Core history reads (`thread/read`, `thread/turns/list`, `thread/items/list`) use bounded, individually initialized read-only native sockets with capped concurrency and queue depth. They do not subscribe, resume, run tools or own the Core process. An oversized response or read socket failure resolves only its originating RPC; it cannot publish failure on the shared execution/subscription socket. Payload limits stay bounded, with a non-retryable `HISTORY_RESPONSE_TOO_LARGE` response for oversized pages. Host queue/Goal/tool-configuration resumes explicitly exclude history. Capacity retries inspect one summary turn, and schedule inspection scans bounded summary pages, retaining unknown when the target is unavailable. This is a failure-domain boundary, not tenant data separation or process-level resource isolation.
+
+### Execution observation and bounded history delivery
+
+The shared schedule owner tracks plans and occurrence bindings, while native
+execution events and engine receipts supply outcomes. Codex/DSH/Pi implement the
+same port with native-specific recovery; Pi now declares schedules and paginated
+history. Per-conversation bounded flights keep slow admissions from holding peer
+completion. History RPC serialization fails oversized results within the request
+without retiring the shared connection. Configuration snapshots are confirmed
+only after native installation in each adapter. The detailed ownership and
+limits are in [execution ownership](execution-ownership.md#bounded-history-replies)
+and [session capabilities](session-capabilities.md).
