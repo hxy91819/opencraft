@@ -60,7 +60,7 @@ try {
     // This count is also a negative control: no Home or fabricated capability.
     await buttons.first().waitFor();
     assert.equal(await buttons.count(), 7);
-    for (const family of ["codex", "lavender"]) for (const mode of ["light", "dark"]) for (const compact of [true, false]) {
+    for (const family of ["neutral", "lavender"]) for (const mode of ["light", "dark"]) for (const compact of [true, false]) {
       await page.evaluate(({ mode, family, compact }: any) => {
         (window as any).fixture.theme(mode, family); (window as any).fixture.compact(compact);
       }, { mode, family, compact });

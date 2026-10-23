@@ -12,7 +12,7 @@ const { createWebWorkbenchCommands } = await import("../apps/workbench-web/src/r
 const identity = { machineId: "12345678-1234-4123-8123-123456789abc", name: "machine", platform: "linux" as const };
 function deferred() { let resolve!: () => void; const promise = new Promise<void>(done => resolve = done); return { promise, resolve }; }
 async function fixture(targetProject = false, targetDirectory = targetProject, presentation = FULL_WORKBENCH_PRESENTATION) {
-  const profiles = ["local", "local-codex", "other", "latest"].map((hostId): HostConnectionProfile => ({ hostId, machineIdentity: hostId === "local" || hostId === "local-codex" ? identity : { ...identity, machineId: hostId === "other" ? "22345678-1234-4123-8123-123456789abc" : "32345678-1234-4123-8123-123456789abc" }, displayName: hostId, providerId: "fake", providerConfig: {}, providerConfigVersion: 1, hostKind: "local", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: null, transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: ["/default"], revision: 0 }));
+  const profiles = ["local", "fixture-secondary", "other", "latest"].map((hostId): HostConnectionProfile => ({ hostId, machineIdentity: hostId === "local" || hostId === "fixture-secondary" ? identity : { ...identity, machineId: hostId === "other" ? "22345678-1234-4123-8123-123456789abc" : "32345678-1234-4123-8123-123456789abc" }, displayName: hostId, providerId: "fake", providerConfig: {}, providerConfigVersion: 1, hostKind: "local", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: null, transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: ["/default"], revision: 0 }));
   const holds = new Map<string, Promise<void>>();
   const calls = new Map<string, number>();
   let projectCreates = 0;
@@ -35,10 +35,10 @@ async function fixture(targetProject = false, targetDirectory = targetProject, p
 test("switching Agent preserves text/cwd/project and applies the requested model", async () => {
   const f = await fixture();
   try {
-    await f.commands.selectHost("local-codex", { model: "codex-model", effort: "high", serviceTier: "priority" });
+    await f.commands.selectHost("fixture-secondary", { model: "secondary-model", effort: "high", serviceTier: "priority" });
     assert.equal(composerDocumentToPlainText(f.composer().getSnapshot().draft.document), "keep my draft");
     assert.deepEqual(f.scopes.getActiveDraft()!.target.execution.workspace, { cwd: "/project", runtimeWorkspaceRoots: ["/project"], projectId: "source-project" });
-    assert.equal(f.composer().getSnapshot().draft.selections.model, "codex-model");
+    assert.equal(f.composer().getSnapshot().draft.selections.model, "secondary-model");
     assert.equal(f.composer().getSnapshot().draft.selections.serviceTier, "priority");
     assert.equal(f.projectCreates, 0);
   } finally { await f.close(); }
@@ -58,8 +58,8 @@ for (const exists of [true, false]) test(`switching machine preserves text; proj
 test("a held switch and its late model selection cannot override the newer machine", async () => {
   const f = await fixture(); const held = deferred();
   try {
-    f.holds.set("local-codex", held.promise);
-    const old = f.commands.selectHost("local-codex", { model: "late-model", effort: null });
+    f.holds.set("fixture-secondary", held.promise);
+    const old = f.commands.selectHost("fixture-secondary", { model: "late-model", effort: null });
     await f.commands.selectHost("latest");
     f.composer().dispatch({ type: "set-document", document: { version: 1, blocks: [{ type: "paragraph", children: [{ type: "text", text: "keep my draft newest" }] }] } });
     held.resolve(); await old;
@@ -73,8 +73,8 @@ test("a held switch and its late model selection cannot override the newer machi
 test("a held navigation keeps the original visible Draft, and a newer selection cancels it", async () => {
   const f = await fixture(); const held = deferred();
   try {
-    f.holds.set("local-codex:2", held.promise);
-    const old = f.commands.selectHost("local-codex", { model: "late-model", effort: null });
+    f.holds.set("fixture-secondary:2", held.promise);
+    const old = f.commands.selectHost("fixture-secondary", { model: "late-model", effort: null });
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(f.scopes.getActiveDraft()!.id, "initial");
     assert.equal(composerDocumentToPlainText(f.composer().getSnapshot().draft.document), "keep my draft");
@@ -88,8 +88,8 @@ test("a held navigation keeps the original visible Draft, and a newer selection 
 test("editing the project during a held switch retains the newer workspace choice", async () => {
   const f = await fixture(); const held = deferred();
   try {
-    f.holds.set("local-codex", held.promise);
-    const old = f.commands.selectHost("local-codex");
+    f.holds.set("fixture-secondary", held.promise);
+    const old = f.commands.selectHost("fixture-secondary");
     f.scopes.retargetDraft("initial", { hostId: asHostId("local"), workspace: { cwd: "/new-project", runtimeWorkspaceRoots: ["/new-project"] } });
     held.resolve(); await old;
     assert.equal(f.scopes.getActiveDraft()!.target.execution.hostId, "local");
@@ -100,8 +100,8 @@ test("editing the project during a held switch retains the newer workspace choic
 test("choosing a model on the current Agent cancels a held engine switch", async () => {
   const f = await fixture(); const held = deferred();
   try {
-    f.holds.set("local-codex", held.promise);
-    const old = f.commands.selectHost("local-codex", { model: "late-model", effort: "high" });
+    f.holds.set("fixture-secondary", held.promise);
+    const old = f.commands.selectHost("fixture-secondary", { model: "late-model", effort: "high" });
     await f.commands.selectHost("local", { model: "new-local-model", effort: null, serviceTier: null });
     held.resolve(); await old;
     assert.equal(f.scopes.getActiveDraft()!.target.execution.hostId, "local");
@@ -145,7 +145,7 @@ test("same-machine engine switch preserves inline images, staged files, context 
     f.composer().dispatch({ type: "add-context", reference });
     f.composer().dispatch({ type: "set-selections", patch: { mode: "plan", permissionProfile: ":workspace_roots" } });
     f.composer().dispatch({ type: "set-options", patch: { autoContext: false } });
-    await f.commands.selectHost("local-codex", { model: "codex-model", effort: "high" });
+    await f.commands.selectHost("fixture-secondary", { model: "secondary-model", effort: "high" });
     const draft = f.composer().getSnapshot().draft;
     assert.deepEqual(draft.attachments.map(attachment => [attachment.id, attachment.uri, attachment.lifecycle]), [["image", inline.uri, "ready"], ["file", file.uri, "ready"]]);
     assert.deepEqual(draft.context, [reference]);
@@ -172,8 +172,8 @@ test("an unfinished attachment remains visible as interrupted; another machine's
 test("project editing during the second navigation preparation cancels the pending engine switch", async () => {
   const f = await fixture(); const held = deferred();
   try {
-    f.holds.set("local-codex:2", held.promise);
-    const old = f.commands.selectHost("local-codex");
+    f.holds.set("fixture-secondary:2", held.promise);
+    const old = f.commands.selectHost("fixture-secondary");
     await new Promise(resolve => setImmediate(resolve));
     f.commands.retargetDraft("initial", { hostId: asHostId("local"), workspace: { cwd: "/new-project", runtimeWorkspaceRoots: ["/new-project"] } });
     held.resolve(); await old;
@@ -189,7 +189,7 @@ test("embedded boundary rejects machine/configuration actions before effects and
   try {
     const before = f.coordinator.getSnapshot();
     const target = f.scopes.getActiveDraft()!.target.execution;
-    await assert.rejects(f.commands.selectHost("local-codex", { model: "late", effort: null }), /embedding product owns execution selection/);
+    await assert.rejects(f.commands.selectHost("fixture-secondary", { model: "late", effort: null }), /embedding product owns execution selection/);
     assert.throws(() => f.commands.retargetDraft("initial", { ...target, hostId: asHostId("other") }), /embedding product owns execution selection/);
     await assert.rejects(f.commands.provisionHost({} as never), /embedding product owns Host configuration/);
     await assert.rejects(f.commands.removeHost("other"), /embedding product owns Host configuration/);

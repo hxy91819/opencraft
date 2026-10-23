@@ -186,13 +186,13 @@ test("model memory isolates account, display and target Host through production 
   const scope = { displayScope: "opencraft", accountScope: "account-a", hostId: "local" };
   const otherAccount = { ...scope, accountScope: "account-b" };
   const anonymous = { ...scope, accountScope: "anonymous" };
-  const targetHost = { ...scope, hostId: "local-codex" };
+  const targetHost = { ...scope, hostId: "fixture-secondary" };
   const otherDisplay = { ...scope, displayScope: "other-product" };
   const choice = { model: "provider-a/model", effort: "high", serviceTier: "priority" };
   await rememberModelSelection(first, scope, choice);
   const read = (runtime: UiPreferencesRuntime, key: typeof scope | null) => readModelSelection(runtime.get("chat.modelSelections"), key);
   for (const key of [otherAccount, anonymous, targetHost, otherDisplay, null]) assert.equal(read(first, key), undefined);
-  await rememberModelSelection(first, targetHost, { model: "codex-model", effort: "low" });
+  await rememberModelSelection(first, targetHost, { model: "secondary-model", effort: "low" });
   assert.deepEqual(read(first, scope), choice, "cross-Agent write does not overwrite current Host");
   await rememberModelSelection(first, otherAccount, { model: "provider-b/model", effort: null, serviceTier: null });
   await rememberModelSelection(first, anonymous, { model: "anonymous-model", effort: null });
@@ -201,7 +201,7 @@ test("model memory isolates account, display and target Host through production 
   await first.close();
   const restored = await UiPreferencesRuntime.open({ installation: store });
   assert.deepEqual(read(restored, scope), choice);
-  assert.deepEqual(read(restored, targetHost), { model: "codex-model", effort: "low" });
+  assert.deepEqual(read(restored, targetHost), { model: "secondary-model", effort: "low" });
   assert.deepEqual(read(restored, otherAccount), { model: "provider-b/model", effort: null, serviceTier: null });
   assert.deepEqual(read(restored, anonymous), { model: "anonymous-model", effort: null });
   assert.equal(read(restored, otherDisplay), undefined);

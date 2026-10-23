@@ -31,6 +31,7 @@ described in the [internal naming contract](internal-naming.md).
 | `CodexNativeCoreTransport` | Opens native Codex connections through the independent core. |
 | `CodexCoreSocket` | Connects to the Codex core socket and its connection protocol. |
 | `CodexCoreBridge` | Bridges logical clients to the Codex core service. |
+| `CodexCoreReadIsolation` | Opens bounded native Codex core sockets for stateless history reads, separately from subscriptions and execution. |
 | `CodexTokenUsageRuntime` | Collects Codex native events, UUIDv7 Turn identity and rollout files from codexHome. |
 | `SshCodexConnectionError` | Classifies failures of the Codex-over-SSH transport. |
 | `SshCodexTransport` | Runs the actual Codex app-server proxy and tunnels its protocol. |

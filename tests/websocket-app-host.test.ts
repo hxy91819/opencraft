@@ -132,7 +132,7 @@ test("browser AppHost transport keeps its listeners and renews its lease after W
     return sockets.shift() as unknown as WebSocket;
   }, { reportFailure: diagnostic => diagnostics.push(diagnostic) });
   try {
-    const transport = client.createTransport("local-codex");
+    const transport = client.createTransport("fixture-host");
     const connection = transport.connect();
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(new URL(urls[0]!).origin, "wss://example.test");
@@ -145,9 +145,9 @@ test("browser AppHost transport keeps its listeners and renews its lease after W
     await new Promise(resolve => setImmediate(resolve));
     const connect = JSON.parse(socket.sent[1]!);
     assert.equal(connect.type, "host/connect");
-    assert.equal(connect.hostId, "local-codex");
+    assert.equal(connect.hostId, "fixture-host");
     socket.receive({ type: "response", requestId: connect.requestId, ok: true,
-      result: { hostId: "local-codex", generation: 7 } });
+      result: { hostId: "fixture-host", generation: 7 } });
     await connection;
     assert.equal(transport.status.state, "open");
     const sending = transport.send('{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}');
@@ -158,7 +158,7 @@ test("browser AppHost transport keeps its listeners and renews its lease after W
     await sending;
     const frames: string[] = [];
     transport.subscribeMessage(frame => frames.push(frame));
-    socket.receive({ type: "host/frame", hostId: "local-codex", generation: 7, frame: '{"id":1,"result":{}}' });
+    socket.receive({ type: "host/frame", hostId: "fixture-host", generation: 7, frame: '{"id":1,"result":{}}' });
     assert.deepEqual(frames, ['{"id":1,"result":{}}']);
     socket.close();
     assert.equal(socket.readyState, 3);
@@ -180,10 +180,10 @@ test("browser AppHost transport keeps its listeners and renews its lease after W
     assert.equal(reconnect.type, "host/connect");
     assert.notEqual(reconnect.leaseId, connect.leaseId);
     replacementSocket.receive({ type: "response", requestId: reconnect.requestId, ok: true,
-      result: { hostId: "local-codex", generation: 8 } });
+      result: { hostId: "fixture-host", generation: 8 } });
     await reconnection;
     assert.equal(transport.status.state, "open");
-    replacementSocket.receive({ type: "host/frame", hostId: "local-codex", generation: 8, frame: '{"id":2,"result":{}}' });
+    replacementSocket.receive({ type: "host/frame", hostId: "fixture-host", generation: 8, frame: '{"id":2,"result":{}}' });
     assert.deepEqual(frames, ['{"id":1,"result":{}}', '{"id":2,"result":{}}']);
     const renewedSend = transport.send('{"jsonrpc":"2.0","id":3}');
     const renewedFrame = JSON.parse(replacementSocket.sent[2]!);
@@ -218,7 +218,7 @@ test("browser AppHost transport fails a stalled handshake so Workbench can retry
     reportFailure: diagnostic => diagnostics.push(diagnostic),
   });
   try {
-    const transport = client.createTransport("local-codex");
+    const transport = client.createTransport("fixture-host");
     const connection = transport.connect();
     await new Promise(resolve => setImmediate(resolve));
     socket.open();
@@ -244,7 +244,7 @@ test("browser AppHost reports a pre-upgrade WebSocket error without exposing the
     reportFailure: diagnostic => diagnostics.push(diagnostic),
   });
   try {
-    const connection = client.createTransport("local-codex").connect();
+    const connection = client.createTransport("fixture-host").connect();
     await new Promise(resolve => setImmediate(resolve));
     socket.fail();
     await assert.rejects(connection, /App Host connection failed/u);

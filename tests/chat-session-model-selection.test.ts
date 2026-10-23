@@ -93,7 +93,7 @@ test("explicit embedded selection can send when Model Settings is unavailable", 
     await runtime.connect();
     await runtime.createThread({ ...intent({ type: "new-thread", draftId: "explicit-unverified", execution: {
       hostId: "local", workspace: { cwd: "/workspace", runtimeWorkspaceRoots: ["/workspace"] },
-    } }), selections: { model: "codex" } });
+    } }), selections: { model: "fixture-model" } });
     assert.equal(cachedLookup, true);
     assert.equal(harness.requests.some((request) => request.method === "thread/start"), true);
   } finally { await runtime.dispose(); }
@@ -122,7 +122,7 @@ test("an existing session keeps its current model when the Composer has no new c
   const models = [
     { id: "configured-default", model: "configured-default", isDefault: true,
       inputModalities: ["text"], supportedReasoningEfforts: [], defaultReasoningEffort: null },
-    { id: "codex", model: "codex", isDefault: false,
+    { id: "fixture-model", model: "fixture-model", isDefault: false,
       inputModalities: ["text"], supportedReasoningEfforts: [], defaultReasoningEffort: null },
   ];
   const harness = createHarness(false, false, [], false, models);
