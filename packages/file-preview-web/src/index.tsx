@@ -2,12 +2,16 @@ import "./preview.web.scss";
 import { Service, type Context } from "@deepseek-ai/cordis";
 import { PreviewSessionPool, type PreviewLease } from "@opencraft/file-preview-core";
 import { createContext, useContext, useEffect, useState, useRef, useSyncExternalStore, useCallback, useMemo, type ReactNode } from "react";
+import type { IntlShape } from "@opencraft/i18n";
 import { useIntl } from "@opencraft/i18n/react";
+
+export type FilePreviewIntl = Pick<IntlShape, "formatMessage" | "formatNumber">;
 
 export interface WebPreviewDocument {
   readonly element: HTMLElement;
   setActive?(active: boolean): void;
   setTheme?(dark: boolean): void;
+  setIntl?(intl: FilePreviewIntl): void;
   subscribeFailure?(listener: (error: unknown) => void): () => void;
   dispose(): void;
 }
@@ -131,6 +135,7 @@ export function FilePreviewView(props: FilePreviewInput & { active?: boolean; da
   }, [document]);
   useEffect(() => { document?.setActive?.(props.active !== false); }, [document, props.active]);
   useEffect(() => { document?.setTheme?.(props.dark); }, [document, props.dark]);
+  useEffect(() => { document?.setIntl?.(intl); }, [document, intl]);
   const error = failed || snapshot?.phase === "failed" || snapshot?.phase === "released";
   return <div className="file-preview" data-file-preview-phase={document ? "ready" : error ? "failed" : "opening"}>
     <div ref={root} className="file-preview__document" hidden={!document} />

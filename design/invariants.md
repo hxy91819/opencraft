@@ -1821,7 +1821,9 @@ See [Tasks initial loading](../docs/workbench-design-language.md#tasks-initial-l
   XLS requires an OLE signature; OOXML keeps its archive admission rules. Neither
   workbook path executes macros or writes back to the original file.
 - Draw.io normalizes compressed and multi-page XML within expansion limits and
-  uses a packaged viewer in an opaque sandbox. Excalidraw exports a read-only
+  uses a packaged viewer in an opaque sandbox. The page fetches its own viewer
+  asset before sandbox creation; the sandbox makes no script/network requests,
+  including on loopback deployments with local-network protection. Excalidraw exports a read-only
   scene with packaged fonts; standalone `.mmd`/`.mermaid` use the same serialized
   Mermaid engine and theme configuration as chat. View transforms and page
   selection belong to the retained preview, never the Host document.
