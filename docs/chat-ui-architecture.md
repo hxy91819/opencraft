@@ -2376,6 +2376,19 @@ Composer输入辅助菜单焦点策略独立于模型/权限业务和Radix基础
 
 非空附属rail与shell连接处不重复绘制shell顶部边框/内侧高光；空rail恢复独立输入框完整边界。用户确认本轮对象为静止时中间横缝。
 
+### Mobile viewport diagnostic measurement budget
+
+The viewport port remains the only geometry commit and animation-frame owner.
+Diagnostics observe Shell and focused-editor rectangles on every committed frame
+so their extrema retain brief excursions, including recovery before transmission.
+Root/body/fixed-reference rectangles, Composer/send rectangles, computed style
+and send hit testing describe the sampled report frame and are read only within
+the existing 80ms and token-credit budget. The detailed measurement clock advances
+even when an unchanged report is deduplicated; network silence cannot reopen
+frame-rate measurement. Diagnostics do not alter viewport positioning, the native
+settling window, queue admission, input focus or drafts. This bounds confirmed
+measurement overhead; it does not establish a queued-message paint failure's cause.
+
 ### Mobile Composer content bounds
 
 OpenCraftComposer owns a local editing-focus presentation session, independent of
