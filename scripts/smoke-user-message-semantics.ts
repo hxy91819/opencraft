@@ -34,7 +34,7 @@ try {
   });
   const errors: string[] = [];
   for (const width of [390, 1200]) for (const theme of ["light", "dark"]) {
-    const page = await browser.newPage({ viewport: { width, height: 1100 }, reducedMotion: "reduce" });
+    const page = await browser.newPage({ viewport: { width, height: 1100 }, reducedMotion: "reduce", hasTouch: width === 390, isMobile: width === 390 });
     page.on("pageerror", error => errors.push(error.message));
     await page.addInitScript({ content: `Object.defineProperty(navigator, "clipboard", { value: { async writeText(text) { document.documentElement.dataset.copied = text; } } });` });
     await page.goto(`http://127.0.0.1:${(vite.httpServer!.address() as { port: number }).port}/${theme === "dark" ? "?dark" : ""}`);
@@ -45,8 +45,12 @@ try {
     assert.match(await example("goal").innerText(), /Review mode/);
     assert.doesNotMatch(await example("goal").innerText(), /private context|My request/);
     assert.equal(await example("goal").locator(".thread-user-message__sender").innerText(), "reviewer");
-    await example("goal").getByRole("button", { name: "Copy message", exact: true }).click();
+    const copy = example("goal").getByRole("button", { name: "Copy message", exact: true });
+    assert.equal(await copy.evaluate(element => getComputedStyle(element).opacity), "1", "copy is visible before hover or focus");
+    if (width === 390) await copy.tap();
+    else { await copy.focus(); await page.keyboard.press("Enter"); }
     await page.waitForFunction(() => document.documentElement.dataset.copied === "Ship the release");
+    await example("goal").getByRole("button", { name: "Copied", exact: true }).waitFor();
     assert.equal(await example("empty").locator(".thread-user-message__no-content").innerText(), "(No content)");
     for (const id of ["review", "prior", "image", "file", "context", "comment", "audio"]) {
       assert.equal(await example(id).locator("[data-user-message-bubble]").count(), 0, id);
