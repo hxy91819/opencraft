@@ -145,14 +145,18 @@
             }
           } catch {}
 
+          const recoveryTransition = `${activeBuildId}->${latestBuildId}`;
           const recoveryKey = latestBuildId == null
             ? null
-            : `vela.release-recovery:${activeBuildId}->${latestBuildId}`;
+            : `opencraft.release-recovery:${recoveryTransition}`;
+          const previousRecoveryAttempt = recoveryKey == null || latestBuildId === activeBuildId ? null
+            : sessionStorage.getItem(recoveryKey)
+              ?? sessionStorage.getItem(`vela.release-recovery:${recoveryTransition}`);
           if (
             latestBuildId != null
             && latestBuildId !== activeBuildId
             && recoveryKey != null
-            && sessionStorage.getItem(recoveryKey) !== "attempted"
+            && previousRecoveryAttempt !== "attempted"
           ) {
             sessionStorage.setItem(recoveryKey, "attempted");
             location.reload();

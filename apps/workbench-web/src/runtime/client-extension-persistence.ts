@@ -26,7 +26,7 @@ export async function openClientExtensionPersistence(currentProductDatabaseName:
   if (desktop && !desktop.extensionData) throw new Error("Desktop extension storage bridge unavailable; restart with the matching application build");
   const backend: ExtensionPersistence = desktop?.extensionData
     ? { ...desktop.extensionData, close() {} }
-    : await openIndexedDbExtensionPersistence(currentProductDatabaseName("vela-extension-data"));
+    : await openIndexedDbExtensionPersistence(currentProductDatabaseName("opencraft-extension-data"), indexedDB, currentProductDatabaseName("vela-extension-data"));
   try {
     const settings = await createPersistentExtensionSettingsStorage(backend, () => legacyRows(currentProductDatabaseName("vela-extension-settings"), "values"));
     const installations = await createPersistentExtensionInstallations(backend, () => legacyRows(currentProductDatabaseName("vela-extension-installations"), "installations"));

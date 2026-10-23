@@ -1,4 +1,5 @@
 import type { RuntimeMachineIdentity } from "@opencraft/appserver-protocol";
+import { IndexedDbIdentityError, migrateIndexedDbIdentity } from "@opencraft/indexeddb-storage";
 import { BrowserStorageError, type BrowserStorageDiagnostics } from "./browser-storage-error";
 import {
   normalizeHostConnectionProfile,
@@ -72,6 +73,7 @@ function openProfileDatabase(factory: IDBFactory, name: string): Promise<IDBData
 
 export interface IndexedDbHostConnectionProfileStoreOptions {
   readonly databaseName?: string;
+  readonly formerDatabaseName?: string;
   readonly factory?: IDBFactory;
   readonly seed?: readonly HostConnectionProfile[];
   /** Activation-owned profiles visible for this run but never written to IDB. */
@@ -109,7 +111,22 @@ export class IndexedDbHostConnectionProfileStore implements HostConnectionProfil
     options: IndexedDbHostConnectionProfileStoreOptions = {},
   ): Promise<IndexedDbHostConnectionProfileStore> {
     const factory = options.factory ?? indexedDB;
-    const databaseName = options.databaseName ?? "vela-host-connections";
+    const databaseName = options.databaseName ?? "opencraft-host-connections";
+    const formerName = options.formerDatabaseName ?? (options.databaseName === undefined ? "vela-host-connections" : undefined);
+    if (formerName) {
+      const started = performance.now();
+      try {
+        await migrateIndexedDbIdentity({ factory, name: databaseName, formerName, formerWriterVersion: DATABASE_VERSION });
+      } catch (cause) {
+        if (cause instanceof IndexedDbIdentityError || cause instanceof DOMException) {
+          throw new BrowserStorageError(cause instanceof IndexedDbIdentityError ? cause.reason : "unavailable", {
+            cause, storageDiagnostics: { storage: "host-profiles", stage: cause instanceof IndexedDbIdentityError ? cause.stage : "opening",
+              elapsedMs: Math.round(performance.now() - started), requestedVersion: DATABASE_VERSION },
+          });
+        }
+        throw cause;
+      }
+    }
     const database = await openProfileDatabase(factory, databaseName);
     const store = new IndexedDbHostConnectionProfileStore(database);
     try {
