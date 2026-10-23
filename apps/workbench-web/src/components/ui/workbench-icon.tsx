@@ -29,7 +29,7 @@ export type WorkbenchIconPurpose = "navigation" | "settings" | "settings-page" |
 const legacyIconOverrides = { chat: MessageSquare, appearance: Palette, brain: Brain };
 /** Presentation may select classic artwork, but registered contribution names remain authoritative. */
 export function resolveWorkbenchIcon(name: string | undefined, classic: boolean, purpose: WorkbenchIconPurpose = "settings"): ComponentType<ActionIconProps> {
-  if (classic && purpose === "panel" && !["chat", "terminal", "browser", "desktop"].includes(name ?? "")) return Plus;
+  if (classic && purpose === "panel" && !["chat", "terminal", "browser", "desktop", "folder"].includes(name ?? "")) return Plus;
   if (classic && purpose === "work") return name === "sparkles" ? Sparkles : Cloud;
   if (classic && name && Object.hasOwn(legacyIconOverrides, name)) return legacyIconOverrides[name as keyof typeof legacyIconOverrides];
   if (name && Object.hasOwn(workbenchIconRegistry, name)) return workbenchIconRegistry[name as WorkbenchIconName];
