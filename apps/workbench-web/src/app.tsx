@@ -124,6 +124,7 @@ import {
   ConversationRecoveryEmptyState,
   conversationRecoveryPresentation,
   conversationRecoveryIsPending,
+  conversationRecoveryIsUnstable,
 } from "./components/conversation-recovery";
 import { ConversationPendingInteractionPanel } from "./components/conversation-renderers/interaction/interaction-renderers";
 import { InteractionDraftStore } from "./components/conversation-renderers/interaction/interaction-drafts";
@@ -2200,7 +2201,8 @@ export function App({
                           ? ["queue"]
                           : (["steer", "queue"] as const).filter(action => followUpCapability?.[action] !== false && runtime.resources.host.canRequest?.(action === "queue" ? "thread/queue/add" : "turn/steer") !== false)}
                         portalContainer={portalContainer}
-                        isUnstable={activeThreadId !== null && recoveryPresentation !== "none"}
+                        isUnstable={activeThreadId !== null
+                          && conversationRecoveryIsUnstable(recoveryPresentation, recoveryDiagnostic)}
                         isRecovering={conversationRecovering}
                         isStreaming={draft === null && isStreaming}
                         isStopping={snapshot.conversation?.activeTurn?.status === "interrupting"}

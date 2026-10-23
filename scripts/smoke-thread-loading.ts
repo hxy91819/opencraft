@@ -14,7 +14,7 @@ import {buildOpenCraftThemeCssProperties,opencraftNeutralThemePalette,lavenderTh
 import {TimelineBlockRendererProvider,TimelineBlockRendererRegistryService} from '@opencraft/timeline-render-react';
 import {BuiltinTimelineRendererPlugin} from '/apps/workbench-web/src/components/conversation-renderers/builtin-timeline-renderer-plugin.ts';
 import {Conversation} from '/apps/workbench-web/src/components/conversation.tsx';
-import {ConversationRecoveryEmptyState,ConversationRecoveryNotice,conversationRecoveryPresentation,conversationRecoveryIsPending} from '/apps/workbench-web/src/components/conversation-recovery.tsx';
+import {ConversationRecoveryEmptyState,ConversationRecoveryNotice,conversationRecoveryPresentation,conversationRecoveryIsPending,conversationRecoveryIsUnstable} from '/apps/workbench-web/src/components/conversation-recovery.tsx';
 import {useConversationRecoveryDiagnostic} from '/apps/workbench-web/src/runtime/conversation-recovery-diagnostic.ts';
 import {createComposerController} from '@opencraft/composer-core';
 import {OpenCraftComposer} from '@opencraft/composer-editor';
@@ -44,7 +44,7 @@ function Demo(){
  const warm=state.startsWith('warm')||state==='ready';
  const failed=state.endsWith('error');
  const requiresUpdate=state.endsWith('update-error');
- const diagnostic=useConversationRecoveryDiagnostic({scope,failed,stage:warm?'history':'connection',error:null,runtime:'error',transport:{state:'failed'}});
+ const diagnostic=useConversationRecoveryDiagnostic({scope,failed,active:state!=='ready',stage:warm?'history':'connection',error:null,runtime:state==='warm-reconnecting'?'reconnecting':failed?'error':'ready',transport:{state:failed?'failed':'open'}});
  const presentation=conversationRecoveryPresentation({authoritative:state==='ready',hasVisibleHistory:warm,failed});
  const retry=()=>setState('cold-view');
  return <main className="local-conversation-page" style={{height:'100vh','--thread-content-top-inset':'0px',background:'var(--color-background-surface)',overflow:'hidden'}}>
@@ -53,7 +53,7 @@ function Demo(){
      emptyState={<ConversationRecoveryEmptyState failed={failed} diagnostic={diagnostic} requiresUpdate={requiresUpdate} onRetry={retry}/>}
      footer={<footer style={{padding:8}}>
       {presentation==='warm-error'?<ConversationRecoveryNotice failed diagnostic={diagnostic} requiresUpdate={requiresUpdate} onRetry={()=>setState('warm-loading')}/>:null}
-      <OpenCraftComposer controller={controller} isStreaming={false} isRecovering={conversationRecoveryIsPending(presentation,diagnostic,requiresUpdate)} onSubmit={()=>false} onCancel={()=>{}}/>
+      <OpenCraftComposer controller={controller} isStreaming={false} isUnstable={conversationRecoveryIsUnstable(presentation,diagnostic)} isRecovering={conversationRecoveryIsPending(presentation,diagnostic,requiresUpdate)} onSubmit={()=>false} onCancel={()=>{}}/>
      </footer>}/>
   </TimelineBlockRendererProvider>
  </main>;
@@ -106,6 +106,7 @@ try {
       for (const stage of ["cold-stage", "cold-view"]) {
         await setState(stage);
         await expectActive();
+        assert.equal(await page.locator('.opencraft-composer-shell').getAttribute('data-warning'), null, 'ordinary entry loading stays neutral');
         const rendered = await scan.evaluate(el => {
           const svg = el.querySelector("svg")!;
           const rect = el.getBoundingClientRect();
@@ -198,14 +199,17 @@ try {
         (window as any).retainedDraft = document.querySelector(".ProseMirror");
         return { scroll: scroll.scrollTop, anchor: [...document.querySelectorAll("[data-turn-key]")].at(-1)!.getBoundingClientRect().top };
       });
-      for (const state of ["warm-loading", "warm-syncing", "warm-error", "warm-update-error", "ready"]) {
+      for (const state of ["warm-loading", "warm-syncing", "warm-reconnecting", "warm-error", "warm-update-error", "ready"]) {
         await setState(state);
         if (state === "warm-error" || state === "warm-update-error") await page.locator(".conversation-recovery-notice").waitFor();
         else await page.locator(".conversation-recovery-notice").waitFor({ state: "detached" });
-        assert.equal(await scan.getAttribute("data-active"), state === "warm-loading" || state === "warm-syncing" ? "true" : "false");
+        assert.equal(await scan.getAttribute("data-active"), state === "warm-loading" || state === "warm-syncing" || state === "warm-reconnecting" ? "true" : "false");
         await page.evaluate(async () => {
           for (let frame = 0; frame < 10; frame++) await new Promise(requestAnimationFrame);
         });
+        assert.equal(await page.locator('.opencraft-composer-shell').getAttribute('data-warning'),
+          state === 'warm-reconnecting' || state.endsWith('error') ? 'true' : null,
+          'only actual reconnect/failure warns; ready and routine history loading stay neutral');
         const retained = await page.evaluate(() => ({
           sameScroll: (window as any).retainedScroll === document.querySelector(".thread-scroll"),
           scroll: (document.querySelector(".thread-scroll")! as HTMLElement).scrollTop,
