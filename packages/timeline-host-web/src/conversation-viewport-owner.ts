@@ -425,6 +425,7 @@ export class WebConversationViewportOwner {
     };
     const clearTouch = () => { touchPoint = null; };
     const handleScroll = () => {
+      if (element.clientHeight === 0) return;
       const physicalDistance = Math.max(0, -element.scrollTop);
       if (
         pointerSnapshot !== null
@@ -477,12 +478,15 @@ export class WebConversationViewportOwner {
     // Content height belongs to the virtualizer's row measurement transaction.
     // Observing its ancestor here creates a shallower, skipped RO notification
     // when a row callback synchronously commits the virtual layout.
-    onChange();
+    // A retained route has zero geometry while parked. Its observer stays
+    // registered so the first measurable resize resumes the original owner.
+    const publish = () => { if (element.clientHeight !== 0) onChange(); };
+    publish();
     let frame: number | null = null;
     const update = () => {
       frame ??= window.requestAnimationFrame(() => {
         frame = null;
-        onChange();
+        publish();
       });
     };
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
@@ -611,7 +615,10 @@ export class WebConversationViewportOwner {
       return;
     }
     this.footerObservationDispose = observeBorderBoxHeight(footer, (heightPx) => {
-      if (this.disposed || this.footerElement !== footer || this.scrollElementRef.current !== scrollElement) {
+      if (
+        this.disposed || this.footerElement !== footer
+        || this.scrollElementRef.current !== scrollElement || scrollElement.clientHeight === 0
+      ) {
         return;
       }
       const previousHeightPx = this.footerHeightPx;
@@ -641,7 +648,7 @@ export class WebConversationViewportOwner {
   private ensureResizeObserver(): ResizeObserver {
     if (this.resizeObserver !== null) return this.resizeObserver;
     this.resizeObserver = new ResizeObserver((records) => {
-      if (this.disposed) return;
+      if (this.disposed || this.scrollElementRef.current?.clientHeight === 0) return;
       const measurements: WebConversationTurnMeasurement[] = [];
       const changedFollowTurns = new Set<string>();
       for (const record of records) {

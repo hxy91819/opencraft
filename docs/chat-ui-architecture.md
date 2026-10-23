@@ -3397,3 +3397,14 @@ an overlay, and streaming growth, shrinkage and width changes update that afford
 The existing View choice, completion defaults, copy/download and viewport ownership
 remain unchanged. `scripts/smoke-reasoning-disclosure.ts --plan-preview-only` covers
 short and long content, growth/shrinkage, expansion and View restoration.
+
+### Retained Web viewport measurements
+
+A parked conversation has a zero-height scrollport. Its Web viewport owner keeps
+row, follow-content, footer and viewport observations registered but does not
+publish those hidden geometry records or platform scroll events. Zero layout
+cannot replace the controller's durable reading distance or the virtualizer's
+measured rows. The same observations resume when the viewport is measurable;
+visible measurements remain synchronous and explicit scroll-to-bottom intent
+keeps its existing owner. Unmounting a parked View serializes the retained
+checkpoint for the replacement View.
