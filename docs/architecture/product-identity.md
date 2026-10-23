@@ -138,11 +138,16 @@ filesystem paths, directories, sockets, tokens, databases or logs. Published
 `ioa_*` table identities remain storage contracts and are not renamed by source
 cleanup. There is one schema and one reader rather than a compatibility fork.
 
+Browser capability advertisement uses `opencraft/browser-use`. New browser tool
+specs advertise `opencraft_app.open_in_opencraft` and `opencraft_browser`.
+The handler accepts exact former tool pairs for already-issued calls, without
+advertising them or accepting mixed former/current namespace/function pairs.
+
 Bot capability declarations use `opencraft/bot-conversations`; clients read the
-exact former identifier only when the current declaration is absent. Other
-AppServer capability strings and published browser tool names still require
-their own owner migration. These identity changes keep the Bot payload version
-and domain schema unchanged. Generic `thread/*`, `turn/*`, and `bot/*` methods are
+exact former identifier only when the current declaration is absent. These owned
+Browser and Bot policies supersede the former blanket name-stability rule.
+The Bot payload version and domain schema remain unchanged. Generic
+`thread/*`, `turn/*`, and `bot/*` methods are
 unchanged. Native deep links now use `opencraft:`.
 
 ## Service-provider ownership
