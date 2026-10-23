@@ -214,6 +214,8 @@ export interface ContributionMessage {
 export interface SettingsPageContribution {
   /** Fixed configuration owner; independent of the selected conversation Host. */
   readonly targetHostId?: string;
+  /** Model-menu configuration destination for targetHostId; the extension owns the page. */
+  readonly modelConfiguration?: boolean;
   readonly id: string;
   readonly title: string;
   /** Optional localized copy; title remains the fallback for older consumers. */

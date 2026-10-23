@@ -177,6 +177,12 @@ function validateSettingsPage(owner: ExtensionActivationIdentity, value: Setting
     && value.layout !== "edge-to-edge"
   ) throw new RangeError("Invalid settings page layout");
   if (value.targetHostId !== undefined) requireLabel(value.targetHostId, `Settings page ${value.id} target Host`);
+  if (value.modelConfiguration !== undefined && typeof value.modelConfiguration !== "boolean") {
+    throw new RangeError(`Settings page ${value.id} has an invalid model configuration declaration`);
+  }
+  if (value.modelConfiguration === true && value.targetHostId === undefined) {
+    throw new RangeError(`Settings page ${value.id} model configuration requires a target Host`);
+  }
   if (value.management !== undefined) {
     assertOwnedContributionId(owner.extensionId, value.management.familyId);
     if (value.management.scope !== "agent" && value.management.scope !== "host") {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { IntlProvider } from "react-intl";
+import { IntlProvider, useIntl } from "react-intl";
 import { build } from "esbuild";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -82,15 +82,22 @@ test("settings render machine ownership, cold/failed connections, first-level na
   const englishSidebar = renderToStaticMarkup(<IntlProvider locale="en" defaultLocale="en">{sidebar}</IntlProvider>);
   assert.match(englishSidebar, /aria-label="Bots"/); assert.match(englishSidebar, />Bots</); assert.match(englishSidebar, /aria-label="Create Bot"/);
   assert.match(render(<NavigationContent config={{ actions: [], account: null, onOpenSettings: onSectionChange }} surface="applications" onInvoke={onSectionChange} />), /aria-label="应用"/);
-  const botNavigation = <NavigationContent config={{ actions: [{ id: "vela.bot-management.navigation", title: "Bots", icon: "bot", active: false, onInvoke: () => {} }], account: null, onOpenSettings: () => {} }} surface="applications" compact onInvoke={() => {}} />;
+  function BotNavigationFixture() {
+    const intl = useIntl();
+    return <NavigationContent config={{ actions: [{ id: "opencraft.bot-management.navigation", title: intl.formatMessage({ id: "sidebar.bots", defaultMessage: "Bots" }), icon: "bot", active: false, onInvoke: () => {} }], account: null, onOpenSettings: () => {} }} surface="applications" compact onInvoke={() => {}} />;
+  }
+  const botNavigation = <BotNavigationFixture />;
   assert.match(render(botNavigation), /aria-label="机器人"/);
   assert.doesNotMatch(render(botNavigation), />Bots</);
   assert.match(renderToStaticMarkup(<IntlProvider locale="en" defaultLocale="en">{botNavigation}</IntlProvider>), /aria-label="Bots"/);
-  const modelId = "vela.builtin-agents.model-services";
-  const codexId = "vela.builtin-agents.codex-accounts";
+  const modelId = "opencraft.builtin-agents.model-services";
+  const codexId = "opencraft.builtin-agents.codex-accounts";
+  const customId = "example.engine.models";
   const snapshot = { settingsPages: [
     { contribution: { ...pages[0], id: modelId } },
     { contribution: { ...pages[1], id: codexId } },
+    { contribution: { id: customId, title: "Custom engine models", viewId: "example.engine.view", targetHostId: "alias", order: 2 } },
+    { contribution: { id: "example.disabled", title: "Disabled engine", viewId: "example.disabled.view", targetHostId: "cloud" } },
   ] };
   const contributions = { subscribe: () => () => {}, getSnapshot: () => snapshot };
   const nav = createApplicationNavigation(null, { mode: "memory", initialEntries: ["/settings/appearance"] });
@@ -104,11 +111,15 @@ test("settings render machine ownership, cold/failed connections, first-level na
     assert.ok(markup.indexOf("模型服务") < markup.indexOf("Codex 账户"));
     assert.ok(markup.indexOf("Codex 账户") < markup.indexOf(">机器<"));
   };
+  const genericNavigation = render(<SettingsNavigation section={customId} onSectionChange={next => nav.openSettings(next)} extensionContributions={contributions} profiles={[...hosts, cloud]} machines={machines} activeHostId="local" onBack={() => nav.back()} />);
+  assert.match(genericNavigation, /aria-current="page"[^>]*><[^>]*[\s\S]*Custom engine models/);
+  assert.doesNotMatch(genericNavigation, /Disabled engine/);
   nav.openSettings(modelId); assert.equal(nav.getSnapshot().action, "push"); assertDestination(modelId, "模型服务");
   nav.openSettings(codexId); assertDestination(codexId, "Codex 账户");
   nav.back(); await new Promise(resolve => setImmediate(resolve));
   assert.equal(nav.getSnapshot().action, "pop"); assertDestination(modelId, "模型服务");
   nav.forward(); await new Promise(resolve => setImmediate(resolve)); assertDestination(codexId, "Codex 账户");
+  nav.openSettings(customId); assertDestination(customId, "Custom engine models");
   nav.openSettings("machines"); assertDestination("machines", "机器");
   const machineSection = `machine-${encodeURIComponent(machines[0]!.id)}`;
   nav.openSettings(machineSection); assertDestination(machineSection, "机器");
