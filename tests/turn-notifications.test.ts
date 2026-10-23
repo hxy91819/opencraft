@@ -45,7 +45,7 @@ const finished = (status = "completed", turnId = "turn", threadId = "thread") =>
 const userItem = (id: string, text: string) => ({ id, type: "userMessage", content: [{ type: "text", text }] });
 
 test("notification context belongs to its Host/Thread/Turn, follows rename and the latest accepted input", () => {
-  const f = sourceFixture(); const a = f.add("codex"); const b = f.add("hermes");
+  const f = sourceFixture(); const a = f.add("host-a"); const b = f.add("host-b");
   const source = new TurnCompletionObserver(f.registry); const values: TurnCompletion[] = [];
   source.subscribe(value => values.push(value));
   a.response("thread/list", { data: [{ id: "thread", name: "初始标题", preview: "first message" }] });
@@ -59,22 +59,22 @@ test("notification context belongs to its Host/Thread/Turn, follows rename and t
   a.response("thread/read", { thread: { id: "other-thread", name: "另一对话", turns: [{ id: "turn", items: [userItem("other", "其他会话请求")] }] } });
   a.response("thread/read", { thread: { id: "thread", name: "旧标题", turns: [{ id: "turn", items: [userItem("first", "旧历史请求")] }] } },
     () => a.emit({ method: "thread/name/updated", params: { threadId: "thread", threadName: "最终标题" } }));
-  b.response("thread/read", { thread: { id: "thread", name: "Hermes 对话", turns: [{ id: "turn", items: [userItem("other-host", "其他执行方请求")] }] } });
+  b.response("thread/read", { thread: { id: "thread", name: "第二个 Host 的对话", turns: [{ id: "turn", items: [userItem("other-host", "其他执行方请求")] }] } });
   assert.equal(values.length, 0, "history and context never trigger notifications");
   a.emit(finished()); b.emit(finished()); a.emit(finished("completed", "turn", "other-thread"));
-  assert.deepEqual(values.map(v => [v.threadTitle, v.userMessage]), [["最终标题", "最终的 请求"], ["Hermes 对话", "其他执行方请求"], ["另一对话", "其他会话请求"]]);
+  assert.deepEqual(values.map(v => [v.threadTitle, v.userMessage]), [["最终标题", "最终的 请求"], ["第二个 Host 的对话", "其他执行方请求"], ["另一对话", "其他会话请求"]]);
   source.dispose();
 });
 
 test("completion snapshots supply context without Item events, fallback is honest and summaries preserve Unicode", () => {
-  const f = sourceFixture(); const a = f.add("dsh"); const source = new TurnCompletionObserver(f.registry);
+  const f = sourceFixture(); const a = f.add("host-c"); const source = new TurnCompletionObserver(f.registry);
   const values: TurnCompletion[] = []; source.subscribe(v => values.push(v));
   a.emit({ method: "thread/started", params: { thread: { id: "thread", name: null, preview: "😀".repeat(90) } } });
   a.emit({ method: "turn/completed", params: { threadId: "thread", turn: { id: "turn", status: "completed", itemsView: "full", items: [userItem("one", "旧请求"), userItem("two", "你好😀".repeat(80)), { id: "answer", type: "agentMessage", text: "Do not include the answer" }] } } });
   assert.equal(Array.from(values[0]!.threadTitle!).length, 80);
   assert.equal(Array.from(values[0]!.userMessage!).length, 160);
   assert.ok(values[0]!.userMessage!.endsWith("…")); assert.ok(!values[0]!.userMessage!.includes("\uFFFD"));
-  f.remove("dsh"); const replacement = f.add("dsh"); replacement.emit(finished("completed", "other-turn"));
+  f.remove("host-c"); const replacement = f.add("host-c"); replacement.emit(finished("completed", "other-turn"));
   assert.equal(values[1]!.threadTitle, undefined); assert.equal(values[1]!.userMessage, undefined);
   source.dispose();
 });
@@ -94,7 +94,7 @@ test("message summaries reuse visible Chat text, hiding attachment instructions 
 
 test("restored paginated history supplies context and never replaces newer live input", () => {
   for (const method of ["thread/resume", "thread/turns/list", "thread/items/list"]) {
-    const f = sourceFixture(); const host = f.add("codex"); const source = new TurnCompletionObserver(f.registry);
+    const f = sourceFixture(); const host = f.add("host-a"); const source = new TurnCompletionObserver(f.registry);
     const values: TurnCompletion[] = []; source.subscribe(value => values.push(value));
     const turn = { id: "turn", items: [userItem("one", "旧请求"), userItem("two", "分页恢复的请求")] };
     const result = method === "thread/resume" ? { thread: { id: "thread", turns: [] }, initialTurnsPage: { data: [turn] } }
@@ -116,7 +116,7 @@ test("restored paginated history supplies context and never replaces newer live 
 
 test("multiple history pages retain the latest accepted steer in either pagination direction", () => {
   for (const sortDirection of ["asc", "desc"]) {
-    const f = sourceFixture(); const host = f.add("codex"); const source = new TurnCompletionObserver(f.registry);
+    const f = sourceFixture(); const host = f.add("host-a"); const source = new TurnCompletionObserver(f.registry);
     const values: TurnCompletion[] = []; source.subscribe(value => values.push(value));
     const pages = [userItem("original", "最初请求"), userItem("steer", "最新已接受请求")];
     if (sortDirection === "desc") pages.reverse();
@@ -136,7 +136,7 @@ test("multiple history pages retain the latest accepted steer in either paginati
 
 test("reloading a descending tail preserves overlap order and accepts a newer tail", () => {
   for (const newTail of [false, true]) {
-    const f = sourceFixture(); const host = f.add("codex"); const source = new TurnCompletionObserver(f.registry);
+    const f = sourceFixture(); const host = f.add("host-a"); const source = new TurnCompletionObserver(f.registry);
     const values: TurnCompletion[] = []; source.subscribe(value => values.push(value));
     const page = (items: unknown[], cursor: string | null = null) => host.response("thread/items/list",
       { data: items.map(item => ({ turnId: "turn", item })) }, undefined,
@@ -171,7 +171,7 @@ test("physical reconnect of the same Client recovers new steer from the real non
       }
       target.send(encodeJsonRpcMessage({ id: request.id, result }));
     } });
-    const client = registry.create({ hostId: "codex", transport }); const source = new TurnCompletionObserver(registry);
+    const client = registry.create({ hostId: "host-a", transport }); const source = new TurnCompletionObserver(registry);
     const values: TurnCompletion[] = []; source.subscribe(value => values.push(value));
     await client.connect({ clientInfo: { name: "notification-reconnect", version: "1" } });
     const runtime = await createCordisThreadSessionRuntime({ client, useTailHydration: true, supportsPaginatedHistory: true, historyModeHint: "paginated" });
@@ -180,7 +180,7 @@ test("physical reconnect of the same Client recovers new steer from the real non
       if (liveSeed) { peer!.send(encodeJsonRpcMessage({ method: "item/started", params: { threadId: "thread", turnId: "turn", item: userItem("old-live", "原请求") } })); await new Promise(resolve => setImmediate(resolve)); }
       await transport.close(); message = "断线期间已接受的新steer";
       await client.connect({ clientInfo: { name: "notification-reconnect", version: "1" } });
-      assert.equal(client.connectionGeneration, 2); assert.equal(registry.get("codex"), client);
+      assert.equal(client.connectionGeneration, 2); assert.equal(registry.get("host-a"), client);
       await runtime.resume.resume({ threadId: "thread" });
       assert.deepEqual(cursors, ["item-tail", "item-tail"]);
       peer!.send(encodeJsonRpcMessage(finished())); await new Promise(resolve => setImmediate(resolve));
@@ -200,20 +200,20 @@ test("completion is terminal lifecycle evidence, not history, final text or runn
 
 test("source follows every Client, fences removed/replaced clients, deduplicates across reconnect and isolates Host/Thread", () => {
   const fixture = sourceFixture();
-  const first = fixture.add("codex");
+  const first = fixture.add("host-a");
   const observer = new TurnCompletionObserver(fixture.registry);
   const observed: TurnCompletion[] = [];
   observer.subscribe(() => { throw new Error("broken consumer"); });
   const stop = observer.subscribe(value => observed.push(value));
   first.emit(finished()); first.emit(finished());
   const retiredCallback = [...first.listeners][0]!;
-  const replacement = fixture.add("codex");
+  const replacement = fixture.add("host-a");
   assert.equal(first.listeners.size, 0);
   retiredCallback(finished("completed", "retired-turn"));
   replacement.emit(finished());
   replacement.emit(finished("failed", "turn", "other-thread"));
-  const hermes = fixture.add("hermes"); hermes.emit(finished());
-  fixture.remove("hermes"); assert.equal(hermes.listeners.size, 0);
+  const secondHost = fixture.add("host-b"); secondHost.emit(finished());
+  fixture.remove("host-b"); assert.equal(secondHost.listeners.size, 0);
   assert.equal(observed.length, 3);
   stop(); replacement.emit(finished("interrupted", "next"));
   assert.equal(observed.length, 3);

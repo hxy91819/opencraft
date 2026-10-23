@@ -8,7 +8,7 @@ import test from "node:test";
 import { OpenCraftHostQueue } from "../apps/opencraft-daemon/src/opencraft-host-queue.js";
 
 test("Host queue claims survive restart as delivery-unknown and never re-enter the pending head", async () => {
-  const root = await mkdtemp(join(tmpdir(), "opencraft-codex-queue-store-"));
+  const root = await mkdtemp(join(tmpdir(), "opencraft-host-queue-store-"));
   try {
     const first = new OpenCraftHostQueue(root);
     const item = first.add("thread-1", "message-1", [{ type: "text", text: "hello" }]);
@@ -30,7 +30,7 @@ test("Host queue claims survive restart as delivery-unknown and never re-enter t
 });
 
 test("accepted steer remains visible for reconciliation without blocking admission of the next queued item", async () => {
-  const root = await mkdtemp(join(tmpdir(), "opencraft-codex-queue-admission-"));
+  const root = await mkdtemp(join(tmpdir(), "opencraft-host-queue-admission-"));
   try {
     const queue = new OpenCraftHostQueue(root);
     const first = queue.add("thread-1", "message-1", [{ type: "text", text: "first" }]);
@@ -52,7 +52,7 @@ test("accepted steer remains visible for reconciliation without blocking admissi
 });
 
 test("native queued rows migrate before Codex starts and replaying migration is idempotent", async () => {
-  const root = await mkdtemp(join(tmpdir(), "opencraft-codex-queue-migrate-"));
+  const root = await mkdtemp(join(tmpdir(), "opencraft-host-queue-migrate-"));
   const nativeRoot = join(root, "runtime");
   try {
     await mkdir(nativeRoot);
@@ -74,7 +74,7 @@ test("native queued rows migrate before Codex starts and replaying migration is 
 });
 
 test("deleting a Thread retires its Host-owned queued inputs", async () => {
-  const root = await mkdtemp(join(tmpdir(), "opencraft-codex-queue-delete-"));
+  const root = await mkdtemp(join(tmpdir(), "opencraft-host-queue-delete-"));
   try {
     const queue = new OpenCraftHostQueue(root);
     queue.add("thread-1", "message-1", [{ type: "text", text: "one" }]);

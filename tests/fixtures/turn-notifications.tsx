@@ -38,7 +38,7 @@ async function connect(hostId: string) {
   await client.connect({ clientInfo: { name: "turn-notification-smoke", version: "1" } });
   clients.set(hostId, client);
 }
-await connect("codex"); await connect("hermes"); await connect("dsh");
+await connect("host-a"); await connect("host-b"); await connect("host-c");
 const opened: unknown[] = [];
 let toggleSettings = () => {};
 function Probe() {
@@ -62,7 +62,7 @@ function Probe() {
   },
   notify: (hostId: string, method: string, params: unknown) => clients.get(hostId).request("fixture/notify", { method, params }),
   emit: (hostId: string, turnId: string, status = "completed", method = "turn/completed") => clients.get(hostId).request("fixture/notify", { method, params: { threadId: "thread", turn: { id: turnId, status } } }),
-  reconnect: async () => { await registry.remove("codex"); await connect("codex"); },
+  reconnect: async () => { await registry.remove("host-a"); await connect("host-a"); },
   settings: () => toggleSettings(),
   preference: () => preferences.get("chat.turnNotifications"),
   opened,
