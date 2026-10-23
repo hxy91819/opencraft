@@ -80,6 +80,7 @@ test('resource recovery gives entry and relative imports fresh URLs without movi
   await writeFile(join(root, 'index.html'), `<html><head><base href="/"><script type="module" src="./assets/entry-AAAA1111.js"></script><link rel="modulepreload" href="/assets/child-BBBB2222.js"></head></html>`);
   await writeFile(join(root, 'assets/entry-AAAA1111.js'), `import './child-BBBB2222.js';`);
   await writeFile(join(root, 'assets/child-BBBB2222.js'), 'export const healthy = true;');
+  await writeFile(join(root, 'assets/style-CCCC3333.css'), '.fixture { color: red; }');
   const worker = await createWorkbenchWebServer({ root, appServerTarget: null });
   t.after(() => worker.close());
   const base = `http://127.0.0.1:${(await worker.listen({ host: '127.0.0.1', port: 0 })).port}`;
@@ -95,6 +96,10 @@ test('resource recovery gives entry and relative imports fresh URLs without movi
   assert.match(entry.headers.get('content-type'), /javascript/);
   const child = await fetch(new URL('./child-BBBB2222.js', entryUrl));
   assert.equal(await child.text(), 'export const healthy = true;');
+  const style = await fetch(new URL('./style-CCCC3333.css', entryUrl));
+  assert.equal(style.status, 200);
+  assert.match(style.headers.get('content-type'), /^text\/css/);
+  assert.equal(await style.text(), '.fixture { color: red; }');
   assert.equal((await fetch(base + '/assets/recovery-retry-1/child-BBBB2222.js.map')).status, 404);
   assert.equal((await fetch(base + '/assets/recovery-retry-1/missing-CCCC3333.js')).status, 404);
   const invalid = await (await fetch(base + '/?opencraft-resource-recovery=%3Cscript%3E')).text();

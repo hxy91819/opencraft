@@ -149,7 +149,7 @@ composition owns its document and build entry, not the generic gateway.
 ## 保留本地数据的模块资源恢复
 
 受管 Web worker 在入口 HTML 声明 `opencraft-resource-recovery` 能力。
-浏览器报告网络型模块导入失败时，入口最多自动进行一次资源恢复；错误页的重新加载按钮也可显式重试。
+浏览器报告网络型模块导入失败或 Vite CSS 预加载失败时，入口最多自动进行一次资源恢复；错误页的重新加载按钮也可显式重试。恢复后的 CSS 持续失败同样保留错误页，不循环导航。
 恢复保留原 origin、应用路径和既有 query，仅设置同名恢复 query token，worker 将入口与预加载资源指向
 `/assets/recovery-<token>/`。相对模块导入沿用此路径，worker 将其解析为原来的静态文件，
 因此整个模块依赖图使用新的浏览器缓存键，无须清理 Cookie、本地数据库、会话或配置。
