@@ -1,8 +1,10 @@
 import type { ExtensionJson } from "@opencraft/extension-contract";
+import { migrateIndexedDbIdentity } from "@opencraft/indexeddb-storage";
 import { serializeExtensionData, validateDataRevision, validateDataScope, validateDataVersion, parseExtensionDataRecord, validateDocumentTransition,
   type ExtensionPersistence, type ExtensionDataRecord, type ExtensionDataCommit } from "@opencraft/extension-runtime";
 
-export async function openIndexedDbExtensionPersistence(name: string, factory: IDBFactory = indexedDB): Promise<ExtensionPersistence> {
+export async function openIndexedDbExtensionPersistence(name: string, factory: IDBFactory = indexedDB, formerName?: string): Promise<ExtensionPersistence> {
+  if (formerName) await migrateIndexedDbIdentity({ factory, name, formerName, formerWriterVersion: 1 });
   let closed = false;
   const listeners = new Set<(scope: string) => void>();
   const notify = (scope: string) => { for (const listener of listeners) { try { listener(scope); } catch { /* Observer only. */ } } };
