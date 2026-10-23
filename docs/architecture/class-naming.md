@@ -56,6 +56,9 @@ The cleanup changes owned symbols, live table names and fresh-store paths. It pr
   and all published migration names, versions and SQL checksums. Host-state v13
   and attachment v2 migrate active tables and indices to `opencraft_*`; see
   [the storage upgrade contract](../sqlite-lifecycle.md#owned-live-table-names).
+- Host-state v14 also preserves historical Bot records under `opencraft_bot_*`;
+  the original table spelling remains only in immutable migrations and upgrade
+  inputs. Old managed readers reject v14; old unguarded writers must stay stopped.
 - Native Codex queue import format, delivery reconciliation and source records.
 - Host IDs, environment variables, capability/RPC identifiers and generated
   Codex protocol types.
