@@ -1,16 +1,16 @@
 // Loaded with adaptive information dialogs; ordinary modals keep their existing geometry.
 .modal-surface__sheet-handle { display: none; }
-.modal-surface[data-presentation="adaptive-sheet"] {
+.modal-surface[data-presentation="adaptive-sheet"][data-size] {
   flex-direction: column;
   .modal-surface__close { top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; }
 }
 
 @media (pointer: coarse) {
-  .modal-surface[data-presentation="adaptive-sheet"] .modal-surface__close { top: 8px; right: 8px; width: 44px; height: 44px; }
+  .modal-surface[data-presentation="adaptive-sheet"][data-size] .modal-surface__close { top: 8px; right: 8px; width: 44px; height: 44px; }
 }
 
 @media (max-width: 640px) {
-  .modal-surface[data-presentation="adaptive-sheet"] {
+  .modal-surface[data-presentation="adaptive-sheet"][data-size] {
     top: auto;
     bottom: 0;
     left: 0;
@@ -39,5 +39,5 @@
 
 @keyframes modal-sheet-enter { from { translate: 0 100%; } to { translate: 0 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .modal-surface[data-presentation="adaptive-sheet"] { animation: none; transition: none; }
+  .modal-surface[data-presentation="adaptive-sheet"][data-size] { animation: none; transition: none; }
 }

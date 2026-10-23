@@ -1,3 +1,6 @@
+import { ConversationSummaryButton, ConversationSummarySurface, useConversationSummary, useSummaryGoal } from "./components/conversation-summary";
+import { ConversationToolbarSizing } from "./components/toolbar-dock-state";
+import { conversationToolbarActionIds } from "./components/toolbar-dock-model";
 import { useConversationDisplay } from "./runtime/use-conversation-display";
 import { displayTimingCounts } from "./runtime/display-timing-diagnostics";
 import { reportDisplayEvent } from "./runtime/recovery-diagnostics";
@@ -5,8 +8,6 @@ import { serverFetch } from "./runtime/server-context";
 import { ConversationReferenceSurface } from "./components/conversation-reference-surface";
 import { copyConversationReference } from "./runtime/conversation-reference-actions";
 import { useAsyncNotices } from "./components/async-notices";
-import { ConversationToolbarSizing } from "./components/toolbar-dock-state";
-import { conversationToolbarActionIds } from "./components/toolbar-dock-model";
 import { useObservedReadiness } from './runtime/observability-react';
 import { executionEngineExtension } from "@opencraft/appserver-client";
 import { ScheduledTaskCatalogContext } from "./runtime/scheduled-task-catalog-context";
@@ -1749,15 +1750,20 @@ export function App({
     verifyConversation: async () => { await hostCatalog.agentRuntimes.request(snapshot.hostId, "thread/read", { threadId: headerThreadId, includeTurns: false }); },
     onOpenTasks: () => workbenchNavigation.openExtensionView("opencraft.tasks.board"),
   };
-  const conversationActionSizing = <ConversationToolbarSizing scope={displayScope} actionIds={conversationToolbarActionIds(conversationToolbarProps)} />;
+  const summaryScopeKey = JSON.stringify([displayScope, displayHostId, displayThreadId]);
+  const summary = useConversationSummary(summaryScopeKey, conversationSurfaceVisible && draft === null && displayThreadId !== null);
+  const summaryGoal = useSummaryGoal(runtime.resources.goals, displayHostId === snapshot.hostId && displayThreadId === activeThreadId ? displayThreadId : null);
+  const summaryCurrent = !showingDisplayCache && snapshot.phase === "ready" && visibleTimeline?.authoritative === true;
+  const conversationMenuSizing = <ConversationToolbarSizing scope={displayScope} actionIds={conversationToolbarActionIds(conversationToolbarProps)} />;
+  const conversationActionSizing = <span className="conversation-header-actions">{summary.enabled ? <span className="chrome-button" /> : null}{conversationMenuSizing}</span>;
   const header = (
     <AppShellHeader
       conversationHeader={conversationSurfaceVisible}
       subtitle={conversationContribution?.subtitle}
       navigationBrand={embedded === undefined && extensionPlatform === "web" ? <ApplicationBrand branding={branding} onHome={workbenchNavigation.openChat} /> : undefined}
       headerActionSizing={conversationActionSizing}
-      headerAction={conversationMenuAvailable ? (
-        <Suspense fallback={conversationActionSizing}>
+      headerAction={<span className="conversation-header-actions"><ConversationSummaryButton controller={summary} />{conversationMenuAvailable ? (
+        <Suspense fallback={conversationMenuSizing}>
           <ConversationTaskMenu
             key={JSON.stringify([displayScope, snapshot.hostId, activeThreadId])}
             im={settingsContributionSnapshot.settingsPages.some(page => page.contribution.id === "opencraft.im.channels") ? {
@@ -1766,7 +1772,7 @@ export function App({
             {...conversationToolbarProps}
           />
         </Suspense>
-      ) : null}
+      ) : null}</span>}
       titleContent={conversationSurfaceVisible && draft === null && activeThread !== undefined && hostCatalog.threadManagement.capabilities(snapshot.hostId, activeThreadId ?? undefined).rename ? (
         <EditableThreadTitle
           key={JSON.stringify([snapshot.hostId, activeThread.id])}
@@ -2065,6 +2071,8 @@ export function App({
           />
         ) : (
           <div className="local-conversation-page">
+            <div ref={summary.layoutRef} className="conversation-summary-layout" data-summary-open={summary.wide && summary.open}>
+            <div className="conversation-summary-reading">
                 <Conversation
                   scrollPolicy="natural"
                   onAddSelectionToChat={conversationRouteOpen && activeThreadId !== null ? (text) => {
@@ -2268,6 +2276,12 @@ export function App({
                     </ThreadComposerPresentation>
                   }
                 />
+            </div>
+            <ConversationSummarySurface controller={summary} context={{ scopeKey: summaryScopeKey, timeline: visibleTimeline, goal: summaryGoal, current: summaryCurrent,
+              onOpenResource: path => { if (summaryCurrent) panelRuntime.panels.open(panelOwnerId, "resource", { resource: path }); },
+              onOpenThread: threadId => { if (summaryCurrent && displayHostId) hostCatalog.navigate(createWorkbenchThreadLocation(displayHostId, threadId)); },
+            }} />
+            </div>
           </div>
         )}
           </div>
