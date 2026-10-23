@@ -1393,7 +1393,7 @@ Goal time uses full days and remaining hours/minutes rather than unbounded hours
 
 ### Files entry in the right panel
 
-The built-in resource plugin owns one Files creation action for both empty-panel launcher and new-tab picker. Its directory comes from the current conversation toolbar context, with a stable directory resource tab; previews opened elsewhere cannot replace that retained tab. No directory means no action. Host filtering still owns embedded availability; the launcher does not grant filesystem permissions or change tree/preview lifetime.
+The built-in resource plugin owns one Files creation action for both empty-panel launcher and new-tab picker. Its semantic folder glyph is retained in both classic and standard presentation; the classic panel fallback must not turn Files into a generic add action. Its directory comes from the current conversation toolbar context, with a stable directory resource tab; previews opened elsewhere cannot replace that retained tab. No directory means no action. Host filtering still owns embedded availability; the launcher does not grant filesystem permissions or change tree/preview lifetime.
 
 - Browser storage startup failures are not release asset failures: dynamic-import
   rejection must reach the storage recovery boundary; early recovery retains
