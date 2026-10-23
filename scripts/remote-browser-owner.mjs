@@ -55,6 +55,9 @@ export async function reuseBrowserOwner(transport, current, stop) {
   // draining the previous Gateway, so no other writer can create a page here.
   transport.runtimeCurrent = await current();
   if (transport.runtimeCurrent || transport.inventory.length) return transport;
+  // This transport is intentionally retired and is never handed to Gateway.
+  // A socket error racing the managed stop must remain a local close outcome.
+  transport.on?.('error', () => {});
   try { await stop(); } finally { transport.kill(); }
   return null;
 }

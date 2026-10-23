@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { connect } from 'node:net';
-import { once } from 'node:events';
+import { once, EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 import WebSocket from 'ws';
 import { connectBrowserOwner, reuseBrowserOwner } from '../scripts/remote-browser-owner.mjs';
@@ -104,4 +104,10 @@ test('runtime script upgrade only stops empty owners under their exclusive attac
   let kills=0;const peer={inventory:[],kill(){kills++;}};
   await assert.rejects(reuseBrowserOwner(peer,async()=>false,async()=>{throw Error('stop rejected');}),/stop rejected/);
   assert.equal(kills,1,'failed upgrade must release its exclusive transport');
+});
+
+
+test('socket errors racing intentional empty-owner replacement cannot escape into Gateway', async () => {
+  const peer=Object.assign(new EventEmitter(),{inventory:[],kill(){this.emit('error',Error('late reset'));}});
+  assert.equal(await reuseBrowserOwner(peer,async()=>false,async()=>{peer.emit('error',Error('reset during stop'));}),null);
 });
