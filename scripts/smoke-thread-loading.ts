@@ -44,7 +44,7 @@ function Demo(){
  const warm=state.startsWith('warm')||state==='ready';
  const failed=state.endsWith('error');
  const requiresUpdate=state.endsWith('update-error');
- const diagnostic=useConversationRecoveryDiagnostic({scope,failed,stage:warm?'history':'connection',error:null,runtime:state==='warm-reconnecting'?'reconnecting':failed?'error':'ready',transport:{state:failed?'failed':'open'}});
+ const diagnostic=useConversationRecoveryDiagnostic({scope,failed,active:state!=='ready',stage:warm?'history':'connection',error:null,runtime:state==='warm-reconnecting'?'reconnecting':failed?'error':'ready',transport:{state:failed?'failed':'open'}});
  const presentation=conversationRecoveryPresentation({authoritative:state==='ready',hasVisibleHistory:warm,failed});
  const retry=()=>setState('cold-view');
  return <main className="local-conversation-page" style={{height:'100vh','--thread-content-top-inset':'0px',background:'var(--color-background-surface)',overflow:'hidden'}}>
