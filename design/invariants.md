@@ -2671,3 +2671,7 @@ The same client message retains its DOM and avatar across server queue admission
 authoritative queue IDs still own actions. Superseded reads and late RPC receipts
 cannot clear or resurrect that row during handoff.
 The task-link action uses two interlocking rounded links in its shared semantic glyph. Toolbar, overflow and customization consume the same artwork and localized accessible name; artwork changes do not change action identity, geometry, preferences or task transactions.
+### Board navigation copy
+The Tasks application uses “看板” (English: “Board”) for its navigation label,
+collapsed rail tooltip and main page heading. Board, list and follow-up remain
+views within the same application; task actions keep their task terminology.
