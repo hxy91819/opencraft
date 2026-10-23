@@ -65,12 +65,14 @@ export async function startBrowserOwner({ directory, dataDirectory }) {
   const state = 'opencraft-browser-' + createHash('sha256').update(dataDirectory).digest('hex').slice(0, 16);
   const unit = state + '-owner-v' + owner.PROTOCOL;
   const socketPath = '/var/lib/' + state + '/owner.sock';
+  // Do filesystem work before attachment: once attached, native events must
+  // reach the Gateway immediately, without an unobserved asynchronous gap.
+  let runtimeCurrent = true;
+  try { runtimeCurrent = await scriptsFingerprint(directory) === await scriptsFingerprint(join(dataDirectory, 'owner-runtime')); }
+  catch { /* Unknown runtime identity must never destroy tabs. */ }
   try {
     const attached = await connectBrowserOwner(socketPath);
-    const reused = await reuseBrowserOwner(attached, async () => {
-      try { return await scriptsFingerprint(directory) === await scriptsFingerprint(join(dataDirectory, 'owner-runtime')); }
-      catch { return true; } // Unknown runtime identity must never destroy tabs.
-    }, async () => {
+    const reused = await reuseBrowserOwner(attached, () => runtimeCurrent, async () => {
       if (await run('systemctl', ['stop', unit]) !== 0) throw new Error('Empty browser owner could not stop');
     });
     if (reused) return reused;
