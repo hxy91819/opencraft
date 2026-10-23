@@ -60,7 +60,7 @@ fill or page-wide blur cannot substitute for glass. Menus/search are denser
 than panels; circular touch chrome has inset-only shading. Geometry, Radix
 focus and modal lifetime retain their owners. Solid accessibility/unsupported
 filter fallbacks and explicit extension popover surfaces remain readable.
-See the workbench language and `scripts/smoke-frosted-materials.ts` for real
+See the workbench language and `scripts/smoke/shell/smoke-frosted-materials.ts` for real
 consumer, backdrop and fallback verification. Native appearance is unchanged.
 
 Longing is an optional built-in blue glass palette in both light and dark modes.
@@ -111,7 +111,7 @@ Visual regression checks measure fill end versus rendered thumb center at every
 stop and during held preview, with a subpixel tolerance. A CSS-property assertion
 or screenshots of one favorable stop cannot establish this invariant. Preserve
 a failing pre-fix case; inspect near-start, middle and near-end output in addition
-to theme/density/DPR coverage. `scripts/smoke-reasoning-slider.ts` verifies the real
+to theme/density/DPR coverage. `scripts/smoke/conversation/smoke-reasoning-slider.ts` verifies the real
 Composer consumer and keeps per-stop screenshots and geometric samples.
 
 
@@ -206,7 +206,7 @@ its receipt in layout effect before paint. Empty, detached, hidden or exiting
 viewports cannot overwrite receipts with clamped zeros; a deliberate scroll to
 zero in a visible viewport is valid. Hidden selection updates do not auto-scroll.
 No new persistence, polling or drawer keep-mounted policy is implied.
-Acceptance: `OPENCRAFT_SIDEBAR_SCROLL_ONLY=1 npx tsx scripts/smoke-mobile-sidebar-gesture.ts`
+Acceptance: `OPENCRAFT_SIDEBAR_SCROLL_ONLY=1 npx tsx scripts/smoke/shell/smoke-mobile-sidebar-gesture.ts`
 uses the actual AppShell/Sidebar and verifies reopen, zero, quick reversal,
 hidden selection updates and desktop/mobile handoff in light/dark/reduced motion.
 
@@ -259,14 +259,14 @@ clear a different conversation's input. Mobile software Return remains newline.
 - TSK-02：六个业务状态由用户维护；原生会话活动单独读取，未知不等于空闲，空闲不等于完成。拖拽不触发执行或中断。
 - TSK-03：固定工作台后端拥有 SQLite；聊天 Host 切换不改变数据库。多会话关系引用稳定 Server/Thread，允许跨 Server 与多个任务共享会话。旧卡片不迁移、不删除。
 - TSK-04：插件激活拥有控制器和草稿，View 消失清理观察者，返回保留草稿。迟到读取不能覆盖写入；事务 revision 防止并发覆盖，冲突保留输入，明确载入最新内容。
-- TSK-05：容器宽度不超过 600px 时展示共享 SegmentedControl 与单列；宽屏六列。状态和视图按钮沿用共享 toolbar 外观，触摸区扩展至 44px。各列滚动位置保留；看板整卡可启动拖动，动作按钮独立，触屏普通滑动保留滚动、长按激活；列表保留手柄启动，两者保留键盘手柄。拖动预览不被列裁切，跨列落下以起始revision提交状态/邻居，取消不写入。宽屏列与吸顶标题使用主题拥有的不透明 surface，滚过的卡片不得透字；窄屏继续隐藏重复列标题。真实长列遮挡与主题/断点连续性由 `scripts/smoke-tasks-column-scroll.ts` 验证。
+- TSK-05：容器宽度不超过 600px 时展示共享 SegmentedControl 与单列；宽屏六列。状态和视图按钮沿用共享 toolbar 外观，触摸区扩展至 44px。各列滚动位置保留；看板整卡可启动拖动，动作按钮独立，触屏普通滑动保留滚动、长按激活；列表保留手柄启动，两者保留键盘手柄。拖动预览不被列裁切，跨列落下以起始revision提交状态/邻居，取消不写入。宽屏列与吸顶标题使用主题拥有的不透明 surface，滚过的卡片不得透字；窄屏继续隐藏重复列标题。真实长列遮挡与主题/断点连续性由 `scripts/smoke/tasks/smoke-tasks-column-scroll.ts` 验证。
 - TSK-06：详情是采用共享模态视觉契约的 Radix 弹窗卡片；宽容器显示属性栏，窄容器堆叠同一组字段并在顶部保存，宽度变化保持输入节点。进入聚焦标题而不唤起手机键盘，点击外部、Esc 或关闭按钮收起，保留各任务未保存草稿与原 revision。模态背景不可交互；关闭恢复概览原节点/滚动及仍有效的入口焦点；不添加另一套浏览器历史。看板仅显示标题、活动摘要和一个会话捷径，列表使用独立紧凑行。写入期间禁用编辑和关闭，异步会话验证在 View 关闭后不能关联到新草稿。
 - TSK-07：任务进入原生聊天只准备草稿，用户发送才创建会话和执行；同 Server 项目进入执行位置，跨 Server 不复用项目/目录。确认 Thread 回执后关联，首次 Turn 失败不丢关系；关联未知结果只核对和重试关系，不能重新执行。客户端交接记录按产品/账号隔离，SQLite 始终拥有任务和关联；账号撤销、销毁或新导航隔离迟到工作。
-- 执行连接行的宽屏动作与下拉控件底边对齐；窄屏沿同组控件堆叠、按钮靠起始边，保留共享触控尺寸与原 DOM，布局不改变新建会话语义。真实几何和换宽连续性由 `scripts/smoke-tasks-team.ts` 验证。
+- 执行连接行的宽屏动作与下拉控件底边对齐；窄屏沿同组控件堆叠、按钮靠起始边，保留共享触控尺寸与原 DOM，布局不改变新建会话语义。真实几何和换宽连续性由 `scripts/smoke/tasks/smoke-tasks-team.ts` 验证。
 - 看板的一条会话捷径将图标、标题、已知原生活动和进入箭头合并为一行，不重复数量/Unknown文本；长标题单行截断，完整标题保留提示及可访问名称。缺少标题或读取回退的Thread ID显示本地化打开会话，未知活动仍保持未知。多关联仅补充其余数量和查看全部入口，由现有详情拥有关系管理；直接行仍消费原Server/Thread导航，不触发卡片详情或写入。共享按钮、metadata排版和主题token拥有外观与键盘焦点，触屏目标至少44px。
 - 看板卡片负责人仅为底部左侧头像，位于会话摘要/入口之后；姓名通过提示和图像可访问名称呈现，列表/详情继续显示姓名。头像复用现有照片/缩写/未分配回退，不改变分配、登录、权限或个人筛选。
 - TSK-10：负责人/优先级/截止日期由任务事务保存，成员标识显式维护、不等于授权。旧客户端省略属性仍保留，Agent CLI与UI复用唯一authority与CAS。Skill仅摘要常驻、正文按需，CLI分页摘要不把整库注入上下文。
-- 验证入口：`tests/tasks-*.test.ts`、`scripts/smoke-tasks-workbench.ts`。实际产物与平台验证状态见 Task Pack。
+- 验证入口：`tests/tasks-*.test.ts`、`scripts/smoke/tasks/smoke-tasks-workbench.ts`。实际产物与平台验证状态见 Task Pack。
 - TSK-08：已有会话的顶部“…”位于右面板按钮左侧，通过固定任务 authority 设定多个归属任务；使用稳定 Server/Thread 身份，不把当前聊天 Host 当任务库。每个关联行单独反馈写入，冲突或未知结果重新读取而不重放。草稿不显示入口，切会话/账号关闭旧选择器，解除关系不改变会话执行。
 - TSK-09：会话顶部菜单的重命名与置顶操作消费已有 ThreadTitleWriter 和原生 thread management port，与侧栏共享持久状态。只显示 Host 支持的动作；不依赖 Tasks 插件可用性来授权会话管理。重命名使用共享 ModalSurface，失败保留输入、处理中禁用重复提交；置顶失败留在菜单可重试，不伪造已成功状态。菜单/编辑会话按账号、Host、Thread 隔离，切换撤销旧 UI。
 
@@ -286,7 +286,7 @@ Changing node construction must not create a second resource or identity owner.
   its existing overlay slot, with screen-reader-only status text and no badge
   surface. Reconnection/failure copy and retry actions remain visible. Retained
   timeline, scroll and Composer identity do not change. Verified by
-  `scripts/smoke-thread-loading.ts`.
+  `scripts/smoke/conversation/smoke-thread-loading.ts`.
 
 ## Conversation work-status entry motion
 
@@ -303,7 +303,7 @@ Opening and closing bodies remain inert and hidden from accessibility navigation
 visual height animation cannot keep invisible tool actions in the Tab order.
 The disclosure trigger keeps focus, and expanding restores normal keyboard access.
 Verify closing and expanded Tab sequences alongside reflow and interrupted motion
-in `scripts/smoke-disclosure-reflow.ts`.
+in `scripts/smoke/conversation/smoke-disclosure-reflow.ts`.
 
 ## Turn completion reminders
 
@@ -469,7 +469,7 @@ decoder tests include nonzero hotspots and shape changes, not just visibility.
 - SSH-07：SSH Codex 目录热读在 Runtime 唯一入口使用原生索引，不隐式扫描修复；显式修复仍可覆盖参数，provider/source 默认筛选不变。已准入查询的加载、失败与成功空列表不得合并，停用查询不能冒充加载；失败只重试当前 Host 的读取，不拨号、不选目标、不激活 Thread。失败及物理 connecting/reconnecting/idle/error 保留同配置与授权作用域内的有效缓存和其他 Host 成功行；读取就绪不等于缓存展示资格，展示缓存不准入读取/执行。锁定、停用、删除、配置替换及授权代次变化不显示旧缓存。任务流最近区默认十行之外的已读取远端行通过明确更多入口展示，不冒称全量历史。
 - SSH-12：自动连接重试按既有序列递增至 60 秒；只有持续就绪 60 秒才清零，短暂恢复不把频繁断线重置到 500ms。恢复提示遵守已排定退避，手动重试仍即时。瞬时连接状态不删除同授权目录缓存或改变列表身份、次序和几何；自动重试失败保持重连阶段，不反复切换错误/加载呈现。
 - SSH-07 呈现补充：侧栏目录加载不渲染转圈、文字或占位行，既有历史的布局和 DOM 身份保持稳定；加载语义通过 `aria-busy` 保留，未完成时不显示成功空列表。目录失败保留对应重试入口；此规则不移除会话正文的加载提示。真实 Sidebar 明暗/鼠标/触屏回归见 `smoke:sidebar-thread-catalog`。
-- Sidebar page reveal: Recent retains its ten-row display budget; click, scrolling to the actual scroll boundary (including scrollbar dragging, keyboard navigation and touch momentum), and a downward pull share the same page action. A pull may begin on rows or empty space belonging to the scrollport, while unrelated navigation controls stay excluded. Downward scroll movement advances it; mounting, resizing and background catalog updates alone never auto-drain pages. One held touch reveals at most one page. A React transition replaces the Show more label with the footer spinner and owns its disabled state, without a second fetch owner or artificial delay. Existing rows and scroll position survive expansion, including when the selected row is newly revealed. Pinned paging and product grouping remain independent; exhausted Recent shows a localized end label. Passive document capture resolves the retained Sidebar's current scroll root after Shell dock/drawer reparenting; it excludes unrelated input and respects native vertical scrolling, horizontal Shell gestures and reduced motion. This explicit pagination feedback is the exception to SSH-07's quiet background discovery. Verification: `scripts/smoke-sidebar-recent-pages.ts` (mouse/touch, light/dark, English/Chinese); browser emulation is not physical iPhone acceptance.
+- Sidebar page reveal: Recent retains its ten-row display budget; click, scrolling to the actual scroll boundary (including scrollbar dragging, keyboard navigation and touch momentum), and a downward pull share the same page action. A pull may begin on rows or empty space belonging to the scrollport, while unrelated navigation controls stay excluded. Downward scroll movement advances it; mounting, resizing and background catalog updates alone never auto-drain pages. One held touch reveals at most one page. A React transition replaces the Show more label with the footer spinner and owns its disabled state, without a second fetch owner or artificial delay. Existing rows and scroll position survive expansion, including when the selected row is newly revealed. Pinned paging and product grouping remain independent; exhausted Recent shows a localized end label. Passive document capture resolves the retained Sidebar's current scroll root after Shell dock/drawer reparenting; it excludes unrelated input and respects native vertical scrolling, horizontal Shell gestures and reduced motion. This explicit pagination feedback is the exception to SSH-07's quiet background discovery. Verification: `scripts/smoke/shell/smoke-sidebar-recent-pages.ts` (mouse/touch, light/dark, English/Chinese); browser emulation is not physical iPhone acceptance.
 - SSH-08：管理目录恢复属于 Application/controller 生命周期，不依赖设置页挂载。手动重试、在线/可见恢复与周期读取共享单飞；完成后再调度，失败退避有上限，隐页/离线暂停，销毁清理并拒绝晚到回复。授权变更暂停后台读并撤销旧代次；显式操作后的核对不能复用操作前的旧轮询。尚无 SSH profile 时的管理读取失败仍有侧栏重试，不冒充成功空列表；正常后台读取无闪动，不支持/已锁定不冒充错误。读取不隐式连接、重连、切目标或执行 Thread。
 - SSH-09：SSH 只拥有传输，不重定义原生 Thread 分页历史；共享 broker 唯一方法准入表同时约束执行、Runtime 与 UI，保留上游无关 metadata。准入不冒充上游实现保证；本机 store 与尚未映射的连接句柄不能被声明成远端能力。读取成功不推出写入能力，偏好不制造 Queue 等能力；跟进按钮和逆向快捷键仅选择可准入动作、不改保存偏好。不可准入提交在草稿/乐观队列收养前拒绝，草稿保留；后台读取也不得发出已拒绝的 queue/watch/search 方法。旧 Server 无声明保持兼容，畸形声明封闭拒绝。
 
@@ -536,7 +536,7 @@ have the same priority as accessible modal surfaces. Opening a foreground layer
 revokes any pending/held Shell gesture before its late move/end can commit.
 Closing it permits a new Shell sequence, never resumes the revoked contact.
 
-Acceptance: `OPENCRAFT_GESTURE_CONTENT_ONLY=1 npx tsx scripts/smoke-mobile-sidebar-gesture.ts`
+Acceptance: `OPENCRAFT_GESTURE_CONTENT_ONLY=1 npx tsx scripts/smoke/shell/smoke-mobile-sidebar-gesture.ts`
 uses real reasoning, inspected/generated/sent-image renderers and CDP touch to
 check held following, no activation on swipe, original tap actions, cancellation
 and native input exclusions in light/dark and normal/reduced motion.
@@ -603,7 +603,7 @@ areas. In the desktop list column, the heading and its filter button stay fixed;
 `.sidebar-activity-list` is the conversation scroll owner. Mobile uses the shared
 native viewport described below, rather than a separate fixed navigation strip. Selection reveal targets that
 viewport. Moving the shared content portals preserves its DOM and scroll position.
-Evidence: `scripts/smoke-sidebar-thread-insets.mjs` (real AppShell/Sidebar).
+Evidence: `scripts/smoke/shell/smoke-sidebar-thread-insets.mjs` (real AppShell/Sidebar).
 
 Mobile navigation rows, including Home, scroll out with conversations in the shared native viewport. No Home-only sticky surface or top scroll offset remains; the floating New chat and settings actions remain reachable at the bottom. Desktop navigation is unchanged. Acceptance: FAB-only mobile sidebar smoke measures Home displacement against actual scrollTop and verifies it leaves the viewport while creation/settings stay fixed.
 
@@ -866,8 +866,8 @@ and completed text stays visible. This pure projection cannot commit a session,
 change syntax identity, schedule animation or own execution.
 
 ## Markdown 文件预览
-- 文件标题栏提供文件树显隐开关；收起后内容占满宽度，树保持挂载以保留展开、搜索和滚动位置，不重建预览或编辑器。只读嵌入预览仍无目录入口。验证：`scripts/smoke-file-tree-toggle.ts`。
-- 文件树的目录数据归Host作用域Query缓存，展开/键盘活动项/滚动归当前面板；按数据版本排序、展开分支拍平，DOM仅挂载可视窗口和overscan。侧栏/聊天更新不得触发未变化目录排序或每目录会话订阅。隐藏和搜索保留展开/滚动，键盘上下/Home/End/左右/Enter与选中文件仍可达；目录折叠后迟到数据不恢复子行。验证：`tests/workspace-file-tree-model.test.ts`、`scripts/smoke-workspace-file-tree.ts`。
+- 文件标题栏提供文件树显隐开关；收起后内容占满宽度，树保持挂载以保留展开、搜索和滚动位置，不重建预览或编辑器。只读嵌入预览仍无目录入口。验证：`scripts/smoke/resources/smoke-file-tree-toggle.ts`。
+- 文件树的目录数据归Host作用域Query缓存，展开/键盘活动项/滚动归当前面板；按数据版本排序、展开分支拍平，DOM仅挂载可视窗口和overscan。侧栏/聊天更新不得触发未变化目录排序或每目录会话订阅。隐藏和搜索保留展开/滚动，键盘上下/Home/End/左右/Enter与选中文件仍可达；目录折叠后迟到数据不恢复子行。验证：`tests/workspace-file-tree-model.test.ts`、`scripts/smoke/resources/smoke-workspace-file-tree.ts`。
 - 下载按钮沿用文件标题栏同排操作的尺寸、图标和反馈样式；不单独放大下载控件或为它撑高标题栏。
 - 文件预览标题栏右侧提供下载原文件；包括空文件、图片和不可预览的二进制。下载使用当前 Host/path/runtime generation 下已读取的 Blob 和文件名，不导出渲染 HTML 或未保存编辑草稿，不写回 Host。读取未完成、读取失败或旧资源 URL 尚未替换时禁用；切换身份/关闭释放 URL。只读内嵌预览同样允许下载。
 - 文件面板默认将 `.md` / `.markdown`（大小写不敏感）交给既有 WebChatDocument 排版，可切换到原始文本；不将原始 HTML 注入 DOM。相对文件链接与图片以当前文件目录解析，继续消费当前 Host 的资源接口和 Blob lease。
@@ -982,7 +982,7 @@ Sidebar Server 来源以 metadata 项目名前的7px实心圆点呈现，仅 rem
 - `workbenchIconMetrics` 与 `icons.web.scss` 拥有尺度/描边 primitive，core 导航14px、1.8描边，普通/选中均为轮廓，选中含义由行背景和文字保持；下游产品按旧 consumer 的15/16/14px与原 SVG 属性投影，不强改其他旧组件的显式描边。导航前导槽位沿用 `--size-navigation-leading-slot`，直接 SVG 与包装槽位保持光学中心和文字起点对齐；unified Shell 对 core 上方目的地与下方 Settings 共享 Shell inline inset，不让窄屏通用 Settings padding 改变其中一列。紧凑工具按钮保留其宿主尺寸；不能将所有场景强制放大。
 - 同一操作在展开/收起入口使用相同图形；状态变化不改变按钮命中区、焦点或布局。图标继承控件颜色，不另设选中配色。
 - 独立 core 桌面 rail 的应用导航为 20px，footer 保持 16px；这些例外只作用于各自 rail 区域；应用图标统一消费 Shell 的尺寸，包含显式产品图形家族，不能在共同侧栏列覆盖 `--size-icon-navigation`，否则相邻 Settings 与商业产品会被一同放大。core Settings 仍为 14px 导航角色；下游产品导航/Settings 保留原 consumer 的 15/16px。产品隔离浏览器选中真实 Settings，比对固定旧 Settings 图形并独立校验 Palette/SunMoon 家族；Home/New chat 不再冒充旧 Write。浅深与 DPR1/2 分别核对，不以更新截图或复制当前 resolver 代替兼容预期。
-- 验证：`npx tsx scripts/smoke-icons.ts` 使用真实导航组件检查浅/深色、DPR 1/2、选中与折叠按钮几何，生成图谱和结果 JSON。下游产品目录的 `npm run smoke:sidebar-icons` 另挂载真实 unified AppShell，检查宽窄侧栏双列几何、普通/选中及 下游源样式/图形对照；三面 release 用 `smoke-product-isolation.mjs` 检查根隔离。Web 构建与组件证据不代表 Electron 原生窗口验收。
+- 验证：`npx tsx scripts/smoke/shell/smoke-icons.ts` 使用真实导航组件检查浅/深色、DPR 1/2、选中与折叠按钮几何，生成图谱和结果 JSON。下游产品目录的 `npm run smoke:sidebar-icons` 另挂载真实 unified AppShell，检查宽窄侧栏双列几何、普通/选中及 下游源样式/图形对照；三面 release 用 `smoke-product-isolation.mjs` 检查根隔离。Web 构建与组件证据不代表 Electron 原生窗口验收。
 
 
 ### 回迁后的固定嵌入与业务 SQLite
@@ -1015,7 +1015,7 @@ Header 的可见导航 rail 用 `max-content` 在同一次布局中保留真实�
 
 core unified Shell 桌面将60px图标栏与列表列分开，移动抽屉纵向菜单位于全宽列表上方；列表标题（含筛选入口）、日期标题与会话行消费同一列表列inset，头像按内容宽度右对齐、右边缘与菜单间距固定。一行/两行共享右边缘，工作目录置于标题下方辅助行，无独立底板，过长省略，不占用标题行宽度。unified默认335px、最小300px（原列表默认275px/最小240px加60px图标栏），旧保存宽度按新最小值夹紧，未保存时消费frame新默认值；手机抽屉先按屏宽减64px保留关闭区域，再以共享frame.sidebarMobileWidthRatio（90%）收窄并取整；不写回桌面宽度、不缩小字体或触控目标；独立/嵌入侧栏保持原宽度。图标行的 icon-label gap、会话层次、右侧状态与菜单命中区保持原语义。下游产品两面保持旧 consumer 留白。
 
-`scripts/smoke-sidebar-thread-insets.mjs` 挂载真实 AppShell + Sidebar + ThreadRowMenu，以合成短/长标题、日期组、项目和状态测宽窄固定/浮动、选中/hover浅深几何；此前 Settings 列测试不代替会话消费链。
+`scripts/smoke/shell/smoke-sidebar-thread-insets.mjs` 挂载真实 AppShell + Sidebar + ThreadRowMenu，以合成短/长标题、日期组、项目和状态测宽窄固定/浮动、选中/hover浅深几何；此前 Settings 列测试不代替会话消费链。
 
 - Sidebar 会话行的产品徽标独立于共用状态/操作尾槽；运行、Goal、待处理、未读等仅用一个状态渲染器。桌面指向/聚焦/打开菜单时切换点号；触屏在同一44px菜单目标内并列状态与点号，不能另留状态列或重叠/挤动标题。
 
@@ -1033,7 +1033,7 @@ bounded stack; the action footer does not shrink or enter the editor scroll area
 Keeping the keyboard open must leave the Send hit target inside the visible
 surface and permit the first touch to submit. Height changes preserve the editor
 node and draft. Desktop and Native keep their own presentation rules.
-Verification: `scripts/smoke-composer-keyboard-viewport.ts` simulates iOS
+Verification: `scripts/smoke/composer/smoke-composer-keyboard-viewport.ts` simulates iOS
 VisualViewport with queue/long text, offsets, light/dark and keyboard dismissal;
 physical iPhone/in-app keyboard verification remains a separate surface.
 
@@ -1144,7 +1144,7 @@ retain priority. A docked keyboard uses a small gap, while keyboard dismissal
 restores the Home-indicator inset. iPad desktop UA with touch is still iOS;
 hardware/floating keyboards that do not shrink the viewport do not create a fake
 full-width inset, and pinch zoom is not classified as a software keyboard.
-`scripts/smoke-terminal-keyboard.ts` exercises real Shell/RightPanel/Terminal and
+`scripts/smoke/shell/smoke-terminal-keyboard.ts` exercises real Shell/RightPanel/Terminal and
 Composer components with Terminal → Composer focus reveal, shrink/pure-pan/
 dismissal, scroll ownership, a shifted fixed-containing-block origin and a hidden
 scrollport negative control. The origin shift is an adversarial coordinate test,
@@ -1210,7 +1210,7 @@ advance on every build or first visit. Newer offline/live results remain unread,
 and stale reads cannot acknowledge newer live results. Unset/invalid values
 preserve normal read behavior; this is not a change to backend waits or errors.
 Tests: `thread-attention.test.ts`, `thread-catalog-query.test.ts`,
-`scripts/smoke-thread-attention.ts` (real DOM/intersection/occlusion; platform focus is substituted because Playwright forces tabs focused).
+`scripts/smoke/conversation/smoke-thread-attention.ts` (real DOM/intersection/occlusion; platform focus is substituted because Playwright forces tabs focused).
 
 ## UI font preference (2026-10-15)
 
@@ -1306,7 +1306,7 @@ Participant popovers and model/toolbar menus consume `menu.web.scss` `material`:
 
 ### Desktop navigation surface (2026-10-15)
 
-Unified Shell uses a 60px icon rail with 36px desktop controls, 20px application glyphs, 16px footer glyphs, and 18px account avatars. Controls consume the shared application-navigation row/density token, expanding to at least 44px in touch-friendly density; labeled mobile rows retain their original 20px glyphs and neutral current-page highlighting. Home is the single conversation-area destination for both existing chat and draft routes, invoking openChat without creating a new draft. Desktop retains a full-width New chat row directly below Conversations. Mobile projects the same creation action into a Shell-owned floating pill over the bottom of the scroll track, with a circular settings button on its right. The floating settings button composites its secondary state tint over the existing theme opaque elevated surface in resting, hover and pressed states, so list content cannot show through. The mobile account/avatar entrance and bottom plate are omitted; desktop retains its rail footer. The list reserves space so its last row can clear both controls. New chat dismisses the mobile drawer. The generic Settings entrance retains the open mobile drawer while its shared left slot becomes settings-category navigation; only an explicit category selection dismisses it, including selecting the already active category. Desktop keeps its direct default Appearance route; route normalization and explicit deep links do not create a new drawer or a second navigation owner. Filters retain their existing scroll lifetime; mobile search is a floating header action. Real Shell browser coverage: `OPENCRAFT_GESTURE_FAB_ONLY=1` in `scripts/smoke-mobile-sidebar-gesture.ts`. The toolbar exposes the sidebar toggle and preserves the measured native-window safe area; history remains in the router/browser without rendered arrow controls. A standalone managed site has a mascot/wordmark brand region in compact layout, sized from the default sidebar metric and capped by viewport space, with collapse at its trailing edge. Touch layout or a browser window whose unified sidebar has moved into its narrow drawer hides both the mark and wordmark in the persistent page header and releases the reserved rail width in visible and measurement copies, retaining navigation controls. The narrow browser rule also applies with compact density; wide compact browser and native desktop branding remain visible. Drawer headers retain the wordmark and a plugin-provided leading mark; plugins can opt out of their mark. The managed site retains its mascot there, replacing the internal mobile collapse button. The closed page retains its plain sidebar entrance, matching right-panel chrome. Search keeps its separate glass circular control. The existing data-ui-density preference owns interaction density; Shell owns the separate narrow-browser branding condition from its existing docking decision. The browser header uses the shared surface color, avoiding a separate gray empty strip. The context column and context-free main frame meet the toolbar and rail with square top-start seams; context presence changes neither saved width nor DOM ownership. Cards and modal surfaces retain their own semantic corner tokens. Tasks owns its single title above its Board/List toolbar; shell chrome omits duplicate management titles. Embedded shells retain their host presentation.
+Unified Shell uses a 60px icon rail with 36px desktop controls, 20px application glyphs, 16px footer glyphs, and 18px account avatars. Controls consume the shared application-navigation row/density token, expanding to at least 44px in touch-friendly density; labeled mobile rows retain their original 20px glyphs and neutral current-page highlighting. Home is the single conversation-area destination for both existing chat and draft routes, invoking openChat without creating a new draft. Desktop retains a full-width New chat row directly below Conversations. Mobile projects the same creation action into a Shell-owned floating pill over the bottom of the scroll track, with a circular settings button on its right. The floating settings button composites its secondary state tint over the existing theme opaque elevated surface in resting, hover and pressed states, so list content cannot show through. The mobile account/avatar entrance and bottom plate are omitted; desktop retains its rail footer. The list reserves space so its last row can clear both controls. New chat dismisses the mobile drawer. The generic Settings entrance retains the open mobile drawer while its shared left slot becomes settings-category navigation; only an explicit category selection dismisses it, including selecting the already active category. Desktop keeps its direct default Appearance route; route normalization and explicit deep links do not create a new drawer or a second navigation owner. Filters retain their existing scroll lifetime; mobile search is a floating header action. Real Shell browser coverage: `OPENCRAFT_GESTURE_FAB_ONLY=1` in `scripts/smoke/shell/smoke-mobile-sidebar-gesture.ts`. The toolbar exposes the sidebar toggle and preserves the measured native-window safe area; history remains in the router/browser without rendered arrow controls. A standalone managed site has a mascot/wordmark brand region in compact layout, sized from the default sidebar metric and capped by viewport space, with collapse at its trailing edge. Touch layout or a browser window whose unified sidebar has moved into its narrow drawer hides both the mark and wordmark in the persistent page header and releases the reserved rail width in visible and measurement copies, retaining navigation controls. The narrow browser rule also applies with compact density; wide compact browser and native desktop branding remain visible. Drawer headers retain the wordmark and a plugin-provided leading mark; plugins can opt out of their mark. The managed site retains its mascot there, replacing the internal mobile collapse button. The closed page retains its plain sidebar entrance, matching right-panel chrome. Search keeps its separate glass circular control. The existing data-ui-density preference owns interaction density; Shell owns the separate narrow-browser branding condition from its existing docking decision. The browser header uses the shared surface color, avoiding a separate gray empty strip. The context column and context-free main frame meet the toolbar and rail with square top-start seams; context presence changes neither saved width nor DOM ownership. Cards and modal surfaces retain their own semantic corner tokens. Tasks owns its single title above its Board/List toolbar; shell chrome omits duplicate management titles. Embedded shells retain their host presentation.
 
 ### Right-panel toolbar divider alignment
 
@@ -1316,7 +1316,7 @@ The right-panel toolbar consumes `--height-toolbar` as its content height. Its 1
 
 The unified desktop Shell exposes conversation search as a `shell.search` rail action, using the same navigation sizes and accessible tooltip as other actions. The mobile drawer projects that same action into a floating glass header button beside the wordmark, hiding the duplicate list row. It replaces the inline sidebar search input in that presentation. Cmd+K on macOS and Ctrl+K on Windows/Linux open the same app-level search from conversation and management routes, including while a composer is focused. Other dialogs and IME keep keyboard ownership. ModalSurface/Radix owns focus trapping, Escape, outside dismissal and focus restoration; search never rewrites the composer draft or sidebar filters/scroll state.
 
-The modal searches titles in the existing multi-Host loaded catalog, explicitly labels its all-server scope, orders by recency and identifies each result's server. Host + Thread remain the selection identity; disabled interactions stay disabled. Arrow keys and Enter navigate through the existing `selectConversation` authority. Closing clears the ephemeral query; presentations without unified navigation retain their original inline filtering. Evidence: `tests/conversation-search-shortcut.test.ts` and `scripts/smoke-conversation-search.ts`.
+The modal searches titles in the existing multi-Host loaded catalog, explicitly labels its all-server scope, orders by recency and identifies each result's server. Host + Thread remain the selection identity; disabled interactions stay disabled. Arrow keys and Enter navigate through the existing `selectConversation` authority. Closing clears the ephemeral query; presentations without unified navigation retain their original inline filtering. Evidence: `tests/conversation-search-shortcut.test.ts` and `scripts/smoke/conversation/smoke-conversation-search.ts`.
 
 ### Conversation group disclosures
 
@@ -1325,7 +1325,7 @@ Opacity alone changes for fine mouse hover or keyboard focus; reserved geometry
 and the full-row button remain stable. Mobile layout and coarse/touch input keep
 the chevron visible, with a 44px mobile target. Existing aria-expanded/controls,
 collapse persistence and plugin grouping ownership remain authoritative. Real consumer coverage:
-scripts/smoke-sidebar-thread-catalog.ts.
+scripts/smoke/shell/smoke-sidebar-thread-catalog.ts.
 
 In unified Shell, each collapsible group heading sticks to the top of the current
 native scrollport only while its own section passes through it. The next group
@@ -1350,7 +1350,7 @@ scripts/smoke-sidebar-topology.ts.
 
 ### Consolidated conversation filters
 
-The conversation heading's single Filters button contains the existing display-mode radios, optional Only my conversations checkbox, and server radios. The separate participation/server chips are removed on desktop and mobile. Checked items reflect the existing plugin participation preference and Shell server preference; the closed button emphasizes active filters through its foreground and summarizes them in its tooltip, without a resting fill. Missing identity still omits participation filtering, and a saved server absent during loading never broadens the result scope. Radix owns keyboard/focus/dismissal and viewport-constrained menu scrolling. Evidence: `scripts/smoke-sidebar-thread-catalog.ts` (filter operation, offline continuity, reload persistence) and `scripts/smoke-sidebar-topology.ts` (desktop/mobile/touch scroll geometry).
+The conversation heading's single Filters button contains the existing display-mode radios, optional Only my conversations checkbox, and server radios. The separate participation/server chips are removed on desktop and mobile. Checked items reflect the existing plugin participation preference and Shell server preference; the closed button emphasizes active filters through its foreground and summarizes them in its tooltip, without a resting fill. Missing identity still omits participation filtering, and a saved server absent during loading never broadens the result scope. Radix owns keyboard/focus/dismissal and viewport-constrained menu scrolling. Evidence: `scripts/smoke/shell/smoke-sidebar-thread-catalog.ts` (filter operation, offline continuity, reload persistence) and `scripts/smoke-sidebar-topology.ts` (desktop/mobile/touch scroll geometry).
 
 Conversations has equal block spacing from the existing navigation section token.
 Desktop New chat is an unfilled quiet action with no extra top margin; the mobile
@@ -1389,7 +1389,7 @@ rasterization and Native hardware remain separately reported platform acceptance
 
 The navigation hover/focus preview reads the selected prompt sender, never the viewer or a later steer author. Photo resolution reuses IdentityAvatarContext/AvatarImage. Known identities retain a fixed avatar slot on missing/failed images; unknown authors have no avatar. Existing Turn marker topology, preview caching and stale-result fences remain unchanged.
 
-Goal time uses full days and remaining hours/minutes rather than unbounded hours. The server counter remains unchanged. Evidence: `scripts/smoke-thread-goal-ui.ts` (316h36m → 13d4h36m).
+Goal time uses full days and remaining hours/minutes rather than unbounded hours. The server counter remains unchanged. Evidence: `scripts/smoke/conversation/smoke-thread-goal-ui.ts` (316h36m → 13d4h36m).
 
 ### Files entry in the right panel
 
@@ -1426,14 +1426,14 @@ Touch unified Shell keeps one persistent sidebar action and its measured Header 
 
 Panel toolbar creation contributions (those carrying `creationLabel`) are available in creation/tab menus and the empty-panel launcher, without duplicate kind buttons on the bar. Non-creation toolbar actions and the fixed new-tab/tab-list slots retain their ownership on desktop and touch layouts.
 
-实时文件变更数字的裁切框、每格高度和滚动位移共用继承行高，不能用字号裁切较高的行盒；连续更新、位数变化和隐藏再显示都收敛到完整可读的当前值。保留tabular数字、原始计数与减少动态效果。证据：`scripts/smoke-turn-diff-counter.ts`（真实字形范围及旧几何负例）。
+实时文件变更数字的裁切框、每格高度和滚动位移共用继承行高，不能用字号裁切较高的行盒；连续更新、位数变化和隐藏再显示都收敛到完整可读的当前值。保留tabular数字、原始计数与减少动态效果。证据：`scripts/smoke/conversation/smoke-turn-diff-counter.ts`（真实字形范围及旧几何负例）。
 
 Touch Header panel entrances use one shared outer-edge spacing token (2px), bounded by host safe-area insets. Their 44px targets remain intact; wide touch chrome retains its stationary sidebar placeholder, while narrow mobile chrome moves with the foreground page and drawer branding occupies its own leading slot. Compact/native chrome keeps its existing padding.
 
 - Conversation list schedule markers consume the Host schedule summary rather than issuing row-owned reads. Active/paused use one neutral 16px clock after the truncating title and before participant chrome, with no animation, extra row height or independent touch target. The tooltip/accessibility label conveys next-run, paused or needs-checking state. Execution activity retains its separate owner and slot; configuring a plan never changes a conversation’s section; running is row feedback, not a section.
 
 ## Composer attached rail
-The queue and goal remain in the attached rail. The active Turn's file summary is a separate, content-width pill centered above that rail and editor, with the shared floating-summary gap, full radius, theme opaque elevated material, subtle border and low elevation. It never shares the attached rail's perimeter, tuck or mask. Long labels truncate while diff counts remain visible; narrow/floating/keyboard placements follow the actual Composer. Empty summary adds no height. Approval replacement retains the same independent summary. File review, counters, draft and queue ownership do not change. Geometry and material consume design-system tokens. `scripts/smoke-composer-attached-rail.ts` covers occupancy, separation, themes, review and draft identity.
+The queue and goal remain in the attached rail. The active Turn's file summary is a separate, content-width pill centered above that rail and editor, with the shared floating-summary gap, full radius, theme opaque elevated material, subtle border and low elevation. It never shares the attached rail's perimeter, tuck or mask. Long labels truncate while diff counts remain visible; narrow/floating/keyboard placements follow the actual Composer. Empty summary adds no height. Approval replacement retains the same independent summary. File review, counters, draft and queue ownership do not change. Geometry and material consume design-system tokens. `scripts/smoke/composer/smoke-composer-attached-rail.ts` covers occupancy, separation, themes, review and draft identity.
 
 
 ## Touch Newera composer
@@ -1471,7 +1471,7 @@ transcript paint must not leak through the lower corner cutouts.
 Touch keeps the Composer floating; transcript paint remains visible around the
 shell and below it in the safe area. Neither mode paints an exterior contour.
 The shell's own radius, glass, shadow and attached surfaces remain unchanged.
-`scripts/smoke-composer-bottom-corners.ts` compares actual exterior and gutter
+`scripts/smoke/composer/smoke-composer-bottom-corners.ts` compares actual exterior and gutter
 pixels while changing transcript paint, including a live density switch that
 preserves the same editor, draft and focus.
 
@@ -1545,7 +1545,7 @@ remain stable throughout animation and streaming; closing restores geometry.
 The list must not classify a row from a deep descendant's disclosure state.
 Content/prose boundaries are based on stable content roles, not open state.
 See [spacing ownership](../docs/chat-ui-architecture.md#activity-disclosure-spacing-ownership)
-and `scripts/smoke-activity-spacing.ts` for real Conversation frame sampling.
+and `scripts/smoke/conversation/smoke-activity-spacing.ts` for real Conversation frame sampling.
 
 ### Markdown table scroll ownership
 
@@ -1555,7 +1555,7 @@ panel limits; table and Mermaid renderers share the budget. Compact latest-turn
 previews and ownerless embedded documents cannot borrow ancestor/window space.
 Narrow surfaces do not use negative margins selected by window size. Toolbar
 anchors are scoped per table with an inside-container fallback. Evidence:
-`scripts/smoke-markdown-wide-layout.ts` (live resizing and independent previews).
+`scripts/smoke/resources/smoke-markdown-wide-layout.ts` (live resizing and independent previews).
 
 Web/Electron tables preserve intrinsic column widths in a non-shrinking wrapper,
 with long cells bounded and wrapped. The table scrollport owns horizontal
@@ -1564,11 +1564,11 @@ the available container. Phone, iPad (including split view) and desktop Web use
 this same container-driven contract and native touch/trackpad/scrollbar input;
 ordinary text selection is not converted into panning. Links, source copy and
 expanded preview keep their existing behavior. Streaming row additions retain
-table DOM and horizontal position. Evidence: `scripts/smoke-markdown-table-scroll.ts`;
+table DOM and horizontal position. Evidence: `scripts/smoke/resources/smoke-markdown-table-scroll.ts`;
 Chromium touch is not iOS device proof.
 
 
-Task recycle bin projects the existing seven-day soft-delete window from the Task authority. Restore retains task and conversation identities and original status, appends to that column and never controls execution. Main board/list stays mounted across recycle navigation. Errors flow through the platform reportError port into shared non-blocking notices. Verification: `scripts/smoke-tasks-recycle.ts` and task store/controller/Host tests.
+Task recycle bin projects the existing seven-day soft-delete window from the Task authority. Restore retains task and conversation identities and original status, appends to that column and never controls execution. Main board/list stays mounted across recycle navigation. Errors flow through the platform reportError port into shared non-blocking notices. Verification: `scripts/smoke/tasks/smoke-tasks-recycle.ts` and task store/controller/Host tests.
 Task description expand/collapse retains the same editor and draft; expanding does not save or change task data.
 
 Conversation headers expose capability-gated rename in standalone as well as embedded layouts. The same Host/Thread title writer owns persistence; Escape cancels, Enter saves, and failures use shared nonblocking notices. The pencil remains reachable for touch outside the Newera floating-header presentation; there, the existing menu retains Rename.
@@ -1770,11 +1770,11 @@ visible 44px targets on touch. Mermaid defaults to classic/base with lazily
 registered ELK layout and existing semantic theme tokens; no neo node shadows.
 This keeps the reading-surface wide-content limits and render-key continuity.
 Actual layout and source visibility are verified by
-`scripts/smoke-mermaid-display.ts`.
+`scripts/smoke/resources/smoke-mermaid-display.ts`.
 
 ### First-submit presentation continuity
 
-PendingConversationPage renders the immutable submitted input with UserMessageBlock and the normal thread viewport, width and top inset. It must not maintain an independent bubble surface, font scale or geometry. All submitted attachment names remain visible, including attachment-only input. Loading/failure/retry stays in the conversation, without redisplaying the submitted Draft or making any new identity fetch; a current account is never substituted for a message-author snapshot. Thread creation, receipt ownership and retry/promotion semantics remain unchanged. Real component coverage: `scripts/smoke-pending-conversation.ts`.
+PendingConversationPage renders the immutable submitted input with UserMessageBlock and the normal thread viewport, width and top inset. It must not maintain an independent bubble surface, font scale or geometry. All submitted attachment names remain visible, including attachment-only input. Loading/failure/retry stays in the conversation, without redisplaying the submitted Draft or making any new identity fetch; a current account is never substituted for a message-author snapshot. Thread creation, receipt ownership and retry/promotion semantics remain unchanged. Real component coverage: `scripts/smoke/conversation/smoke-pending-conversation.ts`.
 
 ### Browser capability compatibility
 
@@ -1843,7 +1843,7 @@ See [Tasks initial loading](../docs/workbench-design-language.md#tasks-initial-l
   only near-viewport thumbnails (at most eight) hold render handles. Hidden/
   detached views release thumbnail work; close/replacement cancels all handles.
 - Evidence: `tests/file-preview-core.test.ts`, `tests/structured-preview.test.ts`,
-  `scripts/smoke-office-preview.ts`, `scripts/smoke-structured-preview.ts`;
+  `scripts/smoke/resources/smoke-office-preview.ts`, `scripts/smoke/resources/smoke-structured-preview.ts`;
   detailed boundaries and limits: [file previews](../docs/file-preview.md).
 
 
@@ -2245,7 +2245,7 @@ A folded lazy tool group mounts collapsed on its first DOM commit, including an
 in-progress Turn restored by session switching. It must not manufacture an
 expanded frame and then animate it away. Explicit saved expansion, manual toggles
 and live content updates retain their existing ownership and transitions.
-Evidence: `scripts/smoke-conversation-entry-motion.ts` samples real Conversation
+Evidence: `scripts/smoke/conversation/smoke-conversation-entry-motion.ts` samples real Conversation
 group phase and body height on the first commit and subsequent animation frames.
 
 

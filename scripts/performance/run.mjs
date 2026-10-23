@@ -20,7 +20,7 @@ await mkdir(options.output, { recursive: true });
 // Every invocation uses fresh evidence; stale or concurrent output must never pass.
 const marker = await open(path.join(options.output, 'run.lock'), 'wx'); await marker.close();
 const hash = createHash('sha256');
-for (const file of ['scripts/performance/benchmark-workbench.ts', 'scripts/smoke-session-cold-open.ts', 'scripts/performance/build-cold-open.mjs', 'scripts/performance/run.mjs', 'scripts/performance/report.mjs', 'scripts/smoke-sidebar-menu-latency.ts', 'scripts/smoke-sidebar-conversation-latency.ts', 'tests/fixtures/catalog-entry-browser.tsx', 'tests/fixtures/session-loading-browser.tsx']) {
+for (const file of ['scripts/performance/benchmark-workbench.ts', 'scripts/smoke/conversation/smoke-session-cold-open.ts', 'scripts/performance/build-cold-open.mjs', 'scripts/performance/run.mjs', 'scripts/performance/report.mjs', 'scripts/smoke/shell/smoke-sidebar-menu-latency.ts', 'scripts/smoke/shell/smoke-sidebar-conversation-latency.ts', 'tests/fixtures/catalog-entry-browser.tsx', 'tests/fixtures/session-loading-browser.tsx']) {
   hash.update(file); hash.update(await readFile(path.join(root, file)));
 }
 const workload = { version: 3, sha256: hash.digest('hex'), scenarios, samples: 10, warmupWorkbench: 1, navigation: { workloadVersion: 5, rpcDelayMs: 40, cachedResources: 'cold', initialize: 'held-until-cached-paint', serve: 'compressed-release', warmup: 1 }, profiles: { desktop: { width: 1100, cpuRate: 1 }, narrow: { width: 390, cpuRate: 4 }, sidebar: { width: 1000, cpuRate: 4 } } };
@@ -44,14 +44,14 @@ async function run(id, args, env = {}) {
 try {
   await run('gate-tests', ['--test', 'tests/performance-gate.test.mjs']);
   await run('cold-open-build', ['scripts/performance/build-cold-open.mjs']);
-  await run('session-navigation', ['--import', 'tsx', 'scripts/smoke-session-cold-open.ts'], {
+  await run('session-navigation', ['--import', 'tsx', 'scripts/smoke/conversation/smoke-session-cold-open.ts'], {
     OPENCRAFT_COLD_OPEN_WEB_ROOT: path.join(root, 'apps/workbench-web/dist'),
     OPENCRAFT_COLD_OPEN_SAMPLES: '10', OPENCRAFT_COLD_OPEN_EVIDENCE: path.join(options.output, 'session-navigation'),
   });
   const navigation = JSON.parse(await readFile(path.join(options.output, 'session-navigation/receipt.json'), 'utf8'));
   assert.equal(navigation.workloadVersion, workload.navigation.workloadVersion, 'Navigation evidence workload version mismatch'); report.evidence.push(...navigation.evidence);
   environment.navigationBuild = navigation.build; environment.navigationBrowser = navigation.browser;
-  await run('catalog-behavior', ['--import', 'tsx', 'scripts/smoke-catalog-entry.ts'], { OPENCRAFT_CATALOG_ENTRY_OUTPUT: path.join(options.output, 'catalog-behavior') });
+  await run('catalog-behavior', ['--import', 'tsx', 'scripts/smoke/extensions/smoke-catalog-entry.ts'], { OPENCRAFT_CATALOG_ENTRY_OUTPUT: path.join(options.output, 'catalog-behavior') });
   await run('workbench', ['--import', 'tsx', 'scripts/performance/benchmark-workbench.ts'], { OPENCRAFT_PERFORMANCE_OUTPUT: path.join(options.output, 'workbench'), OPENCRAFT_PERFORMANCE_CATALOG_MODE: options.control ?? '' });
   const workbench = JSON.parse(await readFile(path.join(options.output, 'workbench/workbench.json'), 'utf8'));
   assert.equal(workbench.workloadVersion, 1); environment.browser = workbench.browser;

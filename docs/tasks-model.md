@@ -196,7 +196,7 @@ Workbench 通知，不追加撑高列表或菜单的错误块。Web 的普通 Vi
 View 均提供同一个通知 owner；可选端口允许未承载通知的测试/其他适配器。
 
 验证：tasks-sqlite/tasks-controller/tasks-host 测试与
-`scripts/smoke-tasks-recycle.ts` 的真实 Task View + SQLite 服务边界。
+`scripts/smoke/tasks/smoke-tasks-recycle.ts` 的真实 Task View + SQLite 服务边界。
 
 Delivery on current v3 retains tasksMigrations v1/v2/v3 SQL, names and checksums unchanged. Restore updates deletion flag/order/revision/time only; all task properties, member profile identities and linked conversations remain intact. Recycle entry stays visible in the page heading in narrow and desktop layouts.
 Task description has an explicit expand/collapse control; the same textarea and unsaved draft persist. Compact height is 180px; expanded height follows the available viewport. Toggling is presentation only and never saves the task.

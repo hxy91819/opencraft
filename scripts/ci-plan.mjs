@@ -38,7 +38,7 @@ export function planChanges(paths, { event = 'pull_request', unknownDiff = false
       || path === 'apps/workbench-web/src/runtime/module-url-extension-loader.ts') extensions = true;
     if (/^(docs|design|\.agents)\//.test(path) || /^[^/]+\.md$/i.test(path) || /(?:^|\/)(?:README|AGENTS)\.md$/i.test(path) || /^(LICENSE|NOTICE)(\.|$)/.test(path)) continue;
     if (/^(packaging\/web-server\/|scripts\/server-deployment\/)/.test(path)
-      || /^(scripts\/(package-headless-linux\.mjs|install-headless-linux\.sh|headless-(codex-launcher|server-launcher)\.sh|smoke-headless-package\.mjs|headless-web-release\.mjs)|config\/build-matrix\.json)$/.test(path)
+      || /^(scripts\/(package-headless-linux\.mjs|install-headless-linux\.sh|headless-(codex-launcher|server-launcher)\.sh|smoke\/server\/smoke-headless-package\.mjs|headless-web-release\.mjs)|config\/build-matrix\.json)$/.test(path)
       || /^tests\/(headless-installer|server-deployment)\.test\.mjs$/.test(path)) {
       headlessTests = true;
       headlessPackage = true;

@@ -204,7 +204,7 @@ documents disable animation at the root and reveal all text. Replica
 projection completion remains distinct from React commit and paint.
 
 Tests cover session ordering, document equivalence and segment identity.
-`scripts/smoke-streaming-presentation.mjs` checks actual Web DOM/CSS with
+`scripts/smoke/conversation/smoke-streaming-presentation.mjs` checks actual Web DOM/CSS with
 synthetic text in an isolated browser; it does not update a running Host or
 establish real-provider throughput.
 
@@ -698,7 +698,7 @@ on available container space rather than device detection. Native touch panning,
 trackpad/wheel scrolling and scrollbar dragging retain browser text selection,
 link activation and vertical timeline scrolling. Appending rows keeps the same
 table and scrollport; no JavaScript pan controller or document-wide overflow is
-introduced. `scripts/smoke-markdown-table-scroll.ts` verifies the real renderer.
+introduced. `scripts/smoke/resources/smoke-markdown-table-scroll.ts` verifies the real renderer.
 Wide blocks use automatic expansion beyond the prose column, bounded
 by the current reading surface rather than window width. The timeline supplies
 `--chat-wide-content-available-width` and `--wide-block-panel-max-width`; its
@@ -723,7 +723,7 @@ renderer-owned CSS rather than requiring the embedding host to supply a utility.
 A reserved header keeps preview/copy actions clear of diagram content; touch
 controls remain visible with 44px targets. Existing source fallback, stable
 loading geometry and reading-surface width limits remain authoritative.
-`scripts/smoke-mermaid-display.ts` checks full SVG bounds, hidden source, toolbar
+`scripts/smoke/resources/smoke-mermaid-display.ts` checks full SVG bounds, hidden source, toolbar
 separation, resizing, source replacement and preview on real WebChatDocument.
 Appending prose after a complete fence and finishing the Turn preserve the SVG.
 Measurement delivery reads the latest committed document callback and generation
@@ -965,7 +965,7 @@ physical Conversation View. A preference change does not replace the Composer do
 editor or selections, and submission rechecks the actual active Turn. Side Chat
 retains direct steering because it does not own a durable next-turn queue.
 
-Workbench queue wiring is exercised by `scripts/smoke-ssh-codex-workbench.ts`
+Workbench queue wiring is exercised by `scripts/smoke/execution/smoke-ssh-codex-workbench.ts`
 against an isolated headless Web build (`OPENCRAFT_SSH_UI_WEB_ROOT`). With
 `OPENCRAFT_SSH_UI_ACTIVE_FIXTURE=true` and
 `OPENCRAFT_WORKBENCH_QUEUE_FIXTURE=v1` or `v2`, its synthetic OpenCraft Host
@@ -1066,7 +1066,7 @@ outcome and must use the same attachment identity on retry. Legacy Hermes adapte
 without the terminal port retain 32 MiB; one-shot staging remains limited to 32 MiB.
 The shared file limit does not enlarge image limits or the separate inline Bot API.
 Validation: `tests/hermes-large-attachment.test.ts`,
-`scripts/smoke-hermes-large-attachment.ts`, `scripts/smoke-embedded-attachment.ts`.
+`scripts/smoke-hermes-large-attachment.ts`, `scripts/smoke/resources/smoke-embedded-attachment.ts`.
 The browser smoke uses a local enterprise-service protocol peer and HTTP endpoint and runs the
 remote Python locally; it does not certify a real cloud instance. The Composer
 smoke exercises the production component and shared resolver, not full Application boot.
@@ -1214,7 +1214,7 @@ account-scoped display only for the exact Host, Thread, Turn and block identity.
 Its newer text and supplied clocks win; active frames never inherit terminal
 work labels. The authoritative baseline can correct or remove all cached clocks.
 This handoff remains paint-only and does not enable history or execution actions.
-`scripts/smoke-session-cold-open.ts` exercises the built Application with held
+`scripts/smoke/conversation/smoke-session-cold-open.ts` exercises the built Application with held
 initialization, canonical replacement and a separate uncached browser profile.
 
 ### History positions and concurrent observations
@@ -1344,7 +1344,7 @@ The ordinary task policy applies to ordered multi-response slices. Input
 boundaries do not grant fold eligibility. The distinct Bot chat renderer and
 viewport retain their own presentation contract. The explicit eligibility and
 preference tables in `chat-activity-disclosure` cover all 96 ordinary-task state
-combinations; `scripts/smoke-activity-disclosure.ts` covers the input sequences
+combinations; `scripts/smoke/conversation/smoke-activity-disclosure.ts` covers the input sequences
 and real Conversation. Deployment and native-device acceptance remain separate.
 
 ### Embedded submission and recovery
@@ -1696,7 +1696,7 @@ those inner choices.
 
 The interaction draws on DSH `ReasoningRow` in locally inspected
 `@deepseek-ai/dsh-client-ui-conversation@0.1.1-rc.2`. Shared model and adapter
-tests plus `scripts/smoke-reasoning-disclosure.ts` cover empty/summary/detail
+tests plus `scripts/smoke/conversation/smoke-reasoning-disclosure.ts` cover empty/summary/detail
 content, first control activation, browser touch/mouse/keyboard, separate tool groups,
 in-place streaming, completion, prepended history and View restoration. The
 browser fixture uses synthetic engine text; it does not claim paid-provider
@@ -1788,7 +1788,7 @@ same guarded answer callback and the Conversation's existing synchronous in-flig
 guard; empty, queued, disconnected or resolved answers cannot send. Failed sends
 retain the draft for retry. This textarea policy does not change the main
 Composer's device-specific Return behavior or blocking interaction response port.
-Regression: `scripts/smoke-async-question-keyboard.ts` mounts the real Conversation
+Regression: `scripts/smoke/conversation/smoke-async-question-keyboard.ts` mounts the real Conversation
 and replaces only its external answer port.
 
 ## Current migration ledger
@@ -2252,7 +2252,7 @@ attachments/context and focuses the trailing paragraph; it never submits. The
 existing AppServer compiler retains `> ` prefixes in native input. This Web/Electron
 interaction does not change Native or workspace/terminal selection behavior.
 
-Validation: `scripts/smoke-selection-add-to-chat.ts` exercises real rendered messages,
+Validation: `scripts/smoke/conversation/smoke-selection-add-to-chat.ts` exercises real rendered messages,
 selection popover and editor through native submission compilation without inference.
 It covers draft retention, undo, partial code, caret placement, exclusions, stale
 selection cleanup, theme palettes and Chromium touch. Set OPENCRAFT_CDP_URL to an
@@ -2277,7 +2277,7 @@ add a cache or require backend protocol changes. A settled collapsed work header
 remains synchronous. Lazy inner tool groups also restore directly into their
 collapsed or explicitly expanded state. Mounting a folded Thinking group must
 never expose command bodies before an effect closes them; only actual disclosure
-changes have prior visible geometry to animate. Verification: `scripts/smoke-conversation-entry-motion.ts`
+changes have prior visible geometry to animate. Verification: `scripts/smoke/conversation/smoke-conversation-entry-motion.ts`
 uses the real Conversation, checks first-commit opacity/height, repeated remounts,
 in-place scope switches, progressive preview/authority promotion, live work entry
 and manual expansion in light/dark and desktop/touch.
@@ -2471,7 +2471,7 @@ move the viewport and following rows naturally move down, but neither is a
 spacing authority. Do not use descendant open-state selectors to reclassify
 rows, or replace the regression with per-reasoning overrides or delayed layout.
 
-`scripts/smoke-activity-spacing.ts` samples actual Conversation geometry before,
+`scripts/smoke/conversation/smoke-activity-spacing.ts` samples actual Conversation geometry before,
 during and after mouse/touch disclosures, including first/middle/last reasoning,
 image details, nested commands, streaming, rapid reversal and reduced motion.
 The regression is sibling-boundary and unrelated-size stability, not constant
@@ -2486,7 +2486,7 @@ scoped activity stylesheet alone owns optical size/stroke; renderers supply
 unchanged glyphs and content. Reading preferences retain control of expanded
 reasoning/documents. This visual contract does not reclassify spacing roles or
 change compaction lifecycle. See [activity visuals](../design/ui/activity-icons.md)
-and `scripts/smoke-conversation-activity-metrics.ts`.
+and `scripts/smoke/conversation/smoke-conversation-activity-metrics.ts`.
 
 A single visible compaction record remains directly readable after an answer,
 without an outer work disclosure. Determine this from the projected collapsible
@@ -3445,7 +3445,7 @@ the document inset; its border-box observation only decides whether the collapse
 preview needs its fade and expansion overlay. Short content stays readable without
 an overlay, and streaming growth, shrinkage and width changes update that affordance.
 The existing View choice, completion defaults, copy/download and viewport ownership
-remain unchanged. `scripts/smoke-reasoning-disclosure.ts --plan-preview-only` covers
+remain unchanged. `scripts/smoke/conversation/smoke-reasoning-disclosure.ts --plan-preview-only` covers
 short and long content, growth/shrinkage, expansion and View restoration.
 Queue row leading content is compact: the reorder hit area begins one spacing
 unit from the row edge and immediately precedes the independent sender slot.

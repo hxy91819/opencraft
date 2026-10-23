@@ -54,7 +54,7 @@ Run `npm run smoke:conversation-activity-metrics` for the real Conversation at
 DPR1/2, light/dark, narrow/wide, historical/live compaction and enlarged reading
 preference. Check font role/weight/line height, painted bounds, centered rail,
 label gap and effective stroke, then inspect screenshots. Run the existing
-`npx tsx scripts/smoke-reasoning-disclosure.ts` and spacing regression for related
+`npx tsx scripts/smoke/conversation/smoke-reasoning-disclosure.ts` and spacing regression for related
 interaction changes. Glyph source/path identity must remain unchanged during
 rendering-only calibration. Chromium simulation does not establish physical
 macOS/Windows/iPhone rasterization.
