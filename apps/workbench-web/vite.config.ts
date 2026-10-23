@@ -405,6 +405,8 @@ export function createWorkbenchWebConfig(
         "react-dom/client",
         "react/jsx-runtime",
         "react/jsx-dev-runtime",
+        "fastdom/extensions/fastdom-promised.js",
+        "elkjs/lib/elk.bundled.js",
         // Deep CJS shim entries need explicit prebundling with noDiscovery.
         "core-js/es/iterator/index.js",
         "core-js/es/promise/with-resolvers.js",

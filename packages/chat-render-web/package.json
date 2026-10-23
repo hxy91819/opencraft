@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./clipboard": "./src/clipboard.ts"
+    "./clipboard": "./src/clipboard.ts",
+    "./mermaid": "./src/extensions/mermaid/mermaid-svg.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
