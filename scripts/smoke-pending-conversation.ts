@@ -50,7 +50,7 @@ try {
     page.on("pageerror", error => errors.push(error.message));
     page.on("request", request => { if (/enterprise-identity.*session|identity.*session/.test(request.url())) identityRequests.push(request.url()); });
     await page.goto(server.resolvedUrls!.local[0]!);
-    await page.locator('[data-pending-conversation-phase="submitting"]').waitFor();
+    await page.locator('.pending-conversation-page[data-pending-conversation-phase="submitting"]').waitFor();
     const show = async (sample: string, phase = "submitting", normal = false) => {
       await page.evaluate(state => (window as any).fixture.show(state), { sample, theme, phase, normal });
       await page.evaluate(async () => { await document.fonts.ready; await new Promise(requestAnimationFrame); });
@@ -86,7 +86,7 @@ try {
     await page.getByRole("alert").waitFor();
     const failed = await metrics();
     await page.getByRole("button", { name: "Try again" }).click();
-    await page.locator('[data-pending-conversation-phase="submitting"]').waitFor();
+    await page.locator('.pending-conversation-page[data-pending-conversation-phase="submitting"]').waitFor();
     assert.equal(await page.evaluate(() => (window as any).fixture.retryCount()), 1);
     assert.deepEqual(await metrics(), failed, "retry preserves message geometry");
     await show("text", "promoting");
