@@ -36,7 +36,7 @@ export interface SshCodexTransportOptions {
   readonly spawnSsh?: (args: readonly string[], env: NodeJS.ProcessEnv) => ChildProcessWithoutNullStreams;
 }
 
-export class SshCodexConnectionError extends Error {
+export class SshConnectionError extends Error {
   constructor(readonly code: string, readonly retryable: boolean, message: string) { super(message); }
 }
 
@@ -72,7 +72,7 @@ export class SshProbeStream extends Duplex {
     this.banner = Buffer.concat([this.banner, chunk]);
     const offset = this.banner.indexOf(this.sentinel);
     if (offset < 0) {
-      if (this.banner.length > 64 * 1024) this.destroy(new SshCodexConnectionError("SSH_PROBE_INVALID", false, "Remote connection handshake is invalid"));
+      if (this.banner.length > 64 * 1024) this.destroy(new SshConnectionError("SSH_PROBE_INVALID", false, "Remote connection handshake is invalid"));
       return;
     }
     this.found = true;
@@ -135,17 +135,17 @@ export async function createSshPasswordAgent(resolvePassword: () => Promise<stri
   } catch (error) { await close(); throw error; }
 }
 
-export function classifySshFailure(stderr: string, code: number | null): SshCodexConnectionError {
+export function classifySshFailure(stderr: string, code: number | null): SshConnectionError {
   if (/REMOTE HOST IDENTIFICATION HAS CHANGED|Host key verification failed|No .* host key is known/u.test(stderr)) {
-    return new SshCodexConnectionError("SSH_HOST_KEY", false, "SSH host identity must be verified");
+    return new SshConnectionError("SSH_HOST_KEY", false, "SSH host identity must be verified");
   }
   if (/Permission denied|Authentication failed|Too many authentication failures/u.test(stderr)) {
-    return new SshCodexConnectionError("SSH_AUTHENTICATION", false, "SSH authentication failed");
+    return new SshConnectionError("SSH_AUTHENTICATION", false, "SSH authentication failed");
   }
   if (code === 127 || /unknown.*proxy|unrecognized.*proxy|unexpected argument.*proxy|command not found|No such file or directory|Connection refused.*socket/iu.test(stderr)) {
-    return new SshCodexConnectionError("SSH_CODEX_UNAVAILABLE", false, "An existing compatible Codex service is required");
+    return new SshConnectionError("SSH_CODEX_UNAVAILABLE", false, "An existing compatible Codex service is required");
   }
-  return new SshCodexConnectionError("SSH_LINK_LOST", true, "Remote connection was interrupted");
+  return new SshConnectionError("SSH_LINK_LOST", true, "Remote connection was interrupted");
 }
 
 export class SshCodexTransport implements DuplexTransport {
@@ -172,7 +172,7 @@ export class SshCodexTransport implements DuplexTransport {
   get status(): TransportStatus { return this.currentStatus; }
   connect(signal?: AbortSignal): Promise<void> {
     if (this.closing) return Promise.reject(new Error("SSH transport is closed"));
-    if (this.status.state === "failed") return Promise.reject(new SshCodexConnectionError(this.status.failure?.code ?? "SSH_LINK_LOST", this.status.failure?.recovery !== "manual", this.status.reason ?? "Remote connection failed"));
+    if (this.status.state === "failed") return Promise.reject(new SshConnectionError(this.status.failure?.code ?? "SSH_LINK_LOST", this.status.failure?.recovery !== "manual", this.status.reason ?? "Remote connection failed"));
     if (this.status.state === "open") return Promise.resolve();
     if (this.operation) return this.operation;
     const generation = ++this.generation;
@@ -218,7 +218,7 @@ export class SshCodexTransport implements DuplexTransport {
       const current = () => generation === this.generation && this.socket === socket;
       await new Promise<void>((resolve, reject) => {
         let settled = false;
-        const fail = (error: SshCodexConnectionError) => {
+        const fail = (error: SshConnectionError) => {
           if (!current() || ["failed", "closing", "closed"].includes(this.status.state)) return;
           const diagnostic = { code: error.code, recovery: error.retryable ? "automatic" as const : "manual" as const,
             ageMs: Date.now() - startedAt, sshExitCode: child.exitCode, websocketCloseCode, websocketErrorCode };
@@ -234,19 +234,19 @@ export class SshCodexTransport implements DuplexTransport {
           void this.auth?.close();
         };
         this.cancelConnect = () => {
-          if (!settled) { settled = true; reject(new SshCodexConnectionError("SSH_CONNECT_CANCELLED", true, "Remote connection was cancelled")); }
+          if (!settled) { settled = true; reject(new SshConnectionError("SSH_CONNECT_CANCELLED", true, "Remote connection was cancelled")); }
         };
-        child.once("error", () => fail(new SshCodexConnectionError("SSH_EXECUTABLE", false, "SSH executable is unavailable")));
+        child.once("error", () => fail(new SshConnectionError("SSH_EXECUTABLE", false, "SSH executable is unavailable")));
         child.once("close", code => fail(classifySshFailure(stderr, code)));
         // Prefer SSH exit classification over a generic EOF from ws.
         socket.on("error", error => {
           const code = (error as NodeJS.ErrnoException).code;
           websocketErrorCode = typeof code === "string" && /^WS_ERR_[A-Z_]+$/u.test(code) ? code : "WS_ERROR";
           if (code === "WS_ERR_UNSUPPORTED_MESSAGE_LENGTH") {
-            fail(new SshCodexConnectionError("SSH_RPC_FRAME_LIMIT", false, "Remote service exceeded the supported message size"));
-          } else if (error instanceof SshCodexConnectionError) fail(error);
+            fail(new SshConnectionError("SSH_RPC_FRAME_LIMIT", false, "Remote service exceeded the supported message size"));
+          } else if (error instanceof SshConnectionError) fail(error);
           else if (/^Unexpected server response:|^Invalid Sec-WebSocket|^Invalid Upgrade header/u.test(error.message)) {
-            fail(new SshCodexConnectionError("SSH_RPC_PROTOCOL", false, "Remote service rejected the connection protocol"));
+            fail(new SshConnectionError("SSH_RPC_PROTOCOL", false, "Remote service rejected the connection protocol"));
           } else if (child.exitCode !== null) fail(classifySshFailure(stderr, child.exitCode));
         });
         socket.on("close", code => { websocketCloseCode = code; if (current() && settled && this.status.state === "open") fail(classifySshFailure(stderr, child.exitCode)); });
@@ -257,21 +257,21 @@ export class SshCodexTransport implements DuplexTransport {
           if (abort) signal?.removeEventListener("abort", abort);
           this.setStatus({ state: "open" });
           void this.auth?.close();
-          this.startHeartbeat(socket, () => fail(new SshCodexConnectionError("SSH_RPC_HEARTBEAT", true, "Remote service stopped responding")));
+          this.startHeartbeat(socket, () => fail(new SshConnectionError("SSH_RPC_HEARTBEAT", true, "Remote service stopped responding")));
           resolve();
         });
         socket.on("message", (data, binary) => {
           if (!current() || this.status.state !== "open") return;
-          if (binary) { fail(new SshCodexConnectionError("SSH_RPC_PROTOCOL", false, "Remote service sent an invalid frame")); return; }
+          if (binary) { fail(new SshConnectionError("SSH_RPC_PROTOCOL", false, "Remote service sent an invalid frame")); return; }
           const frame = data.toString();
           try {
             const value = JSON.parse(frame);
             if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid RPC");
-          } catch { fail(new SshCodexConnectionError("SSH_RPC_PROTOCOL", false, "Remote service sent an invalid frame")); return; }
+          } catch { fail(new SshConnectionError("SSH_RPC_PROTOCOL", false, "Remote service sent an invalid frame")); return; }
           for (const listener of this.messages) listener(frame);
         });
-        deadline = setTimeout(() => fail(new SshCodexConnectionError("SSH_CONNECT_TIMEOUT", true, "Remote connection timed out")), timeoutMs);
-        abort = () => fail(new SshCodexConnectionError("SSH_CONNECT_CANCELLED", true, "Remote connection was cancelled"));
+        deadline = setTimeout(() => fail(new SshConnectionError("SSH_CONNECT_TIMEOUT", true, "Remote connection timed out")), timeoutMs);
+        abort = () => fail(new SshConnectionError("SSH_CONNECT_CANCELLED", true, "Remote connection was cancelled"));
         signal?.addEventListener("abort", abort, { once: true });
         if (signal?.aborted) abort();
       });

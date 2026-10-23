@@ -14,6 +14,7 @@ rename does not introduce support for another engine or migrate stored data.
 | [OpenCraftTokenUsageLedger](../../apps/opencraft-daemon/src/token-usage-ledger.ts) | OpenCraft owns metering facts, allocation, recovery checkpoints and query authority; engine collectors supply verified source facts. Native-counter and rollout state remain explicit source records. |
 | [OpenCraftQueueRpcError](../../apps/opencraft-daemon/src/codex-engine-adapter.ts) | This local error carries OpenCraft queue admission and dispatch failures. |
 | [OpenCraftMessageSenders](../../apps/opencraft-daemon/src/opencraft-message-senders.ts) | OpenCraft owns sender provenance; all internal consumers use this shared implementation directly. |
+| `SshConnectionError` | Shared SSH connection and SFTP failure classification, carrying stable codes and retryability. The transport also uses it for native proxy failures. |
 
 The daemon workspace is private. These source files are internal implementation
 entries, not Extension API V1. All in-repository imports, scripts and tests move
@@ -39,7 +40,6 @@ this naming does not add another provider.
 | `CodexCoreBridge` | Bridges logical clients to the Codex core service. |
 | `CodexCoreReadIsolation` | Opens bounded native Codex core sockets for stateless history reads, separately from subscriptions and execution. |
 | `CodexTokenUsageRuntime` | Collects Codex native events, UUIDv7 Turn identity and rollout files from codexHome. |
-| `SshCodexConnectionError` | Classifies failures of the Codex-over-SSH transport. |
 | `SshCodexTransport` | Runs the actual Codex app-server proxy and tunnels its protocol. |
 | `CodexAccountsService` | Client service for Codex account and device-login RPCs. |
 | `CodexDeviceLoginService` | Implements native Codex/ChatGPT device authorization and credential import. |
