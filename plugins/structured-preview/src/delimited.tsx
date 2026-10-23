@@ -42,11 +42,11 @@ function DelimitedTable({ rows, source, name, intl }: { rows: string[][]; source
     }
     setNotFound(true);
   };
-  const drag = useRef<{ col: number; x: number; width: number } | null>(null);
+  const drag = useRef<{ col: number; pointerId: number; x: number; width: number } | null>(null);
   const resize = (col: number, width: number) => setWidths(previous => ({ ...previous, [col]: Math.max(80, Math.min(720, width)) }));
   const startResize = (event: PointerEvent<HTMLDivElement>, col: number, width: number) => {
-    if (event.button !== 0) return;
-    event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); drag.current = { col, x: event.clientX, width };
+    if (event.button !== 0 || drag.current) return;
+    event.preventDefault(); event.currentTarget.setPointerCapture(event.pointerId); drag.current = { col, pointerId: event.pointerId, x: event.clientX, width };
   };
   return <div className="structured-preview structured-preview--table">
     <div className="structured-preview__toolbar">
@@ -69,9 +69,9 @@ function DelimitedTable({ rows, source, name, intl }: { rows: string[][]; source
             <div className="structured-preview__column-resize" role="separator" aria-orientation="vertical" tabIndex={0} aria-valuemin={80} aria-valuemax={720} aria-valuenow={col.size}
               aria-label={`${message("preview.columnWidth", "Column width")} ${columnLabel(col.index)}`}
               onPointerDown={event => startResize(event, col.index, col.size)}
-              onPointerMove={event => { const active = drag.current; if (active?.col === col.index) resize(col.index, active.width + event.clientX - active.x); }}
-              onPointerUp={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}
-              onPointerCancel={() => { if (drag.current) resize(col.index, drag.current.width); drag.current = null; }}
+              onPointerMove={event => { const active = drag.current; if (!active || active.pointerId !== event.pointerId) return; resize(active.col, active.width + event.clientX - active.x); }}
+              onPointerUp={event => { if (drag.current?.pointerId === event.pointerId) drag.current = null; }} onLostPointerCapture={event => { if (drag.current?.pointerId === event.pointerId) drag.current = null; }}
+              onPointerCancel={event => { const active = drag.current; if (!active || active.pointerId !== event.pointerId) return; resize(active.col, active.width); drag.current = null; }}
               onDoubleClick={() => resize(col.index, 180)}
               onKeyDown={event => { if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); resize(col.index, col.size + (event.key === "ArrowLeft" ? -20 : 20)); } }} />
           </div>)}

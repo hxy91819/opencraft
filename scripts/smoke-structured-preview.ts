@@ -83,6 +83,18 @@ for(const width of (process.env.OPENCRAFT_PREVIEW_WIDTHS?.split(',').map(Number)
     if(width<700)await multiline.tap();else await multiline.click();
     assert.equal(await page.getByRole('textbox',{name:'Cell contents',exact:true}).inputValue(),'Line one\nLine two');
     const handle=page.getByRole('separator',{name:'Column width C',exact:true});
+    if(width<700){
+     const box=await handle.boundingBox();assert.ok(box);const cdp=await page.context().newCDPSession(page),x=box.x+box.width/2,y=box.y+box.height/2;
+     const before=await handle.getAttribute('aria-valuenow');
+     await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x,y,id:1}]});
+     await handle.dispatchEvent('pointermove',{pointerId:9999,pointerType:'touch',clientX:x+100});
+     await handle.dispatchEvent('pointercancel',{pointerId:9999,pointerType:'touch'});
+     assert.equal(await handle.getAttribute('aria-valuenow'),before,'another pointer must neither resize nor cancel the active gesture');
+     await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:x+24,y,id:1}]});
+     await page.waitForFunction(before=>Number(document.querySelector('[role="separator"][aria-label="Column width C"]')?.getAttribute('aria-valuenow'))>Number(before),before);
+     await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});await cdp.detach();
+     await page.waitForFunction(before=>document.querySelector('[role="separator"][aria-label="Column width C"]')?.getAttribute('aria-valuenow')===before,before);
+    }
     const originalWidth=Number(await handle.getAttribute('aria-valuenow'));await handle.focus();await handle.press('ArrowRight');
     await page.waitForFunction(size=>Number(document.querySelector('[role="separator"][aria-label="Column width C"]')?.getAttribute('aria-valuenow'))===size,originalWidth+20);
     await page.getByRole('searchbox',{name:'Find in table'}).fill('00125');await page.getByRole('button',{name:'Next match',exact:true}).click();
