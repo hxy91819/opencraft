@@ -138,6 +138,7 @@ try {
     assert.equal(await preview.locator("img").getAttribute("alt"), "portrait.svg");
     await draftPage.keyboard.press("Escape");
     await preview.waitFor({ state: "detached" });
+    await draftPage.waitForFunction(el => el === el.getRootNode().activeElement, await editor.elementHandle(), { timeout: 3000 });
     assert(await editor.evaluate(el => el === (window as any).previewEditor && el === el.getRootNode().activeElement), "pointer dismissal returns to the original editor");
     assert.deepEqual(await draftPage.evaluate(() => (window as any).imagePreviewFixture.controller.getSnapshot().draft.document), before);
     assert.equal(await editor.evaluate(el => (el.getRootNode() as ShadowRoot).getSelection()?.anchorOffset), selectionOffset);
