@@ -487,7 +487,48 @@ try {
       assert.equal(await adaptive.evaluate(()=>(window as any).fixture.status()),'complete');
       await adaptive.screenshot({path:`${output}/complete-retired-${touch?'touch':'mouse'}-${mode}.png`});
     }
-    // An in-flight edit draft does not become a new goal when completion arrives.
+    // A completed native goal remains editable and resumes the same accounting cycle.
+    await adaptive.getByRole('button',{name:'Add',exact:true}).click();
+    await adaptive.getByRole('menuitem',{name:'View completed goal',exact:true}).click();
+    const review=adaptive.getByRole('dialog',{name:'View completed goal',exact:true});
+    const retainedUsage=await adaptive.evaluate(()=>(window as any).fixture.goalUsage());
+    await review.getByRole('button',{name:'Edit',exact:true}).click();
+    const resumedEdit=adaptive.locator('.thread-goal-dialog');
+    assert.equal(await resumedEdit.getByRole('textbox').inputValue(),'Keep the completed result');
+    await resumedEdit.getByRole('textbox').fill('Discard this change');
+    await resumedEdit.getByRole('button',{name:'Revert',exact:true}).click();
+    assert.equal(await resumedEdit.getByRole('textbox').inputValue(),'Keep the completed result');
+    await resumedEdit.getByRole('textbox').fill('Finish the remaining work');
+    const editedInput=await resumedEdit.getByRole('textbox').elementHandle();
+    await adaptive.evaluate(()=>(window as any).fixture.setLocale('zh-CN'));
+    await adaptive.getByRole('button',{name:'保存并继续',exact:true}).waitFor();
+    assert.equal(await editedInput?.evaluate(el=>el.isConnected),true);
+    assert.equal(await resumedEdit.getByRole('textbox').inputValue(),'Finish the remaining work');
+    await adaptive.evaluate(()=>(window as any).fixture.setLocale('en-US'));
+    await adaptive.evaluate(()=>(window as any).fixture.failWrite(true));
+    await resumedEdit.getByRole('button',{name:'Save and resume',exact:true}).click();
+    await resumedEdit.getByRole('alert').waitFor();
+    assert.equal(await resumedEdit.getByRole('textbox').inputValue(),'Finish the remaining work');
+    assert.equal(await adaptive.evaluate(()=>(window as any).fixture.status()),'complete');
+    await adaptive.evaluate(()=>(window as any).fixture.failWrite(false));
+    await adaptive.screenshot({path:`${output}/completed-edit-${touch?'touch':'mouse'}.png`});
+    await resumedEdit.getByRole('button',{name:'Save and resume',exact:true}).click();
+    await resumedEdit.waitFor({state:'hidden'});
+    await adaptive.locator('.thread-goal__label').filter({hasText:'Pursuing goal'}).waitFor();
+    assert.deepEqual(await adaptive.evaluate(()=>(window as any).fixture.lastChange()),{objective:'Finish the remaining work',status:'active'});
+    assert.deepEqual(await adaptive.evaluate(()=>(window as any).fixture.goalUsage()),retainedUsage);
+    assert.equal(await adaptive.evaluate(()=>(window as any).fixture.clearCalls()),countsBefore.clear);
+    assert.equal(await composerBefore?.evaluate(el=>el.isConnected),true);
+    assert.equal(await adaptive.locator('.opencraft-composer-editor').innerText(),'keep this ordinary input');
+    await adaptive.evaluate(()=>(window as any).fixture.setGoal({status:'complete',objective:'Keep the completed result'}));
+    await adaptive.getByRole('button',{name:'Add',exact:true}).click();
+    await adaptive.getByRole('menuitem',{name:'View completed goal',exact:true}).click();
+    await adaptive.getByRole('dialog',{name:'View completed goal',exact:true}).getByRole('button',{name:'Resume',exact:true}).click();
+    await adaptive.getByRole('dialog').waitFor({state:'hidden'});
+    assert.deepEqual(await adaptive.evaluate(()=>(window as any).fixture.lastChange()),{status:'active'});
+    assert.equal(await adaptive.evaluate(()=>(window as any).fixture.clearCalls()),countsBefore.clear);
+    // Completion during editing preserves the draft and requires an explicit resume.
+
     await adaptive.evaluate(()=>(window as any).fixture.setGoal({status:'active'}));
     await adaptive.getByRole('button',{name:'Goal actions',exact:true}).click();
     await adaptive.getByRole('menuitem',{name:'Edit',exact:true}).click();
@@ -495,7 +536,8 @@ try {
     await oldEdit.getByRole('textbox').fill('Keep my unsaved edit');
     await adaptive.evaluate(()=>(window as any).fixture.setGoal({status:'complete',objective:'Keep the completed result'}));
     assert.equal(await oldEdit.getByRole('textbox').inputValue(),'Keep my unsaved edit');
-    assert.equal(await oldEdit.getByRole('button',{name:'Save',exact:true}).isDisabled(),true);
+    assert.equal(await oldEdit.getByRole('button',{name:'Save and resume',exact:true}).isEnabled(),true);
+    assert.equal(await adaptive.evaluate(()=>(window as any).fixture.status()),'complete');
     await oldEdit.getByRole('button',{name:'Cancel',exact:true}).click();await oldEdit.waitFor({state:'hidden'});
     // Failed explicit replacement retains both the completed record and new draft.
     await adaptive.getByRole('button',{name:'Add',exact:true}).click();
@@ -529,7 +571,7 @@ try {
     await adaptive.getByRole('button',{name:'Add',exact:true}).click();
     await adaptive.getByRole('menuitem',{name:'View completed goal',exact:true}).click();
     const last=adaptive.getByRole('dialog',{name:'View completed goal',exact:true});await last.waitFor();
-    await last.getByRole('button',{name:'Close',exact:true}).click();await last.waitFor({state:'hidden'});
+    await last.locator('.modal-surface__close').click();await last.waitFor({state:'hidden'});
     const ordinary=adaptive.locator('.opencraft-composer-editor');
     await ordinary.fill('An ordinary follow-up');
     if (touch) await adaptive.getByRole('button',{name:'Send message',exact:true}).click();
