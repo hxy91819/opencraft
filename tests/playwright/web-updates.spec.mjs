@@ -190,9 +190,14 @@ test('legacy generic website restores HyperNode selections on local without revi
     await expect(page).toHaveURL(/\/local\/legacy-thread\?hostId=local/);
     await expect(page.getByRole('alert')).toContainText('无法恢复此会话');
     expect(await page.evaluate(() => [
-      localStorage.getItem('vela.active-thread-id:local'), localStorage.getItem('vela.selected-project-id:local'),
-      localStorage.getItem('vela.active-thread-id:hypernode'),
+      localStorage.getItem('opencraft.active-thread-id:local'), localStorage.getItem('opencraft.selected-project-id:local'),
+      localStorage.getItem('opencraft.active-thread-id:hypernode'),
     ])).toEqual(['legacy-thread', 'legacy-project', 'legacy-thread']);
+    expect(await page.evaluate(() => Object.keys(localStorage).filter(key =>
+      key.startsWith('vela.active-') || key.startsWith('vela.selected-project-id:')))).toEqual([]);
+    await page.reload();
+    await expect(page).toHaveURL(/\/local\/legacy-thread\?hostId=local/);
+    await expect(page.getByRole('alert')).toContainText('无法恢复此会话');
     await page.goto(`${base}/settings/updates`);
     await expect(button(page, 'check')).toBeVisible();
     // The two execution Hosts surface as Run › Machines with its count badge;

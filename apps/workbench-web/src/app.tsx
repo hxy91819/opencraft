@@ -157,6 +157,8 @@ import { useResponsiveSidebarDock } from "./components/use-responsive-sidebar-do
 import { usePersistedSidebarWidth } from "./components/use-persisted-sidebar-width";
 import {
   selectedProjectStorageKey,
+  readLocalPreference,
+  setLocalPreference,
   useActiveAppServerThread,
   useAppServerHosts,
   useAppServerRuntime,
@@ -642,8 +644,7 @@ export function App({
       if (presentation.executionSelection === "fixed") return;
       lastDraftWorkspaceRef.current = workspace;
       const key = selectedProjectStorageKey(draft?.target.execution.hostId ?? snapshot.hostId);
-      if (workspace.projectId !== undefined) window.localStorage.setItem(key, workspace.projectId);
-      else window.localStorage.removeItem(key);
+      setLocalPreference(key, workspace.projectId ?? null);
       if (draft === null) throw new Error("No active Draft can be retargeted");
       hostCatalog.retargetDraft(draft.id, {
         hostId: draft.target.execution.hostId,
@@ -1119,7 +1120,7 @@ export function App({
         : projectCatalog.projects.find(
             (project) => project.id === activeProtocolThread.projectId,
           );
-    const persistedProjectId = window.localStorage.getItem(
+    const persistedProjectId = readLocalPreference(
       selectedProjectStorageKey(snapshot.hostId),
     );
     const persistedProject =

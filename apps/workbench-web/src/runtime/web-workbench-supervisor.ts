@@ -144,7 +144,7 @@ import {
   createWorkbenchNavigationTransaction
 } from "./workbench-navigation-transaction";
 
-import { appServerUrl, BoundedCheckpointMap, BrowserDisplayContinuity, createWebWorkbenchCommands, createWorkbenchQueryClient, currentProductDatabaseName, currentProductStorageKey, currentWorkbenchPlatform, hostDefinitionProfile, HostlessWebWorkbenchApplicationSupervisor, parseWebHostDefinitions, persistProvisionedHost, profileDescriptor, provisionWebSocketHost, refreshBundledHostProfiles, rememberedThreadId, WebWorkbenchApplicationSupervisor, WebWorkbenchSupervisorOptions } from './workbench-application-services';
+import { appServerUrl, BoundedCheckpointMap, BrowserDisplayContinuity, createWebWorkbenchCommands, createWorkbenchQueryClient, currentProductDatabaseName, currentProductStorageKey, readLocalPreference, currentWorkbenchPlatform, hostDefinitionProfile, HostlessWebWorkbenchApplicationSupervisor, parseWebHostDefinitions, persistProvisionedHost, profileDescriptor, provisionWebSocketHost, refreshBundledHostProfiles, rememberedThreadId, WebWorkbenchApplicationSupervisor, WebWorkbenchSupervisorOptions } from './workbench-application-services';
 export async function createWebWorkbenchApplicationSupervisor(
   browserToolHost: BrowserDynamicToolHost,
   terminalToolHost: ConversationTerminalToolHost,
@@ -740,7 +740,7 @@ export async function createWebWorkbenchApplicationSupervisor(
   const bootstrapLocation = restoredNewTarget
     ? createWorkbenchDraftLocation(restoredNewTarget.execution.hostId, restoredNewTarget.draftId)
     : normalizedBootstrapLocation;
-  const persistedHostId = window.localStorage.getItem(currentProductStorageKey("vela.active-host-id"));
+  const persistedHostId = readLocalPreference(currentProductStorageKey("opencraft.active-host-id"));
   const requestedHostId = bootstrapLocation?.kind === "thread"
     ? bootstrapLocation.key.hostId
     : bootstrapLocation?.hostId;
