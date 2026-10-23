@@ -457,7 +457,7 @@ type BrowserUseInput =
 OpenCraft 的 Browser Runtime 保存页面及 Tab 状态，Browser tool 在需要时通过
 `list_tabs`、`inspect` 等操作读取。普通 Composer 提交、Turn steer 与页面重连不从
 Browser Runtime 自动构造 `additionalContext`；标签状态不会作为用户输入或可见的
-`<external_vela.browser.tabs>` 消息出现。页面恢复只重建 Client attachment 与
+标签状态通知 消息出现。页面恢复只重建 Client attachment 与
 Thread 订阅，不创建新 Turn。
 
 如果未来增加显式“附加当前标签”操作，应由用户选择产生独立的上下文引用，并在

@@ -203,6 +203,7 @@ test("Headless core mode retains overlay stores, sender and unique owner across 
     const before = await f.control.health();
     const a = await f.adapter(true);
     const initialized = await a.rpc("a", "initialize");
+    assert.equal(initialized.capabilities.extensions["opencraft/bot-conversations"], undefined);
     assert.equal(initialized.capabilities.extensions["vela/bot-conversations"], undefined);
     assert.ok(a.engine.storageOutcomes.some(row => row.name === "opencraft-host-state" && row.outcome.appliedVersion === 14));
     assert.ok(!a.engine.storageOutcomes.some(row => row.name === "account-pool"), "core is the sole account owner");

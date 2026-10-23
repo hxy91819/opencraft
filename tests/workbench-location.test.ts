@@ -29,7 +29,7 @@ test("Workbench Thread identity includes Host and survives URL round trips", () 
   assert.equal(equalWorkbenchLocation(first, second), false);
   assert.deepEqual(
     parseWorkbenchLocationUrl(
-      new URL(workbenchLocationUrl(first), "https://vela.test"),
+      new URL(workbenchLocationUrl(first), "https://opencraft.test"),
     ),
     first,
   );
@@ -42,7 +42,7 @@ test("Workbench Draft identity remains stable before AppServer promotion", () =>
   assert.deepEqual(parseWorkbenchLocation(serialized), draft);
   assert.deepEqual(
     parseWorkbenchLocationUrl(
-      new URL(workbenchLocationUrl(draft), "https://vela.test"),
+      new URL(workbenchLocationUrl(draft), "https://opencraft.test"),
     ),
     draft,
   );
@@ -50,11 +50,11 @@ test("Workbench Draft identity remains stable before AppServer promotion", () =>
 
 test("malformed or Host-less workbench URLs do not invent ownership", () => {
   assert.equal(
-    parseWorkbenchLocationUrl(new URL("https://vela.test/local/thread-a")),
+    parseWorkbenchLocationUrl(new URL("https://opencraft.test/local/thread-a")),
     null,
   );
   assert.equal(
-    parseWorkbenchLocationUrl(new URL("https://vela.test/?hostId=local")),
+    parseWorkbenchLocationUrl(new URL("https://opencraft.test/?hostId=local")),
     null,
   );
   assert.equal(
@@ -80,7 +80,7 @@ test("Web replace creates a new View unless Draft promotion explicitly preserves
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
-      location: { href: "https://vela.test/?hostId=local&draftId=draft-a" },
+      location: { href: "https://opencraft.test/?hostId=local&draftId=draft-a" },
       history,
       addEventListener() {},
       removeEventListener() {},
@@ -116,7 +116,7 @@ test("Settings and extension routes have real history; Chat is an explicit desti
     navigation.openSettings("connections");
     navigation.openSettings("appearance");
     assert.equal(navigation.getSnapshot().historyIndex, 2);
-    navigation.openExtensionView("vela.drive.files", "folder-a");
+    navigation.openExtensionView("example.drive.files", "folder-a");
     assert.equal(navigation.getSnapshot().historyIndex, 3);
     navigation.back(); await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(navigation.getSnapshot().applicationRoute, { kind: "settings", slug: "appearance" });
@@ -153,7 +153,7 @@ test("navigateToHome presents a local Draft before Host preparation settles", as
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
-      location: { href: "https://vela.test/settings/lightvela.hermes.skills" },
+      location: { href: "https://opencraft.test/settings/example.tools.skills" },
       history,
       addEventListener() {},
       removeEventListener() {},
@@ -215,10 +215,10 @@ test("navigateToHome presents a local Draft before Host preparation settles", as
 });
 
 test("Extension View routes round-trip without inventing a Conversation location", () => {
-  const url = new URL("https://vela.test/views/vela.drive.files");
+  const url = new URL("https://opencraft.test/views/example.drive.files");
   assert.deepEqual(parseApplicationRouteUrl(url), {
     kind: "extension-view",
-    viewId: "vela.drive.files",
+    viewId: "example.drive.files",
     resourceUri: null,
   });
   assert.equal(parseWorkbenchLocationUrl(url), null);
@@ -228,7 +228,7 @@ test("Extension View resources round-trip and can be canonically replaced", () =
   const resourceUri =
     "opencraft-bot:conversation?hostId=host-a&conversationId=conversation-a";
   const url = new URL(
-    `https://vela.test/views/opencraft.bot-chat.view?resource=${encodeURIComponent(resourceUri)}`,
+    `https://opencraft.test/views/opencraft.bot-chat.view?resource=${encodeURIComponent(resourceUri)}`,
   );
   assert.deepEqual(parseApplicationRouteUrl(url), {
     kind: "extension-view",

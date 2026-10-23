@@ -24,7 +24,7 @@ the selected JSON config. The packaging hook checks the selected application ID
 and product name against the identity recorded with the built Main bundle.
 The downstream product owns
 installed application IDs and legacy profile migration inputs. Core provides an
-independent OpenCraft default with no Vela migration path. Main exports
+independent OpenCraft default. Main exports
 `createDesktopProduct: DesktopProductFactory`; Preload exports
 `createDesktopPreload: DesktopPreloadFactory`. The typed contract is
 `apps/workbench-electron/src/product-contract.ts`. A trusted product receives its

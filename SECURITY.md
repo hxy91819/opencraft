@@ -21,9 +21,7 @@ should be upgraded or assessed against the current code before reporting.
   GitHub Actions. Credentials belong to a deployment user's private configuration.
 - The CodeQL workflow analyzes JavaScript/TypeScript when the repository is public.
   Private repositories require the corresponding GitHub Code Security entitlement.
-- `.gitleaks.toml` retains the default rules. Its only exception matches the two
-  generated OpenAPI SHA256 assignments in their exact file; other values in that
-  file remain scanned.
+- `.gitleaks.toml` uses the default rules without repository-specific exceptions.
 
 For local inspection, scan a clean export of the intended commit with Gitleaks
 8.30.1 or newer, using this repository's configuration. Run `npm audit` in the root,
