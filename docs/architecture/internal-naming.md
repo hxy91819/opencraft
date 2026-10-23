@@ -86,3 +86,10 @@ by the Web composition and replaced through the application Router, including
 hostless startup and POP. Unrelated extension IDs are never prefix-rewritten.
 The old literals live only in that compatibility reader and its negative/recovery
 tests; they are not current registrations or defaults.
+
+Current built-in agents, WebSocket, HyperNode, voice input, Bot views and the
+optional theme pack register under `opencraft.*`. Their exact old provider and
+bookmark IDs are migration inputs in the Web composition. Availability gates
+provider rewrites; disabled plugins do not acquire a transport or change Host
+identity during migration. The first-party Paper palette has one exact theme
+alias; opaque third-party theme IDs are still preserved.

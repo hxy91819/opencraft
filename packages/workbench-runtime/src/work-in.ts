@@ -31,7 +31,7 @@ export function groupWorkInMachines(profiles: readonly HostConnectionProfile[], 
 
 export function workInMachineName(machine: WorkInMachine, platform: "web" | "electron" | "expo", labels: { thisMac: string; thisComputer: string; unknown: string }, displayNames: Readonly<Record<string, string>> = {}): string {
   // Only the desktop's builtin daemon provider identifies this device.
-  if (machine.identity !== null && platform === "electron" && machine.hosts.some(host => host.providerId === "vela.builtin-agents")) {
+  if (machine.identity !== null && platform === "electron" && machine.hosts.some(host => host.providerId === "opencraft.builtin-agents")) {
     return machine.identity?.platform === "macos" ? labels.thisMac : labels.thisComputer;
   }
   const host = machine.hosts[0]!;

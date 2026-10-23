@@ -27,7 +27,7 @@ export function createBotChatExtension(
   return {
     manifest: {
       manifestVersion: 1,
-      id: "vela.bot-chat",
+      id: "opencraft.bot-chat",
       name: "OpenCraft Bot Chat",
       description:
         "A Bot-native animated conversation surface with a replaceable Source boundary.",
@@ -39,26 +39,26 @@ export function createBotChatExtension(
     },
     activate(api) {
       api.views.register({
-        id: "vela.bot-chat.view",
+        id: "opencraft.bot-chat.view",
         title: "Bot chat",
-        viewType: "vela.bot-chat.surface",
+        viewType: "opencraft.bot-chat.surface",
         role: "bot-conversation",
         icon: "bot",
         platforms: ["web", "electron"],
         audience: "internal",
       });
       if (options.showNavigation !== false) api.navigation.register({
-        id: "vela.bot-chat.navigation",
+        id: "opencraft.bot-chat.navigation",
         title: "Bot chat",
         surface: "sidebar-primary",
-        target: { kind: "view", viewId: "vela.bot-chat.view" },
+        target: { kind: "view", viewId: "opencraft.bot-chat.view" },
         icon: "bot",
         order: 20,
         platforms: ["web", "electron"],
         audience: "internal",
       });
       api.internal.register("platformViewRenderer", {
-        viewType: "vela.bot-chat.surface",
+        viewType: "opencraft.bot-chat.surface",
         Component: BotChatView,
       });
     },

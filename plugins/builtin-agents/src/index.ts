@@ -49,7 +49,7 @@ export function createHeadlessModelServicesExtension(options: {
   return {
     manifest: {
       manifestVersion: 1,
-      id: "vela.headless-model-services",
+      id: "opencraft.headless-model-services",
       name: "Server Model Services",
       description: "Configures models on the OpenCraft server that owns execution.",
       version: "0.1.0",
@@ -61,9 +61,9 @@ export function createHeadlessModelServicesExtension(options: {
     activate(api) {
       const service = new LocalAgentSettingsService(options.requestHost, options.hostId);
       const controller = new ModelServicesController(service);
-      api.views.register({ id: "vela.headless-model-services.view", title: "模型服务", viewType: "vela.headless-model-services", platforms: ["web"] });
-      api.settings.registerPage({ id: "vela.headless-model-services", title: "Model services", titleMessage: { id: "settings.contributions.modelServices", defaultMessage: "Model services" }, viewId: "vela.headless-model-services.view", layout: "master-detail", group: "Server", groupMessage: { id: "settings.groups.server", defaultMessage: "Server" }, icon: "brain", platforms: ["web"] });
-      api.internal.register("platformViewRenderer", { viewType: "vela.headless-model-services", Component: createDeferredView(async () => (await import("./model-services/view")).createModelServicesView(controller)) });
+      api.views.register({ id: "opencraft.headless-model-services.view", title: "模型服务", viewType: "opencraft.headless-model-services", platforms: ["web"] });
+      api.settings.registerPage({ id: "opencraft.headless-model-services", title: "Model services", titleMessage: { id: "settings.contributions.modelServices", defaultMessage: "Model services" }, viewId: "opencraft.headless-model-services.view", layout: "master-detail", group: "Server", groupMessage: { id: "settings.groups.server", defaultMessage: "Server" }, icon: "brain", platforms: ["web"] });
+      api.internal.register("platformViewRenderer", { viewType: "opencraft.headless-model-services", Component: createDeferredView(async () => (await import("./model-services/view")).createModelServicesView(controller)) });
       api.subscriptions.add(() => { controller.dispose(); service.dispose(); });
     },
   };
@@ -150,7 +150,7 @@ export function createBuiltinAgentsExtension(options: BuiltinAgentsExtensionOpti
   const platform = options.platform ?? "electron";
   const config = validate({});
   const hostProvider: HostConnectionProvider | null = options.platform === "web" ? null : Object.freeze({
-    id: "vela.builtin-agents",
+    id: "opencraft.builtin-agents",
     label: "OpenCraft Local Agent",
     targets: ["electron"] as const,
     configVersion: 1,
@@ -162,7 +162,7 @@ export function createBuiltinAgentsExtension(options: BuiltinAgentsExtensionOpti
   return {
     manifest: {
       manifestVersion: 1,
-      id: "vela.builtin-agents",
+      id: "opencraft.builtin-agents",
       name: "Built-in Agents",
       description: "Connects the workbench to the OpenCraft-owned local AppServer host.",
       version: "0.1.0",
@@ -176,13 +176,13 @@ export function createBuiltinAgentsExtension(options: BuiltinAgentsExtensionOpti
       const controller = new ModelServicesController(service);
       const codexAccounts = options.platform === "web" && options.includeCodexAccounts === false
         ? null : new CodexAccountsService(options.requestHost, "local-codex");
-      api.views.register({ id: "vela.builtin-agents.model-services-view", title: "模型服务", viewType: "vela.builtin-agents.model-services", platforms: [platform] });
-      api.settings.registerPage({ id: "vela.builtin-agents.model-services", title: "Model services", titleMessage: { id: "settings.contributions.modelServices", defaultMessage: "Model services" }, viewId: "vela.builtin-agents.model-services-view", layout: "master-detail", targetHostId: service.hostId, icon: "brain", platforms: [platform] });
-      api.internal.register("platformViewRenderer", { viewType: "vela.builtin-agents.model-services", Component: createDeferredView(async () => (await import("./model-services/view")).createModelServicesView(controller)) });
+      api.views.register({ id: "opencraft.builtin-agents.model-services-view", title: "模型服务", viewType: "opencraft.builtin-agents.model-services", platforms: [platform] });
+      api.settings.registerPage({ id: "opencraft.builtin-agents.model-services", title: "Model services", titleMessage: { id: "settings.contributions.modelServices", defaultMessage: "Model services" }, viewId: "opencraft.builtin-agents.model-services-view", layout: "master-detail", targetHostId: service.hostId, icon: "brain", platforms: [platform] });
+      api.internal.register("platformViewRenderer", { viewType: "opencraft.builtin-agents.model-services", Component: createDeferredView(async () => (await import("./model-services/view")).createModelServicesView(controller)) });
       if (codexAccounts !== null) {
-        api.views.register({ id: "vela.builtin-agents.codex-accounts-view", title: "Codex 账户", viewType: "vela.builtin-agents.codex-accounts", platforms: [platform] });
-        api.settings.registerPage({ id: "vela.builtin-agents.codex-accounts", title: "Codex accounts", titleMessage: { id: "settings.contributions.codexAccounts", defaultMessage: "Codex accounts" }, viewId: "vela.builtin-agents.codex-accounts-view", targetHostId: codexAccounts.hostId, icon: "user-round-cog", platforms: [platform] });
-        api.internal.register("platformViewRenderer", { viewType: "vela.builtin-agents.codex-accounts", Component: createDeferredView(async () => (await import("./codex-accounts/view")).createCodexAccountsView(codexAccounts)) });
+        api.views.register({ id: "opencraft.builtin-agents.codex-accounts-view", title: "Codex 账户", viewType: "opencraft.builtin-agents.codex-accounts", platforms: [platform] });
+        api.settings.registerPage({ id: "opencraft.builtin-agents.codex-accounts", title: "Codex accounts", titleMessage: { id: "settings.contributions.codexAccounts", defaultMessage: "Codex accounts" }, viewId: "opencraft.builtin-agents.codex-accounts-view", targetHostId: codexAccounts.hostId, icon: "user-round-cog", platforms: [platform] });
+        api.internal.register("platformViewRenderer", { viewType: "opencraft.builtin-agents.codex-accounts", Component: createDeferredView(async () => (await import("./codex-accounts/view")).createCodexAccountsView(codexAccounts)) });
       }
       api.subscriptions.add(() => { codexAccounts?.dispose(); controller.dispose(); service.dispose(); });
       if (hostProvider === null) return;

@@ -6,7 +6,7 @@ import { openHostProfiles } from "../apps/workbench-web/src/runtime/host-profile
 import { BrowserStorageError } from "../apps/workbench-web/src/runtime/browser-storage-error";
 
 const deployment: HostConnectionProfile = {
-  hostId: "deployed", displayName: "Server", providerId: "vela.websocket",
+  hostId: "deployed", displayName: "Server", providerId: "opencraft.websocket",
   providerConfig: { url: "wss://deployed.invalid/appserver" }, providerConfigVersion: 1,
   hostKind: "durable", enabled: true, autoConnect: true, includeInSidebar: true,
   credentialRef: null, transportEndpoint: null, executionLocation: "Server",
