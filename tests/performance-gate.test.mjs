@@ -44,6 +44,8 @@ test('formal release gate is unconditional, before packaging, with retained fail
   const step = preflight.match(/      - name: Gate formal releases on performance regressions\n([\s\S]*?)(?=\n      - name:)/)?.[1];
   assert.ok(step); assert.match(step, /run: npm run gate:performance -- --output/);
   assert.doesNotMatch(step, /if:|continue-on-error/);
+  assert.match(preflight, /name: Test website updates\n        if: \$\{\{ inputs\.oidc_probe != true \}\}/);
+  assert.match(preflight, /name: Build and test website updates in the browser\n        if: \$\{\{ inputs\.oidc_probe != true \}\}/);
   assert.ok(preflight.indexOf('Gate formal releases') < preflight.indexOf('Package once'));
   assert.match(preflight, /name: Retain performance samples and failure evidence\n        if: always\(\)/);
   assert.ok(preflight.includes('name: performance-${{ needs.request.outputs.tag }}-${{ github.run_attempt }}'), 'Failed preflight reruns retain a distinct artifact for every attempt');
