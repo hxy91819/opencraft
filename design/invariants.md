@@ -2702,3 +2702,5 @@ Switching presentation preserves section disclosure/scroll state and never repar
 conversation, composer or file viewer. View state resets on account/Host/thread scope changes.
 Cached history remains readable, but cannot authorize resource or agent navigation. The panel
 labels its history coverage; a completed spawn tool is never treated as agent completion.
+
+Task summary navigation requires a real receiver/agent/state thread identity; presentation fallback IDs do not become thread links. Renamed file entries point to their new Host path.

@@ -25,7 +25,11 @@ export function deriveThreadSummary(timeline: TimelineSnapshot | null): ThreadSu
   const consume = (block: TimelineBlock) => {
     if (block.type === "todo") steps = block.entries;
     if (block.type === "patch") {
-      for (const change of block.changes) files.set(change.path, { path: change.path, kind: change.kind });
+      for (const change of block.changes) {
+        const path = change.movePath ?? change.path;
+        if (change.movePath) files.delete(change.path);
+        files.set(path, { path, kind: change.kind });
+      }
     }
     if (block.type === "turn-diff") {
       for (const file of block.files) if (!files.has(file.path)) files.set(file.path, { path: file.path, kind: "unknown" });
@@ -38,6 +42,8 @@ export function deriveThreadSummary(timeline: TimelineSnapshot | null): ThreadSu
     if (block.type === "subagent") {
       const states = block.agentStates !== null && typeof block.agentStates === "object" ? block.agentStates as Record<string, unknown> : {};
       for (const agent of deriveSubagentActivityPresentation(block).agents) {
+        // Presentation-only fallback IDs are not navigable conversations.
+        if (!block.receiverThreadIds.includes(agent.threadId) && block.agentId !== agent.threadId && !(agent.threadId in states)) continue;
         const state = states[agent.threadId];
         const status = typeof state === "object" && state !== null ? (state as Record<string, unknown>).status : null;
         const known = status === "running" ? "running" : status === "pendingInit" ? "pending"

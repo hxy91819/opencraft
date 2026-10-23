@@ -56,3 +56,13 @@ test("trusted plugin lifecycle removes its contribution and releases the runtime
   assert.equal(runtime.context.conversationSummary.getSnapshot(), null);
   await runtime.dispose();
 });
+
+test("renames open the new path and presentation-only agent IDs never become thread links", () => {
+  assert.deepEqual(deriveThreadSummary(history([
+    { type: "patch", changes: [{ path: "before.ts", kind: "modify" }] },
+    { type: "patch", changes: [{ path: "before.ts", movePath: "after.ts", kind: "modify" }] },
+  ])).files, [{ path: "after.ts", kind: "modify" }]);
+  const summary = deriveThreadSummary(history([{ type: "subagent", id: "display-only", label: "Agent", agentId: null,
+    receiverThreadIds: [], agentStates: {}, tool: null, activityKind: null, agentPath: null, status: "complete" }]));
+  assert.deepEqual(summary.activities, []);
+});
