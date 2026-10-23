@@ -18,7 +18,8 @@ import {
 import type { WebBrowserPageRuntime } from "./web-browser-runtime";
 
 import type { BrowserMetadataStorage } from "./desktop-browser-storage";
-const STORAGE_KEY = "vela.browser-tabs.v1";
+import { browserMetadataKeys, readBrowserMetadataValue } from "@opencraft/workbench-runtime/browser-metadata-identity";
+const STORAGE_KEY = browserMetadataKeys.tabs;
 
 interface StoredBrowserTab {
   readonly id: string;
@@ -387,7 +388,7 @@ export class BrowserWorkbenchCoordinator {
   private restoreTabs(): void {
     let parsed: unknown;
     try {
-      parsed = JSON.parse((this.storage ?? window.localStorage).getItem(STORAGE_KEY) ?? "[]");
+      parsed = JSON.parse(readBrowserMetadataValue(this.storage ?? window.localStorage, STORAGE_KEY) ?? "[]");
     } catch {
       return;
     }

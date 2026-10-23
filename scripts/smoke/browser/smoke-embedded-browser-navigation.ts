@@ -72,4 +72,37 @@ try {
   await checkDraft();
   assert.deepEqual(errors, []);
   console.log("PASS embedded real link clicks (normal/Ctrl/middle/context menu), lookalike domains, two allowed iframe destinations, address navigation, opener isolation and retained draft");
+  // Only historical input is seeded. Real Page/Tab owners must restore it,
+  // write current keys, retain IDs across reload, and keep closed resources closed.
+  const restored = await context.newPage();
+  const restoreErrors: string[] = []; restored.on("pageerror", error => restoreErrors.push(error.message));
+  await restored.goto(origin);
+  await restored.evaluate(() => {
+    localStorage.clear();
+    localStorage.setItem("vela.browser-pages.v1", JSON.stringify([{
+      id: "retained-page", ownerId: "conversation-fixture", hostId: "fixture-host", createdAt: 1,
+      entries: [{ url: "https://workbench.example/retained", title: "Retained page" }], index: 0,
+    }]));
+    localStorage.setItem("vela.browser-tabs.v1", JSON.stringify([{
+      id: "retained-tab", pageId: "retained-page", ownerId: "conversation-fixture", createdAt: 1,
+    }]));
+  });
+  await restored.reload();
+  await restored.waitForFunction(() => (window as any).__browserFixture?.snapshot().tabs.length === 1);
+  assert.equal(await restored.locator("iframe").count(), 0, "restoring metadata cannot create a physical surface");
+  assert.equal(await restored.evaluate(() => (window as any).__browserFixture.snapshot().tabs[0].tab.id), "retained-tab");
+  await restored.evaluate(() => (window as any).__browserFixture.openRetained());
+  await restored.locator('iframe[src="https://workbench.example/retained"]').waitFor();
+  assert.equal(await restored.frameLocator('iframe[src="https://workbench.example/retained"]').locator('p').innerText(), "Guest fixture");
+  await restored.reload();
+  await restored.waitForFunction(() => (window as any).__browserFixture?.snapshot().tabs.length === 1);
+  await restored.evaluate(() => (window as any).__browserFixture.closeRetained());
+  assert.deepEqual(await restored.evaluate(() => [localStorage.getItem("opencraft.browser-pages.v1"), localStorage.getItem("opencraft.browser-tabs.v1")]), ["[]", "[]"]);
+  await restored.reload();
+  await restored.waitForFunction(() => (window as any).__browserFixture !== undefined);
+  assert.equal(await restored.evaluate(() => (window as any).__browserFixture.snapshot().tabs.length), 0);
+  assert.equal(await restored.locator("iframe").count(), 0);
+  assert.deepEqual(restoreErrors, []);
+  console.log("PASS former Page/Tab metadata -> current keys, stable IDs on reload, lazy real iframe, and no closed-resource revival");
+  await restored.close();
 } finally { await browser.close(); await new Promise<void>(ok => server.close(() => ok())); }
