@@ -1,9 +1,11 @@
 import { stickers, type Sticker } from "./stickers";
 export interface Point { readonly x: number; readonly y: number }
 export interface Rect { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
+/** Resolved native text presentation, retained with the local annotation pixels. */
+export interface ImageTextFormat { readonly family: string; readonly weight: string; readonly leading: number }
 export type ImageEdit =
   | { readonly type: "pen" | "mosaic"; readonly points: readonly Point[]; readonly width: number; readonly color: string }
-  | { readonly type: "text"; readonly point: Point; readonly text: string; readonly size: number; readonly color: string }
+  | { readonly type: "text"; readonly point: Point; readonly text: string; readonly size: number; readonly color: string; readonly format?: ImageTextFormat }
   | { readonly type: "sticker"; readonly point: Point; readonly sticker: Sticker; readonly size: number }
   | { readonly type: "crop"; readonly rect: Rect }
   | { readonly type: "rotate" };
@@ -67,10 +69,10 @@ export function paintEdit(target: HTMLCanvasElement, edit: Exclude<ImageEdit, { 
     ctx.restore(); return;
   }
   if (edit.type === "text") {
-    ctx.font = `600 ${edit.size}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = `${edit.format?.weight ?? "600"} ${edit.size}px ${edit.format?.family ?? "sans-serif"}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.lineJoin = "round"; ctx.lineWidth = Math.max(2, edit.size / 16); ctx.strokeStyle = "#000000"; ctx.fillStyle = edit.color;
     const lines = edit.text.split("\n");
-    lines.forEach((line, index) => { const y = edit.point.y + (index - (lines.length - 1) / 2) * edit.size * 1.2; ctx.strokeText(line, edit.point.x, y); ctx.fillText(line, edit.point.x, y); });
+    lines.forEach((line, index) => { const y = edit.point.y + (index - (lines.length - 1) / 2) * edit.size * (edit.format?.leading ?? 1.2); ctx.strokeText(line, edit.point.x, y); ctx.fillText(line, edit.point.x, y); });
     return;
   }
   // Pixelate current pixels, then clip to the selected brush stroke. No original
