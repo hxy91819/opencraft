@@ -25,10 +25,19 @@ try {
   for (const touch of [false,true]) for (const theme of ["light","dark"]) {
     const context=await browser.newContext({viewport:{width:touch?390:1280,height:844},hasTouch:touch,isMobile:touch});
     const page=await context.newPage();page.setDefaultTimeout(60000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+    const failedResources: { path: string; status: number }[] = [];
+    page.on('response', response => { if (response.status() >= 400) failedResources.push({ path: new URL(response.url()).pathname, status: response.status() }); });
     await page.addInitScript('window.__name=value=>value');
     await page.goto(`${vite.resolvedUrls!.local[0]}?theme=${theme}${touch?'&inline&toolbar':'&desktop&toolbar'}`);
     const editor=page.locator('.opencraft-composer-editor'), model=page.locator('.opencraft-composer-mode--intelligence');
-    await editor.waitFor();if(touch)await editor.tap();else await editor.click();await model.waitFor();
+    try { await editor.waitFor(); } catch (error) {
+      const startup = { touch, theme, errors, failedResources, body: await page.locator('body').innerText() };
+      await writeFile(`${output}/startup-failure.json`, JSON.stringify(startup, null, 2));
+      await page.screenshot({ path: `${output}/startup-failure.png` });
+      console.error('Touch hover fixture startup failed:', JSON.stringify(startup));
+      throw error;
+    }
+    if(touch)await editor.tap();else await editor.click();await model.waitFor();
     await page.addStyleTag({content:'#negative:hover{background:rgb(255,0,0)}'});
     await page.evaluate(()=>{const b=document.createElement('button');b.id='negative';b.textContent='Hover negative control';document.body.append(b);});
     const session=await context.newCDPSession(page);await session.send('DOM.enable');await session.send('CSS.enable');
