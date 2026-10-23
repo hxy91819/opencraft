@@ -447,7 +447,7 @@ export class CodexEngineAdapter implements DuplexTransport {
     this.hostState = new OpenCraftHostStateDatabase(dataRoot);
     try {
       const telemetry=new TokenUsageTelemetry();
-      this.tokenUsageState = new TokenUsageStateDatabase(dataRoot, join(dataRoot,"codex-host-queue.sqlite"));
+      this.tokenUsageState = new TokenUsageStateDatabase(dataRoot, this.hostState.path);
       this.tokenUsage = new CodexTokenUsageRuntime(new OpenCraftTokenUsageLedger(this.tokenUsageState,this.options.tokenUsage?.serverId ?? "local-codex",Date.now,telemetry), {
         request:(method,params)=>this.requestPhysical(method,params,5000),
         submission:this.options.tokenUsage?.submission,

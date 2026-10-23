@@ -123,7 +123,7 @@ test("dedicated metering owner copies all facts and recovery state exactly once 
   const old = seed(legacy);
   legacy.database.prepare("INSERT INTO message_senders VALUES(?,?,?,?)").run("thread", "body", "SENSITIVE_SYNTHETIC_CANARY", 1000);
   const before = legacy.database.prepare("SELECT * FROM token_usage_sources").all();
-  const path = join(directory, "codex-host-queue.sqlite");
+  const path = legacy.path;
   let isolated = new TokenUsageStateDatabase(directory, path);
   assert.deepEqual(isolated.database.prepare("SELECT * FROM token_usage_sources").all(), before);
   assert.equal(isolated.database.prepare("SELECT count(*) AS n FROM sqlite_schema WHERE name='message_senders'").get()!.n, 0);
@@ -146,20 +146,20 @@ test("dedicated metering owner copies all facts and recovery state exactly once 
 test("a failed late import rolls back every copied table and can retry with the same managed destination", () => fixture((directory, legacy) => {
   seed(legacy);
   legacy.database.exec("ALTER TABLE token_usage_turns ADD COLUMN synthetic_extra TEXT");
-  assert.throws(() => new TokenUsageStateDatabase(directory, join(directory, "codex-host-queue.sqlite")), /schema mismatch/);
+  assert.throws(() => new TokenUsageStateDatabase(directory, legacy.path), /schema mismatch/);
   const raw = new DatabaseSync(join(directory, "token-usage.sqlite"));
   try {
     assert.equal(raw.prepare("SELECT count(*) AS n FROM token_usage_sources").get()!.n, 0);
     assert.equal(raw.prepare("SELECT count(*) AS n FROM token_usage_legacy_import").get()!.n, 0);
   } finally { raw.close(); }
   legacy.database.exec("ALTER TABLE token_usage_turns DROP COLUMN synthetic_extra");
-  const isolated = new TokenUsageStateDatabase(directory, join(directory, "codex-host-queue.sqlite"));
+  const isolated = new TokenUsageStateDatabase(directory, legacy.path);
   try { assert.equal(isolated.database.prepare("SELECT count(*) AS n FROM token_usage_sources").get()!.n, 1); }
   finally { isolated.close(); }
 }));
 
 test("a metering writer lock cannot lock the Host sender owner, and unwritable gap evidence remains visible in memory", () => fixture((directory, legacy) => {
-  const isolated = new TokenUsageStateDatabase(directory, join(directory, "codex-host-queue.sqlite"));
+  const isolated = new TokenUsageStateDatabase(directory, legacy.path);
   const ledger = new OpenCraftTokenUsageLedger(isolated, "server", () => 1000);
   const runtime = new CodexTokenUsageRuntime(ledger, { request: async () => ({}), diagnostic: () => {} });
   const blocker = new DatabaseSync(join(directory, "token-usage.sqlite"));
@@ -174,7 +174,7 @@ test("a metering writer lock cannot lock the Host sender owner, and unwritable g
 
 test("a legacy writer after cutover is rejected without overwriting either history", () => fixture((directory, legacy) => {
   seed(legacy);
-  const path = join(directory, "codex-host-queue.sqlite");
+  const path = legacy.path;
   const isolated = new TokenUsageStateDatabase(directory, path);
   seed(isolated, "new-owner", "200");
   isolated.close();

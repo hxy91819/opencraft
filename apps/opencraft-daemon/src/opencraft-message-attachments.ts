@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { ownedDatabasePath } from "./owned-database-path.js";
 import type { DatabaseSync } from "node:sqlite";
 import { openManagedDatabase, createSchemaValidator, createMissingLegacyObjects, type DatabaseOutcome } from "@opencraft/sqlite-node";
 
@@ -35,9 +35,10 @@ const legacy = createMissingLegacyObjects(OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE
 export class OpenCraftMessageAttachments {
   private readonly db: DatabaseSync;
   readonly outcome: DatabaseOutcome;
+  readonly path: string;
 
   constructor(dataDirectory: string) {
-    const path = join(dataDirectory, "codex-message-attachments.sqlite");
+    const path = this.path = ownedDatabasePath(dataDirectory, "opencraft-message-attachments.sqlite", "codex-message-attachments.sqlite");
     const managed = openManagedDatabase({ path, legacyPolicy: "reject-unknown", validateSchema: createSchemaValidator(FULL_SCHEMA), migrations: OPENCRAFT_MESSAGE_ATTACHMENTS_MIGRATIONS,
       legacyMigration: { accepts: legacy.accepts, migrate(database) { legacy.migrate(database); database.exec(OPENCRAFT_MESSAGE_ATTACHMENTS_OWNED_NAMES); } } });
     this.db = managed.database;
