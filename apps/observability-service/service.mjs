@@ -21,12 +21,13 @@ export function json(response, status, body) {
 }
 
 export async function startObserve({ directory, deploymentId, prometheus = 'http://127.0.0.1:23302', metricsHost = '127.0.0.1', metricsPort = 23305,
-  collector = 'http://127.0.0.1:23304/v1/logs', grafanaBasePath, sourceRevision = process.env.OPENCRAFT_OBSERVE_SOURCE_REVISION??null, buildId = process.env.OPENCRAFT_OBSERVE_BUILD_ID??null, now = Date.now } = {}) {
+  collector = 'http://127.0.0.1:23304/v1/logs', grafanaBasePath, databaseBytes, sourceRevision = process.env.OPENCRAFT_OBSERVE_SOURCE_REVISION??null, buildId = process.env.OPENCRAFT_OBSERVE_BUILD_ID??null, now = Date.now } = {}) {
+  if (databaseBytes !== undefined && (!Number.isSafeInteger(databaseBytes) || databaseBytes < 4096)) throw fault('invalid_configuration');
   const grafanaPath=observationGrafanaBasePath(grafanaBasePath);
   if (!directory?.startsWith('/') || !/^[a-zA-Z0-9_.-]{1,80}$/u.test(deploymentId??'')) throw fault('invalid_configuration');
   for (const address of [prometheus,collector]) {const url=new URL(address);if(url.hostname!=='127.0.0.1'||url.protocol!=='http:'||url.username||url.password)throw fault('invalid_backend');}
   await mkdir(directory,{recursive:true,mode:0o700});await chmod(directory,0o700);
-  const store = new ObserveStore(resolve(directory,'observe.sqlite'),now);
+  const store = new ObserveStore(resolve(directory,'observe.sqlite'),now,databaseBytes);
   const producerId = randomUUID();
   const essential=['web','gateway','core'];
   let active = 0, exportDropped=0, exporting=false;
