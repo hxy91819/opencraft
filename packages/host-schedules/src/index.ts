@@ -7,7 +7,9 @@ import { nextCalendarRun, nextIntervalRun, validScheduleCalendar, validScheduleW
 /** Engine boundary: a stable occurrence ID must survive retries and Host restarts.
  * submit must not steer. An ambiguous acceptance must return unknown, never throw
  * a retryable error after it might have reached the engine. */
+export interface ScheduleExecutionEvent { threadId: string; turnId: string; state: "completed" | "failed" }
 export interface ScheduleExecutionPort {
+  subscribe?(listener: (event: ScheduleExecutionEvent) => void): () => void;
   validate(threadId: string): Promise<void>;
   permissionProfiles?(threadId: string): Promise<OpenCraftPermissionProfile[]>;
   submit(run: ConversationScheduleRun, prompt: string, canAdmit: () => boolean): Promise<{ state: "waiting" | "running" | "completed" | "failed" | "unknown"; turnId?: string }>;
@@ -27,12 +29,18 @@ export class ConversationSchedules {
   private readonly managed;
   readonly outcome;
   private timer: ReturnType<typeof setInterval> | null = null;
-  private pending: Promise<void> | null = null;
+  private readonly pending = new Set<Promise<void>>();
+  private readonly flights = new Map<string, Promise<void>>();
   private stopped = false;
   private closing: Promise<void> | null = null;
   private inTransaction = false;
   private summarySignature = "";
   private readonly retries = new Map<string, number>();
+  // Only unfinished occurrences can retain an early native completion, including
+  // completion racing the submit acknowledgement. This is not an execution log.
+  private readonly observations = new Map<string, ScheduleExecutionEvent>();
+  private readonly unsubscribe: (() => void) | undefined;
+
   constructor(directory: string, private readonly port: ScheduleExecutionPort,
     private readonly now = Date.now, private readonly diagnostic: (event: { event: string; scheduleId?: string }) => void = () => {},
     private readonly changed: () => void = () => {}) {
@@ -40,6 +48,7 @@ export class ConversationSchedules {
       validateSchema: createSchemaValidator(schema), migrations: [{ version: 1, name: "conversation-schedules", sql: schema }] });
     this.outcome = this.managed.outcome;
     this.summarySignature = JSON.stringify(this.list());
+    this.unsubscribe = port.subscribe?.(event => this.executionChanged(event));
   }
   private get db() { return this.managed.database; }
   private schedule(threadId: string): ConversationSchedule | null {
@@ -166,79 +175,117 @@ export class ConversationSchedules {
       for (const run of this.runs(threadId)) if (run.state === "waiting") this.writeRun({ ...run, state: "failed", updatedAt: now });
     });
   }
+  executionChanged(event: ScheduleExecutionEvent) {
+    if (this.stopped) return;
+    const run = this.runs(event.threadId).find(value => value.state === "submitting" || value.state === "running" || value.state === "unknown" && value.turnId !== null);
+    if (!run || run.turnId !== null && run.turnId !== event.turnId) return;
+    this.observations.set(run.id, event);
+    this.retries.delete(run.id);
+    void this.tick();
+  }
+  private observed(run: ConversationScheduleRun) {
+    const event = this.observations.get(run.id);
+    return event?.turnId === run.turnId ? { state: event.state } : undefined;
+  }
   start() {
     if (this.timer || this.stopped) return;
     this.timer = setInterval(() => { void this.tick(); }, 2000); this.timer.unref();
     void this.tick();
   }
   tick(): Promise<void> {
-    if (this.pending) return this.pending;
     if (this.stopped) return Promise.resolve();
-    this.pending = Promise.resolve().then(() => this.advance()).catch(() => this.diagnostic({ event: "schedule-tick-failed" })).finally(() => { this.pending = null; });
-    return this.pending;
+    const operation = Promise.resolve().then(() => this.advance()).catch(() => this.diagnostic({ event: "schedule-tick-failed" }));
+    this.pending.add(operation);
+    void operation.finally(() => this.pending.delete(operation));
+    return operation;
   }
   private async advance() {
     const schedules = this.db.prepare("SELECT value FROM schedules").all().map(row => JSON.parse(String(row.value)) as ConversationSchedule);
+    const started: Promise<void>[] = [];
     for (const snapshot of schedules) {
-      if (this.stopped) break;
-      let plan = this.schedule(snapshot.threadId)!;
-      let run = this.runs(plan.threadId).find(value => unfinished.has(value.state));
-      if (plan.status === "active" && plan.window?.endAt != null && this.now() >= plan.window.endAt && (!run || run.state === "waiting")) {
-        this.transaction(() => {
-          if (run) this.writeRun({ ...run, state: "failed", updatedAt: this.now() });
-          this.writeSchedule({ ...plan, status: "completed", revision: plan.revision + 1, updatedAt: this.now() });
+      if (this.stopped || this.flights.size >= 4) break;
+      if (this.flights.has(snapshot.threadId)) continue;
+      const run = this.runs(snapshot.threadId).find(run => unfinished.has(run.state));
+      if (!run && !(snapshot.status === "active" && snapshot.nextRunAt <= this.now())) continue;
+      if (run && (run.state === "unknown" && !this.observed(run) || (this.retries.get(run.id) ?? 0) > this.now())) continue;
+      const operation = Promise.resolve().then(() => this.advancePlan(snapshot))
+        .catch(() => this.diagnostic({ event: "schedule-execution-check-failed", scheduleId: snapshot.id }))
+        .finally(() => {
+          this.flights.delete(snapshot.threadId);
+          // Fill a released slot independently of other blocked conversations.
+          if (!this.stopped) void this.tick();
         });
-        continue;
+      this.flights.set(snapshot.threadId, operation);
+      started.push(operation);
+    }
+    await Promise.all(started);
+  }
+  private async advancePlan(snapshot: ConversationSchedule) {
+    let plan = this.schedule(snapshot.threadId)!;
+    let run = this.runs(plan.threadId).find(value => unfinished.has(value.state));
+    if (plan.status === "active" && plan.window?.endAt != null && this.now() >= plan.window.endAt && (!run || run.state === "waiting")) {
+      this.transaction(() => {
+        if (run) this.writeRun({ ...run, state: "failed", updatedAt: this.now() });
+        this.writeSchedule({ ...plan, status: "completed", revision: plan.revision + 1, updatedAt: this.now() });
+      });
+      return;
+    }
+    if (!run && plan.status === "active" && plan.nextRunAt <= this.now()) {
+      run = { id: `schedule:${plan.id}:${plan.nextRunAt}`, scheduleId: plan.id, threadId: plan.threadId,
+        scheduledAt: plan.nextRunAt, state: "waiting", turnId: null, updatedAt: this.now(), permissions: plan.permissions ?? null };
+      this.writeRun(run);
+    }
+    if (run?.state === "waiting" && plan.status !== "active") { this.writeRun({ ...run, state: "failed", updatedAt: this.now() }); return; }
+    if (!run || run.state === "unknown" && !this.observed(run) || (this.retries.get(run.id) ?? 0) > this.now()) return;
+    try {
+      if (run.state === "waiting" || run.state === "submitting") {
+        // Persist intent before crossing the engine boundary. Re-entry uses the SAME ID.
+        if (run.state === "waiting") { run = { ...run, state: "submitting", updatedAt: this.now() }; this.writeRun(run); }
+        const occurrence = run;
+        const prompt = plan.skills?.length ? `${plan.prompt}\n\nUse these installed skills for this task: ${plan.skills.join(", ")}` : plan.prompt;
+        const result = await this.port.submit(run, prompt, () => {
+          const current = this.schedule(occurrence.threadId);
+          return !this.stopped && current?.id === occurrence.scheduleId && current.status === "active";
+        });
+        run = { ...run, state: result.state, turnId: result.turnId ?? run.turnId, updatedAt: this.now() };
+        const observed = this.observed(run);
+        if (run.state === "running" && observed) run = { ...run, ...observed };
+      } else {
+        const result = this.observed(run) ?? await this.port.inspect(run);
+        run = { ...run, state: result.state, updatedAt: this.now() };
       }
-      if (!run && plan.status === "active" && plan.nextRunAt <= this.now()) {
-        run = { id: `schedule:${plan.id}:${plan.nextRunAt}`, scheduleId: plan.id, threadId: plan.threadId,
-          scheduledAt: plan.nextRunAt, state: "waiting", turnId: null, updatedAt: this.now(), permissions: plan.permissions ?? null };
-        this.writeRun(run);
-      }
-      if (run?.state === "waiting" && plan.status !== "active") { this.writeRun({ ...run, state: "failed", updatedAt: this.now() }); continue; }
-      if (!run || run.state === "unknown" || (this.retries.get(run.id) ?? 0) > this.now()) continue;
-      try {
-        if (run.state === "waiting" || run.state === "submitting") {
-          // Persist intent before crossing the engine boundary. Re-entry uses the SAME ID.
-          if (run.state === "waiting") { run = { ...run, state: "submitting", updatedAt: this.now() }; this.writeRun(run); }
-          const occurrence = run;
-          const prompt = plan.skills?.length ? `${plan.prompt}\n\nUse these installed skills for this task: ${plan.skills.join(", ")}` : plan.prompt;
-          const result = await this.port.submit(run, prompt, () => {
-            const current = this.schedule(occurrence.threadId);
-            return !this.stopped && current?.id === occurrence.scheduleId && current.status === "active";
-          });
-          run = { ...run, state: result.state, turnId: result.turnId ?? run.turnId, updatedAt: this.now() };
-        } else {
-          const result = await this.port.inspect(run);
-          run = { ...run, state: result.state, updatedAt: this.now() };
+      // A native completion can arrive while inspection is awaiting its reply.
+      const observation = this.observed(run);
+      if (observation && (run.state === "running" || run.state === "unknown")) run = { ...run, ...observation };
+      const settled = run;
+      this.transaction(() => {
+        this.writeRun(settled);
+        plan = this.schedule(plan.threadId)!;
+        if ((settled.state === "completed" || settled.state === "failed") && plan.status === "active" && !settled.id.includes(":manual:")) {
+          const after = Math.max(this.now(), plan.nextRunAt) + 1;
+          const next = plan.calendar ? nextCalendarRun(plan.calendar, plan.timeZone, after, plan.window)
+            : plan.intervalMinutes !== null ? nextIntervalRun(plan.nextRunAt, plan.intervalMinutes, plan.timeZone, after, plan.window) : null;
+          this.writeSchedule({ ...plan, status: next === null ? "completed" : "active",
+            nextRunAt: next ?? plan.nextRunAt,
+            revision: plan.revision + 1, updatedAt: this.now() });
         }
-        const settled = run;
-        this.transaction(() => {
-          this.writeRun(settled);
-          plan = this.schedule(plan.threadId)!;
-          if ((settled.state === "completed" || settled.state === "failed") && plan.status === "active" && !settled.id.includes(":manual:")) {
-            const after = Math.max(this.now(), plan.nextRunAt) + 1;
-            const next = plan.calendar ? nextCalendarRun(plan.calendar, plan.timeZone, after, plan.window)
-              : plan.intervalMinutes !== null ? nextIntervalRun(plan.nextRunAt, plan.intervalMinutes, plan.timeZone, after, plan.window) : null;
-            this.writeSchedule({ ...plan, status: next === null ? "completed" : "active",
-              nextRunAt: next ?? plan.nextRunAt,
-              revision: plan.revision + 1, updatedAt: this.now() });
-          }
-        });
-        if (run.state === "waiting" || run.state === "running") this.retries.set(run.id, this.now() + (run.state === "waiting" ? 5000 : 15000));
-        else this.retries.delete(run.id);
-      } catch {
-        this.retries.set(run.id, this.now() + 30000);
-        this.diagnostic({ event: "schedule-execution-check-failed", scheduleId: plan.id });
-      }
+      });
+      if (run.state === "waiting" || run.state === "running") this.retries.set(run.id, this.now() + (run.state === "waiting" ? 5000 : this.port.subscribe ? 60000 : 15000));
+      else { this.retries.delete(run.id); this.observations.delete(run.id); }
+    } catch {
+      if (this.observed(run)) this.retries.delete(run.id);
+      else this.retries.set(run.id, this.now() + 30000);
+      this.diagnostic({ event: "schedule-execution-check-failed", scheduleId: plan.id });
     }
   }
   close(): Promise<void> {
     return this.closing ??= (async () => {
       this.stopped = true;
+      this.unsubscribe?.();
+      this.observations.clear();
       if (this.timer) clearInterval(this.timer);
       this.timer = null;
-      await this.pending;
+      await Promise.all(this.pending);
       this.db.close();
     })();
   }

@@ -10,6 +10,7 @@ export interface ExecutionEngineProvider {
   readonly threadPrefix?: string;
   readonly modelPrefix?: string;
   readonly extensions?: Readonly<Record<string, unknown>>;
+  readonly storageOutcomes?: readonly unknown[];
   start?(): Promise<void>;
   ownsThread(id: string): boolean;
   ownsModel(id: string): boolean;

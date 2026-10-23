@@ -1476,7 +1476,10 @@ export class DshAppServerAdapter {
           : 5;
         const [summary, history, models] = await Promise.all([
           this.summary(sessionId),
-          initialTurnsRequest !== null && sortDirection === "desc" && itemsView === "full" && value.historyCheckpoint !== undefined
+          value.excludeTurns === true && initialTurnsRequest === null
+            ? Promise.resolve({ turns: [], pageTurns: [], nextCursor: null, headCursor: historyCursor(sessionId),
+              recovery: { checkpoint: { epoch: this.historyEpoch, nextSeq: 0 }, mode: "replace" as const } })
+            : initialTurnsRequest !== null && sortDirection === "desc" && itemsView === "full" && value.historyCheckpoint !== undefined
             ? this.recoveryHistory(sessionId, value.historyCheckpoint, requestedLimit, description?.historyHead)
             : this.history(sessionId, null, requestedLimit, sortDirection, itemsView).then(history => ({
               ...history, recovery: { checkpoint: { epoch: this.historyEpoch, nextSeq: history.nextSeq ?? 0 }, mode: "replace" as const },

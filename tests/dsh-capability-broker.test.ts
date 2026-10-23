@@ -158,3 +158,36 @@ test("Host tools coexist with browser leases and survive browser disconnect",asy
  assert.throws(()=>broker.register("s",a,[{...specs[0],name:"im_reply"}],()=>{}),/reserved/);broker.disconnect(a);assert.deepEqual(broker.list("s").map(t=>t.name),["im_reply"]);
  await broker.invoke("s","turn","im_reply",{},new AbortController().signal,b);assert.equal(calls,1);enabled=false;await assert.rejects(broker.invoke("s","turn","im_reply",{},new AbortController().signal,b));broker.close();
 });
+
+test("DSH coalesces native tool registration, retries failures and fences a replaced bridge", async t => {
+  const calls: any[] = []; let release!: () => void, entered!: () => void, hold = false, fail = false;
+  let entry = new Promise<void>(r => { entered = r; });
+  const server = createServer(async (request, response) => {
+    if (request.url === "/events") { response.end('{"events":[]}'); return; }
+    let body = ""; for await (const chunk of request) body += chunk;
+    const params = JSON.parse(body || "{}"); calls.push({ path: request.url, params });
+    if (hold && request.url === "/register") { hold = false; entered(); await new Promise<void>(r => { release = r; }); }
+    response.setHeader("content-type", "application/json");
+    if (fail) { response.writeHead(500).end('{"code":"ENGINE_OPERATION_FAILED"}'); return; }
+    response.end(JSON.stringify({ registered: params.capabilities?.length ?? 0 }));
+  });
+  await new Promise<void>(r => server.listen(0, "127.0.0.1", r));
+  const declaration = { name: "reply", description: "v1", inputSchema: { type: "object", properties: { text: { type: "string" } } } };
+  const broker = new DshCapabilityBroker(undefined, { tools: () => [declaration], async call() { return {}; } });
+  const authority = new DshExecutionAuthority(":memory:"), link = new DshCapabilityLink("x".repeat(64), broker, authority);
+  const endpoint = `http://127.0.0.1:${(server.address() as any).port}`; link.attach(endpoint);
+  t.after(async () => { release?.(); await link.close(); broker.close(); authority.close(); await new Promise<void>(r => server.close(() => r())); });
+  hold = true; const first = link.register("s"); await entry; const second = link.register("s"); release();
+  await Promise.all([first, second]); assert.equal(calls.filter(c => c.path === "/register").length, 1);
+  declaration.inputSchema.properties.text.type = "number"; await link.register("s");
+  assert.deepEqual(calls.map(c => c.path), ["/register", "/unregister", "/register"]);
+  assert.equal(calls[0].params.capabilities[0].inputSchema.properties.text.type, "string");
+  declaration.description = "v2"; fail = true; await assert.rejects(link.register("s"));
+  fail = false; declaration.description = "v1"; await link.register("s");
+  assert.equal(calls.at(-1).path, "/register", "failed mutation must invalidate the previous confirmed cache");
+  entry = new Promise<void>(r => { entered = r; }); hold = true; declaration.description = "v3";
+  const stale = link.register("s"); await entry; link.attach(endpoint + "/successor"); release();
+  await assert.rejects(stale, /generation changed/);
+  link.attach(endpoint); await link.register("s");
+  assert.equal(calls.at(-1).params.capabilities[0].description, "v3");
+});
