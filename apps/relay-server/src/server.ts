@@ -5,7 +5,7 @@ import { randomBytes, randomUUID, createHash, timingSafeEqual } from "node:crypt
 import WebSocket, { WebSocketServer } from "ws";
 import { relayDuplex } from '@opencraft/relay-protocol/node';
 import { AssertionSigner, ASSERTION_HEADER, type IdentityProvider } from "@opencraft/identity-core/node";
-import { CONTROL_PATH, DATA_PATH, STREAM_HEADER, RELAY_PROTOCOL, MAX_STREAMS, relayPathAllowed } from "@opencraft/relay-protocol";
+import { CONTROL_PATH, DATA_PATH, STREAM_HEADER, RELAY_PROTOCOL, MAX_RELAY_STREAMS, relayPathAllowed } from "@opencraft/relay-protocol";
 import { RelayAuthentication, type EntryOriginResolver } from './authentication.js';
 import type { HubNetwork } from '../../../packages/hub-network/src/node.js';
 import { SERVERS_PATH, LEGACY_SERVERS_PATH, isServerPath, selectedPath, serverBase, selectorPage, scopedHtml, targetCookies, scopedCookies, selectionDefault, parseServerPaths, type ServerPaths } from './selection.js';
@@ -83,7 +83,7 @@ export function createRelayServer(routes: readonly RelayRoute[], options: { auth
   async function channel(route: RelayRoute, signal: AbortSignal): Promise<Duplex> {
     if (route.hubId && options.hub) return options.hub.open(route.hubId, undefined, signal);
     const connection = connections.get(route.instanceId);
-    if (!connection || connection.socket.readyState !== WebSocket.OPEN || connection.streams.size + [...pending.values()].filter(p => p.connection === connection).length >= MAX_STREAMS || pending.size + [...connections.values()].reduce((sum,c)=>sum+c.streams.size,0) >= 4096 || closing) throw new Error('Instance unavailable or busy');
+    if (!connection || connection.socket.readyState !== WebSocket.OPEN || connection.streams.size + [...pending.values()].filter(p => p.connection === connection).length >= MAX_RELAY_STREAMS || pending.size + [...connections.values()].reduce((sum,c)=>sum+c.streams.size,0) >= 4096 || closing) throw new Error('Instance unavailable or busy');
     const id = randomUUID(), token = randomBytes(32).toString('base64url');
     return new Promise((resolve, rejectPromise) => {
       const cleanup = () => { clearTimeout(timer); signal.removeEventListener('abort', abort); pending.delete(id); };

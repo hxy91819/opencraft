@@ -150,7 +150,9 @@ Enabling login does not itself change anonymous workspace admission or product-s
 Optional ordinary relay deployment uses core `identity-core` principals and
 `access-control` instance membership at every headless HTTP/WS entry. The Node
 relay and outbound `relay-connect` plugin transport traffic; enterprise identity authentication
-remains an adapter. The outbound relay bounds active and connecting data streams at 128.
+remains an adapter. Ordinary relay tunnels bound active and connecting data streams
+with a separate 512-stream per-installation budget; Hub peer links retain their
+128-stream budget.
 A valid open received at capacity is discarded and its existing server-side ten-second
 reservation expires; it never closes the control link or existing data streams.
 Once a stream closes, later opens can be admitted. Malformed control messages

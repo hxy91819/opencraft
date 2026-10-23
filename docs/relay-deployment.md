@@ -195,7 +195,7 @@ All JSON configurations below must be owner-only regular files (0600), with abso
 }
 ```
 
-Terminate HTTPS at a trusted ingress with a loopback relay backend, or configure `tlsCertFile` and `tlsKeyFile` for native HTTPS. A non-loopback plain HTTP listener requires explicit `tlsTermination: "trusted-proxy"`; restrict its network access to that ingress. The TLS gateway is part of the trust boundary and must preserve the public Host and enterprise identity headers only from the real identity gateway. Configure gateway header/body/connection limits. The application limits each instance to 128 concurrent streams, bounded stream buffers, 10-second tunnel acquisition, 30/60-second response establishment, and a one-hour stream lifetime. Long sessions reconnect normally; request bodies and non-HTML responses stream without full buffering.
+Terminate HTTPS at a trusted ingress with a loopback relay backend, or configure `tlsCertFile` and `tlsKeyFile` for native HTTPS. A non-loopback plain HTTP listener requires explicit `tlsTermination: "trusted-proxy"`; restrict its network access to that ingress. The TLS gateway is part of the trust boundary and must preserve the public Host and enterprise identity headers only from the real identity gateway. Configure gateway header/body/connection limits. The application limits each instance to 512 concurrent streams, bounded stream buffers, 10-second tunnel acquisition, 30/60-second response establishment, and a one-hour stream lifetime. Long sessions reconnect normally; request bodies and non-HTML responses stream without full buffering.
 
 The instance connection configuration contains only:
 

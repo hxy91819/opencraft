@@ -4,7 +4,7 @@ import { relayDuplex } from '@opencraft/relay-protocol/node';
 import { AssertionProvider, readPrivateJson, type AssertionProviderOptions } from '@opencraft/identity-core/node';
 import { readFile } from 'node:fs/promises';
 import { isAbsolute } from 'node:path';
-import { CONTROL_PATH, DATA_PATH, STREAM_HEADER, RELAY_PROTOCOL, MAX_STREAMS, parseOpen } from "@opencraft/relay-protocol";
+import { CONTROL_PATH, DATA_PATH, STREAM_HEADER, RELAY_PROTOCOL, MAX_RELAY_STREAMS, parseOpen } from "@opencraft/relay-protocol";
 export interface RelayConnectOptions { readonly relay: string; readonly credential: string; readonly targetPort: number; readonly allowLoopbackInsecure?: boolean; readonly ca?: string; }
 export async function loadRelayConnection(path: string, assertionOptions: AssertionProviderOptions = {}) {
   const input = await readPrivateJson(path) as Record<string, unknown>;
@@ -40,7 +40,7 @@ export function connectRelay(options: RelayConnectOptions) {
         // A completed server stream can still be closing locally. Reject only
         // this new open; its existing server deadline releases the reservation.
         // Capacity pressure must not revoke the control link and every live stream.
-        if (streams.size >= MAX_STREAMS) return;
+        if (streams.size >= MAX_RELAY_STREAMS) return;
         const data = new WebSocket(base + DATA_PATH, RELAY_PROTOCOL, { ca: options.ca, headers: { authorization: `Bearer ${frame.token}`, [STREAM_HEADER]: frame.id }, perMessageDeflate: false, maxPayload: 65_536, handshakeTimeout: 10_000 });
         streams.add(data); data.on('error', () => {}); data.once('close', () => streams.delete(data));
         data.once('open', () => {

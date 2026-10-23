@@ -6,7 +6,7 @@ import { once } from 'node:events';
 import { randomBytes, randomUUID } from 'node:crypto';
 import WebSocket, { WebSocketServer } from 'ws';
 import { connectRelay } from '../plugins/relay-connect/src/server';
-import { CONTROL_PATH, DATA_PATH, MAX_STREAMS, STREAM_HEADER } from '../packages/relay-protocol/src';
+import { CONTROL_PATH, DATA_PATH, MAX_RELAY_STREAMS, STREAM_HEADER } from '../packages/relay-protocol/src';
 
 async function waitFor(check: () => boolean) {
   const until = Date.now() + 5000;
@@ -52,20 +52,20 @@ test('relay saturation preserves its control and live streams, then admits opens
     control!.send(JSON.stringify({ type: 'open', id, token: randomBytes(32).toString('base64url') }));
     return id;
   };
-  for (let i = 0; i < MAX_STREAMS; i++) open();
-  await waitFor(() => data.size === MAX_STREAMS && targets.size === MAX_STREAMS);
+  for (let i = 0; i < MAX_RELAY_STREAMS; i++) open();
+  await waitFor(() => data.size === MAX_RELAY_STREAMS && targets.size === MAX_RELAY_STREAMS);
   const existingControl = control!;
   const overflow = open();
   await new Promise(resolve => setTimeout(resolve, 75));
   assert.equal(existingControl.readyState, WebSocket.OPEN, 'capacity is not a protocol violation');
   assert.equal(controlConnections, 1, 'no hidden control reconnect');
-  assert.equal(data.size, MAX_STREAMS, 'stream budget stays bounded');
+  assert.equal(data.size, MAX_RELAY_STREAMS, 'stream budget stays bounded');
   assert.equal(data.has(overflow), false, 'only the excess open is rejected');
   const survivor = data.values().next().value!;
   const echoed = once(survivor, 'message'); survivor.send('still connected');
   assert.equal(String((await echoed)[0]), 'still connected', 'existing traffic still flows');
   survivor.terminate();
-  await waitFor(() => data.size === MAX_STREAMS - 1 && targets.size === MAX_STREAMS - 1);
+  await waitFor(() => data.size === MAX_RELAY_STREAMS - 1 && targets.size === MAX_RELAY_STREAMS - 1);
   const replacement = open(); await waitFor(() => data.has(replacement));
   assert.equal(existingControl.readyState, WebSocket.OPEN);
   const closed = once(existingControl, 'close');

@@ -3,6 +3,8 @@ export const CONTROL_PATH = "/__opencraft_relay/control";
 export const DATA_PATH = "/__opencraft_relay/data";
 export const STREAM_HEADER = "x-opencraft-relay-stream";
 export const MAX_STREAMS = 128;
+/** Ordinary relay tunnels have a separate budget from Hub peer links. */
+export const MAX_RELAY_STREAMS = 512;
 export function parseOpen(input: unknown): { type: "open"; id: string; token: string } {
   if (!input || typeof input !== "object") throw new Error("Invalid relay message");
   const m = input as Record<string, unknown>;
