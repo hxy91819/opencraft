@@ -358,10 +358,10 @@ test("Host profiles add missing deployment seeds without overwriting saved prefe
   const reopened = await IndexedDbHostConnectionProfileStore.open({
     databaseName,
     factory: indexedDB,
-    seed: [seed, { ...seed, hostId: "local-codex", displayName: "Codex" }],
+    seed: [seed, { ...seed, hostId: "host:added", displayName: "Added" }],
   });
   try {
-    assert.deepEqual(reopened.getSnapshot().profiles.map((profile) => profile.hostId), ["local-codex", "host:seed"]);
+    assert.deepEqual(reopened.getSnapshot().profiles.map((profile) => profile.hostId), ["host:added", "host:seed"]);
     assert.deepEqual(reopened.getSnapshot().profiles.find(profile => profile.hostId === "host:seed"), {
       ...seed, displayName: "Renamed", enabled: false, revision: 1, machineIdentity: null, agent: null,
     });
@@ -371,7 +371,7 @@ test("Host profiles add missing deployment seeds without overwriting saved prefe
 
   const restored = await IndexedDbHostConnectionProfileStore.open({ databaseName, factory: indexedDB });
   try {
-    assert.equal(restored.getSnapshot().profiles.filter(profile => profile.hostId === "local-codex").length, 1);
+    assert.equal(restored.getSnapshot().profiles.filter(profile => profile.hostId === "host:added").length, 1);
     assert.equal(await restored.remove("host:seed"), true);
     assert.equal(await restored.remove("host:seed"), false);
   } finally {
