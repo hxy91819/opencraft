@@ -40,7 +40,7 @@ architecture document.
 
 ```bash
 npm run typecheck --workspace @opencraft/appserver-replica
-npx tsx --test tests/appserver-replica.test.ts
+npx tsx --test tests/protocol/appserver-replica.test.ts
 npm run test:appserver
 npm run test:appserver:lab
 npm run gate

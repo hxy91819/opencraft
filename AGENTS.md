@@ -81,7 +81,7 @@ GitHub `opencraft-app/opencraft` 是目标核心上游，产品身份来源、�
 - OpenCraft 自有 SQLite 的新增运行时 `CREATE TABLE` / `ALTER TABLE` 只由迁移执行；业务初始化与恢复不得另建表或按列探测补结构。测试 fixture 与下述保留的上游镜像不作为升级 authority。
 - 所有 OpenCraft 自有 SQLite 库必须经 `openManagedDatabase` 打开并暴露 outcome；owner 负责独占生命周期、关闭和处置摘要，不得吞掉迁移失败后继续宣称 ready。
 - 改表必须有从上一版本结构升级并保留业务数据的测试，以及已记录 checksum 不一致时拒绝打开的测试；空库测试不能替代升级测试。
-- hypernode 的 `initializeSchema` 保持与 executions 基线一致，OpenCraft 不得依赖构造器建表或升级；改表同时维护 executions 基线迁移与初始化声明的一致性，运行 `tests/dsh-execution-authority.test.ts` 指纹等价测试。已发布基线仍不可改写，后续版本追加迁移并让等价测试覆盖完整迁移链。
+- hypernode 的 `initializeSchema` 保持与 executions 基线一致，OpenCraft 不得依赖构造器建表或升级；改表同时维护 executions 基线迁移与初始化声明的一致性，运行 `tests/execution/dsh-execution-authority.test.ts` 指纹等价测试。已发布基线仍不可改写，后续版本追加迁移并让等价测试覆盖完整迁移链。
 
 ## 国际化
 

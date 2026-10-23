@@ -90,9 +90,9 @@ async function gate(config) {
   try {
     await save(); report.source = await sourceSnapshot(); report.versions = await prerequisites(); await save();
     const loader = join(repository, 'node_modules/tsx/dist/loader.mjs');
-    await run('regression', ['--import', loader, '--test', 'tests/web-deployment-config.test.mjs', 'tests/web-deployment-lock.test.mjs',
-      'tests/web-deployment-source.test.mjs', 'tests/web-deployment.test.mjs', 'tests/server-deployment.test.mjs',
-      'tests/opencraft-daemon.test.ts', 'tests/codex-core.test.ts', 'tests/opencraft-host-state-database.test.ts', 'tests/controlled-release-registry.test.mjs', 'tests/ssh-http-ingress.test.mjs', 'tests/daemon-token.test.ts']);
+    await run('regression', ['--import', loader, '--test', 'tests/server/web-deployment-config.test.mjs', 'tests/server/web-deployment-lock.test.mjs',
+      'tests/server/web-deployment-source.test.mjs', 'tests/server/web-deployment.test.mjs', 'tests/server/server-deployment.test.mjs',
+      'tests/execution/opencraft-daemon.test.ts', 'tests/execution/codex-core.test.ts', 'tests/storage/opencraft-host-state-database.test.ts', 'tests/tooling/controlled-release-registry.test.mjs', 'tests/server/ssh-http-ingress.test.mjs', 'tests/execution/daemon-token.test.ts']);
     const npm = process.env.npm_execpath;
     if (!npm) throw new Error('Run this gate using npm run gate:server-updates');
     await run('build', [npm, 'run', 'build:web:release'], { OPENCRAFT_SOURCE_REVISION: report.source.commit + (report.source.dirty ? '-dirty' : ''), ...(config.profile === 'headless' ? { OPENCRAFT_HEADLESS_SERVER_BUILD: 'true', VITE_HYPERNODE_PLUGIN: 'disabled', VITE_APPSERVER_HOSTS_JSON: JSON.stringify(headlessWebHostDefinitions()) } : {}) });

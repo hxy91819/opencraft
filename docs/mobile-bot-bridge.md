@@ -90,7 +90,7 @@ before profile data arrives it keeps the existing image fallback. Avatar
 messages are scoped to the current runtime ID and never contain image bytes.
 
 After changing frontend Bot code, rebuild the local asset and run the DOM
-smoke. After changing the bridge, run `tests/mobile-bot-bridge.test.ts`, Expo
+smoke. After changing the bridge, run `tests/mobile/mobile-bot-bridge.test.ts`, Expo
 typecheck and frontend typecheck. After changing navigation, also run
 `tests/mobile-shell-model.test.mjs` and check the account/drawer return flow
 in an Expo runtime. These checks are focused; this document adds no CI gate or

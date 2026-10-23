@@ -37,7 +37,7 @@ response-placement 分支在 `static` 下锚定回答开头是该策略的既定
 
 ## 验证与剩余边界
 
-- `tsx --test tests/workbench-timeline-host.test.ts tests/chat-web-follow-measurement.test.ts`：62 项通过。
+- `tsx --test tests/shell/workbench-timeline-host.test.ts tests/chat/chat-web-follow-measurement.test.ts`：62 项通过。
 - `npm run typecheck --workspace @opencraft/workbench-web`：通过。
 - 未验证：真实登录、模型、Host 与外部服务链路下的实机流式会话；
   production 构建与 Electron 呈现按 build-matrix 另行验收。

@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { basename, join, relative, resolve } from "node:path";
 
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const sourceExtensions = new Set([".ts", ".tsx", ".js", ".mjs", ".cjs", ".scss"]);
@@ -309,8 +309,8 @@ for (const directory of ["apps/workbench-web/src/components", "apps/workbench-ex
   })));
 }
 
-for (const entry of readdirSync(resolve(repositoryRoot, "tests"))) {
-  if (entry.startsWith("appserver-lab") && !entry.endsWith(".test.ts")) {
+for (const entry of readdirSync(resolve(repositoryRoot, "tests"), { recursive: true })) {
+  if (basename(entry).startsWith("appserver-lab") && !entry.endsWith(".test.ts")) {
     violations.push(`tests/${entry}: AppServer Lab tests must be TypeScript`);
   }
 }

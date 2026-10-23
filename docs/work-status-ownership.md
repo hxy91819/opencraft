@@ -52,11 +52,11 @@ they are not a claim that every upstream provider persists these new facts.
 
 ## Verification
 
-- `tests/chat-work-status.test.ts`: eligibility, final readiness, partition
+- `tests/chat/chat-work-status.test.ts`: eligibility, final readiness, partition
   ownership/count, stable identity, local stop, unknown history and formatting.
-- `tests/appserver-session.test.ts`: clocks survive authoritative membership
+- `tests/protocol/appserver-session.test.ts`: clocks survive authoritative membership
   replacement; removed content stays removed; subsequent Turns are isolated.
-- `tests/chat-runtime.test.ts`: replica facts survive fresh runtime creation.
+- `tests/chat/chat-runtime.test.ts`: replica facts survive fresh runtime creation.
 - `scripts/smoke-work-status.ts`: real Web Activity renderer with deterministic
   Items, live clock, full-width visible rule beneath toggle, expand without
   duplication, frozen timing, snapshot remount, interval cleanup and local stop.

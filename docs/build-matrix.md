@@ -219,7 +219,7 @@ repository visibility; installation/registry errors, secrets and functional
 regressions still fail. See [Security](../SECURITY.md#upstream-audit-policy-2026-10-18).
 
 Validate policy changes with
-`node --test tests/ci-plan.test.mjs tests/ci-workflows.test.mjs tests/dependency-audit.test.mjs`
+`node --test tests/tooling/ci-plan.test.mjs tests/tooling/ci-workflows.test.mjs tests/tooling/dependency-audit.test.mjs`
 and `actionlint` on the affected workflows. Tests cover Web-only defaults,
 explicit manual full requests, server tests versus archives, unavailable diffs,
 advanced base branches, deleted/renamed files, and changes exceeding 300 paths.
@@ -715,7 +715,7 @@ the harness. Teardown signals that group, waits for the server's `close` event
 before removing its temporary data. This covers background plugin clones after
 the leader exits. Bounded filesystem retries handle pending directory removal;
 errors still fail the smoke. No existing service or unrelated process is signaled.
-`tests/headless-smoke-process.test.mjs` verifies an orphan writer stops, an
+`tests/server/headless-smoke-process.test.mjs` verifies an orphan writer stops, an
 unrelated process survives and a nonresponsive leader is actually killed. The
 existing `test:headless-server` command includes these regressions, so both the
 Linux CI job and the complete core gate execute them.

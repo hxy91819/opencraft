@@ -27,24 +27,24 @@ export function planChanges(paths, { event = 'pull_request', unknownDiff = false
   // Advisory databases change even when lockfiles do not.
   if (event === 'push' || event === 'schedule') auditDirectories.forEach(dir => audits.add(dir));
   for (const path of paths) {
-    if (/^examples\/extensions\//.test(path) || path === 'tests/extension-example.test.ts'
+    if (/^examples\/extensions\//.test(path) || path === 'tests/extensions/extension-example.test.ts'
       || path === 'docs/extension-development.md' || path === 'docs/plugin-architecture.md'
       || path === 'CONTRIBUTING.md') {
       extensions = true;
       continue;
     }
     if (/^packages\/extension-(contract|runtime)\//.test(path)
-      || /^tests\/extension-.*\.test\.ts$/.test(path)
+      || /^tests\/extensions\/extension-.*\.test\.ts$/.test(path)
       || path === 'apps/workbench-web/src/runtime/module-url-extension-loader.ts') extensions = true;
     if (/^(docs|design|\.agents)\//.test(path) || /^[^/]+\.md$/i.test(path) || /(?:^|\/)(?:README|AGENTS)\.md$/i.test(path) || /^(LICENSE|NOTICE)(\.|$)/.test(path)) continue;
     if (/^(packaging\/web-server\/|scripts\/server-deployment\/)/.test(path)
       || /^(scripts\/(package-headless-linux\.mjs|install-headless-linux\.sh|headless-(codex-launcher|server-launcher)\.sh|smoke-headless-package\.mjs|headless-web-release\.mjs)|config\/build-matrix\.json)$/.test(path)
-      || /^tests\/(headless-installer|server-deployment)\.test\.mjs$/.test(path)) {
+      || /^tests\/server\/(headless-installer|server-deployment)\.test\.mjs$/.test(path)) {
       headlessTests = true;
       headlessPackage = true;
     }
     if (/^\.github\//.test(path) || /^(package(?:-lock)?\.json|\.npmrc|\.nvmrc|tsconfig[^/]*|config\/build-matrix\.json)$/.test(path)
-      || path === 'scripts/ci-plan.mjs' || path === 'tests/ci-plan.test.mjs') { automaticChecks(); continue; }
+      || path === 'scripts/ci-plan.mjs' || path === 'tests/tooling/ci-plan.test.mjs') { automaticChecks(); continue; }
     if (path === '.gitleaks.toml') continue; // Secrets scan always runs.
     if (/^(runtime\/dsh|hemesclient)\/(package(?:-lock)?\.json|\.npmrc)$/.test(path)) {
       audits.add(path.startsWith('runtime/') ? 'runtime/dsh' : 'hemesclient');

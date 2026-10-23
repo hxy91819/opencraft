@@ -49,7 +49,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Test release selection
-        run: node --test tests/release-request.test.mjs
+        run: node --test tests/tooling/release-request.test.mjs
       - name: Select the exact release request
         id: request
         run: node scripts/release-request.mjs
@@ -157,7 +157,7 @@ jobs:
 
       - name: Test public archive behavior
         if: ${{ inputs.oidc_probe != true }}
-        run: node --test tests/public-release.test.mjs
+        run: node --test tests/tooling/public-release.test.mjs
 
       - name: Identify the locked Playwright version
         if: ${{ inputs.oidc_probe != true }}

@@ -146,7 +146,7 @@ newer native choices during ordinary activation. Existing sessions that never
 persisted their old baseInstructions cannot recover that previously discarded
 value. Prompt contents and arbitrary provider errors are not diagnostic output.
 
-`tests/dsh-blocks.test.ts`, `tests/dsh-instructions.test.mjs` and
+`tests/execution/dsh-blocks.test.ts`, `tests/execution/dsh-instructions.test.mjs` and
 `scripts/smoke-dsh-instructions.ts` exercise block completion/reconciliation,
 scoped isolation, bounded forks, concurrent resumes and real locked-runtime
 requests across whole-Host and engine-generation recovery. Inference in the

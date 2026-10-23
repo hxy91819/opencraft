@@ -128,9 +128,9 @@ resend. The existing explicit operator resend action retains its original
 warning and original destination. Records admitted before migration retain
 `reply_mode=final` and finish through the previous recovery path.
 
-Verification entries: `tests/session-capabilities.test.ts`,
-`tests/im-tool-reply.test.ts`, `tests/pi-durable-engine.test.ts` and
-`tests/dsh-capability-broker.test.ts`. Real native fixtures with local synthetic
+Verification entries: `tests/execution/session-capabilities.test.ts`,
+`tests/extensions/im-tool-reply.test.ts`, `tests/execution/pi-durable-engine.test.ts` and
+`tests/execution/dsh-capability-broker.test.ts`. Real native fixtures with local synthetic
 models distinguish protocol/tool isolation evidence from real IM delivery.
 
 Host tool refresh in Pi confirms an immutable schema snapshot only after native

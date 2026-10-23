@@ -299,7 +299,7 @@ reload restoration are not implemented. Expired Object URLs and unfinished attac
 failed removable cards asking the user to re-add the file, never as ready files.
 Storage corruption, denial or quota failures retain in-memory editing; diagnostics
 do not log content. Mounted Views do not subscribe to cross-tab changes.
-Tests: `tests/chat-browser-drafts.test.ts`, `npm run smoke:browser-drafts`.
+Tests: `tests/chat/chat-browser-drafts.test.ts`, `npm run smoke:browser-drafts`.
 
 Thread identity, execution activation, capability leases and revocation follow
 the [execution ownership contract](execution-ownership.md), including its
@@ -2317,7 +2317,7 @@ draft/focus and held fork state survive task-flow regrouping. Its desktop/touch
 and light/dark matrix covers independent menu hit targets, capability filtering,
 navigation/current-row semantics, stable status geometry and input-specific hover
 behavior. Action RPCs are synthetic. These observable checks replace JSX/SCSS
-spelling assertions in `tests/sidebar-activity.test.ts`; pure grouping, metadata
+spelling assertions in `tests/shell/sidebar-activity.test.ts`; pure grouping, metadata
 and stale-menu-close behavior remain covered by that unit suite.
 
 
@@ -3353,7 +3353,7 @@ render no floating notice or spinner. Only terminal/blocked failure or required 
 update presents an action row in normal flow above the Composer, with collapsed
 copyable technical details. Existing recovery owners, cold-state presentation,
 authority, outbox and command replay remain unchanged. The Application keeps its
-Composer and transcript mounted. `tests/conversation-recovery.test.tsx` checks
+Composer and transcript mounted. `tests/chat/conversation-recovery.test.tsx` checks
 quiet automatic retry and actionable failures.
 
 

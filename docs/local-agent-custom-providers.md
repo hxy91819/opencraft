@@ -127,7 +127,7 @@ missing required credential. No shared old secret is overwritten or deleted.
 
 ## Verification
 
-- `npx tsx --test tests/runtime-provider-service.test.ts tests/local-agent-host.test.ts`
+- `npx tsx --test tests/execution/runtime-provider-service.test.ts tests/execution/local-agent-host.test.ts`
 - `npm run smoke:local-agent`: actual bundled DSH, isolated data, authenticated
   WebSocket, both protocol registrations, restart persistence, unchanged defaults.
 
@@ -153,7 +153,7 @@ writers are outside that adapter queue; this is not a cross-process transaction.
 
 The protocol client carries an immutable hostId for every read/write/probe; it owns no UI state.
 
-Verification additionally uses `tests/model-services.test.ts` and
+Verification additionally uses `tests/execution/model-services.test.ts` and
 `scripts/smoke-model-services.ts` (real UI → isolated AppServer/DSH, with a local
 model endpoint). Empty optional `input: []` materialized by DSH is normalized to
 omission in the client read projection so round-trip saves keep inherited semantics.

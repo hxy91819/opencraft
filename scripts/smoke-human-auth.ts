@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { humanAuthFixture } from '../tests/human-auth-fixture';
+import { humanAuthFixture } from '../tests/support/human-auth-fixture';
 
 const output = process.env.OPENCRAFT_HUMAN_AUTH_REPORT ?? '/tmp/opencraft-human-auth-smoke';
 await mkdir(output, { recursive: true });

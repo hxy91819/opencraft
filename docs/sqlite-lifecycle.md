@@ -98,11 +98,11 @@ journal 后关闭连接，确认没有 sidecar，制作并校验 SHA-256 恢复�
 
 `openManagedDatabase` 的可选 `legacyMigration` 只处理没有账本且不匹配当前目标指纹的旧库；`accepts` 读取结构指纹和只读 schema objects（类型、名称、SQL），`migrate` 在写入前备份完成后执行。转换、最终目标指纹校验和既有版本账本登记在同一事务内原子提交，outcome 为 `migrated`；事务内重新核对识别时的结构与对象，防止转换前结构变化。失败回滚、保留备份并拒绝打开，不退回移开重建；重复打开为 `up-to-date`，不再转换。已匹配当前结构仍为 `adopted`，未知结构仍为 `moved-aside`。已有账本的 newer-schema/history-mismatch 校验在此入口之前执行，不允许 owner 转换绕过；已发布基线 SQL 与 checksum 不改。
 
-[AccountPool 测试](../tests/account-pool-host.test.ts) 保留原七列 fixture、账号和 ready 断言，并覆盖带辅助表/关联状态的旧库与重复打开；GitHub 移开用例改用真正未知结构。公共 [SQLite 测试](../tests/sqlite-node.test.ts) 覆盖转换失败和最终结构不符的回滚、恢复点及已有账本拒绝。
+[AccountPool 测试](../tests/identity/account-pool-host.test.ts) 保留原七列 fixture、账号和 ready 断言，并覆盖带辅助表/关联状态的旧库与重复打开；GitHub 移开用例改用真正未知结构。公共 [SQLite 测试](../tests/storage/sqlite-node.test.ts) 覆盖转换失败和最终结构不符的回滚、恢复点及已有账本拒绝。
 
 ### session-routing 已知无 intent 旧结构
 
-[routing owner](../apps/local-agent-host/src/dsh-session-routing.ts) 只接受与原两表结构匹配的无账本旧库：可以缺 `dsh_pending_generations.intent`，或缺原构造器会创建的 generations/pending 表。通过同一 `legacyMigration` 创建缺表并补 nullable intent；已有对象必须与这两种旧 DDL 定义一致。generation 全部坐标和 pending 记录保留；旧 pending.intent 为 null，不合成 publication evidence，原 `reconcile` 仍拒绝不完整发布。备份、转换/结构校验/账本原子性与 AccountPool 相同，已发布 BASELINE/checksum 不变；未知对象、列、约束或索引仍移开。对应 [routing 测试](../tests/dsh-session-routing.test.ts) 覆盖原映射、水位、pending、缺表、拒绝发布与重复打开；Host storage/daemon ready 投影已知旧 routing 的 `migrated` outcome，仍覆盖未知结构的 `moved-aside`。
+[routing owner](../apps/local-agent-host/src/dsh-session-routing.ts) 只接受与原两表结构匹配的无账本旧库：可以缺 `dsh_pending_generations.intent`，或缺原构造器会创建的 generations/pending 表。通过同一 `legacyMigration` 创建缺表并补 nullable intent；已有对象必须与这两种旧 DDL 定义一致。generation 全部坐标和 pending 记录保留；旧 pending.intent 为 null，不合成 publication evidence，原 `reconcile` 仍拒绝不完整发布。备份、转换/结构校验/账本原子性与 AccountPool 相同，已发布 BASELINE/checksum 不变；未知对象、列、约束或索引仍移开。对应 [routing 测试](../tests/execution/dsh-session-routing.test.ts) 覆盖原映射、水位、pending、缺表、拒绝发布与重复打开；Host storage/daemon ready 投影已知旧 routing 的 `migrated` outcome，仍覆盖未知结构的 `moved-aside`。
 
 ### 本次五个 Host owner 的旧构造器核对
 
@@ -111,10 +111,10 @@ journal 后关闭连接，确认没有 sidecar，制作并校验 SHA-256 恢复�
 | Host owner | 原行为证据与本次结论 | 数据验证 |
 |---|---|---|
 | session-routing | 原 owner 用 IF NOT EXISTS 分别建两表，并按列探测补 intent；已声明上节转换 | 原映射/全部 generation 坐标、无 intent 与缺表 pending、重复打开、拒绝不完整发布 |
-| executions | [DshExecutionAuthority](../apps/local-agent-host/src/dsh-execution-authority.ts) 原建两个输入表，HyperNode journal/queue initializeSchema 原文补其他表与三个索引；显式允许这些已知对象的缺失，不改镜像原文 | [execution 测试](../tests/dsh-execution-authority.test.ts)：缺 queue-state 或 actor 索引仍保留消息 ID 投影、submission、未消费队列、仍存在的暂停状态、epoch 递增；previous-boot fencing 仍终结旧执行，重复打开不再转换 |
-| managed-connectors | [ConnectorDatabase](../packages/connector-host/src/store.ts) 原 IF NOT EXISTS 建三表；显式补缺辅助表，已有表/约束必须合法，原重启取消 pending OAuth 仍执行 | [connector 测试](../tests/platform-connectors-host.test.ts)：缺 OAuth 表仍保留连接 revision/title、凭据与 OAuth 数据；缺 credentials 表只创建空表，不猜造秘密，保留已有 instance；未知索引/错误 FK 不接纳 |
-| threads | 原单表，完整旧记录自动 adopted；空库 fresh 已覆盖，无其他有源码证据的缺对象变体需要转换 | [thread-catalog 测试](../tests/thread-catalog.test.ts) 与独立旧构造器 fixture 证明记录保留；不加兼容回调 |
-| host-documents | 原 extension_records 已有 v1 账本；未知库/缺表原本拒绝，不能当已知 legacy 放宽 | [SQLite 测试](../tests/sqlite-node.test.ts) 覆盖原账本 up-to-date、文档保留与缺域表拒绝；不加兼容回调 |
+| executions | [DshExecutionAuthority](../apps/local-agent-host/src/dsh-execution-authority.ts) 原建两个输入表，HyperNode journal/queue initializeSchema 原文补其他表与三个索引；显式允许这些已知对象的缺失，不改镜像原文 | [execution 测试](../tests/execution/dsh-execution-authority.test.ts)：缺 queue-state 或 actor 索引仍保留消息 ID 投影、submission、未消费队列、仍存在的暂停状态、epoch 递增；previous-boot fencing 仍终结旧执行，重复打开不再转换 |
+| managed-connectors | [ConnectorDatabase](../packages/connector-host/src/store.ts) 原 IF NOT EXISTS 建三表；显式补缺辅助表，已有表/约束必须合法，原重启取消 pending OAuth 仍执行 | [connector 测试](../tests/extensions/platform-connectors-host.test.ts)：缺 OAuth 表仍保留连接 revision/title、凭据与 OAuth 数据；缺 credentials 表只创建空表，不猜造秘密，保留已有 instance；未知索引/错误 FK 不接纳 |
+| threads | 原单表，完整旧记录自动 adopted；空库 fresh 已覆盖，无其他有源码证据的缺对象变体需要转换 | [thread-catalog 测试](../tests/chat/thread-catalog.test.ts) 与独立旧构造器 fixture 证明记录保留；不加兼容回调 |
+| host-documents | 原 extension_records 已有 v1 账本；未知库/缺表原本拒绝，不能当已知 legacy 放宽 | [SQLite 测试](../tests/storage/sqlite-node.test.ts) 覆盖原账本 up-to-date、文档保留与缺域表拒绝；不加兼容回调 |
 
 `createMissingLegacyObjects` 只在 owner 显式给定上述旧 DDL 时提供 `legacyMigration`；逐个比较已有 schema object 的 type/name/SQL，只忽略引号外排版空白，保留 FK、STRICT、索引和其他约束定义。未知对象或定义不同不因另一个对象缺失而接纳。缺少的对象只按旧行为创建，不生成不存在的业务历史；该入口不扫描下游额外持久库，也不改变默认的未知库处置。
 
@@ -125,7 +125,7 @@ journal 后关闭连接，确认没有 sidecar，制作并校验 SHA-256 恢复�
 - Tasks 沿用已发布 v1 账本，拒绝非空无账本库；默认固定 Local Agent authority 预开，私有 Codex Tasks 仍在用户实际发现/使用功能时打开，capabilities 成功回执之前必须完成迁移。未使用它不创建第二份 Tasks 文件或阻止 Codex 连接。
 - SSH 保留原 v1 SQL/name/hash、私有路径/key/密文，v2 只投影旧 reader 的 user_version。已有 v1 及新建后中断于 v1 的受证结构可重试；未知基线、新版/错误账本、失去 key 都拒绝，不替换 credentials。
 - 新接入 owner 使用 `createSchemaValidator` 严格比对 sqlite_master 的 type/name/SQL（只忽略引号外排版与 IF NOT EXISTS）。有账本但丢表、约束或索引变更不能被 up-to-date 掩盖。最终 SQL、目标校验、最终账本记账位于同一迁移事务；legacy 转换同样在记账前校验。`legacyPolicy` 保持 Tasks/SSH 原拒绝无账本边界，state/attachments 只接纳有旧源码证据的已知结构，未知库保留原文件并拒绝；公共九库未启用该新策略，旧默认行为不改。
-- [下游 fixtures](../tests/downstream-sqlite-lifecycle.test.ts) 对照固定导入前源码，覆盖记录/关联/密文/CAS、重复打开、错误/新版历史、缺域对象、转换与 v2 失败回滚/恢复点。公共 runner 的无 owner 校验仍只提供下述有限指纹，不能声称所有历史库都做了 SQL 对象级检查。
+- [下游 fixtures](../tests/storage/downstream-sqlite-lifecycle.test.ts) 对照固定导入前源码，覆盖记录/关联/密文/CAS、重复打开、错误/新版历史、缺域对象、转换与 v2 失败回滚/恢复点。公共 runner 的无 owner 校验仍只提供下述有限指纹，不能声称所有历史库都做了 SQL 对象级检查。
 
 ## 5. 打开与升级流程
 
@@ -196,7 +196,7 @@ journal 后关闭连接，确认没有 sidecar，制作并校验 SHA-256 恢复�
 
 迁移 SQL 是第 2 节各 owner 源码里的 TS 常量，随 Main/Daemon/core bundle 交付，没有独立 SQL 资产目录或 manifest。migrations 为 readonly 的 version/name/sql 列表；返回 database 与 outcome（status、appliedVersion、可选 backupPath、movedAsidePaths）。共享包不导入 Feature/React、账户服务或执行引擎；连接不跨 IPC。生产不动态 diff 数据库，不依赖仓库 cwd、不联网下载迁移。
 
-executions 中 hypernode 表 DDL 以 [DSH_EXECUTION_BASELINE](../apps/local-agent-host/src/dsh-execution-authority.ts) 为基线权威；[execution-authority](../apps/local-agent-host/src/hypernode/execution-authority.js) 与 [thread-queue](../apps/local-agent-host/src/hypernode/thread-queue.js) 的 `initializeSchema` 保持与基线一致。当前构造器仍调用声明中的 `CREATE ... IF NOT EXISTS`，在已完成基线迁移的库上为 no-op，不承担表结构升级。[指纹等价测试](../tests/dsh-execution-authority.test.ts) 防止基线与初始化声明漂移。已发布 SQL 不改写，后续结构变化追加版本迁移；hypernode 变更还需同步基线与初始化声明，不能建立第二份升级 authority。
+executions 中 hypernode 表 DDL 以 [DSH_EXECUTION_BASELINE](../apps/local-agent-host/src/dsh-execution-authority.ts) 为基线权威；[execution-authority](../apps/local-agent-host/src/hypernode/execution-authority.js) 与 [thread-queue](../apps/local-agent-host/src/hypernode/thread-queue.js) 的 `initializeSchema` 保持与基线一致。当前构造器仍调用声明中的 `CREATE ... IF NOT EXISTS`，在已完成基线迁移的库上为 no-op，不承担表结构升级。[指纹等价测试](../tests/execution/dsh-execution-authority.test.ts) 防止基线与初始化声明漂移。已发布 SQL 不改写，后续结构变化追加版本迁移；hypernode 变更还需同步基线与初始化声明，不能建立第二份升级 authority。
 
 IndexedDB 使用原生升级事务，不运行 SQL runner；广播仅通知已提交 revision 失效，跨标签 CAS 仍由事务保证。浏览器没有桌面文件快照能力，不把 abort 回滚称为文件备份，不通过删库处理 VersionError。
 
@@ -206,8 +206,8 @@ IndexedDB 使用原生升级事务，不运行 SQL runner；广播仅通知已�
 
 - 十三类物理库接入共享生命周期；document-storage 保持原 v1 SQL/hash，extensions 与 host-documents 共用实现但账本各自独立；threads 增加 payload 版本守卫。
 - Local Agent 配置目录的六库启动门禁、owner claim、认证 ready 摘要及 gateway 健康投影；OAuth 清理与 execution fencing 保留在业务 owner。
-- [共享模块测试](../tests/sqlite-node.test.ts) 覆盖空库、旧库采纳/移开、多版本升级、重复打开、checksum/未知新版拒绝、事务回滚、WAL 备份与保留；各 store 测试验证原领域读写/CAS 和旧库处置。
-- [Host storage 测试](../tests/local-agent-storage.test.ts)、[daemon 测试](../tests/opencraft-daemon.test.ts)、[更新器测试](../tests/server-deployment.test.mjs) 覆盖双启动、启动失败拒绝 ready、旧五库/新完整 owner 摘要与健康失败回退。
+- [共享模块测试](../tests/storage/sqlite-node.test.ts) 覆盖空库、旧库采纳/移开、多版本升级、重复打开、checksum/未知新版拒绝、事务回滚、WAL 备份与保留；各 store 测试验证原领域读写/CAS 和旧库处置。
+- [Host storage 测试](../tests/storage/local-agent-storage.test.ts)、[daemon 测试](../tests/execution/opencraft-daemon.test.ts)、[更新器测试](../tests/server/server-deployment.test.mjs) 覆盖双启动、启动失败拒绝 ready、旧五库/新完整 owner 摘要与健康失败回退。
 - 既有 [服务器 smoke](../scripts/smoke-server-updates.ts) 使用真实 npm、生产 SPA、打包 gateway/daemon 与 Codex CLI，推理为合成回环服务，systemd 为隔离重启替身。早期 routing 移开报告不再证明当前已知无 intent 的处理；当前原子转换与未知拒绝/移开由 owner fixtures 验证。本阶段不宣称重跑完整更新 gate 或真实局域网端到端。
 
 ### 明确未做
@@ -268,7 +268,7 @@ The Headless installation lock scopes the owner by stable Server; shutdown retir
 proxy sessions, metadata work and the read-only native client before closing this
 connection. Startup failure releases resources and refuses readiness. Health lists
 `thread-identity`, `hostId: opencraft-server`, version and opening outcome.
-[Unified identity tests](../tests/unified-thread-identity.test.ts) cover fresh/reopen
+[Unified identity tests](../tests/identity/unified-thread-identity.test.ts) cover fresh/reopen
 ledger and data retention, checksum/newer-schema rejection, shared Codex/DSH
 semantics, real WebSocket ingress and automatic Headless wiring across restart.
 This new owner has no prior schema to upgrade; existing OpenCraft Host state upgrade fixtures
@@ -520,12 +520,12 @@ backup under the [backup and recovery procedure](#备份与恢复), accounting f
 writes made after that backup; simply starting an older binary is not a data
 rollback.
 
-`tests/owned-host-storage-names.test.ts` covers populated ledgered and unledgered
+`tests/storage/owned-host-storage-names.test.ts` covers populated ledgered and unledgered
 upgrades, preservation of every business table, old ledger/checksum retention,
 pre-upgrade backup contents, repeat opening, failure after a partial rename,
 retry, refusal by older readers, and both old and new checksum tampering.
 
-`tests/owned-database-path.test.ts` covers fresh and legacy path selection,
+`tests/storage/owned-database-path.test.ts` covers fresh and legacy path selection,
 reopen/data preservation, refusal without writes when both stores exist or
 sidecars are orphaned, unchanged active legacy WAL during path selection, and
 metering import from both selected paths.

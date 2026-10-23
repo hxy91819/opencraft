@@ -867,7 +867,7 @@ change syntax identity, schedule animation or own execution.
 
 ## Markdown 文件预览
 - 文件标题栏提供文件树显隐开关；收起后内容占满宽度，树保持挂载以保留展开、搜索和滚动位置，不重建预览或编辑器。只读嵌入预览仍无目录入口。验证：`scripts/smoke-file-tree-toggle.ts`。
-- 文件树的目录数据归Host作用域Query缓存，展开/键盘活动项/滚动归当前面板；按数据版本排序、展开分支拍平，DOM仅挂载可视窗口和overscan。侧栏/聊天更新不得触发未变化目录排序或每目录会话订阅。隐藏和搜索保留展开/滚动，键盘上下/Home/End/左右/Enter与选中文件仍可达；目录折叠后迟到数据不恢复子行。验证：`tests/workspace-file-tree-model.test.ts`、`scripts/smoke-workspace-file-tree.ts`。
+- 文件树的目录数据归Host作用域Query缓存，展开/键盘活动项/滚动归当前面板；按数据版本排序、展开分支拍平，DOM仅挂载可视窗口和overscan。侧栏/聊天更新不得触发未变化目录排序或每目录会话订阅。隐藏和搜索保留展开/滚动，键盘上下/Home/End/左右/Enter与选中文件仍可达；目录折叠后迟到数据不恢复子行。验证：`tests/resources/workspace-file-tree-model.test.ts`、`scripts/smoke-workspace-file-tree.ts`。
 - 下载按钮沿用文件标题栏同排操作的尺寸、图标和反馈样式；不单独放大下载控件或为它撑高标题栏。
 - 文件预览标题栏右侧提供下载原文件；包括空文件、图片和不可预览的二进制。下载使用当前 Host/path/runtime generation 下已读取的 Blob 和文件名，不导出渲染 HTML 或未保存编辑草稿，不写回 Host。读取未完成、读取失败或旧资源 URL 尚未替换时禁用；切换身份/关闭释放 URL。只读内嵌预览同样允许下载。
 - 文件面板默认将 `.md` / `.markdown`（大小写不敏感）交给既有 WebChatDocument 排版，可切换到原始文本；不将原始 HTML 注入 DOM。相对文件链接与图片以当前文件目录解析，继续消费当前 Host 的资源接口和 Blob lease。
@@ -951,7 +951,7 @@ Sidebar Server 来源以 metadata 项目名前的7px实心圆点呈现，仅 rem
 - 执行端概览与配置入口走既有应用 Router，不改变聊天 Host，不新增服务器创建/编辑流程。主从页保持自身滚动，身份头由 Settings Shell 持有。
 - Web 启动按 Host ID 补齐部署声明但尚未保存的连接；已有连接的地址、名称、停用与可见性偏好不被部署默认值覆盖。Codex 账户只有读取成功且为空时显示无账户，读取失败原位报错并允许刷新，不引导重新绑定。
 
-- 验证：`tests/settings-machines.test.tsx`、`tests/settings-machine-navigation.test.ts` 检查当前机器入口、一级插件页面、高亮、PUSH/POP 与返回；`tests/extension-runtime.test.ts` 验证固定 owner 与无效 owner 原子拒绝。2026-10-12 已验证真实 Web 直连执行端及当前源码 Linux Electron 隔离 profile；macOS 桌面尚未实机验证。
+- 验证：`tests/shell/settings-machines.test.tsx`、`tests/shell/settings-machine-navigation.test.ts` 检查当前机器入口、一级插件页面、高亮、PUSH/POP 与返回；`tests/extensions/extension-runtime.test.ts` 验证固定 owner 与无效 owner 原子拒绝。2026-10-12 已验证真实 Web 直连执行端及当前源码 Linux Electron 隔离 profile；macOS 桌面尚未实机验证。
 
 - 执行端名称、位置和状态灯组成一个语义 button，点击名称行打开该 Host 概览；不再增加“概览”子项。概览只高亮名称行，配置页只高亮对应子项；所有入口继续使用同一 Router 路由，保留旧概览链接与 POP 恢复。
 
@@ -965,7 +965,7 @@ Sidebar Server 来源以 metadata 项目名前的7px实心圆点呈现，仅 rem
 - 切换运行位置保留草稿内容；暂不可用的附件原位标注，不静默删除。
 - Web 不显示「这台…」；只有桌面端本机 daemon 所在机器显示「这台 Mac / 这台电脑」。云端资源生命周期与连接状态分开呈现。
 - 设置的「运行 › 机器」使用同一 `groupWorkInMachines` / `workInMachineName` 投影：一台机器一行，未知身份 Host 独立成行，云端独立成组。机器内按 Agent 呈现目标 Host 的设置与连接，不在侧栏重复列 Host；旧 `execution-<hostId>` 以及身份晚到前的未知机器路由由 Router REPLACE 纠正。「运行」分组依次提供一级入口「模型服务」「Codex 账户」「机器」；前两项直达现有固定 targetHostId 的插件页，仅高亮对应入口，并以「用于」标签呈现机器归属。机器内入口与返回机器行为保留；idle 表示尚未启动，连接地址单行省略并提供完整 title。模型服务与 Codex 账户仍归各自 Host，不提供服务端统一中转或多机器选择器。
-- 验证：`tests/settings-machines.test.tsx`、`tests/settings-machine-navigation.test.ts`、`tests/work-in-*.test.ts`、`tests/opencraft-daemon.test.ts`；Web 与 Linux Electron 实测，macOS 窗口、真实多机器与下游产品云端链路尚未实测。
+- 验证：`tests/shell/settings-machines.test.tsx`、`tests/shell/settings-machine-navigation.test.ts`、`tests/work-in-*.test.ts`、`tests/execution/opencraft-daemon.test.ts`；Web 与 Linux Electron 实测，macOS 窗口、真实多机器与下游产品云端链路尚未实测。
 
 ### 服务器更新范围与任务连续性
 
@@ -990,7 +990,7 @@ Sidebar Server 来源以 metadata 项目名前的7px实心圆点呈现，仅 rem
 - Thread 记忆按现有 product/Host/Profile 加当前 account/region 作用域；未知账号归属的旧 selection 不转给新账号，不删原历史。账号撤销、路由/草稿代次及 Application 释放共同隔离晚到结果；隐藏/重新显示与重连不重建草稿或机器 authority。
 - Node SQLite 一个物理文件只能有一个迁移/连接 owner；OpenCraft Host queue、sender、企业身份 presence/state 同库，metadata consumer 不再 CREATE 或独自关闭。Tasks/SSH 已发布 SQL/hash 不变，未知账本拒绝，已知旧记录在备份/原子转换中保留；没有空列表替代已知旧库数据。
 - Local Agent 配置目录的 Tasks 属于启动 gate；可选 Codex Tasks/SSH 私有 owner 按功能真实使用打开，能力成功回执先验证数据。迁移 outcome 不代表全部可选引擎已初始化，不把失败库误报 ready。
-- 验证：`tests/downstream-sqlite-lifecycle.test.ts`、`tests/workbench-product-icons.test.tsx`、`tests/work-in-draft.test.ts`、下游 `products/<product>/tooling/smoke-product-isolation.mjs`。真实三面 release DOM、企业服务/RFC6455/AppServer bridge、浅深×DPR1/2 的外部边界为本地合成账号/Host；完整 gate、真实企业账号/推理/SSH/发布仍留后续阶段。
+- 验证：`tests/storage/downstream-sqlite-lifecycle.test.ts`、`tests/shell/workbench-product-icons.test.tsx`、`tests/chat/work-in-draft.test.ts`、下游 `products/<product>/tooling/smoke-product-isolation.mjs`。真实三面 release DOM、企业服务/RFC6455/AppServer bridge、浅深×DPR1/2 的外部边界为本地合成账号/Host；完整 gate、真实企业账号/推理/SSH/发布仍留后续阶段。
 
 ### Header 首帧与浮动侧栏几何所有权
 
@@ -1316,7 +1316,7 @@ The right-panel toolbar consumes `--height-toolbar` as its content height. Its 1
 
 The unified desktop Shell exposes conversation search as a `shell.search` rail action, using the same navigation sizes and accessible tooltip as other actions. The mobile drawer projects that same action into a floating glass header button beside the wordmark, hiding the duplicate list row. It replaces the inline sidebar search input in that presentation. Cmd+K on macOS and Ctrl+K on Windows/Linux open the same app-level search from conversation and management routes, including while a composer is focused. Other dialogs and IME keep keyboard ownership. ModalSurface/Radix owns focus trapping, Escape, outside dismissal and focus restoration; search never rewrites the composer draft or sidebar filters/scroll state.
 
-The modal searches titles in the existing multi-Host loaded catalog, explicitly labels its all-server scope, orders by recency and identifies each result's server. Host + Thread remain the selection identity; disabled interactions stay disabled. Arrow keys and Enter navigate through the existing `selectConversation` authority. Closing clears the ephemeral query; presentations without unified navigation retain their original inline filtering. Evidence: `tests/conversation-search-shortcut.test.ts` and `scripts/smoke-conversation-search.ts`.
+The modal searches titles in the existing multi-Host loaded catalog, explicitly labels its all-server scope, orders by recency and identifies each result's server. Host + Thread remain the selection identity; disabled interactions stay disabled. Arrow keys and Enter navigate through the existing `selectConversation` authority. Closing clears the ephemeral query; presentations without unified navigation retain their original inline filtering. Evidence: `tests/chat/conversation-search-shortcut.test.ts` and `scripts/smoke-conversation-search.ts`.
 
 ### Conversation group disclosures
 
@@ -1399,7 +1399,7 @@ The built-in resource plugin owns one Files creation action for both empty-panel
   rejection must reach the storage recovery boundary; early recovery retains
   saved data, gives a reload action, and does not expose raw storage diagnostics.
 
-分支会话的参与者不继承父会话：新分支头像先显示已认证创建者，后续实际接收的用户消息增加参与者。历史消息继续保留原作者。继承来源由Host持久化，刷新、重连与再次分支不能将历史作者恢复为新分支成员；创建者在头像列表去重。证据：`tests/enterprise-identity-participants.test.ts`、`tests/opencraft-message-senders.test.ts`、`scripts/smoke-fork-participants.ts`。
+分支会话的参与者不继承父会话：新分支头像先显示已认证创建者，后续实际接收的用户消息增加参与者。历史消息继续保留原作者。继承来源由Host持久化，刷新、重连与再次分支不能将历史作者恢复为新分支成员；创建者在头像列表去重。证据：`tests/enterprise-identity-participants.test.ts`、`tests/chat/opencraft-message-senders.test.ts`、`scripts/smoke-fork-participants.ts`。
 
 - Workspace resource panels default to a collapsed file tree for all file types; the header folder
   toggle remains available. Manual visibility takes precedence for that panel
@@ -1842,7 +1842,7 @@ See [Tasks initial loading](../docs/workbench-design-language.md#tasks-initial-l
   keys. The thumbnail rail is inert document content within navigation buttons;
   only near-viewport thumbnails (at most eight) hold render handles. Hidden/
   detached views release thumbnail work; close/replacement cancels all handles.
-- Evidence: `tests/file-preview-core.test.ts`, `tests/structured-preview.test.ts`,
+- Evidence: `tests/resources/file-preview-core.test.ts`, `tests/resources/structured-preview.test.ts`,
   `scripts/smoke-office-preview.ts`, `scripts/smoke-structured-preview.ts`;
   detailed boundaries and limits: [file previews](../docs/file-preview.md).
 
@@ -2650,7 +2650,7 @@ render no floating notice or spinner. Only terminal/blocked failure or required 
 update presents an action row in normal flow above the Composer, with collapsed
 copyable technical details. Existing recovery owners, cold-state presentation,
 authority, outbox and command replay remain unchanged. The Application keeps its
-Composer and transcript mounted. `tests/conversation-recovery.test.tsx` checks
+Composer and transcript mounted. `tests/chat/conversation-recovery.test.tsx` checks
 quiet automatic retry and actionable failures.
 ## Account display identity
 

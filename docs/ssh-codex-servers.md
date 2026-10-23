@@ -45,7 +45,7 @@ OpenCraft installation on the remote machine.
   is not rewritten. No available follow-up action means the draft stays editable.
   Legacy Servers without a manifest retain existing behavior; malformed manifests
   fail closed. Read-only schema/real-target probes are not mutation or inference
-  verification. Regression coverage is in `tests/ssh-native-surface.test.ts` and
+  verification. Regression coverage is in `tests/resources/ssh-native-surface.test.ts` and
   the built Workbench SSH smoke (synthetic SSH exec, real broker/client/UI).
 - Initialization expires silent upstreams and bounds logical waiters. The remote
   request ledger is capped at 1,024. Short requests have a 30-second expiry;

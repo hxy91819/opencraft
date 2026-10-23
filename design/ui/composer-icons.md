@@ -86,7 +86,7 @@ import names alone does not prove complete coverage.
 
 Run `npm run check:icons` to inspect direct imports, re-exports, dynamic registry
 inputs and inline control SVG across Web, shared packages and plugins. Test the
-policy with `node --test tests/interface-icons-policy.test.mjs`. Product workspaces
+policy with `node --test tests/tooling/interface-icons-policy.test.mjs`. Product workspaces
 consume the same entry and must be scanned in their own delivery verification.
 
 The retained sidebar/split-panel family is the visual reference for common Web

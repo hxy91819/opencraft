@@ -67,7 +67,7 @@ Choose checks for the change instead of running every platform for every PR:
 | A workspace implementation | `npm run typecheck --workspace <package-name>` and its focused tests |
 | Cross-package contract or dependency boundary | Both consumers' typechecks/tests and `npm run check:boundaries` |
 | Web presentation or build integration | `npm run typecheck --workspace @opencraft/workbench-web` and `npm run matrix:build -- web-browser`, plus the actual affected interaction |
-| CI selection or aggregate gate | `node --test tests/ci-plan.test.mjs tests/ci-workflows.test.mjs` |
+| CI selection or aggregate gate | `node --test tests/tooling/ci-plan.test.mjs tests/tooling/ci-workflows.test.mjs` |
 
 The [build matrix](docs/build-matrix.md) describes explicit Electron/Expo/native
 validation. A browser build does not prove those platforms work. Extension CI

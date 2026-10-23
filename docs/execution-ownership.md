@@ -223,7 +223,7 @@ Logical client incarnation 与 physical socket、客户端提供的 logical ID �
 
 回归必须覆盖：注册悬挂时历史可读且停止可达；校验期间断线后迟到提交被拒绝；替换与 Turn 准入交错；同 socket logical client 重建；并发重复挂载；setup 挂载失败后原生列表无新 Session；释放与挂载交错；错误正文包含敏感内容仍不回传。
 
-模型测试从 `tests/thread-lifecycle.test.ts`、`tests/dsh-capability-broker.test.ts`、`tests/dsh-execution-authority.test.ts`、`tests/chat-workbench-draft.test.ts` 进入；真实引擎验证使用 `scripts/smoke-dsh-capability-plugin.ts`。这些是验收范围，不能把测试入口存在当成每种交错已完整验证。
+模型测试从 `tests/chat/thread-lifecycle.test.ts`、`tests/execution/dsh-capability-broker.test.ts`、`tests/execution/dsh-execution-authority.test.ts`、`tests/chat/chat-workbench-draft.test.ts` 进入；真实引擎验证使用 `scripts/smoke-dsh-capability-plugin.ts`。这些是验收范围，不能把测试入口存在当成每种交错已完整验证。
 
 ## 尚未闭合的交付边界
 
