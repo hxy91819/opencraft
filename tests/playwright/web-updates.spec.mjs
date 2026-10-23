@@ -113,7 +113,7 @@ test('generic release discovers runtime Codex Host and built-in settings before 
     ], builtinAgents: true, hypernode: false });
     const profiles = await page.evaluate(async () => {
       const db = await new Promise((accept, reject) => {
-        const request = indexedDB.open('vela-host-connections');
+        const request = indexedDB.open('opencraft-host-connections');
         request.onsuccess = () => accept(request.result); request.onerror = () => reject(request.error);
       });
       try { return await new Promise((accept, reject) => {

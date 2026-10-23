@@ -42,7 +42,7 @@ try {
   evidence.push("Cordis hot reload disposes actual Worker; pure payload upgrade persists; older activation refuses newer data");
   await a.evaluate(async () => {
     await (window as any).extensionStorageProbe.stop();
-    await new Promise<void>((resolve, reject) => { const request = indexedDB.open("fixture-vela-extension-data", 2); request.onsuccess = () => { request.result.close(); resolve(); }; request.onerror = () => reject(request.error); });
+    await new Promise<void>((resolve, reject) => { const request = indexedDB.open("fixture-opencraft-extension-data", 2); request.onsuccess = () => { request.result.close(); resolve(); }; request.onerror = () => reject(request.error); });
   });
   assert.equal(await b.evaluate(async () => { try { await (window as any).extensionStorageProbe.read(); return false; } catch { return true; } }), true);
   evidence.push("native IndexedDB versionchange closes both old connections; no automatic deletion or reload");
