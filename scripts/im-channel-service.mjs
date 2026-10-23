@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { randomBytes, randomUUID, createHash } from "node:crypto";
 import { SwitchboardStore } from "../plugins/im/src/store.ts";
+import { IM_REPLY_TOOL } from "../plugins/im/src/reply-tool.ts";
 import { ImPlugin } from "../plugins/im/src/server.ts";
 import {
   compileRoute,
@@ -101,7 +102,15 @@ export class ImChannelService {
       dependencies.credentials ??
       new ModelCredentialRepository(join(dependencies.dataDirectory, "models"));
     this.execution = createImExecution(dependencies);
-    this.im = new ImPlugin(this.store, this.execution);
+    this.im = new ImPlugin(this.store, this.execution, 1024, !!dependencies.capabilities);
+    this.unregisterCapabilities = dependencies.capabilities?.register({
+      id: 'im.reply',
+      tools: session => this.im.replyAvailable(session) ? [IM_REPLY_TOOL] : [],
+      call: (session, name, args, signal) => {
+        if (name !== 'im_reply') throw Error('capability_denied');
+        return this.im.reply(session, args, signal);
+      },
+    });
     this.adapters = new Map();
     this.serial = Promise.resolve();
     this.closed = false;
@@ -644,6 +653,7 @@ export class ImChannelService {
   async close() {
     if (this.closed) return;
     this.closed = true;
+    this.unregisterCapabilities?.();
     await this.serial.catch(() => {});
     for (const id of this.adapters.keys()) this.disconnect(id);
     await this.im.close();

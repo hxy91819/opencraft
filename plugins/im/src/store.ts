@@ -20,9 +20,16 @@ CREATE INDEX im_messages_channel ON im_messages(channel_id,created_at);
 CREATE TABLE im_identity_challenges(hash TEXT PRIMARY KEY, channel_id TEXT NOT NULL, actor_id TEXT NOT NULL, expires_at INTEGER NOT NULL) STRICT;
 CREATE TABLE im_sender_links(channel_id TEXT NOT NULL, sender_id TEXT NOT NULL, actor_id TEXT NOT NULL, PRIMARY KEY(channel_id,sender_id)) STRICT;
 `;
+const v3 = `
+ALTER TABLE im_messages ADD COLUMN reply_mode TEXT NOT NULL DEFAULT 'final';
+ALTER TABLE im_messages ADD COLUMN reply_ref TEXT;
+ALTER TABLE im_messages ADD COLUMN reply_expires_at INTEGER;
+CREATE UNIQUE INDEX im_messages_reply_ref ON im_messages(reply_ref) WHERE reply_ref IS NOT NULL;
+`;
 export const switchboardMigrations = [
   { version: 1, name: "im-switchboard", sql: schema },
   { version: 2, name: "im-programmable-routing", sql: v2 },
+  { version: 3, name: "im-explicit-replies", sql: v3 },
 ];
 
 export interface ChannelConfig {
@@ -54,6 +61,9 @@ export interface StoredMessage {
   request_id: string | null;
   reply_address: string | null;
   reply_text: string | null;
+  reply_mode: "final" | "tool";
+  reply_ref: string | null;
+  reply_expires_at: number | null;
   state: string;
   error: string | null;
   created_at: number;
@@ -68,7 +78,7 @@ export class SwitchboardStore {
       path,
       legacyPolicy: "reject",
       migrations: switchboardMigrations,
-      validateSchema: createSchemaValidator(schema + v2),
+      validateSchema: createSchemaValidator(schema + v2 + v3),
     });
   }
   get outcome() {
@@ -247,6 +257,7 @@ export class SwitchboardStore {
   }
   challenge(hash: string, id: string, actor: string) {
     const db = this.managed.database;
+    db.prepare("UPDATE im_messages SET state='reply_failed',error='reply_expired',updated_at=? WHERE reply_mode='tool' AND state IN ('accepted','submitted') AND reply_expires_at<=?").run(Date.now(), Date.now());
     db.prepare(
       "DELETE FROM im_identity_challenges WHERE expires_at<? OR (channel_id=? AND actor_id=?)",
     ).run(Date.now(), id, actor);
@@ -337,7 +348,7 @@ export class SwitchboardStore {
     value: Partial<
       Pick<
         StoredMessage,
-        "conversation_ref" | "request_id" | "reply_text" | "state" | "error"
+        "conversation_ref" | "request_id" | "reply_text" | "state" | "error" | "reply_mode" | "reply_ref" | "reply_expires_at"
       >
     >,
   ) {
@@ -347,6 +358,9 @@ export class SwitchboardStore {
       "reply_text",
       "state",
       "error",
+      "reply_mode",
+      "reply_ref",
+      "reply_expires_at",
     ];
     const entries = Object.entries(value).filter(([key]) =>
       allowed.includes(key),
@@ -357,6 +371,23 @@ export class SwitchboardStore {
           `UPDATE im_messages SET ${entries.map(([k]) => k + "=?").join(",")},updated_at=? WHERE id=?`,
         )
         .run(...entries.map(([, v]) => v ?? null), Date.now(), id);
+  }
+  submitted(id: string, requestId: string) {
+    // Admission may race the first tool invocation; never overwrite its effect state.
+    this.managed.database.prepare("UPDATE im_messages SET request_id=?,state=CASE WHEN state='accepted' THEN 'submitted' ELSE state END,updated_at=? WHERE id=?")
+      .run(requestId, Date.now(), id);
+  }
+  replyReference(ref: string): StoredMessage | null {
+    return this.managed.database.prepare("SELECT * FROM im_messages WHERE reply_ref=?").get(ref) as unknown as StoredMessage ?? null;
+  }
+  toolMessages(reference: string): StoredMessage[] {
+    this.prune();
+    return this.managed.database.prepare("SELECT * FROM im_messages WHERE conversation_ref=? AND reply_mode='tool' AND (state IN ('delivered','reply_unknown') OR (reply_expires_at>? AND state IN ('accepted','submitted','reply_attempting'))) ORDER BY created_at DESC LIMIT 1024")
+      .all(reference, Date.now()) as unknown as StoredMessage[];
+  }
+  claimReply(id: string, text: string): boolean {
+    return this.managed.database.prepare("UPDATE im_messages SET state='reply_attempting',reply_text=?,updated_at=? WHERE id=? AND reply_mode='tool' AND state IN ('accepted','submitted') AND reply_expires_at>?")
+      .run(text, Date.now(), id, Date.now()).changes === 1;
   }
   messages(id: string, limit = 100): StoredMessage[] {
     return this.managed.database
@@ -386,6 +417,7 @@ export class SwitchboardStore {
   }
   prune() {
     const db = this.managed.database;
+    db.prepare("UPDATE im_messages SET state='reply_failed',error='reply_expired',updated_at=? WHERE reply_mode='tool' AND state IN ('accepted','submitted') AND reply_expires_at<=?").run(Date.now(), Date.now());
     db.prepare(
       "DELETE FROM im_messages WHERE state IN ('delivered','ignored','failed','reply_failed','reply_unknown','unknown') AND created_at<?",
     ).run(Date.now() - 7 * 86_400_000);

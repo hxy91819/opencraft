@@ -252,7 +252,8 @@
     "smoke:control-icons": "node scripts/smoke-native-control-icons.mjs",
     "generate:control-icons": "tsx scripts/generate-native-control-icons.tsx",
     "test:pi-engine": "tsx --test tests/pi-durable-engine.test.ts tests/pi-model-configuration.test.ts tests/pi-runtime-packaging.test.mjs",
-    "test:im": "tsx --test tests/im-switchboard.test.ts tests/wecom-plugin.test.ts"
+    "test:im": "tsx --test tests/im-switchboard.test.ts tests/im-programmable.test.ts tests/im-tool-reply.test.ts tests/session-capabilities.test.ts tests/wecom-plugin.test.ts",
+    "test:session-capabilities": "tsx --test tests/session-capabilities.test.ts"
   },
   "dependencies": {
     "react": "19.3.1",

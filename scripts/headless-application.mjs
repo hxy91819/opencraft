@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { CapabilityBindings } from "../packages/session-capabilities/src/bindings.ts";
+import { SessionCapabilities } from "../packages/session-capabilities/src/index.ts";
+import { SessionCapabilityMcp, capabilitySigningKey } from "../packages/session-capabilities/src/mcp.ts";
 import { RemoteBrowserService } from './remote-browser-service.mjs';
 
 import { createObservabilityIngress } from "./observability-ingress.mjs";
@@ -241,6 +244,11 @@ export async function startHeadlessServer(options = {}, composition = {}) {
   let actorAccess;
   let humanAccounts;
   let imPlugins;
+  const capabilities = new SessionCapabilities();
+  let capabilityMcp;
+  let capabilityBindings;
+  let capabilitiesReadyResolve;
+  const capabilitiesReady = new Promise(resolve => { capabilitiesReadyResolve = resolve; });
   let humanAuth;
   let relay;
   let hubController;
@@ -251,6 +259,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
   let closing = null;
   const close = () => {
     if (closing !== null) return closing;
+    capabilitiesReadyResolve();
     codexReadiness?.close();
     observability?.close();
     closing = (async () => {
@@ -262,12 +271,13 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       const entryResults = await Promise.allSettled([ingress?.close(), sshNativeRpc?.close(), imPlugins?.close()]);
       entryResults.push(...await Promise.allSettled([actorCollaboration?.close()]));
       const results = [...entryResults, ...await Promise.allSettled([web?.close(), appHostServer?.close(), agent?.close()])];
+      results.push(...await Promise.allSettled([capabilityMcp?.close()]));
       results.push(...await Promise.allSettled([agentIdentity?.close()]));
       // Settle every provider/store before releasing the directory lock, even
       // when one disposer throws synchronously or returns a rejected promise.
       for (const dispose of [() => mcpApps?.close(), () => sshManagement?.close(), () => identity?.close?.(),
         () => humanAuth?.close(), () => humanAccounts?.close(),
-        () => actorStore?.close(), () => membership?.close(), () => releaseLock()]) {
+        () => capabilityBindings?.close(), () => actorStore?.close(), () => membership?.close(), () => releaseLock()]) {
         results.push(...await Promise.allSettled([Promise.resolve().then(dispose)]));
       }
       const failures = results.filter((result) => result.status === "rejected").map((result) => result.reason);
@@ -350,8 +360,12 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       desktop = new LocalDesktopService({ serverId, environmentId, principalId, observer, control,
         transport: desktopAccess === "trusted-internal" ? "same-origin-trusted-internal" : "same-origin-loopback" });
     }
+    capabilityBindings = new CapabilityBindings(join(dataDirectory, "session-capabilities.sqlite"));
+    capabilityMcp = new SessionCapabilityMcp(capabilities, capabilitySigningKey(join(dataDirectory, "session-capabilities.key")), capabilityBindings);
+    await capabilityMcp.listen();
     const startAgent = options.startAgentHost ?? startLocalAgentHost;
     const startDsh = () => startAgent({
+      sessionCapabilities: capabilities.scoped(`server:${machineIdentity.machineId}:dsh`),
       dshExecutable: options.dshExecutable ?? join(root, "runtime/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"),
       dshCapabilityPlugin: options.dshCapabilityPlugin ?? join(root, "runtime/dsh/opencraft-capability-plugin.mjs"),
       runtimeDirectory: options.runtimeDirectory ?? join(root, "runtime"),
@@ -373,7 +387,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
     if (engines.includes("pi")) {
       const piModels = await createPiModelConfiguration(join(dataDirectory, "models"), join(dataDirectory, "pi"));
       agent = await startEngineHost({
-        providers: [new PiEngine({ ...piModels, directory: join(dataDirectory, "pi"), cwd: options.runtimeDirectory ?? join(root, "runtime") })],
+        providers: [new PiEngine({ ...piModels, sessionCapabilities: capabilities.scoped(`server:${machineIdentity.machineId}:pi`), directory: join(dataDirectory, "pi"), cwd: options.runtimeDirectory ?? join(root, "runtime") })],
         defaultEngine: options.defaultEngine ?? (engines.includes("dsh") ? "dsh" : "pi"), machine: machineIdentity,
         resources: { projectDirectory: join(dataDirectory, "projects"), attachmentDirectory: join(dataDirectory, "agent", "attachments") },
         ...(engines.includes("dsh") ? { legacy: { id: "dsh", label: "DeepSeek Harness", start: startDsh } } : {}),
@@ -403,6 +417,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
         }
         if (hostId !== "local-codex") throw new Error(`Unknown server Host ${hostId}`);
         return new McpAppsTransport(new MachineIdentityTransport(machineIdentity, "Codex", () => options.createCodexTransport?.() ?? new CodexEngineAdapter({
+          sessionMcp: async threadId => { await capabilitiesReady; return capabilityMcp.config({serverId:actorCollaboration.execution.serverId,threadId}); },
           createThreadMetadata,
           tokenUsage: {
             queryWorkerEntry: existsSync(fileURLToPath(new URL('./token-usage-query-worker.mjs',import.meta.url)))
@@ -473,6 +488,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       sshManagement,
       getPluginHealth: () => imPlugins ? {'opencraft.im':imPlugins.states()} : {},
       getStorageOutcomes: () => [
+        ...(capabilityBindings ? [{name:'session-capabilities',status:capabilityBindings.outcome.status,appliedVersion:capabilityBindings.outcome.appliedVersion,movedAside:capabilityBindings.outcome.movedAsidePaths.length>0}] : []),
         ...(imPlugins ? [{name:'im-switchboard',status:imPlugins.outcome.status,appliedVersion:imPlugins.outcome.appliedVersion,movedAside:imPlugins.outcome.movedAsidePaths.length>0}] : []),
         ...(agent.storageOutcomes ?? []),
         {name:"mcp-apps",status:mcpApps.outcome.status,appliedVersion:mcpApps.outcome.appliedVersion,movedAside:mcpApps.outcome.movedAsidePaths.length>0},
@@ -519,7 +535,8 @@ export async function startHeadlessServer(options = {}, composition = {}) {
     if (relayConfiguration) relay = connectRelay({ ...relayConfiguration.options, targetPort: relayConfiguration.options.targetPort ?? address.port });
     hubController.node?.start(address.port);
     if (options.codexCoreEndpoint) codexReadiness = maintainHeadlessCodexHost(appHostServer);
-    imPlugins = await startImPlugins(imConfiguration,{dataDirectory,actors:actorStore,collaboration:actorCollaboration,actorAccess,getAppHost:() => appHostServer,admittedActor:actorId => !instanceAccess || instanceAccess.admitsActor(actorId)});
+    imPlugins = await startImPlugins(imConfiguration,{dataDirectory,capabilities,prepareCapabilities: tools => capabilityMcp.prepare(tools),actors:actorStore,collaboration:actorCollaboration,actorAccess,getAppHost:() => appHostServer,admittedActor:actorId => !instanceAccess || instanceAccess.admitsActor(actorId)});
+    capabilitiesReadyResolve();
     return { url: `http://127.0.0.1:${address.port}`, listenHost, listenPort: address.port, close };
   } catch (error) {
     await close().catch(() => undefined);

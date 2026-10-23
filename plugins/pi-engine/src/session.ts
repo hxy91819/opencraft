@@ -49,7 +49,7 @@ export class PiDurableSession {
   private replaceTools!: (tools: Value[]) => void;
   private constructor(private readonly options: { cwd: string; file: string; agentDirectory: string; models: ModelRuntime; tools: Value[];
     ephemeral?: boolean; inherited?: PiForkContext;
-    onSnapshot(snapshot: PiSnapshot): Promise<void> | void; onTool(request: Value): Promise<unknown>; onExit(error: Error): void }) {}
+    onSnapshot(snapshot: PiSnapshot): Promise<void> | void; onTool(request: Value, signal: AbortSignal): Promise<unknown>; onExit(error: Error): void }) {}
   static async open(options: PiDurableSession["options"]) {
     const session = new PiDurableSession(options);
     try { await session.open(); return session; }
@@ -89,7 +89,7 @@ export class PiDurableSession {
           ctx.abortSignal?.addEventListener("abort", cancel, { once: true });
         });
         let result: Value;
-        try { result = await Promise.race([this.options.onTool({ id: api.callId, name: tool.piName, arguments: args }), cancelled]) as Value; }
+        try { result = await Promise.race([this.options.onTool({ id: api.callId, name: tool.piName, arguments: args }, ctx.abortSignal ?? new AbortController().signal), cancelled]) as Value; }
         finally { if (cancel) ctx.abortSignal?.removeEventListener("abort", cancel); }
         const output = (result?.contentItems ?? []).map((item: Value) => {
           if (item.type === "inputText" && typeof item.text === "string") return { type: "text" as const, text: item.text };

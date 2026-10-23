@@ -150,3 +150,11 @@ test("revoked capability owner cannot resurrect through a late registration", ()
     assert.equal(broker.list("s").length, 1);
   } finally { broker.close(); }
 });
+
+test("Host tools coexist with browser leases and survive browser disconnect",async()=>{
+ let enabled=true,calls=0;
+ const broker=new DshCapabilityBroker(undefined,{tools:id=>enabled&&id==="s"?[{name:"im_reply",description:"Reply",inputSchema:{type:"object"}}]:[],async call(id,name){assert.equal(id,"s");assert.equal(name,"im_reply");calls++;return {success:true,contentItems:[]};}});
+ broker.register("s",a,specs,()=>{});assert.deepEqual(broker.list("s").map(t=>t.name),["im_reply","browser_open"]);
+ assert.throws(()=>broker.register("s",a,[{...specs[0],name:"im_reply"}],()=>{}),/reserved/);broker.disconnect(a);assert.deepEqual(broker.list("s").map(t=>t.name),["im_reply"]);
+ await broker.invoke("s","turn","im_reply",{},new AbortController().signal,b);assert.equal(calls,1);enabled=false;await assert.rejects(broker.invoke("s","turn","im_reply",{},new AbortController().signal,b));broker.close();
+});

@@ -1,4 +1,5 @@
 import { nodeObserver } from "../../../packages/observability-contract/node.mjs";
+import type { SessionCapabilityPort } from "@opencraft/session-capabilities";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -21,6 +22,7 @@ interface Session {
   createdAt: number; updatedAt: number; archived: boolean; projectId?: string | null; pendingRecovery?: boolean; tools: Value[];
   threadSource?: Value | null; sessionStartSource?: Value | string | null;
   ephemeral?: boolean; forkedFromId?: string; inherited?: PiForkContext; pinned?: boolean; pinnedAt?: number;
+  hostTools?: Value[];
   native?: PiDurableSession; starting?: Promise<PiDurableSession>; owner?: EngineClient; lease?: AbortController;
   active?: Value; turns?: Value[]; snapshot?: PiSnapshot; effort?: string; failed?: boolean;
 }
@@ -64,7 +66,7 @@ export class PiEngine {
   private readonly operations = new Map<string, Promise<unknown>>();
   private readonly modelsRuntime: ReturnType<typeof createPiModels>;
   private resolvedModels?: Awaited<ReturnType<typeof createPiModels>>;
-  constructor(private readonly options: { directory: string; cwd: string; modelDirectory?: string; models?: Awaited<ReturnType<typeof createPiModels>>; configuration?: PiModelConfiguration }) {
+  constructor(private readonly options: { directory: string; cwd: string; modelDirectory?: string; models?: Awaited<ReturnType<typeof createPiModels>>; configuration?: PiModelConfiguration; sessionCapabilities?: SessionCapabilityPort }) {
     nodeObserver("pi", { processResources: false });
     this.modelsRuntime = (options.models ? Promise.resolve(options.models) : createPiModels(options.modelDirectory ?? options.directory))
       .then(models => { this.resolvedModels = models; return models; });
@@ -100,7 +102,7 @@ export class PiEngine {
   private save(session: Session, pinState?: Pick<Session, "pinned" | "pinnedAt">): Promise<void> {
     if (session.ephemeral) return Promise.resolve();
     const { native: _native, starting: _starting, owner: _owner, lease: _lease, active: _active, turns: _turns,
-      snapshot: _snapshot, effort: _effort, failed: _failed, ...record } = session;
+      snapshot: _snapshot, effort: _effort, failed: _failed, hostTools: _hostTools, ...record } = session;
     const file = join(this.options.directory, `${session.id}.json`), temporary = `${file}.${randomUUID()}.tmp`;
     const operation = (this.writes.get(session.id) ?? Promise.resolve()).catch(() => {}).then(async () => {
       // Native snapshots can queue metadata while a pin write is pending. Read
@@ -123,6 +125,19 @@ export class PiEngine {
     if (session.owner === owner) return;
     session.lease?.abort(); session.owner = owner; session.lease = new AbortController();
   }
+  private hostTools(session: Session): Value[] {
+    const tools = (this.options.sessionCapabilities?.tools(session.id) ?? []).map(tool => ({ ...tool, namespace: null, piName: `opencraft_host_${tool.name}` }));
+    if (session.tools.some(tool => tools.some(host => identity(host) === identity(tool)))) throw new Error("Capability name reserved by Host");
+    session.hostTools = tools;
+    return tools;
+  }
+  private async refreshHostTools(session: Session): Promise<void> {
+    const previous = JSON.stringify(session.hostTools ?? []);
+    const tools = this.hostTools(session);
+    if (JSON.stringify(tools) === previous) return;
+    if (session.active) throw new Error("Wait until the Pi thread is idle before changing its tools");
+    if (session.native) session.native.tools([...session.tools, ...tools]);
+  }
   private async native(session: Session): Promise<PiDurableSession> {
     if (this.closed) throw new Error("Pi engine is closed");
     if (session.native) return session.native;
@@ -130,9 +145,14 @@ export class PiEngine {
     return session.starting ??= (async () => {
       const native = await PiDurableSession.open({ cwd: session.cwd, file: join(this.options.directory, `${session.id}.sqlite`),
         ephemeral: session.ephemeral, inherited: session.inherited,
-        agentDirectory: this.options.modelDirectory ?? this.options.directory, models: await this.modelsRuntime, tools: session.tools,
+        agentDirectory: this.options.modelDirectory ?? this.options.directory, models: await this.modelsRuntime, tools: [...session.tools, ...this.hostTools(session)],
         onSnapshot: snapshot => this.accept(session, snapshot),
-        onTool: async request => {
+        onTool: async (request, signal) => {
+          const hostTool = session.hostTools?.find(tool => tool.piName === request.name);
+          if (hostTool) {
+            if (!session.active) throw new Error("No active Pi execution");
+            return this.options.sessionCapabilities!.call(session.id, hostTool.name, request.arguments, signal);
+          }
           const tool = session.tools.find(tool => tool.piName === request.name), owner = session.owner, lease = session.lease;
           if (!tool || !owner || !lease || lease.signal.aborted || !session.active) throw new Error("No live platform tool owner");
           let expired!: () => void;
@@ -416,9 +436,10 @@ export class PiEngine {
     if (method === "runtime/capabilities/register") {
       if (session.active && session.owner && session.owner !== client) throw new Error("Cannot replace the platform tool owner during a Pi turn");
       const tools = flattenPiTools(params.dynamicTools ?? [], session.tools);
+      if (tools.some(tool => this.options.sessionCapabilities?.tools(session.id).some(host => tool.namespace === null && host.name === tool.name))) throw new Error("Capability name reserved by Host");
       if (!same(sortedTools(tools), sortedTools(session.tools))) {
         if (session.active) throw new Error("Cannot replace platform tools during a Pi turn");
-        if (session.ephemeral) (await this.native(session)).tools(tools);
+        if (session.ephemeral) (await this.native(session)).tools([...tools, ...this.hostTools(session)]);
         else { await session.native?.close(); session.native = undefined; }
         session.tools = tools; await this.save(session);
       }
@@ -432,6 +453,7 @@ export class PiEngine {
       const existing = clientId && session.turns?.find(turn => turn.id === turnId); if (existing) return { turn: existing };
       if (session.active) throw new Error("Pi thread already has an active turn");
       if (session.archived) throw new Error("Unarchive the Pi thread before executing");
+      await this.refreshHostTools(session);
       // Validate the full submission before applying persistent overrides.
       assertPiFields(params);
       const ref = selection(params.model ?? session.model), model = (await this.modelsRuntime).getModel(ref.provider, ref.modelId);
