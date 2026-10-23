@@ -5,18 +5,20 @@ const { randomUUID } = require('node:crypto');
  * clipboard or a DOM selection; the owned runtime returns the real Copy data. */
 function installClipboard(p, send) {
   const wc = p.window.webContents;
-  let context = null, generation = 0, busy = false;
-  const retire = () => { context = null; ++generation; };
+  let context = null, capturing = null, generation = 0, busy = false;
+  const retire = () => { context = null; capturing = null; ++generation; };
   const supported = frame => typeof frame?.getNativeClipboardContextForTesting === 'function'
     && typeof frame?.copyNativeClipboardForTesting === 'function';
   async function capture(frame) {
     retire();
     const version = generation, document = p.document;
     if (!p.visible || p.closed || !supported(frame)) return null;
+    capturing = { processId: frame.processId, routingId: frame.routingId };
+    const identity = capturing;
     const native = await frame.getNativeClipboardContextForTesting();
     if (generation !== version || p.document !== document || !p.visible || p.closed || !native?.available
       || typeof native.token !== 'string' || native.token.length > 128) return null;
-    return context = { id: randomUUID(), frame, token: native.token, document, expires: Date.now() + 15_000 };
+    return context = { id: randomUUID(), frame, ...identity, token: native.token, document, expires: Date.now() + 15_000 };
   }
   const onMenu = async (_event, params) => {
     const version = generation + 1;
@@ -34,8 +36,13 @@ function installClipboard(p, send) {
         ...(link ? { link } : {}) });
     } catch { /* A destroyed or unsupported frame has no actionable menu. */ }
   };
+  const onNavigation = (_event, _url, inPlace, mainFrame, processId, routingId) => {
+    if (inPlace) return;
+    const target = context ?? capturing;
+    if (mainFrame || target && target.processId === processId && target.routingId === routingId) retire();
+  };
   wc.on('context-menu', onMenu);
-  wc.on('did-start-navigation', retire);
+  wc.on('did-start-navigation', onNavigation);
   wc.on('render-process-gone', retire);
   return {
     available: () => supported(wc.mainFrame),
@@ -61,7 +68,7 @@ function installClipboard(p, send) {
           ...(result.html !== undefined ? { html: result.html } : {}) };
       } finally { busy = false; }
     },
-    dispose() { retire(); wc.off('context-menu', onMenu); wc.off('did-start-navigation', retire); wc.off('render-process-gone', retire); },
+    dispose() { retire(); wc.off('context-menu', onMenu); wc.off('did-start-navigation', onNavigation); wc.off('render-process-gone', retire); },
   };
 }
 module.exports = { installClipboard };
