@@ -87,3 +87,62 @@ export function createConversationExecution(getAppHost, {serverId, hostId = "loc
     async cancel(binding, id, queueId) { return (await invoke(binding, id, 'thread/queue/delete', { queuedSubmissionId: queueId })).deleted === true; },
   };
 }
+
+/** Full conversation identity selects the native engine. Actor run bindings and
+ * delegation stay on the default Codex authority until explicitly extended. */
+export function createRoutedConversationExecution(getAppHost, { machineId, engines, getInputs }) {
+  const descriptors = [{ serverId: `server:${machineId}:codex`, hostId: 'local-codex', label:'Codex' },
+    ...engines.map(engine => ({ serverId: `server:${machineId}:${engine}`, hostId: 'opencraft-server', engine, label:engine==='pi'?'Pi':'DSH' }))];
+  const ports = new Map(descriptors.map(server => [server.serverId, createConversationExecution(getAppHost, server)]));
+  const primary = ports.get(descriptors[0].serverId);
+  const reject = () => { throw Object.assign(new Error('Unsupported conversation execution'), {code:-32602}); };
+  const serverForHost = (hostId, threadId) => {
+    if (hostId === 'local-codex') return descriptors[0].serverId;
+    if (hostId !== 'opencraft-server') return reject();
+    return descriptors.find(server => server.engine === (threadId.startsWith('pi_') ? 'pi' : 'dsh'))?.serverId ?? reject();
+  };
+  const select = binding => {
+    const serverId = binding.serverId ?? primary.serverId, port = ports.get(serverId);
+    if (!port || binding.hostId !== port.hostId || serverForHost(port.hostId, binding.threadId) !== serverId) return reject();
+    return {port, engine: descriptors.find(server=>server.serverId===serverId).engine};
+  };
+  const native = async (binding,id,operation,input,canAdmit) => {
+    const {port,engine} = select(binding);
+    if (!engine) return port[operation](binding,id,input,canAdmit);
+    if (operation === 'add' && binding.mode === 'steer') return reject();
+    const inputs = await getInputs(engine);
+    if (!inputs) throw new Error('Native Host input unavailable');
+    const inputId = `actor-input:${id}`;
+    const receipt = operation === 'receipt' ? await inputs.receipt(binding.threadId,inputId)
+      : await inputs.submit(binding.threadId,inputId,input,canAdmit ?? (()=>false));
+    return receipt ? { id: inputId, state:receipt.state, targetTurnId:receipt.turnId } : null;
+  };
+  return { ...primary, servers:descriptors, owns:serverId=>ports.has(serverId), serverForHost,
+    hostForServer: serverId => ports.get(serverId)?.hostId ?? reject(),
+    async discover(search,cursor) {
+      const positions = cursor ? JSON.parse(Buffer.from(cursor,'base64url').toString()) : { codex:null, agent:engines.length ? null : false };
+      if (!positions || typeof positions !== 'object' || Array.isArray(positions)
+        || Object.keys(positions).some(key=>!['codex','agent'].includes(key))
+        || !['codex','agent'].every(key=>positions[key]===null || positions[key]===false || typeof positions[key]==='string')
+        || !engines.length && positions.agent!==false) throw new Error('Invalid conversation cursor');
+      // Both catalogs contribute to the first page; Pi/DSH must not be hidden
+      // behind every page of a large Codex history.
+      const [codex,agent] = await Promise.all([
+        positions.codex===false ? null : primary.discover(search,positions.codex),
+        positions.agent===false ? null : callConversationHost(getAppHost(),{hostId:'opencraft-server',threadId:''},'catalog','thread/list',
+          {limit:30,searchTerm:search.trim()||null,archived:false,cursor:positions.agent}),
+      ]);
+      const conversations = [...(codex?.conversations ?? []), ...(agent?.data ?? []).map(thread=>({
+        ref:{serverId:serverForHost('opencraft-server',thread.id),threadId:thread.id},title:thread.name||thread.preview||thread.id,
+      }))];
+      const following={codex:codex?.nextCursor ?? false,agent:agent?.nextCursor ?? false};
+      return {conversations,nextCursor:Object.values(following).some(value=>value!==false)?Buffer.from(JSON.stringify(following)).toString('base64url'):null};
+    },
+    read(ref,cursor) { const hostId=ports.get(ref.serverId)?.hostId ?? reject(); return select({...ref,hostId}).port.read(ref,cursor); },
+    validate(binding) { return select(binding).port.validate(binding); },
+    receipt:(binding,id)=>native(binding,id,'receipt'),
+    add:(binding,id,input,canAdmit)=>native(binding,id,'add',input,canAdmit),
+    steer(binding,...args) { const {port,engine}=select(binding); if(engine) return reject(); return port.steer(binding,...args); },
+    cancel(binding,...args) { const {port,engine}=select(binding); return engine?Promise.resolve(false):port.cancel(binding,...args); },
+  };
+}

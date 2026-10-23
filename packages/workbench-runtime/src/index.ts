@@ -76,3 +76,5 @@ export * from "./account-model-defaults";
 export * from "./submitted-message-display";
 
 export * from "./host-composer-commands";
+
+export * from "./connectors/headless-port";

@@ -49,7 +49,7 @@ export function buildCodexProxyCommand(options: Pick<SshCodexTransportOptions, "
   if (executable !== "codex" && !isAbsolute(executable)) throw new Error("Codex executable must be absolute");
   if (options.codexHome !== undefined && !isAbsolute(options.codexHome)) throw new Error("Codex home must be absolute");
   if (options.socketPath !== undefined && !isAbsolute(options.socketPath)) throw new Error("Codex socket path must be absolute");
-  // Same eight-byte probe and CODEX_REMOTE_PAYLOAD contract as Desktop/HyperNode.
+  // The proxy handshake uses an eight-byte probe and CODEX_REMOTE_PAYLOAD.
   // No bootstrap, pkill, upload or account/config rewrite. Login shell owns PATH.
   const payload = `printf '${marker}'; ${options.codexHome === undefined ? "" : `export CODEX_HOME=${quote(options.codexHome)}; `}exec ${executable === "codex" ? "codex" : quote(executable)} app-server proxy${options.socketPath === undefined ? "" : ` --sock ${quote(options.socketPath)}`}`;
   return `sh -c ${quote('CODEX_REMOTE_PAYLOAD="$1"; export CODEX_REMOTE_PAYLOAD; exec "${SHELL:-/bin/sh}" -lc "$CODEX_REMOTE_PAYLOAD"')} sh ${quote(payload)}`;

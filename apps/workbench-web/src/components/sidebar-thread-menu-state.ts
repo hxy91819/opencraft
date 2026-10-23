@@ -3,7 +3,7 @@ export type SidebarThreadMenuKind = "context" | "dropdown";
 export interface OpenSidebarThreadMenu {
   readonly hostId: string;
   readonly threadId: string;
-  readonly kind: SidebarThreadMenuKind | "badge";
+  readonly kind: SidebarThreadMenuKind | "badge" | "resources";
 }
 
 export type OpenSidebarMenu = OpenSidebarThreadMenu | { readonly kind: "filters" | "list-context" };

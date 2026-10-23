@@ -2,8 +2,8 @@ export function projectDshPermissions(value: any) {
   if (!["ask", "never"].includes(value?.approval) || !["read-only", "workspace-write", "danger-full-access"].includes(value?.sandbox?.mode)) throw new Error("DSH effective permission metadata is unavailable");
   return {
     approvalPolicy: value.approval === "ask" ? "on-request" : "never",
-    // DSH owns file-effect enforcement. Do not claim Codex's tmp exclusions
-    // or a full OS workspace sandbox from a different provider's metadata.
+    // DSH enforces file effects; externalSandbox reports that boundary.
+    // It does not assert temporary-directory exclusions or OS process isolation.
     sandbox: value.sandbox.mode === "danger-full-access"
       ? { type: "dangerFullAccess" }
       : { type: "externalSandbox", networkAccess: "enabled" },

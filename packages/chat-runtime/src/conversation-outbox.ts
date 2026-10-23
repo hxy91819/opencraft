@@ -62,7 +62,15 @@ export function createConversationOutbox(config: {
         // here loses automatic retry, never duplicates an uncertain execution.
         commit([{ ...head, state: "sending" }, ...entries.slice(1)]);
         notify();
-        if (disposed || owner !== generation || !config.ready()) break;
+        if (disposed || owner !== generation) break;
+        if (!config.ready() || config.blocked()) {
+          // Publishing custody can synchronously revoke dispatch readiness.
+          // No transport call has happened, so keep this input retryable.
+          commit(entries.map(entry => entry.intent.commandId === head.intent.commandId
+            ? { ...entry, state: "waiting" as const } : entry));
+          notify();
+          break;
+        }
         try {
           await config.send({ ...head.intent, target: { type: "enqueue-follow-up", key: config.key } },
             { canDispatch: () => !disposed && owner === generation && config.ready() });
@@ -157,7 +165,18 @@ export function createConversationOutbox(config: {
     reconcile(clientIds: ReadonlySet<string>) {
       const next = entries.filter(entry => entry.state === "waiting" || !clientIds.has(entry.intent.clientMessageId));
       if (next.length === entries.length) return;
-      try { commit(next); } catch (error) { storageError = error instanceof Error ? error : new Error(String(error)); }
+      const retired = entries.filter(entry => !next.includes(entry)).map(entry => entry.intent.commandId);
+      try {
+        commit(next);
+        config.retire(retired);
+        // Reconciliation may run inside snapshot derivation. Publish and drain
+        // after the new authoritative snapshot has replaced the previous one.
+        const owner = generation;
+        queueMicrotask(() => {
+          if (disposed || owner !== generation) return;
+          notify(); wake();
+        });
+      } catch (error) { storageError = error instanceof Error ? error : new Error(String(error)); }
     },
     dispose() { disposed = true; generation++; stop(); },
   };

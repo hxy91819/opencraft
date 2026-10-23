@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { HeadlessConnectors } from "../packages/connector-host/src/headless.ts";
 import { CapabilityBindings } from "../packages/session-capabilities/src/bindings.ts";
 import { SessionCapabilities } from "../packages/session-capabilities/src/index.ts";
 import { SessionCapabilityMcp, capabilitySigningKey } from "../packages/session-capabilities/src/mcp.ts";
@@ -24,6 +25,8 @@ import { AppHostServer } from "../packages/app-host-server/src/index.ts";
 import { AppServerIdentityOverlay } from "../apps/opencraft-daemon/src/appserver-identity-overlay.ts";
 import { CodexEngineAdapter } from "../apps/opencraft-daemon/src/codex-engine-adapter.ts";
 import { MachineIdentityTransport } from "../apps/opencraft-daemon/src/machine-transport.ts";
+import { WebSocketTransport } from "../packages/appserver-transport-websocket/src/index.ts";
+import { WebSocket } from 'ws';
 import { readDaemonMachineIdentity } from "../apps/opencraft-daemon/src/machine-identity.ts";
 import { readSshCodexServerBindings, createSshCodexEngineAdapter } from "../apps/opencraft-daemon/src/ssh-codex-connections.ts";
 import { SshManagement } from "../apps/opencraft-daemon/src/ssh-management.ts";
@@ -46,7 +49,7 @@ import { MembershipStore, InstanceAccess } from '../packages/access-control/src/
 import { ActorStore } from '../packages/access-control/src/actors.ts';
 import { ActorAccess } from '../packages/access-control/src/actor-access.ts';
 import { Collaboration, CollaborationHttpApi } from '../packages/access-control/src/collaboration.ts';
-import { createConversationExecution } from './conversation-execution.mjs';
+import { createRoutedConversationExecution } from './conversation-execution.mjs';
 import { readImConfiguration, startImPlugins } from './im-plugins.mjs';
 import { HumanAccounts } from '../packages/access-control/src/human-accounts.ts';
 import { LocalAccountServerPlugin } from '../plugins/local-account/src/server.ts';
@@ -228,6 +231,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
   await secureDataDirectory(dataDirectory);
   const releaseLock = await lockfile.lock(join(dataDirectory, "server"), { realpath: false, retries: 0 });
   let agent;
+  let dshAgent;
   let web;
   let appHostServer;
   let sshManagement;
@@ -244,6 +248,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
   let actorAccess;
   let humanAccounts;
   let imPlugins;
+  let connectorService;
   const capabilities = new SessionCapabilities();
   let capabilityMcp;
   let capabilityBindings;
@@ -269,8 +274,9 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       desktop?.close(); // Retire viewers before the execution provider; never stop the desktop.
       // Retire admitted ingress clients before their Host provider.
       const entryResults = await Promise.allSettled([ingress?.close(), sshNativeRpc?.close(), imPlugins?.close()]);
-      entryResults.push(...await Promise.allSettled([actorCollaboration?.close()]));
+      entryResults.push(...await Promise.allSettled([connectorService?.close(), actorCollaboration?.close()]));
       const results = [...entryResults, ...await Promise.allSettled([web?.close(), appHostServer?.close(), agent?.close()])];
+      results.push(...await Promise.allSettled([(await dshAgent?.catch(() => undefined))?.close()]));
       results.push(...await Promise.allSettled([capabilityMcp?.close()]));
       results.push(...await Promise.allSettled([agentIdentity?.close()]));
       // Settle every provider/store before releasing the directory lock, even
@@ -345,8 +351,12 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       trustedOrigin: request => instanceAccess?.trustedOrigin(request) ?? humanAuth?.trustedOrigin(request) ?? null,
     });
     const machineIdentity = await readDaemonMachineIdentity(dataDirectory, options.machineName);
+    const engines = options.engines ?? ["dsh"];
+    let piEngine;
+    const conversationExecution = createRoutedConversationExecution(() => appHostServer, {machineId:machineIdentity.machineId,engines,
+      getInputs:async engine => engine === 'pi' ? piEngine?.inputs : (await startDsh()).inputs});
     actorCollaboration = new Collaboration(join(dataDirectory, 'actor-collaboration.sqlite'), actorStore,
-      createConversationExecution(() => appHostServer, {serverId: `server:${machineIdentity.machineId}:codex`}), Date.now, actorId => !instanceAccess || instanceAccess.admitsActor(actorId));
+      conversationExecution, Date.now, actorId => !instanceAccess || instanceAccess.admitsActor(actorId));
     actorCollaborationApi = new CollaborationHttpApi(actorCollaboration, actorAccess);
     actorCollaboration.start();
     if (options.localDesktop === true) {
@@ -360,11 +370,23 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       desktop = new LocalDesktopService({ serverId, environmentId, principalId, observer, control,
         transport: desktopAccess === "trusted-internal" ? "same-origin-trusted-internal" : "same-origin-loopback" });
     }
+    connectorService = new HeadlessConnectors(join(dataDirectory, "connectors"), actorAccess,
+      { "local-codex": `server:${machineIdentity.machineId}:codex`, "opencraft-server": `server:${machineIdentity.machineId}:${options.defaultEngine ?? (engines.includes("dsh") ? "dsh" : "pi")}` },
+      capabilities, actorId => !instanceAccess || instanceAccess.admitsActor(actorId), undefined,
+      (hostId, threadId) => {
+        if (hostId === "local-codex") return `server:${machineIdentity.machineId}:codex`;
+        const engine = threadId.startsWith("pi_") ? "pi" : "dsh";
+        if (!engines.includes(engine)) throw new Error("Execution engine is unavailable");
+        return `server:${machineIdentity.machineId}:${engine}`;
+      });
     capabilityBindings = new CapabilityBindings(join(dataDirectory, "session-capabilities.sqlite"));
-    capabilityMcp = new SessionCapabilityMcp(capabilities, capabilitySigningKey(join(dataDirectory, "session-capabilities.key")), capabilityBindings);
+    capabilityMcp = new SessionCapabilityMcp(capabilities, capabilitySigningKey(join(dataDirectory, "session-capabilities.key")), capabilityBindings, {
+      descriptorPath:join(dataDirectory,'session-capabilities.json'),
+      authorizeInput:(session,inputId)=>actorCollaboration.authorizeInput(session.threadId,inputId,'queue',undefined,session.serverId),
+    });
     await capabilityMcp.listen();
     const startAgent = options.startAgentHost ?? startLocalAgentHost;
-    const startDsh = () => startAgent({
+    const startDsh = () => dshAgent ??= startAgent({
       sessionCapabilities: capabilities.scoped(`server:${machineIdentity.machineId}:dsh`),
       dshExecutable: options.dshExecutable ?? join(root, "runtime/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js"),
       dshCapabilityPlugin: options.dshCapabilityPlugin ?? join(root, "runtime/dsh/opencraft-capability-plugin.mjs"),
@@ -382,12 +404,12 @@ export async function startHeadlessServer(options = {}, composition = {}) {
         return readTaskCodexConversations(appHostServer, search, limit, cursor);
       },
       machineIdentity,
-    });
-    const engines = options.engines ?? ["dsh"];
+    }).catch(error => {dshAgent=undefined;throw error;});
     if (engines.includes("pi")) {
       const piModels = await createPiModelConfiguration(join(dataDirectory, "models"), join(dataDirectory, "pi"));
+      piEngine = new PiEngine({ ...piModels, sessionCapabilities: capabilities.scoped(`server:${machineIdentity.machineId}:pi`), directory: join(dataDirectory, "pi"), cwd: options.runtimeDirectory ?? join(root, "runtime") });
       agent = await startEngineHost({
-        providers: [new PiEngine({ ...piModels, sessionCapabilities: capabilities.scoped(`server:${machineIdentity.machineId}:pi`), directory: join(dataDirectory, "pi"), cwd: options.runtimeDirectory ?? join(root, "runtime") })],
+        providers: [piEngine],
         defaultEngine: options.defaultEngine ?? (engines.includes("dsh") ? "dsh" : "pi"), machine: machineIdentity,
         resources: { projectDirectory: join(dataDirectory, "projects"), attachmentDirectory: join(dataDirectory, "agent", "attachments") },
         ...(engines.includes("dsh") ? { legacy: { id: "dsh", label: "DeepSeek Harness", start: startDsh } } : {}),
@@ -409,6 +431,8 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       logicalClientRouting: true,
       physicalHostLifetime: "server",
       createTransport(hostId) {
+        if (hostId === 'opencraft-server') return new MachineIdentityTransport(machineIdentity,'OpenCraft',async () =>
+          new WebSocketTransport({url:agent.resolveWebsocketUrl?await agent.resolveWebsocketUrl():agent.websocketUrl,createSocket:url=>new WebSocket(url)}));
         const remote = remoteServers.get(hostId);
         if (remote) return new MachineIdentityTransport(null, "Codex", () => createSshCodexEngineAdapter(remote, dataDirectory, createThreadMetadata, storageOpened(hostId)));
         if (hostId.startsWith("ssh:")) {
@@ -481,6 +505,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       appServerIdentity: agentIdentity ?? null,
       mcpAppsService: mcpApps,
       getImService: () => imPlugins,
+      connectorService,
       loopbackOnly: host === "127.0.0.1",
       localAccess,
       appHostServer,
@@ -491,6 +516,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
         ...(capabilityBindings ? [{name:'session-capabilities',status:capabilityBindings.outcome.status,appliedVersion:capabilityBindings.outcome.appliedVersion,movedAside:capabilityBindings.outcome.movedAsidePaths.length>0}] : []),
         ...(imPlugins ? [{name:'im-switchboard',status:imPlugins.outcome.status,appliedVersion:imPlugins.outcome.appliedVersion,movedAside:imPlugins.outcome.movedAsidePaths.length>0}] : []),
         ...(agent.storageOutcomes ?? []),
+        ...(connectorService?.outcomes() ?? []),
         {name:"mcp-apps",status:mcpApps.outcome.status,appliedVersion:mcpApps.outcome.appliedVersion,movedAside:mcpApps.outcome.movedAsidePaths.length>0},
         ...(agentIdentity ? [{ name: "thread-identity", hostId: "opencraft-server", status: agentIdentity.store.outcome.status,
           appliedVersion: agentIdentity.store.outcome.appliedVersion, backupPath: agentIdentity.store.outcome.backupPath,

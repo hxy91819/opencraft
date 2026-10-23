@@ -30,11 +30,11 @@ export function assertPiFields(params: Value) {
     environments: v => Array.isArray(v) && v.length === 0,
     disabledPluginIds: v => Array.isArray(v) && v.length === 0,
     cyberAccessProgram: () => false, history: () => false,
-    // A resume page is a negotiation hint. Legacy history is hydrated by thread/read.
+    // Initial pages use the same bounded projection and cursor semantics as later reads.
     initialTurnsPage: v => typeof v === "object" && !Array.isArray(v)
       && Object.keys(v).every(key => ["limit", "itemsView", "sortDirection"].includes(key))
       && (v.limit == null || Number.isSafeInteger(v.limit) && v.limit > 0)
-      && (v.itemsView == null || ["full", "summary"].includes(v.itemsView))
+      && (v.itemsView == null || ["full", "summary", "notLoaded"].includes(v.itemsView))
       && (v.sortDirection == null || ["asc", "desc"].includes(v.sortDirection)),
     responsesapiClientMetadata: v => typeof v === "object" && Object.keys(v).length === 0,
   };

@@ -2023,7 +2023,6 @@ html[data-opencraft-window-type="browser"] .main-content-top-fade {
   gap: 16px;
 }
 
-.pending-conversation-status,
 .pending-conversation-error {
   display: flex;
   align-items: center;
@@ -2031,10 +2030,6 @@ html[data-opencraft-window-type="browser"] .main-content-top-fade {
   color: var(--color-text-secondary);
   font: var(--typography-metadata-font);
   letter-spacing: var(--typography-metadata-tracking);
-}
-
-.pending-conversation-status svg {
-  animation: workbench-spin 800ms linear infinite;
 }
 
 .pending-conversation-error {
@@ -12186,6 +12181,31 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
     }
   }
 }
+// Resource controls are siblings of navigation, alongside participant badges.
+.sidebar-activity-item-container:has(.sidebar-activity-item__resources-slot:not(:empty)) {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+.sidebar-activity-item__resources-slot {
+  grid-column: 3; grid-row: 1; z-index: 1;
+  display: flex; align-items: center;
+  &:empty { display: none; }
+}
+.sidebar-browser-resources {
+  @include controls.quiet-control;
+  @include typography.role(control-small, secondary);
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  min-width: var(--size-control-hit-min); min-height: var(--size-control-hit-min);
+  padding: 4px; white-space: nowrap;
+  > svg { flex: 0 0 auto; }
+}
+.sidebar-browser-resources-menu__title {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sidebar-browser-resources-menu {
+  max-width: min(320px, calc(100vw - 24px));
+  [role="menuitem"] { display: flex; align-items: center; gap: 8px; }
+  [role="menuitem"] > svg { flex: 0 0 auto; margin: 0; }
+}
 .sidebar-activity-item__state-label { flex: 0 0 auto; }
 .sidebar-new-chat {
   @include controls.navigation-control;
@@ -12685,6 +12705,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
   &:has(.sidebar-activity-item__state-label) {
     --sidebar-secondary-line-height: var(--typography-metadata-line-height);
   }
+  .sidebar-activity-item-container:not([data-badge-placement="metadata"]) .sidebar-activity-item__resources-slot,
   .sidebar-activity-item__badge-slot:not([data-placement="metadata"]),
   .sidebar-activity-item__trailing { translate: 0 var(--sidebar-title-accessory-offset); }
   .sidebar-activity-item__menu-trigger {

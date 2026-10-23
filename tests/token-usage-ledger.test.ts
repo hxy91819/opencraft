@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { OpenCraftHostStateDatabase, OPENCRAFT_HOST_STATE_MIGRATIONS } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
 import { OpenCraftTokenUsageLedger, normalizeUsageCounts, type UsageSource } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
+import { TokenUsageStateDatabase } from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import { openManagedDatabase } from "../packages/sqlite-node/src/index.js";
 
 const key = { threadId: "thread", turnId: "turn" };
@@ -15,9 +16,9 @@ const source = (amount = "100", id = "response", extra: Partial<UsageSource> = {
 });
 const complete = { executionState: "completed" as const, participantsComplete: true, usageComplete: true, responsesComplete: true };
 
-async function fixture(body: (state: OpenCraftHostStateDatabase, directory: string) => void | Promise<void>) {
+async function fixture(body: (state: TokenUsageStateDatabase, directory: string) => void | Promise<void>) {
   const directory = await mkdtemp(join(tmpdir(), "oc-token-usage-"));
-  const state = new OpenCraftHostStateDatabase(directory);
+  const state = new TokenUsageStateDatabase(directory);
   try { await body(state, directory); } finally { state.close(); await rm(directory, { recursive: true, force: true }); }
 }
 
@@ -63,7 +64,7 @@ test("pending identity can resolve before admission, without prematurely allocat
 test("metering contention fails immediately and restores the shared owner's busy timeout", () => fixture((state, directory) => {
   const ledger = new OpenCraftTokenUsageLedger(state, "server", () => 1000);
   ledger.startTurn(key, 1000, "human", true);
-  const blocker = new DatabaseSync(join(directory, "codex-host-queue.sqlite"));
+  const blocker = new DatabaseSync(join(directory, "token-usage.sqlite"));
   const before = state.database.prepare("PRAGMA busy_timeout").get()!.timeout;
   blocker.exec("BEGIN IMMEDIATE");
   try {

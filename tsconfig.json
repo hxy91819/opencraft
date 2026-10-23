@@ -22,6 +22,7 @@
     { "path": "./packages/file-preview-core" },
     { "path": "./packages/file-preview-web" },
     { "path": "./plugins/office-preview" },
+    { "path": "./plugins/structured-preview" },
     { "path": "./packages/browser-preview-bridge" },
     { "path": "./packages/bot-conversation" },
     { "path": "./packages/bot-conversation-appserver" },

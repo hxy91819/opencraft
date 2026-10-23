@@ -199,6 +199,12 @@ export class PiDurableSession {
       if (doc.developer == null) delete agent.instructions; else agent.instructions = doc.developer;
     }, context);
   }
+  /** A content-free native receipt lookup, independent of transcript projection. */
+  async execution(requestId: string): Promise<"running" | "completed" | "failed" | null> {
+    const record = await this.storage.submissionByRequest(this.root.id, requestId, context);
+    if (!record || record.type !== "input") return null;
+    return record.status === "done" ? "completed" : record.status === "unanswered" ? "failed" : "running";
+  }
   async submit(content: any, data: Value, requestId: string) {
     const admitted = await this.root.submit({ type: "input", content, whenBusy: "reject", requestId,
       entry: { kind: "opencraft.input", data } }, context);

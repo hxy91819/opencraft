@@ -60,6 +60,7 @@
     "@opencraft/plugin-cloud-desktop": "0.1.0",
     "@opencraft/plugin-hypernode": "0.1.0",
     "@opencraft/plugin-office-preview": "0.1.0",
+    "@opencraft/plugin-structured-preview": "0.1.0",
     "@opencraft/plugin-tasks": "0.1.0",
     "@opencraft/plugin-terminal": "0.1.0",
     "@opencraft/plugin-voice-input": "0.1.0",
@@ -92,7 +93,8 @@
     "react-router": "^7.13.1",
     "sonner": "2.0.8",
     "@opencraft/design-system-web": "0.1.0",
-    "@opencraft/plugin-im": "0.1.0"
+    "@opencraft/plugin-im": "0.1.0",
+    "@opencraft/plugin-thread-summary": "0.1.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",

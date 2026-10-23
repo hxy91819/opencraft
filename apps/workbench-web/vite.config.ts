@@ -405,6 +405,8 @@ export function createWorkbenchWebConfig(
         "react-dom/client",
         "react/jsx-runtime",
         "react/jsx-dev-runtime",
+        "fastdom/extensions/fastdom-promised.js",
+        "elkjs/lib/elk.bundled.js",
         // Deep CJS shim entries need explicit prebundling with noDiscovery.
         "core-js/es/iterator/index.js",
         "core-js/es/promise/with-resolvers.js",
@@ -481,7 +483,9 @@ export function createWorkbenchWebConfig(
           strictExecutionOrder: true,
           // Isolate stable third-party runtime from application/plugin hash churn.
           codeSplitting: { groups: [
-            { name: "react-runtime", test: /\/node_modules\/(?:react|react-dom|scheduler)\//, includeDependenciesRecursively: false },
+            // Optional document engines also import server rendering helpers; keep those
+            // with their lazy consumers instead of the startup React runtime.
+            { name: "react-runtime", test: id => /\/node_modules\/(?:react|react-dom|scheduler)\//.test(id) && !/\/react-dom\/(?:server(?:[./-])|cjs\/react-dom-server)/.test(id), includeDependenciesRecursively: false },
             { name: "icons", test: /\/node_modules\/lucide-react\//, includeDependenciesRecursively: false },
             { name: "startup-composition", test: /\/runtime\/(?:web-workbench-supervisor|web-workbench-application)\.ts$/, includeDependenciesRecursively: false },
             // Keep the shared dynamic-import helper separate from entry-only

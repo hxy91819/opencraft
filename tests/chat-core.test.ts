@@ -1093,7 +1093,7 @@ test("Codex tool facts survive projection and statistics deduplicate item update
           durationMs: 80,
         },
       },
-      { id: "search-1", type: "webSearch", payload: { query: "Codex activity rows", results: [] } },
+      { id: "search-1", type: "webSearch", payload: { query: "Activity rows", results: [] } },
     ],
   }]), createDefaultTimelineProjectorRegistry());
   const blocks = snapshot.frames.flatMap((frame) => frame.blocks);
@@ -2145,7 +2145,7 @@ test("Agent Activity reproduces active labels and deterministic completed summar
       { id: "run", type: "commandExecution", payload: { command: "npm test", status: "completed" } },
       { id: "patch", type: "fileChange", payload: { status: "completed", changes: [{ path: "app.ts", kind: "update" }, { path: "style.css", kind: "update" }] } },
       { id: "mcp", type: "mcpToolCall", payload: { server: "github", tool: "search", status: "completed", result: {} } },
-      { id: "web", type: "webSearch", payload: { query: "Codex activity" } },
+      { id: "web", type: "webSearch", payload: { query: "Activity summary" } },
       { id: "list", type: "dynamicToolCall", payload: { namespace: "codex_app", tool: "list_threads", status: "completed", success: true } },
       { id: "answer", type: "agentMessage", payload: { text: "Done", phase: "final_answer", completed: true } },
     ],
@@ -2194,8 +2194,8 @@ test("Web Search action details describe search, open-page, and find-in-page act
     items: [
       { id: "search", type: "webSearch", payload: { query: "fallback", action: { type: "search", query: "replica site:openai.com OR site:github.com" } } },
       { id: "multi", type: "webSearch", payload: { query: "fallback", action: { type: "search", queries: ["first query", "second query"] } } },
-      { id: "open", type: "webSearch", payload: { query: "fallback", action: { type: "openPage", url: "https://openai.com/codex" } } },
-      { id: "find", type: "webSearch", payload: { query: "fallback", action: { type: "findInPage", pattern: "resume", url: "https://openai.com/codex" } } },
+      { id: "open", type: "webSearch", payload: { query: "fallback", action: { type: "openPage", url: "https://example.test/docs" } } },
+      { id: "find", type: "webSearch", payload: { query: "fallback", action: { type: "findInPage", pattern: "resume", url: "https://example.test/docs" } } },
     ],
   }]), createDefaultTimelineProjectorRegistry()).frames.flatMap((frame) => frame.blocks);
   const details = blocks.map((block) => block.type === "tool-call" ? presentToolActivity(block).detail : null);
@@ -2205,8 +2205,8 @@ test("Web Search action details describe search, open-page, and find-in-page act
   assert.deepEqual(details, [
     "for replica | openai.com · github.com",
     "for first query ...",
-    "for https://openai.com/codex",
-    "for 'resume' in https://openai.com/codex",
+    "for https://example.test/docs",
+    "for 'resume' in https://example.test/docs",
   ]);
 });
 
@@ -2404,7 +2404,7 @@ test("unknown AppServer Item types remain visible and never break the projection
   const snapshot = projectTimeline(source([{
     id: "turn-unknown",
     status: "complete",
-    items: [{ id: "item-unknown", type: "futureCodexItem", payload }],
+    items: [{ id: "item-unknown", type: "futureEngineItem", payload }],
   }]), createDefaultTimelineProjectorRegistry());
 
   assert.equal(snapshot.frames[0]?.type, "event");
@@ -2412,7 +2412,7 @@ test("unknown AppServer Item types remain visible and never break the projection
     type: "unknown",
     id: "unknown:item-unknown",
     sourceItemIds: [asItemId("item-unknown")],
-    itemType: "futureCodexItem",
+    itemType: "futureEngineItem",
     payload,
   });
 });
@@ -3172,8 +3172,8 @@ test("reasoning stays inside response work but outside tool groups around commen
       } },
       { id: "commentary-two", type: "agentMessage", payload: { text: "Now I can continue with the adapter notes.", phase: "commentary", completed: true } },
       { id: "notes-read", type: "commandExecution", payload: {
-        command: "cat codex-tools.md",
-        commandActions: [{ type: "read", command: "cat", name: "codex-tools.md", path: "/workspace/codex-tools.md" }],
+        command: "cat adapter-notes.md",
+        commandActions: [{ type: "read", command: "cat", name: "adapter-notes.md", path: "/workspace/adapter-notes.md" }],
         status: "completed",
       } },
       { id: "answer", type: "agentMessage", payload: { text: "Done.", phase: "final_answer", completed: true } },

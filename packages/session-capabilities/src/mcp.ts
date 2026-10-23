@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { mkdirSync, openSync, readFileSync, closeSync, writeFileSync, statSync } from "node:fs";
 import { dirname } from "node:path";
+import { readFile, writeFile, rename, rm } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -21,13 +22,18 @@ export function capabilitySigningKey(path: string): Buffer {
   if (!info.isFile() || (info.mode & 0o077) || key.length !== 32) throw new Error("Invalid capability signing key");
   return key;
 }
+export function sessionCapabilityToken(key: Buffer, session: CapabilitySession): string {
+  const payload = Buffer.from(JSON.stringify(["session", session.serverId, session.threadId])).toString("base64url");
+  return payload + "." + createHmac("sha256", key).update(payload).digest("base64url");
+}
 export class SessionCapabilityMcp {
   private url: string | undefined;
   private readonly server;
   private readonly calls = new Set<Server>();
   private readonly pending = new Map<string, { tools: readonly CapabilityTool[]; expiresAt: number }>();
   private readonly memoryBindings = new Map<string, CapabilitySession>();
-  constructor(readonly capabilities: SessionCapabilities, private readonly key: Buffer, private readonly bindings?: CapabilityBindings) {
+  constructor(readonly capabilities: SessionCapabilities, private readonly key: Buffer, private readonly bindings?: CapabilityBindings,
+    private readonly options: { descriptorPath?: string; authorizeInput?: (session: CapabilitySession, inputId: string) => boolean } = {}) {
     this.server = createServer((request, response) => { void this.handle(request, response).catch(() => {
       if (!response.headersSent) response.writeHead(500); response.end();
     }); });
@@ -39,7 +45,7 @@ export class SessionCapabilityMcp {
     const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
     return payload + "." + this.signature(payload).toString("base64url");
   }
-  token(session: CapabilitySession): string { return this.sign(["session", session.serverId, session.threadId]); }
+  token(session: CapabilitySession): string { return sessionCapabilityToken(this.key, session); }
   private bindingToken(id: string): string { return this.sign(["binding", id]); }
   private authenticate(request: IncomingMessage): { session: CapabilitySession | null; tools?: readonly CapabilityTool[]; reservationId?: string } | null {
     const auth = request.headers.authorization;
@@ -65,6 +71,11 @@ export class SessionCapabilityMcp {
     const address = this.server.address();
     if (!address || typeof address === "string") throw new Error("Capability listener unavailable");
     this.url = `http://127.0.0.1:${address.port}/mcp`;
+    if (this.options.descriptorPath) {
+      const temporary = `${this.options.descriptorPath}.${randomUUID()}.tmp`;
+      try { await writeFile(temporary, JSON.stringify({ schemaVersion: 1, url: this.url }), { mode: 0o600 }); await rename(temporary, this.options.descriptorPath); }
+      finally { await rm(temporary, { force: true }); }
+    }
   }
   private configuration(token: string): Record<string, unknown> {
     if (!this.url) throw new Error("Capability listener unavailable");
@@ -97,7 +108,7 @@ export class SessionCapabilityMcp {
     response.setHeader("cache-control", "no-store");
     // This dedicated loopback listener uses session bearer auth, never ambient
     // browser cookies or an untrusted callerSessionId in tool arguments.
-    if (request.url !== "/mcp") { response.writeHead(404); response.end(); return; }
+    if (request.url !== "/mcp" && request.url !== "/admission") { response.writeHead(404); response.end(); return; }
     if (request.headers.origin !== undefined) { response.writeHead(403); response.end(); return; }
     const authenticated = this.authenticate(request);
     if (!authenticated) { response.writeHead(401); response.end(); return; }
@@ -113,6 +124,13 @@ export class SessionCapabilityMcp {
     let body: unknown;
     try { body = JSON.parse(Buffer.concat(chunks).toString()); }
     catch { response.writeHead(400); response.end(); return; }
+    if (request.url === "/admission") {
+      const inputId = (body as { inputId?: unknown } | null)?.inputId;
+      if (!authenticated.session || typeof inputId !== "string" || inputId.length > 512 || !inputId.startsWith("actor-input:")
+        || !body || typeof body !== "object" || Object.keys(body).some(key => key !== "inputId")) { response.writeHead(400); response.end(); return; }
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ allowed: this.options.authorizeInput?.(authenticated.session, inputId) === true })); return;
+    }
     const mcp = new Server({ name: "opencraft-session", version: "1.0.0" }, { capabilities: { tools: {} } });
     mcp.setRequestHandler(ListToolsRequestSchema, async () => {
       const tools = authenticated.session ? this.capabilities.tools(authenticated.session) : authenticated.tools ?? [];
@@ -134,6 +152,10 @@ export class SessionCapabilityMcp {
     await transport.handleRequest(request, response, body);
   }
   async close(): Promise<void> {
+    if (this.options.descriptorPath) {
+      try { const value = JSON.parse(await readFile(this.options.descriptorPath, "utf8")); if (value.url === this.url) await rm(this.options.descriptorPath); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    }
     this.url = undefined;
     await Promise.allSettled([...this.calls].map(server => server.close()));
     await new Promise<void>(resolve => { this.server.close(() => resolve()); this.server.closeAllConnections(); });

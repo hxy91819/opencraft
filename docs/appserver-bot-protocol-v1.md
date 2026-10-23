@@ -37,8 +37,8 @@ The following ownership rules are normative:
    Hermes, enterprise service, Electron, IndexedDB, or React types.
 4. A WebSocket connection is already scoped to one Host. Bot payloads must not
    repeat `hostId`; the outer `HostRuntimeRegistry` owns Host routing.
-5. A Bot Conversation is not a Codex Turn. Messages and Executions are separate
-   durable entities, and Presence is an expiring observation.
+5. Conversations, Messages, and Executions are separate durable entities.
+   Presence is an expiring observation.
 6. UI components never invent authoritative Messages or Executions. Optimistic
    state is identified by client IDs and reconciled with server receipts.
 

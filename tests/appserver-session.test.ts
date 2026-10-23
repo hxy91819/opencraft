@@ -58,7 +58,7 @@ interface HarnessOptions {
 }
 
 const initializeResult = {
-  codexHome: "/tmp/codex",
+  codexHome: "/tmp/appserver-session-fixture",
   platformFamily: "unix",
   platformOs: "linux",
   userAgent: "session-fixture/1",
@@ -80,7 +80,7 @@ function thread(id: string, turns: readonly Record<string, unknown>[] = [], hist
 function resumeResult(options: HarnessOptions) {
   return {
     thread: options.malformedResume ? { turns: [] } : thread("thread-one", options.responseTurns, options.historyMode),
-    model: "codex",
+    model: "fixture-model",
     modelProvider: "openai",
     serviceTier: "priority",
     reasoningEffort: "high",
@@ -396,7 +396,7 @@ test("ordinary tail hydration leaves older history lazy and explicit pagination 
     const drained = harness.runtime.views.get("thread-one");
     assert.deepEqual(drained?.turns.map((turn) => turn.id), ["turn-1", "turn-2", "turn-3"]);
     assert.equal(drained?.tailHydrationComplete, true);
-    assert.equal(drained?.execution.model, "codex");
+    assert.equal(drained?.execution.model, "fixture-model");
     assert.equal(drained?.execution.approvalPolicy, "on-request");
     assert.deepEqual(drained?.execution.runtimeWorkspaceRoots, ["/workspace"]);
     await harness.emit("thread/settings/updated", {
@@ -1363,7 +1363,7 @@ test("Resume projectors are Cordis extension points with deterministic priority"
   });
   try {
     const view = await harness.runtime.resume.resume({ threadId: "thread-one" });
-    assert.equal(view.execution.model, "codex:projected");
+    assert.equal(view.execution.model, "fixture-model:projected");
   } finally {
     remove();
     await harness.close();

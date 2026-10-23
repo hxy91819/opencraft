@@ -1,6 +1,6 @@
 import { ZoomableImage } from "@opencraft/chat-render-web";
 import { FolderIcon as Folder, FolderOpenIcon as FolderOpen, LoadingRingIcon as LoaderCircle, EditIcon as Pencil, ResetIcon as RotateCcw, SearchIcon as Search } from "@opencraft/design-system-web/action-icons";
-import { FilePreviewView, officeFileKind } from "@opencraft/file-preview-web";
+import { FilePreviewView, useFilePreviewAvailable } from "@opencraft/file-preview-web";
 import { preparePreviewResources } from "./prepare-preview-resources";
 import { WebChatDocument } from "@opencraft/chat-render-web";
 import { useAppearanceTheme } from "../appearance-theme";
@@ -197,6 +197,7 @@ export function WorkspaceResourcePanel({ tab, ownerId, active, previewOnly = fal
   const snapshot = useAppServerSnapshot();
   const queryClient = useQueryClient();
   const [selectedPath, setSelectedPath] = useState(initialLocation.path);
+  const hasFilePreview = useFilePreviewAvailable(selectedPath);
   const [sourceView, setSourceView] = useState<string | null>(null);
   const documentId = JSON.stringify(["file-preview", snapshot.hostId, selectedPath, fileBlobResource(runtime, snapshot.hostId, selectedPath).scope]);
   const showSource = sourceView === documentId;
@@ -260,7 +261,7 @@ export function WorkspaceResourcePanel({ tab, ownerId, active, previewOnly = fal
       const unsubscribe = lease.subscribe(report);
       let blob: Blob;
       try { blob = await lease.promise; } finally { unsubscribe(); lease.release(); }
-      const bytes = blob.size > MAX_EDITABLE_FILE_BYTES || officeFileKind(selectedPath) !== null || chatMediaKind(selectedPath) !== "file"
+      const bytes = blob.size > MAX_EDITABLE_FILE_BYTES || hasFilePreview || chatMediaKind(selectedPath) !== "file"
         ? null : new Uint8Array(await blob.arrayBuffer());
       return {
         blob,
@@ -466,10 +467,10 @@ export function WorkspaceResourcePanel({ tab, ownerId, active, previewOnly = fal
             <ZoomableImage fitToContainer key={documentId} alt={workspaceResourceBasename(selectedPath)} src={fileSource.url} />
             <small><ImageIcon size={12} /> {resource.data.size.toLocaleString()} bytes</small>
           </div>
-        ) : officeFileKind(selectedPath) !== null && resource.data?.blob ? (
+        ) : hasFilePreview && resource.data?.blob ? (
           <FilePreviewView key={documentId} ownerId={ownerId} tabId={tab.id} resource={documentId}
             blob={resource.data.blob} name={workspaceResourceBasename(selectedPath)}
-            active={active} dark={theme.resolvedTheme === "dark"} prepare={preparePreviewResources} />
+            onOpenLink={url => window.open(url, "_blank", "noopener,noreferrer")} active={active} dark={theme.resolvedTheme === "dark"} prepare={preparePreviewResources} />
         ) : chatMediaKind(selectedPath) === "pdf" && resource.data?.blob ? (
           <Suspense fallback={<div className="workspace-file-viewer__state"><LoaderCircle className="is-spinning" size={18} />{intl.formatMessage({ id: "pdf.loading", defaultMessage: "Loading PDF…" })}</div>}>
             <WorkspacePdfPreview key={fileKey} blob={resource.data.blob} name={workspaceResourceBasename(selectedPath)} />

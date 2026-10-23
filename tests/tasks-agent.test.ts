@@ -88,9 +88,9 @@ test("materialized CLI uses authenticated shared authority, compact pagination, 
     const bundle=join(dir,"task-agent.mjs");
     await build({entryPoints:[new URL("../plugins/tasks/src/agent.ts",import.meta.url).pathname],outfile:bundle,bundle:true,platform:"node",format:"esm",target:"node26",logLevel:"silent"});
     const packaged=await import(pathToFileURL(bundle).href) as {startTasksAgent:typeof startTasksAgent};
-    agent=await packaged.startTasksAgent({directory:join(dir,"agent"),skillRoots:[join(dir,"codex/skills")],service,catalog:async(_search,_limit,_serverId,cursor)=>({conversations:[{serverId:"server-a",threadId:cursor?"t2":"t1",title:"Design"}],nextCursor:cursor?null:"page-2"})});
+    agent=await packaged.startTasksAgent({directory:join(dir,"agent"),skillRoots:[join(dir,"engine/skills")],service,catalog:async(_search,_limit,_serverId,cursor)=>({conversations:[{serverId:"server-a",threadId:cursor?"t2":"t1",title:"Design"}],nextCursor:cursor?null:"page-2"})});
     const cli=async(command:string,p:unknown={})=>{const result=await run(command,p);assert.equal(result.code,0,result.err+result.out);return JSON.parse(result.out);};
-    assert.ok((await readFile(join(dir,"codex/skills/opencraft-tasks/SKILL.md"),"utf8")).includes("description:"));
+    assert.ok((await readFile(join(dir,"engine/skills/opencraft-tasks/SKILL.md"),"utf8")).includes("description:"));
     const connection=JSON.parse(await readFile(join(dir,"agent/opencraft-tasks/scripts/connection.json"),"utf8"));
     assert.equal((await fetch(connection.url,{method:"POST",body:"{}"})).status,401);
     for(let i=0;i<24;i++) await cli("create",{id:`task-${i}`,title:`Task ${i}`,description:"Long detail must stay out of list"});
@@ -139,7 +139,7 @@ test("materialized CLI uses authenticated shared authority, compact pagination, 
     assert.equal((await cli("read",{id:"task-2"})).aiResearchReason,"Read-only repository investigation has a clear scope.");
     assert.equal((await run("list",{aiResearch:"invalid"})).code,1);
     await agent.close();agent=undefined;
-    await assert.rejects(access(join(dir,"codex/skills/opencraft-tasks")));
+    await assert.rejects(access(join(dir,"engine/skills/opencraft-tasks")));
     await assert.rejects(access(join(dir,"agent/opencraft-tasks/scripts/connection.json")));
     assert.equal((await run("list")).code,1);
   }finally {await agent?.close();service.close();await rm(dir,{recursive:true,force:true});}

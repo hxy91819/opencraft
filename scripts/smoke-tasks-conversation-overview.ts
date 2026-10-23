@@ -50,7 +50,7 @@ try {
     await page.goto('http://127.0.0.1:'+(vite.httpServer!.address() as any).port);
     await page.evaluate(t=>(window as any).setFixtureTheme(t),theme);
     const search=page.getByRole('searchbox',{name:'搜索任务…'}); await search.fill('Preserve');
-    await page.getByRole('radio',{name:'协同会话统计',exact:true}).click();
+    await page.getByRole('radio',{name:'任务统计 Beta',exact:true}).click();
     const overview=page.locator('.conversation-overview'); await page.waitForFunction(()=>document.querySelector('.conversation-overview')?.getAttribute('aria-busy')==='false');
     assert.deepEqual(await page.locator('.conversation-overview__metric > strong').allTextContents(),['36','6','12','3']);
     assert.equal(await search.isVisible(),false);

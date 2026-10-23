@@ -119,11 +119,11 @@ test("an atomic first-Turn receipt promotes without submitting the message twice
   const draft = scopes.openDraft({
     draftId: "draft-atomic",
     execution: {
-      hostId: "local-codex",
+      hostId: "fixture-host",
       workspace: { cwd: "/workspace", runtimeWorkspaceRoots: ["/workspace"] },
     },
   });
-  const atomicReceipt = { ...receipt, hostId: "local-codex" };
+  const atomicReceipt = { ...receipt, hostId: "fixture-host" };
   let firstTurnSubmits = 0;
   const pipeline = createWorkbenchSubmissionPipeline({
     scopes,

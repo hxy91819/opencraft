@@ -51,6 +51,12 @@ with small required protocol modules: that merge also promotes KaTeX CSS into
 the startup closure. The source-level demand gate checks the renderer, and
 actual default/product builds retain the same byte and request budgets.
 
+The conversation task summary loads its narrow modal, gesture and sheet styles
+together when opened. The modal cannot mount before those styles arrive, so a
+slow import never paints an ordinary dialog before changing to a bottom sheet.
+Its always available toolbar and desktop summary must not promote the optional
+gesture module or sheet styles into the startup closure.
+
 Build-selected browser plugins use a dedicated compatibility TypeScript
 program covering Web and plugin sources with uniform ESNext and DOM declarations.
 ESNext describes APIs for the checker; existing browser/ECMAScript policy still
@@ -127,7 +133,7 @@ not dependencies of the formal release gate.
 
 The same gate also builds the current Headless Web release and serves its
 compressed production assets through the managed static worker, with a loopback
-AppHost supplying synthetic Codex-compatible read responses (40ms per RPC).
+AppHost supplying synthetic AppServer read responses (40ms per RPC).
 `smoke-session-cold-open.ts` supplies four additional scenarios: desktop and
 narrow, each with no display cache or with previously persisted display history.
 Each has one excluded warmup and ten measured navigations. Width/CPU profiles

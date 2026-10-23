@@ -1159,6 +1159,17 @@ authorization or persistence boundary.
 
 ### Internationalization authority
 
+The [project-wide authoring and coverage contract](internationalization.md) applies
+to every first-party app, shared UI and bundled plugin. Source discovery is no
+longer limited to migrated Web feature folders: `check:i18n` also checks literal
+JSX/accessibility/branch/template copy against an explicit legacy inventory and
+validates descriptors under their Web/shared or native Main catalog owner.
+A clean check reports remaining inventory debt; it does not certify full project
+translation or indirect/imperative message paths. Shared dictation, queue and
+image/table preview controls consume the existing application's Intl instance,
+preserving domain values, draft/editor identity and current preview/queue state.
+
+
 Application localization uses an explicit
 locale override, an `IDE` / `SYSTEM` / `FIRST_AVAILABLE` source policy, canonical
 BCP-47 tags, regional catalog matching, lazy messages, and a cached FormatJS Intl
@@ -3212,7 +3223,7 @@ Headless 将 `access-control/collaboration` 作为 ActorStore / ActorAccess 后�
 Host file authorization, byte reads, resource identity and download remain in the
 Workbench resource panel. `file-preview-core` owns engine leases without renderer
 imports; `file-preview-web` owns DOM attachment and the built-in adapter registry.
-`plugins/office-preview` receives authorized Blob bytes, lazily parses DOCX/PPTX/XLSX
+`plugins/office-preview` receives authorized Blob bytes, lazily parses legacy DOC/DOCX/PPTX and spreadsheet formats
 and owns third-party renderer cleanup. This is a trusted built-in service boundary,
 not an additional public extension ABI. See [file previews](file-preview.md).
 
@@ -3435,3 +3446,15 @@ object-shaped compatibility invocation.
 ### Native history read fault boundary
 
 Codex Core history reads (`thread/read`, `thread/turns/list`, `thread/items/list`) use bounded, individually initialized read-only native sockets with capped concurrency and queue depth. They do not subscribe, resume, run tools or own the Core process. An oversized response or read socket failure resolves only its originating RPC; it cannot publish failure on the shared execution/subscription socket. Payload limits stay bounded, with a non-retryable `HISTORY_RESPONSE_TOO_LARGE` response for oversized pages. Host queue/Goal/tool-configuration resumes explicitly exclude history. Capacity retries inspect one summary turn, and schedule inspection scans bounded summary pages, retaining unknown when the target is unavailable. This is a failure-domain boundary, not tenant data separation or process-level resource isolation.
+
+### Execution observation and bounded history delivery
+
+The shared schedule owner tracks plans and occurrence bindings, while native
+execution events and engine receipts supply outcomes. Codex/DSH/Pi implement the
+same port with native-specific recovery; Pi now declares schedules and paginated
+history. Per-conversation bounded flights keep slow admissions from holding peer
+completion. History RPC serialization fails oversized results within the request
+without retiring the shared connection. Configuration snapshots are confirmed
+only after native installation in each adapter. The detailed ownership and
+limits are in [execution ownership](execution-ownership.md#bounded-history-replies)
+and [session capabilities](session-capabilities.md).

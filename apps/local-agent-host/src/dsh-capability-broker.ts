@@ -25,7 +25,10 @@ export class DshCapabilityBroker {
   private registrations = new Map<string, Registration>();
   private pending = new Map<string, Pending>();
   private readonly revokedOwners = new WeakSet<DshExecutionOwner>();
+  private readonly hostOwners = new WeakSet<DshExecutionOwner>();
   constructor(private readonly timeoutMs?: number, private readonly host?: SessionCapabilityPort) {}
+  /** Trusted composition only; browser frames cannot manufacture this owner. */
+  allowHostExecution(owner: DshExecutionOwner): void { this.hostOwners.add(owner); }
   register(threadId: string, owner: DshExecutionOwner, specs: unknown, send: Send): readonly DshHostCapability[] {
     if (this.revokedOwners.has(owner)) throw new Error("Capability owner has disconnected");
     const previous = this.registrations.get(threadId);
@@ -68,7 +71,7 @@ export class DshCapabilityBroker {
     const hostTool = this.host?.tools(threadId).find(tool => tool.name === capabilityId);
     if (hostTool) return this.host!.call(threadId, hostTool.name, args, signal);
     const registration = this.registrations.get(threadId);
-    if (!registration || registration.owner !== owner) return Promise.reject(new Error("No capability owner for this execution"));
+    if (!registration || registration.owner !== owner && !this.hostOwners.has(owner)) return Promise.reject(new Error("No capability owner for this execution"));
     const capability = registration.capabilities.find(value => value.id === capabilityId);
     if (!capability) return Promise.reject(new Error("Capability is not registered for this thread"));
     if (signal.aborted) return Promise.reject(new Error("Capability call cancelled"));

@@ -2,7 +2,7 @@ import { createRoot } from "react-dom/client";
 import { Component, useEffect, type ReactNode } from "react";
 import { XlsxViewer, setWasmSource, useXlsxViewerController, type XlsxViewerController } from "@extend-ai/react-xlsx";
 import wasmUrl from "@extend-ai/react-xlsx/duke_sheets_wasm_bg.wasm?url";
-import type { WebPreviewDocument } from "@opencraft/file-preview-web";
+import { bindPreviewLinks, type FilePreviewIntl, type WebPreviewDocument } from "@opencraft/file-preview-web";
 
 setWasmSource(wasmUrl);
 
@@ -13,8 +13,8 @@ class SpreadsheetBoundary extends Component<{ children: ReactNode; failed(error:
   render() { return this.state.failed ? null : this.props.children; }
 }
 
-function Spreadsheet({ buffer, name, dark, ready, failed }: {
-  buffer: ArrayBuffer; name: string; dark: boolean; ready(): void; failed(error: unknown): void;
+function Spreadsheet({ buffer, name, dark, intl, ready, failed }: {
+  buffer: ArrayBuffer; name: string; dark: boolean; intl?: FilePreviewIntl; ready(): void; failed(error: unknown): void;
 }) {
   const controller = useXlsxViewerController({ file: buffer, fileName: name, readOnly: true, useWorker: true, maxFileSizeBytes: 25 * 1024 * 1024 });
   useEffect(() => {
@@ -22,7 +22,7 @@ function Spreadsheet({ buffer, name, dark, ready, failed }: {
     else if (controller.tabs.length > 0 && !controller.isLoading) ready();
   }, [controller.error, controller.tabs.length, controller.isLoading, ready, failed]);
   return <XlsxViewer controller={controller} height="100%" isDark={dark} readOnly rounded={false}
-    showDefaultToolbar={false} toolbar={(state: XlsxViewerController) => <div className="office-preview__sheets" role="tablist" aria-label="Worksheets">
+    showDefaultToolbar={false} toolbar={(state: XlsxViewerController) => <div className="office-preview__sheets" role="tablist" aria-label={intl?.formatMessage({ id: "preview.worksheets", defaultMessage: "Worksheets" }) ?? "Worksheets"}>
       {state.tabs.map((tab, index) => <button type="button" role="tab" key={tab.id}
         aria-selected={state.activeTabIndex === index} tabIndex={state.activeTabIndex === index ? 0 : -1}
         onKeyDown={event => {
@@ -40,9 +40,17 @@ export function openSpreadsheet(buffer: ArrayBuffer, name: string, signal: Abort
   return new Promise((resolve, reject) => {
     const element = document.createElement("div");
     element.className = "office-preview office-preview--xlsx";
-    element.addEventListener("click", event => {
-      if (event.target instanceof Element && event.target.closest("a")) event.preventDefault();
-    });
+    let openLink: ((url: string) => void) | undefined;
+    let currentIntl: FilePreviewIntl | undefined, darkTheme = false;
+    const unbindLinks = bindPreviewLinks(element, () => openLink);
+    // This engine's cell/drawing click path opens URLs without a host callback.
+    // Keep selection (pointerdown) and worksheet controls, but no implicit links.
+    const containEngineLinks = (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest("button, input, select, [role=tab], [role=scrollbar], a")) return;
+      event.stopPropagation();
+    };
+    element.addEventListener("click", containEngineLinks, true);
     const root = createRoot(element);
     let disposed = false;
     let settled = false;
@@ -52,13 +60,15 @@ export function openSpreadsheet(buffer: ArrayBuffer, name: string, signal: Abort
       if (disposed) return;
       disposed = true;
       signal.removeEventListener("abort", abort);
-      root.unmount(); element.remove(); failures.clear();
+      unbindLinks(); element.removeEventListener("click", containEngineLinks, true); root.unmount(); element.remove(); failures.clear();
     };
     const abort = () => { dispose(); if (!settled) { settled = true; reject(new DOMException("Preview cancelled", "AbortError")); } };
     const ready = () => {
       if (disposed || settled) return;
       settled = true;
-      resolve({ element, dispose, setTheme: dark => { if (!disposed) render(dark); },
+      resolve({ element, dispose, setTheme: dark => { darkTheme = dark; if (!disposed) render(); },
+        setIntl: intl => { currentIntl = intl; if (!disposed) render(); },
+        setOpenLink: open => { openLink = open; },
         setActive: active => { element.inert = !active; },
         subscribeFailure: listener => {
           if (failure) listener(failure.error);
@@ -73,9 +83,9 @@ export function openSpreadsheet(buffer: ArrayBuffer, name: string, signal: Abort
       // Failure can be reported during a React commit; notify/release afterwards.
       queueMicrotask(() => { for (const listener of [...failures]) listener(error); dispose(); });
     };
-    const render = (dark: boolean) => root.render(<SpreadsheetBoundary failed={failed}><Spreadsheet buffer={buffer} name={name} dark={dark} ready={ready} failed={failed} /></SpreadsheetBoundary>);
+    const render = () => root.render(<SpreadsheetBoundary failed={failed}><Spreadsheet buffer={buffer} name={name} dark={darkTheme} intl={currentIntl} ready={ready} failed={failed} /></SpreadsheetBoundary>);
     if (signal.aborted) { abort(); return; }
     signal.addEventListener("abort", abort, { once: true });
-    render(false);
+    render();
   });
 }

@@ -31,7 +31,7 @@ function pending(file: File): ComposerAttachment {
   };
 }
 
-test("browser images become host-independent Codex image URLs", async () => {
+test("browser images become host-independent inline image URLs", async () => {
   const file = new File([new Uint8Array([1, 2, 3])], "paste.png", {
     type: "image/png",
   });
@@ -42,7 +42,7 @@ test("browser images become host-independent Codex image URLs", async () => {
   assert.equal(resolved.error, null);
   assert.deepEqual(resolved.metadata, {
     source: "browser-inline",
-    transport: "codex-image-url",
+    transport: "inline-image-url",
     originalBytes: 3,
     compression: "not-requested",
   });

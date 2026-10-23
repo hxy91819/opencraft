@@ -132,3 +132,31 @@ test("browser queue preserves Fast and explicit Standard across reload", () => {
     assert.equal(restored[0]?.intent.selections.serviceTier, serviceTier);
   }
 });
+
+test("late positive proof wakes FIFO without another connection event or resending the uncertain input", async () => {
+  const f = fixture(async i => { if (i.commandId === "one") throw new SubmissionOutcomeUnknownError(); });
+  const box = f.create(); box.admit(intent("one")); box.admit(intent("two"));
+  f.ready(); box.wake(); await settle();
+  assert.equal(box.project()[0]?.state, "unknown");
+  box.reconcile(new Set(["client-one"]));
+  await settle();
+  assert.deepEqual(f.sent.map(i => i.commandId), ["one", "two"]);
+  assert.equal(box.project().length, 0); box.dispose();
+});
+
+test("synchronous readiness loss after custody publication keeps the undispatched input waiting", async () => {
+  let ready = false; let revoke = true; let sent = 0;
+  let rows: readonly ConversationOutboxEntry[] = [];
+  let box: ReturnType<typeof createConversationOutbox>;
+  box = createConversationOutbox({ key,
+    storage: { read: () => rows, write: (_, next) => { rows = next; }, subscribe: () => () => {} },
+    ready: () => ready, blocked: () => false, retire() {},
+    publish() { if (revoke && rows[0]?.state === "sending") { revoke = false; ready = false; } },
+    async send(i) { sent++; return { commandId: i.commandId, clientMessageId: i.clientMessageId,
+      hostId: key.hostId, threadId: key.threadId, turnId: null, acceptedAt: 1, replayed: false }; },
+  });
+  box.admit(intent("one")); ready = true; box.wake(); await settle();
+  assert.equal(sent, 0); assert.equal(rows[0]?.state, "waiting");
+  ready = true; box.wake(); await settle();
+  assert.equal(sent, 1); assert.equal(rows.length, 0); box.dispose();
+});

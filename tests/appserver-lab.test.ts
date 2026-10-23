@@ -23,7 +23,7 @@ import { NdjsonReporter } from "../apps/appserver-lab/src/reporter";
 import { runLabCommand } from "../apps/appserver-lab/src/scenarios";
 
 const initializeResponse: AppServerInitializeResponse = {
-  codexHome: "/tmp/codex",
+  codexHome: "/tmp/appserver-lab-fixture",
   platformFamily: "unix",
   platformOs: "linux",
   userAgent: "appserver-lab-test/1",
@@ -178,7 +178,7 @@ function server(options: TestServerOptions = {}): InMemoryAppServer {
           id: request.id,
           result: {
             thread: { ...threads[0], id: threadId },
-            model: "codex",
+            model: "fixture-model",
             modelProvider: "openai",
             serviceTier: null,
             reasoningEffort: "high",
@@ -359,7 +359,7 @@ test("Desktop Resume commits a projected owner View through Cordis plugins", asy
   assert.deepEqual(verified.streamRole, { role: "owner" });
   assert.equal(verified.historySource, "tail");
   assert.equal(verified.turnCount, 1);
-  assert.equal(verified.model, "codex");
+  assert.equal(verified.model, "fixture-model");
   assert.equal(verified.cwd, "/workspace");
 });
 

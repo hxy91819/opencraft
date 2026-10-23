@@ -224,7 +224,15 @@ sending and does not expose a server Resume action.
 Before transport dispatch the attempted state is saved. Reloaded attempts or a
 lost acknowledgement become unconfirmed and block FIFO; only exact server queue
 or timeline client-message identity retires them automatically. They are never
-blindly replayed. A confirmed pre-dispatch refusal can return to waiting. An
+blindly replayed. Exact positive proof retires the local attempt and its
+optimistic command together, then wakes FIFO after the authoritative snapshot
+has been published; a queue-only confirmation needs no further timeline event
+or page reload. Reconnect also refreshes the Host queue independently after
+history authority returns: a lost queue notification must not leave an attempted
+local input permanently unconfirmed. Old connection responses cannot publish
+queue authority into a newer generation. If readiness is synchronously revoked when the saved attempt is
+published, the transport has not been called: restore waiting custody before
+exiting the drain. A confirmed pre-dispatch refusal can return to waiting. An
 identity replacement revokes the old namespace and late completions; ownership
 is rechecked after asynchronous compilation immediately before sending.
 Closing a browser tab ends sessionStorage lifetime; this is not cross-device
@@ -2368,6 +2376,19 @@ Composer输入辅助菜单焦点策略独立于模型/权限业务和Radix基础
 
 非空附属rail与shell连接处不重复绘制shell顶部边框/内侧高光；空rail恢复独立输入框完整边界。用户确认本轮对象为静止时中间横缝。
 
+### Mobile viewport diagnostic measurement budget
+
+The viewport port remains the only geometry commit and animation-frame owner.
+Diagnostics observe Shell and focused-editor rectangles on every committed frame
+so their extrema retain brief excursions, including recovery before transmission.
+Root/body/fixed-reference rectangles, Composer/send rectangles, computed style
+and send hit testing describe the sampled report frame and are read only within
+the existing 80ms and token-credit budget. The detailed measurement clock advances
+even when an unchanged report is deduplicated; network silence cannot reopen
+frame-rate measurement. Diagnostics do not alter viewport positioning, the native
+settling window, queue admission, input focus or drafts. This bounds confirmed
+measurement overhead; it does not establish a queued-message paint failure's cause.
+
 ### Mobile Composer content bounds
 
 OpenCraftComposer owns a local editing-focus presentation session, independent of
@@ -3438,3 +3459,26 @@ measured rows. The same observations resume when the viewport is measurable;
 visible measurements remain synchronous and explicit scroll-to-bottom intent
 keeps its existing owner. Unmounting a parked View serializes the retained
 checkpoint for the replacement View.
+
+## Optional conversation summary
+
+`packages/workbench-panels-react` provides `ConversationSummaryService`, a single trusted
+renderer contribution with fiber-scoped registration/disposal. The built-in
+`plugins/thread-summary` consumes its public readonly context rather than application internals.
+`createWebWorkbenchApplication({threadSummary: false})` omits this module and its entry point.
+The host projects the displayed timeline and the existing goal resource, scopes view state by
+account/Host/thread, and supplies guarded semantic open-resource/open-thread callbacks.
+It owns actual-container layout, the toolbar and existing Radix ModalSurface; the plugin owns
+section content and typography. No additional subscription, summary model service, execution
+owner, persistence store or inference request is introduced. History may be partial; only
+structured plan/file records and explicit agent states contribute. Terminal completion never
+implies completion of a background process. Desktop and narrow presentation reuse the same
+controlled disclosure/scroll state while the conversation DOM stays mounted.
+
+### New conversation submission presentation
+
+While the immutable first Turn awaits authoritative Thread binding, the shared
+PendingConversationPage shows the submitted message and attachments without a
+startup status row or spinner. A rejected submission still exposes its error and
+explicit retry action. This presentation does not change creation, binding,
+queuing, or the Conversation footer's ownership of follow-up input.

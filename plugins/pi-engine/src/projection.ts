@@ -2,6 +2,7 @@ import { CompactionEntry, UserEntry } from "@earendil-works/pi-durable";
 import type { PiSnapshot } from "./session.js";
 
 type Value = Record<string, any>;
+export type PiTurn = Value & { id: string };
 export const textOf = (content: any): string => typeof content === "string" ? content : (content ?? []).filter((part: Value) => part.type === "text").map((part: Value) => part.text).join("\n");
 const errorOf = (message: string) => ({ message, codexErrorInfo: null, additionalDetails: null });
 function outputItems(content: Value[] = []) {
@@ -30,10 +31,10 @@ function assistantItems(base: string, message: Value): Value[] {
 }
 
 /** The same native projection serves stream delivery, read, Resume and process recovery. */
-export function projectPiSnapshot(session: { id: string; cwd: string; tools: Value[] }, snapshot: PiSnapshot): Value[] {
+export function projectPiSnapshot(session: { id: string; cwd: string; tools: Value[] }, snapshot: PiSnapshot): PiTurn[] {
   const submissions = new Map(snapshot.submissions.filter(s => s.type === "input" && s.entry !== undefined).map(s => [s.entry, s]));
   const tasks = snapshot.tasks;
-  const turns: Value[] = [];
+  const turns: PiTurn[] = [];
   const taskGroups = new Map<Value, Set<number>>();
   const counts = new Map<number | string, number>();
   const callItems = new Map<string, Value>();
@@ -44,7 +45,7 @@ export function projectPiSnapshot(session: { id: string; cwd: string; tools: Val
     const status = state === "queued" || state === "placed" ? "inProgress" : state === "unanswered"
       ? submission?.reason === "aborted" ? "interrupted" : "failed" : "completed";
     const createdAt = metadata.createdAtMs ?? message.timestamp;
-    const result: Value = { id, items: [{ type: "userMessage", id: `${id}:user`,
+    const result: PiTurn = { id, items: [{ type: "userMessage", id: `${id}:user`,
       clientId: metadata.clientId ?? (id.startsWith(`${session.id}:turn:client:`) ? id.slice(`${session.id}:turn:client:`.length) : null),
       content: metadata.input ?? [{ type: "text", text: textOf(message.content), text_elements: [] }] }],
       itemsView: "complete", status, error: status === "failed" ? errorOf(String(submission?.detail ?? submission?.reason ?? "Pi input failed")) : null,

@@ -24,6 +24,12 @@ export function dshScheduleExecutionPort(adapter: DshAppServerAdapter, authority
     return { state: "unknown" as const };
   };
   return { validate, inspect,
+    subscribe: listener => adapter.subscribe((method, params: any) => {
+      if (method !== "turn/completed" || !params?.threadId || !params.turn?.id) return;
+      const turn = params.turn;
+      if (["completed", "failed", "interrupted"].includes(turn.status)) listener({ threadId: params.threadId,
+        turnId: turn.id, state: turn.status === "completed" && !turn.error ? "completed" : "failed" });
+    }),
     permissionProfiles: async () => (await adapter.dispatch("permissionProfile/list", { limit: 100 }) as { data: import("@opencraft/appserver-protocol").OpenCraftPermissionProfile[] }).data,
     submit: (run, prompt, canAdmit) => lifecycle.enqueue(run.threadId, async () => {
     if (authority.scheduleInput(run.threadId, run.id)) return { ...await inspect(run), turnId: authority.scheduleInput(run.threadId, run.id)?.turnId };

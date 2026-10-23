@@ -24,7 +24,7 @@ import {
 } from "@opencraft/appserver-protocol";
 
 const initializeResponse: AppServerInitializeResponse = {
-  codexHome: "/tmp/codex-home",
+  codexHome: "/tmp/appserver-client-fixture",
   platformFamily: "unix",
   platformOs: "linux",
   userAgent: "opencraft-memory-appserver/1",

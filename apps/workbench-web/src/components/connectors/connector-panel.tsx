@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { type ConnectorManager, type ConnectorApprovalQueue } from "@opencraft/workbench-runtime";
+import { type ConnectorManager, type ConnectorApprovalPresentation } from "@opencraft/workbench-runtime";
 import { useIntl } from "@opencraft/i18n/react";
 import type { ModalRequest } from "../modal";
 import { useWorkbenchPresentationRoot } from "../workbench-presentation-root";
 import { ConnectorAddMenuItem, type ConnectorQuickItem, ConnectorStatusChip } from "./connector-quick-picker";
 import "./connector-panel.scss";
 
-export function useConnectorPresentation(manager: ConnectorManager, approvals: ConnectorApprovalQueue, scope: { hostId: string; scopeId: string }, onManage?: () => void) {
+export function useConnectorPresentation(manager: ConnectorManager, approvals: ConnectorApprovalPresentation, scope: { hostId: string; scopeId: string }, onManage?: () => void) {
   const intl = useIntl();
   const portalContainer = useWorkbenchPresentationRoot();
   const snapshot = useSyncExternalStore(manager.subscribe, manager.getSnapshot, manager.getSnapshot);

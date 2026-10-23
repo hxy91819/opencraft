@@ -4,13 +4,13 @@ import { setImmediate as tick } from "node:timers/promises";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { TokenUsageStateDatabase } from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import { OpenCraftTokenUsageLedger, type UsageSource } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { TokenUsageWorkQueue } from "../apps/opencraft-daemon/src/token-usage-work-queue.js";
 const key={threadId:"thread",turnId:"turn"};
 const source=(sourceId:string):UsageSource=>({...key,lineage:"native",sourceId,kind:"response",version:0,provider:null,model:null,counts:{totalTokens:"100"}});
-async function fixture(body:(state:OpenCraftHostStateDatabase,ledger:OpenCraftTokenUsageLedger)=>Promise<void>){
-  const directory=await mkdtemp(join(tmpdir(),"oc-usage-queue-"));const state=new OpenCraftHostStateDatabase(directory);
+async function fixture(body:(state:TokenUsageStateDatabase,ledger:OpenCraftTokenUsageLedger)=>Promise<void>){
+  const directory=await mkdtemp(join(tmpdir(),"oc-usage-queue-"));const state=new TokenUsageStateDatabase(directory);
   const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000);
   ledger.startTurn(key,1000,"human",true);
   ledger.recordInput(key,{inputId:"input",actorId:"A",actorKind:"human",mode:"start",admission:"confirmed"});

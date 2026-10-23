@@ -6,6 +6,7 @@ import { acquireLocalAgentStorageOwner, startLocalAgentHost } from '../../apps/l
 import { readDaemonMachineIdentity } from '../../apps/opencraft-daemon/src/machine-identity.ts';
 import { readPrivateJson } from './dsh-host-client.mjs';
 import { readTaskCoreConversations } from '../tasks-conversation-catalog.mjs';
+import { RemoteSessionCapabilities } from '../../packages/session-capabilities/src/remote.ts';
 
 export async function startIndependentDshHost({ descriptorPath, machineIdentityDirectory, machineName, taskCodexCoreEndpoint, taskCodexCoreTokenFile, ...options }) {
   if (!isAbsolute(descriptorPath) || !isAbsolute(options.dataDirectory ?? ''))
@@ -20,6 +21,9 @@ export async function startIndependentDshHost({ descriptorPath, machineIdentityD
     const machineIdentity = options.machineIdentity ?? await readDaemonMachineIdentity(
       machineIdentityDirectory ?? dirname(options.dataDirectory), machineName);
     options.machineIdentity = machineIdentity;
+    const sessionCapabilities = new RemoteSessionCapabilities(dirname(options.dataDirectory), `server:${machineIdentity.machineId}:dsh`);
+    options.sessionCapabilities ??= sessionCapabilities;
+    options.authorizeHostInput ??= (threadId, inputId) => sessionCapabilities.authorizeInput(threadId, inputId);
     options.taskServerId ??= "opencraft-server";
     options.taskSkillDirectories ??= [resolve(options.dataDirectory, "../codex/runtime/skills")];
     if (taskCodexCoreEndpoint || taskCodexCoreTokenFile) {

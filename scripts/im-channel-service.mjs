@@ -287,6 +287,7 @@ export class ImChannelService {
           .map((c) => this.publicChannel(c, actor.actorId)),
         actorId: actor.actorId,
         serverId: this.dependencies.collaboration.execution.serverId,
+        servers: this.dependencies.collaboration.execution.servers ?? [],
         workbenchHostId:
           this.dependencies.workbenchHostId ??
           this.dependencies.collaboration.execution.hostId,
@@ -295,14 +296,14 @@ export class ImChannelService {
       const { conversationRef, encodeConversationRef } = await import(
         "../packages/appserver-protocol/src/collaboration.ts"
       );
-      if (
-        body.hostId !==
-        (this.dependencies.workbenchHostId ??
-          this.dependencies.collaboration.execution.hostId)
-      )
-        throw Error("unsupported_host");
+      const execution = this.dependencies.collaboration.execution;
+      let serverId;
+      try { serverId = execution.serverForHost?.(body.hostId, id(body.threadId))
+        ?? (body.hostId === (this.dependencies.workbenchHostId ?? execution.hostId) ? execution.serverId : null); }
+      catch { throw Error("unsupported_host"); }
+      if (!serverId) throw Error("unsupported_host");
       const ref = conversationRef({
-        serverId: this.dependencies.collaboration.execution.serverId,
+        serverId,
         threadId: id(body.threadId),
       });
       await this.execution.validate(actor, ref, AbortSignal.timeout(10_000));
@@ -448,6 +449,7 @@ export class ImChannelService {
         conversations: result.conversations.map((c) => ({
           reference: encodeConversationRef(c.ref),
           title: c.title,
+          engine: this.dependencies.collaboration.execution.servers?.find(server=>server.serverId===c.ref.serverId)?.label,
         })),
         nextCursor: result.nextCursor,
       };

@@ -86,7 +86,7 @@ class GenerationTransport implements DuplexTransport {
           jsonrpc: "2.0",
           id: request.id,
           result: {
-            codexHome: "/tmp/codex",
+            codexHome: "/tmp/reconnect-fixture",
             platformFamily: "unix",
             platformOs: "linux",
             userAgent: "generation-test/1",

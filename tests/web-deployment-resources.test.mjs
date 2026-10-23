@@ -2,17 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, writeFile, rm, stat, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { c } from 'tar';
 import { createOptionalResources, RESOURCE_PACKAGE, parseResources } from '../scripts/web-deployment/optional-resources.mjs';
 import { createWorkbenchWebServer } from '../scripts/workbench-web-server.mjs';
 
-async function fixture(root, buildId, { unsafe = false } = {}) {
+async function fixture(root, buildId, { unsafe = false, file = `assets/preview-${buildId}.js` } = {}) {
   const releaseRoot = join(root, buildId); const payload = join(root, `${buildId}-payload`);
   await mkdir(join(releaseRoot, 'web'), { recursive: true });
   await mkdir(join(payload, 'package/web/assets'), { recursive: true });
-  const file = `assets/preview-${buildId}.js`;
+  await mkdir(dirname(join(payload, 'package/web', file)), { recursive: true });
   await writeFile(join(releaseRoot, 'web/index.html'), '<html><head></head><body>core works</body></html>');
   await writeFile(join(payload, 'package/web', file), `export default '${buildId}'`);
   if (unsafe) await symlink('/etc/passwd', join(payload, 'package/web/assets/escape.js'));
@@ -52,6 +52,21 @@ test('optional download failure preserves core, retries, coalesces requests and 
   await restarted.prefetch(next.archive);
   assert.match(await readFile(await restarted.resolveFile(`/${next.file}`), 'utf8'), /new12345/);
   assert.equal(await restarted.prepare('unknown'), false);
+});
+
+test('packaged diagram fonts survive resource extraction and HTTP serving without admitting arbitrary nested paths', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'web-resources-fonts-')); t.after(() => rm(root, { recursive: true, force: true }));
+  const release = await fixture(root, 'font1234', { file: 'assets/excalidraw-fonts/fonts/Virgil/Virgil-Regular.woff2' });
+  const resources = await createOptionalResources({ releaseRoot: release.releaseRoot, cacheDirectory: join(root, 'cache') });
+  await resources.prefetch(release.archive);
+  const app = await createWorkbenchWebServer({ root: join(release.releaseRoot, 'web'), appServerTarget: null, optionalResources: resources });
+  t.after(() => app.close());
+  const base = `http://127.0.0.1:${(await app.listen({ host: '127.0.0.1', port: 0 })).port}`;
+  const response = await fetch(`${base}/${release.file}`);
+  assert.equal(response.status, 200); assert.match(response.headers.get('content-type'), /font\/woff2/);
+  for (const file of ['assets/excalidraw-fonts/fonts/../private.woff2', 'assets/excalidraw-fonts/fonts/Virgil/private.json', 'assets/elsewhere/file.js']) {
+    assert.throws(() => parseResources({ schemaVersion: 1, packs: [{ ...release.pack, files: [file] }] }), /Invalid resource/);
+  }
 });
 
 test('resource archives reject wrong integrity and symlinks before exposing files, and retry after failure', async t => {

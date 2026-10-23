@@ -27,7 +27,7 @@ const mutations = { insertText: (text: string) => controller.insertText(text), f
   replace() { controller.dispatch({ type: "replace-content", document: doc("Replacement"), attachments: [], context: [] }); },
   dispose() { for (const release of dispose) release(); },
 };
-createRoot(document.getElementById("root")!).render(<>
+createRoot(document.getElementById("root")!, undefined, "zh-CN").render(<>
   <div style={{ maxWidth: 760, margin: "24px auto" }}><Settings /></div>
   <OpenCraftComposer controller={controller} onSubmit={intent => { sent.push(composerDocumentToPlainText(intent.document)); return false; }}
     selectionCatalog={{ agents: [], models: [{ id: "fixture", value: "fixture", label: "Fixture", isDefault: true, description: null, efforts: [], defaultEffort: null, inputModalities: ["text"] }], permissionProfiles: [] }}

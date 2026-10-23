@@ -1,3 +1,8 @@
+export type PreviewErrorCode = "too-large" | "encrypted" | "invalid" | "timeout" | "busy";
+export class FilePreviewError extends Error {
+  constructor(readonly code: PreviewErrorCode) { super({ "too-large": "File exceeds preview limit", encrypted: "Password-protected document", invalid: "Invalid document", timeout: "Preview opening timed out", busy: "Preview capacity is in use" }[code]); this.name = "FilePreviewError"; }
+}
+
 export interface PreviewDocument {
   dispose(): void;
   subscribeFailure?(listener: (error: unknown) => void): () => void;
@@ -60,7 +65,7 @@ export class PreviewSessionPool<T extends PreviewDocument> {
       const owned = entry;
       owned.timeout = setTimeout(() => {
         if (this.entries.get(key) !== owned || owned.snapshot.phase !== "opening") return;
-        owned.snapshot = { phase: "failed", error: new Error("Preview opening timed out") };
+        owned.snapshot = { phase: "failed", error: new FilePreviewError("timeout") };
         owned.controller.abort();
         this.emit(owned);
       }, this.openTimeoutMs);
@@ -119,7 +124,7 @@ export class PreviewSessionPool<T extends PreviewDocument> {
     const total = () => [...this.entries.values()].reduce((sum, entry) => sum + entry.bytes, 0);
     while (this.entries.size >= this.capacity || total() + bytes > this.sourceBudget) {
       const victim = [...this.entries.values()].filter(e => e.consumers === 0).sort((a, b) => a.accessed - b.accessed)[0];
-      if (!victim) throw new Error("Preview capacity is in use");
+      if (!victim) throw new FilePreviewError("busy");
       this.remove(victim);
     }
   }

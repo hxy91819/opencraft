@@ -29,7 +29,16 @@ const service = await ImChannelService.open([], {
   },
   actorAccess: { authenticate: () => context },
   collaboration: {
-    execution: { serverId: "fixture-server", hostId: "fixture-host" },
+    execution: { serverId: "fixture-server", hostId: "fixture-host", servers: [
+      {serverId:"fixture-server",hostId:"fixture-host",label:"Codex"},
+      {serverId:"fixture-pi",hostId:"opencraft-server",label:"Pi"},
+      {serverId:"fixture-dsh",hostId:"opencraft-server",label:"DSH"},
+    ] },
+    discover: async () => ({conversations:[
+      {ref:{serverId:"fixture-server",threadId:"codex-one"},title:"Codex conversation"},
+      {ref:{serverId:"fixture-pi",threadId:"pi_one"},title:"Pi conversation"},
+      {ref:{serverId:"fixture-dsh",threadId:"dsh-one"},title:"DSH conversation"},
+    ],nextCursor:null}),
   },
   getAppHost: () => null,
   credentials: {
@@ -179,6 +188,19 @@ try {
   await page.reload();
   await page.getByRole('button', { name: '管理', exact: true }).waitFor();
   await page.getByRole("button", { name: "管理", exact: true }).click();
+  await page.getByRole('button', {name:'交给管家 进入指定会话，由 Agent 继续分派'}).click();
+  for (const [width,theme] of [[1280,'light'],[390,'dark']] as const) {
+    await page.setViewportSize({width,height:1000});await page.evaluate((theme:string)=>(window as any).proof.theme(theme),theme);
+    await page.getByRole('button',{name:'选择已有会话…',exact:true}).click();
+    const chooser=page.getByRole('dialog');await chooser.waitFor();
+    for(const engine of ['Codex','Pi','DSH']) assert.equal(await chooser.getByText(engine,{exact:true}).count(),1);
+    await page.screenshot({path:join(evidence,`engine-picker-${theme}-${width}.png`)});
+    const row=chooser.locator('.settings-control-list-item').filter({hasText:'Pi conversation'});
+    await row.getByRole('button',{name:'选择',exact:true}).click();
+    await chooser.waitFor({state:'hidden'});
+  }
+  await page.setViewportSize({width:1280,height:1000});
+  await page.getByRole('button',{name:'按来源分会话 私聊、群成员各自继续；话题共享'}).click();
   await page.getByRole("button", { name: "运行预览", exact: true }).click();
   await page.getByText("预览结果", { exact: true }).waitFor();
   await page

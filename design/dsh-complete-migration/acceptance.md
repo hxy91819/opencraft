@@ -27,8 +27,9 @@ composer startup passed. Diff and documentation checks passed.
 
 OpenCraft retains product models/credentials, local process transport and UI
 identity. HyperNode SSH tenancy and cloud gateways are not local host behavior.
-Unsupported audio is explicitly rejected, not discarded. DSH file policy does
-not claim a Codex OS sandbox. No arbitrary tool-result URLs are fetched.
+Unsupported audio is explicitly rejected, not discarded. DSH file policy
+describes file-effect enforcement, without claiming OS process isolation.
+No arbitrary tool-result URLs are fetched.
 All model/fault tests used isolated local endpoints and synthetic keys.
 No user logs/config were migrated or erased; no commit/push/release occurred.
 

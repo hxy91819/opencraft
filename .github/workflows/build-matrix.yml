@@ -63,6 +63,9 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Check project internationalization
+        run: npm run check:i18n && npm run test:i18n
+        if: matrix.target == 'web-browser'
       - run: npm run test:react-runtime
         if: matrix.target == 'web-browser'
       - run: npm run typecheck --workspace @opencraft/workbench-web

@@ -84,6 +84,7 @@ test("native HEIC conversion removes only its temporary JPEG after encoding", as
   assert.equal(resolved.lifecycle, "ready");
   assert.equal(resolved.uri, "data:image/jpeg;base64,anBlZw==");
   assert.equal(resolved.name, "photo.jpg");
+  assert.equal(resolved.metadata?.transport, "inline-image-url");
   assert.deepEqual(deleted, [convertedUri]);
   assert.equal(files.has(sourceUri), true);
 });

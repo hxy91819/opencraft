@@ -816,7 +816,7 @@ Connector 目录浏览不套用设置行：采用限宽品牌卡片，已配置�
 
 - 标准权限档位只能由 Host 根据引擎真实 profile/preset 投影；未验证的自定义 profile 保留为引擎原生选项，不因名字相似归类。
 - 目录的 `openCraftMode`/`openCraftLabel` 只在 Host 声明 `opencraft/permission-modes` v1 时有效。缺失能力时，客户端不得自行猜测标准档位。
-- DSH 的 Thread 创建、Turn 执行与 Fork 必须先校验所选 preset；新建 Thread 在创建时应用并回读生效值，不能等到首轮 Turn。DSH 的外部沙箱投影不能冒充 Codex 沙箱。
+- DSH 的 Thread 创建、Turn 执行与 Fork 必须先校验所选 preset；新建 Thread 在创建时应用并回读生效值，不能等到首轮 Turn。DSH 的外部沙箱投影只描述运行时文件策略，不表示提供操作系统级隔离。
 - 标准档位用稳定的 `opencraft:permission-mode:*` 提交值，Host 在每次提交时解析当前引擎目录并翻译为原生 profile；会话恢复后原生生效 profile 由目录重新映射为产品档位。产品级权限上限与独立的请求值/生效值持久对账尚未建立，不得声称已实现完整的产品级权限策略。
 
 ## 会话顺序与展示分段（2026-10-05）
@@ -1807,11 +1807,26 @@ See [Tasks initial loading](../docs/workbench-design-language.md#tasks-initial-l
 - The same Hub can connect outward and accept connections. Transit is explicit;
   an outgoing-only configuration does not imply an externally reachable listener.
 
-## Read-only Office preview ownership
+## Read-only file preview ownership
 
 - Host-authorized bytes and original download stay with the resource panel; an
-  Office adapter cannot resolve paths or write files. DOCX/PPTX/XLSX are parsed
-  lazily, with read-only controls and no external document resources.
+  format adapter cannot resolve paths or write files. DOCX/PPTX/XLSX/XLS/XLSM,
+  CSV/TSV, Draw.io/DIO, Excalidraw and standalone Mermaid files are parsed
+  lazily, with read-only controls and no remote executable viewer dependency.
+- Adapter registrations own extension support. The resource panel and preview
+  service consume the same registry, rather than maintaining an Office-only
+  allowlist. Unregister revokes previews and publishes the capability change.
+- CSV/TSV preserve literal cell contents (including leading zeros and formula
+  strings), support quoted separators/newlines and use a bounded virtual table.
+  XLS requires an OLE signature; OOXML keeps its archive admission rules. Neither
+  workbook path executes macros or writes back to the original file.
+- Draw.io normalizes compressed and multi-page XML within expansion limits and
+  uses a packaged viewer in an opaque sandbox. The page fetches its own viewer
+  asset before sandbox creation; the sandbox makes no script/network requests,
+  including on loopback deployments with local-network protection. Excalidraw exports a read-only
+  scene with packaged fonts; standalone `.mmd`/`.mermaid` use the same serialized
+  Mermaid engine and theme configuration as chat. View transforms and page
+  selection belong to the retained preview, never the Host document.
 - Workbench owner + tab + Host/resource/runtime generation + immutable Blob
   revision + adapter generation identify each mutable preview. Hidden is not
   closed. Recent ready instances may be retained within explicit capacity and
@@ -1820,7 +1835,8 @@ See [Tasks initial loading](../docs/workbench-design-language.md#tasks-initial-l
 - Loading, timeout and retry use the viewer's existing area; they cannot enlarge
   menus, rows or neighboring containers. File-tree visibility and PDF behavior
   remain owned by the existing panel contract.
-- Evidence: `tests/file-preview-core.test.ts`, `scripts/smoke-office-preview.ts`;
+- Evidence: `tests/file-preview-core.test.ts`, `tests/structured-preview.test.ts`,
+  `scripts/smoke-office-preview.ts`, `scripts/smoke-structured-preview.ts`;
   detailed boundaries and limits: [file previews](../docs/file-preview.md).
 
 
@@ -2374,6 +2390,17 @@ held contacts without resetting the video. Human gesture acquisition preserves
 local synchronous focus for system keyboards. Disconnect and park retain the
 tab; explicit logical close retires every viewer and the native page.
 
+### Conversation browser resources
+
+Conversation rows expose retained tab counts and a menu to reopen existing tabs
+or explicitly close all tabs owned by that Host/Thread scope. Reading the directory
+never initializes a page or surface; counts are logical resources rather than
+measured memory or process liveness. Resource menus share the sidebar menu owner
+with conversation actions and participant menus. Navigation, title, status and
+participant controls retain separate tracks on compact and touch rows. Closing a
+menu or leaving a conversation retains tabs; explicit close uses the existing
+resource retirement path.
+
 ### Browser backing layout and aperture
 
 Browser layout consumes the current content slot, while the Shell aperture clips
@@ -2684,3 +2711,25 @@ handlers admit mouse input before effects; pointer drag movement requires its
 existing matching owner. Token usage heatmap preview follows mouse or keyboard,
 while explicit tap/keyboard selection is persistent and accessible through
 native buttons and aria-pressed. The daily table remains available.
+
+### Conversation task summary
+
+The optional `thread-summary` trusted plugin owns a read-only projection of structured plans,
+file changes and agent/command activity. `ConversationSummaryService` owns one revocable
+contribution, while the Workbench owns placement, focus, modality and semantic navigation.
+Unloading the plugin never ends execution, releases a conversation lease or changes history.
+The existing project/working-directory information dialog remains a separate action.
+
+A conversation-container query owns the room needed by the reading column and the 300px
+summary surface. Wide containers show one quiet rounded surface beside the reading column;
+narrow containers expose an explicit toolbar action and the shared adaptive modal/sheet.
+Switching presentation preserves section disclosure/scroll state and never reparents the
+conversation, composer or file viewer. View state resets on account/Host/thread scope changes.
+Cached history remains readable, but cannot authorize resource or agent navigation. The panel
+labels its history coverage; a completed spawn tool is never treated as agent completion.
+
+Task summary navigation requires a real receiver/agent/state thread identity; presentation fallback IDs do not become thread links. Renamed file entries point to their new Host path.
+
+### Document reading controls
+
+Legacy Word uses the same retained read-only preview identity, with local Worker/WASM and font disposal. CSV cell selection, column widths, find query and full multiline contents belong to that retained view; theme/locale switches do not reset them. Table bytes are never coerced or edited. Host-opened Office links admit only HTTP(S) without credentials; document fragments stay inside their own root, all other protocols are inert. Locale projection updates labels in place; diagrams keep the packaged offline sandbox. Known preview failures use actionable localized messages in the existing failure area and preserve download/retry.

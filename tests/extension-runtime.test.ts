@@ -714,8 +714,8 @@ test("settings pages preserve a fixed Host owner and reject an empty owner atomi
   await assert.rejects(supervisor.activate(register(" ")), /target Host/u);
   assert.equal(supervisor.contributions.getSnapshot().settingsPages.length, 0);
   assert.equal(supervisor.contributions.getSnapshot().views.length, 0);
-  await supervisor.activate(register("local-codex"));
-  assert.equal(supervisor.contributions.getSnapshot().settingsPages[0]?.contribution.targetHostId, "local-codex");
+  await supervisor.activate(register("fixture-host"));
+  assert.equal(supervisor.contributions.getSnapshot().settingsPages[0]?.contribution.targetHostId, "fixture-host");
   await supervisor.dispose();
 });
 

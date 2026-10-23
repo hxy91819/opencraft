@@ -265,15 +265,28 @@ and the engine remains authoritative at execution time.
 
 `ScheduleExecutionPort` separates scheduling from engine admission. An adapter
 validates the target, attempts non-interrupting submission using the occurrence
-ID, and independently inspects execution outcome. Codex reuses its durable
-queue, records the acknowledged native turn ID and inspects that turn's history;
-queue delivery is not completion. DSH persists the occurrence input identity in
-its execution journal before native submission, waits for human/queued/armed-Goal
-work, and inspects that journal. It never resends an ambiguous or orphaned
-execution after Host restart. Hermes and Pi must provide equivalent adapters
-and capability declarations before exposing this feature. Their queue
-or transport being available does not establish scheduler support. A browser
-bridge must not own unattended schedules.
+ID, and independently observes execution outcome. Codex, DSH and Pi subscribe to
+native completion events carrying only thread identity, turn identity and outcome.
+An early event is retained only for the unfinished occurrence and must match its
+acknowledged native turn before settling it; an older inspection cannot overwrite
+native completion. Four per-conversation flights bound active admission/inspection.
+A blocked conversation does not hold the tick or completion handling of peers.
+Closing unsubscribes first, drains active work, then releases storage.
+
+Codex reuses its durable queue and acknowledged turn ID; queue delivery is not
+completion. On restart or missed events it queries bounded `notLoaded` turn-summary
+pages, never historical items. DSH persists the occurrence input identity in its
+execution journal before native submission and inspects that journal; human,
+queued and armed-Goal work defer admission. Pi uses native durable submissions
+queried by the same occurrence request ID, without projecting a transcript. Its
+submission and pause/archive fences share the normal per-thread admission owner.
+Pi only accepts its verified Full access profile and durable unarchived targets;
+it does not borrow a browser's tool lease for unattended execution. An unknown
+receipt never authorizes resending. With native event support, running-state
+fallback inspection is at most once per minute, plus restart/event wakeup; legacy
+ports retain their existing fallback interval. Hermes must provide an equivalent
+adapter and capability declaration before exposing schedules. A browser bridge
+must not own unattended schedules.
 
 Busy conversations and unresolved interactions defer admission. One unfinished
 occurrence blocks further occurrences for that plan; missed intervals coalesce
@@ -348,8 +361,9 @@ blocks and client identity are atomically recorded in the native input entry, in
 queued admission, rather than in a parallel message store. Platform tool
 leases expire on client disconnect; they are not marked replay-safe, so recovery
 cannot repeat an external side effect on that assumption. Workspace AGENTS.md files
-are loaded by the coding-agent context loader. Workspace project IDs are retained as catalog metadata across restart; they do not enable project-specific runtime instructions or change the native cwd. The canonical Full access profile and equivalent never-approve/danger-full-access policy are accepted on creation, restore and turns; restricted/custom permission profiles are rejected before execution. Managed profile skills, schedules and alternative permission profiles are not yet
-implemented by this provider. Native tools run with the execution owner's filesystem
+are loaded by the coding-agent context loader. Workspace project IDs are retained as catalog metadata across restart; they do not enable project-specific runtime instructions or change the native cwd. The canonical Full access profile and equivalent never-approve/danger-full-access policy are accepted on creation, restore and turns; restricted/custom permission profiles are rejected before execution. Managed profile skills and alternative permission profiles are not yet
+implemented by this provider. Schedules use the shared Host plan owner and native
+Pi submission receipts; they do not introduce a second execution ledger. Native tools run with the execution owner's filesystem
 and process permissions; this provider does not advertise a sandbox.
 
 Engine registration is trusted server composition, not installable client code or
@@ -405,7 +419,16 @@ conversation document rendered through a prompt section. A cwd change rebuilds i
 execution environment and workspace context at the next request. Only one workspace
 root equal to cwd is currently supported. Nonempty schema constraints, collaboration
 modes and other unimplemented semantic overrides fail explicitly; accepting a prompt
-request does not imply those options took effect. Legacy history remains negotiated.
+request does not imply those options took effect. Paginated history with an initial
+Turn window is negotiated. Shared projection helpers enforce bounded Turn/Item
+counts and stable native identity cursors across reopen. `excludeTurns` omits the
+legacy full Turn array; an explicitly requested initial page is still returned.
+Metadata-only DSH Resume performs no history request and returns a lazy head
+cursor; empty history is discovered when that cursor is read. Native entries
+remain the only history authority, including when Pi must project a local native
+snapshot to answer a page. This does not promise bounded local projection memory.
+Archived or missing Pi threads return non-retryable typed errors preserved by
+Engine Host. Client recovery stops at the existing unavailable-thread owner.
 
 One projection consumes native entries, submissions, task timestamps, LiveDoc and
 UsageDoc for streaming and history. Generation task identity plus immutable assistant
@@ -512,3 +535,23 @@ The scheduled task catalog resolves names for durable conversations missing from
 ## Host-owned session capabilities
 
 The [session capability service](session-capabilities.md) owns the shared catalog and invocation entry point; domain providers retain authorization and durable effect receipts. Remote MCP and native Pi/DSH adapters consume that same service. Host contributions are independent of browser capability leases, cannot be shadowed by browser declarations, and survive View disconnect. Codex installs a scoped MCP entry at creation or its next idle preparation boundary; neither global MCP configuration nor the native process becomes a per-session credential authority. IM explicit replies use captured per-arrival references and never race an automatic final send; existing final-mode records preserve their previous completion path.
+
+### Bounded history replies
+
+Codex, the DSH endpoint and the multi-engine Host serialize history results with
+an 8 MiB UTF-8 reply budget. Oversized legacy reads or individual pages return
+`HISTORY_RESPONSE_TOO_LARGE` with `retryable=false`, retaining RPC and logical
+client identity, without truncating data or closing peer subscriptions. A single
+item may still exceed the budget and must fail explicitly. Execution mutations
+and streamed notifications are not subject to this history reply transformer.
+Native Codex read sockets retain their independent bounded read fault domain.
+The boundaries isolate requests; they do not separate tenant data or Core CPU.
+
+Pi declares verified permission-mode presentation for its one Full access profile,
+so Composer and schedule editors share the same supported catalog. Its managed
+schedule database opening outcome is exposed through the provider to Host health.
+
+A native completion may resolve a failed or late inspection, but cannot substitute
+for a successful durable write. Failed occurrence writes retain the observation
+and use the normal 30-second failure backoff; slot release cannot spin an immediate
+retry loop. Recovery persists the same occurrence without resending its input.

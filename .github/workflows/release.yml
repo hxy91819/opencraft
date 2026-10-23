@@ -250,10 +250,27 @@ jobs:
 
       # TEMPORARY diagnosis (remove with the verbose line): one OIDC exchange
       # under this exact job identity (same workflow ref, job and environment).
+      # The tag tree is the publish source and may predate oidc-probe; the
+      # probe kit is the immutable workflow SHA, not a branch name.
+      - name: Require the workflow SHA for the OIDC probe
+        if: ${{ inputs.oidc_probe == true }}
+        run: test -n "${{ github.workflow_sha }}"
+
+      - name: Check out the workflow kit for the OIDC probe
+        if: ${{ inputs.oidc_probe == true }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: workflow-kit
+          persist-credentials: false
+
       - name: OIDC exchange probe (temporary diagnosis)
         if: ${{ inputs.oidc_probe == true }}
+        env:
+          WORKFLOW_KIT: workflow-kit/.github/secure-release/v1/secure_release.py
         run: |
-          python3 "$KIT" oidc-probe --package "$(node -p "require('./packaging/web-server/package.json').name")" --registry "$NPM_REGISTRY" --npm-version "$NPM_VERSION"
+          test -f "$WORKFLOW_KIT"
+          python3 "$WORKFLOW_KIT" oidc-probe --package "$(node -p "require('./packaging/web-server/package.json').name")" --registry "$NPM_REGISTRY" --npm-version "$NPM_VERSION"
 
       - name: Reverify and publish exact bytes
         if: ${{ inputs.oidc_probe != true }}

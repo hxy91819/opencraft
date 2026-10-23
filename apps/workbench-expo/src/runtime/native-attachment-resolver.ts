@@ -92,7 +92,7 @@ export async function resolveNativeAttachment(
     uri: `data:${mimeType};base64,${dataBase64}`,
     lifecycle: "ready",
     error: null,
-    metadata: { ...pending.metadata, source: "native-inline", transport: "codex-image-url" },
+    metadata: { ...pending.metadata, source: "native-inline", transport: "inline-image-url" },
   };
   // Once the Host request is sent, aborting only the client-side wait can
   // orphan a file that the Host finishes staging. Let the reply arrive so the

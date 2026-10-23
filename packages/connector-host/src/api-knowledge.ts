@@ -20,14 +20,14 @@ export function validateKnowledge(row: StoredConnection) {
     if (row.definitionId === "yuandian" && !row.secrets.api_key.startsWith("sk_")) throw new ConnectorHostError("invalid");
   }
 }
-export async function callKnowledge(row: StoredConnection, name: string, args: Record<string, unknown>, fetchOverride?: typeof fetch): Promise<unknown> {
+export async function callKnowledge(row: StoredConnection, name: string, args: Record<string, unknown>, fetchOverride?: typeof fetch, signal?: AbortSignal): Promise<unknown> {
   validateKnowledge(row);
   const definition = KNOWLEDGE_TOOLS[row.definitionId]?.find(tool => tool.name === name); if (!definition) throw new ConnectorHostError("missing");
   for (const key of definition.inputSchema.required as string[]) text(args[key], 16000);
   if (Object.keys(args).some(key => !Object.hasOwn(record(definition.inputSchema.properties), key)) || Object.values(args).some(value => typeof value !== "string" || value.length > 16000)) throw new ConnectorHostError("invalid");
   const send = async (url: string, method: string, headers: Record<string, string>, body?: unknown) => {
     const value = record(await jsonResponse(await (fetchOverride ?? connectorFetch([new URL(url).origin], row.definitionId === "weknora"))(url, {
-      method, headers: { ...headers, Accept: "application/json", "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(90000),
+      method, headers: { ...headers, Accept: "application/json", "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(90000)]) : AbortSignal.timeout(90000),
     })));
     if (value.success === false || (value.code !== undefined && value.code !== 0 && value.code !== "0")) throw new ConnectorHostError("unavailable");
     return value;
