@@ -3514,3 +3514,17 @@ Host-owned command result and empty-output labels use the existing application
 locale service. Command text, native stdout and exit codes remain source values.
 A language change updates labels in place, retaining the same log viewport,
 reading coordinates and follow-output intent, and the existing composer state.
+
+## Composer image attachment preview
+
+Draft image thumbnails open the shared zoomable image viewport in a Radix modal.
+The gallery derives resources from the existing attachment session and identifies
+selection by draft and attachment ID, rather than array position. Preparing and
+failed uploads retain their local preview; removal and retry remain separate
+controls. Opening, navigating and dismissing never stage, remove or submit an
+attachment. Switching controller/draft, clearing, or removing the selected image
+closes its view; late completion cannot reopen it. Preserve the editor instance,
+ProseMirror selection and draft. Pointer entry from the editor returns focus to
+that editor; keyboard entry returns to its thumbnail. Stale draft cleanup never
+focuses a replacement editor. Embedded consumers supply their presentation root
+through the existing Composer portal container.

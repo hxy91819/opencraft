@@ -12,6 +12,7 @@ import { baseKeymap, newlineInCode, splitBlock } from "prosemirror-commands";
 import { defineMessages, type IntlShape } from "@opencraft/i18n";
 import { FormattedMessage, useIntl } from "@opencraft/i18n/react";
 import { DictationFooter } from "./dictation-footer";
+import { ImageAttachmentPreview, type ComposerPreviewImage } from "./image-attachment-preview";
 import { attachmentPreviewSession } from "./attachment-preview-session";
 import { SkillIcon } from "./skill-icon";
 import { resolveDictationKeyAction } from "./dictation-keyboard";
@@ -1018,6 +1019,19 @@ export const OpenCraftComposer = forwardRef<
     controller.getSnapshot,
   );
   const attachments = composerSnapshot.draft.attachments;
+  const draftId = composerSnapshot.draft.id;
+  const [imagePreview, setImagePreview] = useState<{ draftId: string; attachmentId: string; returnFocus: HTMLElement | null } | null>(null);
+  const previewFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => { setImagePreview(null); }, [controller, draftId]);
+  const previewImages: ComposerPreviewImage[] = attachments.flatMap(attachment => {
+    if (!attachment.mimeType.startsWith("image/")) return [];
+    const source = attachmentSession.previewUrl(draftId, attachment.id)
+      ?? (attachment.uri !== null && /^data:image\//iu.test(attachment.uri) ? attachment.uri : null);
+    return source === null ? [] : [{ id: attachment.id, name: attachment.name, source }];
+  });
+  const selectedPreview = imagePreview?.draftId === draftId && previewImages.some(image => image.id === imagePreview.attachmentId)
+    ? imagePreview : null;
+
   const catalogModels = selectionCatalog?.models ?? [];
   const catalogPermissions = selectionCatalog?.permissionProfiles ?? [];
   const showPermissionPicker = hasPermissionProfileChoices(catalogPermissions);
@@ -2178,9 +2192,19 @@ export const OpenCraftComposer = forwardRef<
                 ?? (attachment.uri !== null && /^data:image\//iu.test(attachment.uri) ? attachment.uri : null);
               if (image) return (
                 <div aria-label={attachment.name} className="opencraft-composer-image-attachment" data-state={attachment.lifecycle} key={attachment.id} role="group" title={attachment.error ?? attachment.name}>
-                  {previewUrl === null
-                    ? <Image aria-hidden="true" className="opencraft-composer-image-attachment__fallback" size={24} />
-                    : <img alt="" draggable={false} src={previewUrl} />}
+                  <button
+                    aria-label={intl.formatMessage({ id: "chat.image.open", defaultMessage: "Open attached image" })}
+                    className="opencraft-composer-image-attachment__preview"
+                    disabled={previewUrl === null}
+                    onPointerDown={() => { previewFocusRef.current = editorViewRef.current?.hasFocus() ? editorViewRef.current.dom : null; }}
+                    onKeyDown={() => { previewFocusRef.current = null; }}
+                    onClick={event => setImagePreview({ draftId, attachmentId: attachment.id, returnFocus: previewFocusRef.current ?? event.currentTarget })}
+                    type="button"
+                  >
+                    {previewUrl === null
+                      ? <Image aria-hidden="true" className="opencraft-composer-image-attachment__fallback" size={24} />
+                      : <img alt="" draggable={false} src={previewUrl} />}
+                  </button>
                   {attachment.lifecycle === "pending" || attachment.lifecycle === "processing" || attachment.lifecycle === "uploading" ? (
                     <span aria-label={`Preparing ${attachment.name}`} className="opencraft-composer-image-attachment__status" role="status">
                       <LoadingRingIcon aria-hidden="true" size={22} />
@@ -2227,6 +2251,22 @@ export const OpenCraftComposer = forwardRef<
             })}
           </div>
         )}
+
+        {selectedPreview !== null && <ImageAttachmentPreview
+          images={previewImages}
+          selectedId={selectedPreview.attachmentId}
+          onSelect={attachmentId => setImagePreview({ ...selectedPreview, attachmentId })}
+          onClose={() => setImagePreview(null)}
+          onReturnFocus={() => {
+            if (editorControllerRef.current !== controller || controller.getSnapshot().draft.id !== selectedPreview.draftId) return;
+            const target = selectedPreview.returnFocus;
+            if (target?.isConnected && !target.closest("[inert]")) {
+              if (target === editorViewRef.current?.dom) editorViewRef.current.focus();
+              else target.focus({ preventScroll: true });
+            }
+          }}
+          portalContainer={portalContainer}
+        />}
 
         {showSuggestions && suggestionQuery != null && (
             <div

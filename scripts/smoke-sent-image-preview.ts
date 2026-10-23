@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
 import { createServer } from "vite";
 
 // Run with an installed Playwright module and Chrome/Chromium binary; use
@@ -16,7 +17,7 @@ const vite = await createServer({
     name: "sent-image-preview-smoke",
     configureServer(server) {
       server.middlewares.use((request, response, next) => {
-        if (request.url !== "/") return next();
+        if (!request.url?.startsWith("/") || request.url.split("?")[0] !== "/") return next();
         response.setHeader("content-type", "text/html");
         response.end('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="host"></div><script type="module" src="/tests/fixtures/sent-image-preview.tsx"></script></body></html>');
       });
@@ -74,6 +75,109 @@ try {
   const reset=await matrix();assert(Math.abs(reset.scale-1)<.001&&Math.abs(reset.angle)<.001&&Math.abs(reset.x)<.001&&Math.abs(reset.y)<.001,"reopening resets rotation, scale and pan");
   assert.deepEqual(mobileErrors,[]);await mobile.close();
   assert.deepEqual(errors, []);
+  // Draft Composer uses the same viewport, with its own attachment and focus lifetime.
+  const output = process.env.OPENCRAFT_IMAGE_PREVIEW_OUTPUT ?? "/tmp/opencraft-composer-image-preview";
+  await mkdir(output, { recursive: true });
+  for (const touchMode of [false, true]) for (const mode of ["light", "dark"]) {
+    const context = await browser.newContext({ viewport: { width: touchMode ? 390 : 1280, height: 844 }, hasTouch: touchMode, isMobile: touchMode });
+    const draftPage = await context.newPage();
+    const draftErrors: string[] = [];
+    draftPage.on("pageerror", error => draftErrors.push(error.message));
+    await draftPage.addInitScript("window.__name=value=>value");
+    await draftPage.goto(page.url() + `?mode=${mode}${touchMode ? "&touch" : ""}`);
+    const editor = draftPage.locator(".opencraft-composer-editor");
+    await editor.fill("预览后继续编辑");
+    const files = [
+      { name: "portrait.svg", mimeType: "image/svg+xml", buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="1600"><rect width="400" height="1600" fill="#245ab5"/><text x="25" y="100" fill="white" font-size="42">Portrait</text></svg>') },
+      { name: "wide.svg", mimeType: "image/svg+xml", buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500"><rect width="1200" height="500" fill="#ae5129"/><text x="50" y="270" fill="white" font-size="80">Wide image</text></svg>') },
+      { name: "invalid.png", mimeType: "image/png", buffer: Buffer.from("not an image") },
+    ];
+    const addFiles = async (selected: typeof files) => {
+      const chooser = draftPage.waitForEvent("filechooser");
+      await draftPage.getByRole("button", { name: "Add", exact: true }).click();
+      await (await chooser).setFiles(selected);
+    };
+    await addFiles(files);
+    const triggers = draftPage.locator(".opencraft-composer-image-attachment__preview");
+    await triggers.first().waitFor();
+    assert.equal(await triggers.count(), 3);
+    await editor.click();
+    await editor.evaluate(el => { (window as any).previewEditor = el; });
+    await editor.press("Home"); await editor.press("ArrowRight"); await editor.press("ArrowRight");
+    const selectionOffset = await editor.evaluate(el => (el.getRootNode() as ShadowRoot).getSelection()?.anchorOffset);
+    const before = await draftPage.evaluate(() => (window as any).imagePreviewFixture.controller.getSnapshot().draft.document);
+    const activate = async (target: any) => touchMode ? target.tap() : target.click();
+    await activate(triggers.first());
+    const preview = draftPage.locator(".opencraft-composer-image-preview");
+    await preview.waitFor();
+    assert.equal(await preview.locator("img").getAttribute("alt"), "portrait.svg");
+    assert.equal(await draftPage.evaluate(() => document.body.querySelectorAll('[role="dialog"]').length), 0, "embedded preview portal stays in its ShadowRoot");
+    await preview.locator("img").evaluate(async el => { await (el as HTMLImageElement).decode(); });
+    const bounds = (await preview.locator("img").boundingBox())!;
+    assert(Math.abs(bounds.height / bounds.width - 4) < .02, "portrait preview keeps original aspect ratio");
+    const stage = preview.locator(".opencraft-zoomable-image");
+    if (touchMode) {
+      const box = (await stage.boundingBox())!;
+      const x = box.x + box.width / 2, y = box.y + box.height / 2;
+      const session = await context.newCDPSession(draftPage);
+      const gesture = async (type: string, distance?: number) => {
+        await session.send("Input.dispatchTouchEvent", { type, touchPoints: distance === undefined ? [] : [{ x: x - distance, y, id: 1 }, { x: x + distance, y, id: 2 }] });
+      };
+      await gesture("touchStart", 30); await gesture("touchMove", 60); await gesture("touchEnd");
+      assert.notEqual(await stage.getAttribute("data-zoomed"), null, "preview retains shared pinch zoom");
+      await session.detach();
+    }
+    await draftPage.evaluate(() => (window as any).imagePreviewFixture.complete());
+    assert.equal(await preview.count(), 1, "upload completion does not close/reopen the preview");
+    await activate(preview.getByRole("button", { name: "Next image", exact: true }));
+    assert.equal(await preview.locator("img").getAttribute("alt"), "wide.svg");
+    assert.equal(await stage.getAttribute("data-zoomed"), null, "image navigation resets zoom");
+    await draftPage.screenshot({ path: `${output}/${touchMode ? "touch" : "desktop"}-${mode}.png` });
+    await draftPage.keyboard.press("ArrowLeft");
+    assert.equal(await preview.locator("img").getAttribute("alt"), "portrait.svg");
+    await draftPage.keyboard.press("Escape");
+    await preview.waitFor({ state: "detached" });
+    assert(await editor.evaluate(el => el === (window as any).previewEditor && el === el.getRootNode().activeElement), "pointer dismissal returns to the original editor");
+    assert.deepEqual(await draftPage.evaluate(() => (window as any).imagePreviewFixture.controller.getSnapshot().draft.document), before);
+    assert.equal(await editor.evaluate(el => (el.getRootNode() as ShadowRoot).getSelection()?.anchorOffset), selectionOffset);
+    await triggers.nth(1).focus();
+    await draftPage.keyboard.press("Enter");
+    await preview.waitFor();
+    await draftPage.keyboard.press("Escape");
+    await preview.waitFor({ state: "detached" });
+    await draftPage.waitForFunction(el => el === el.getRootNode().activeElement, await triggers.nth(1).elementHandle(), { timeout: 3000 });
+    assert(await triggers.nth(1).evaluate(el => el === el.getRootNode().activeElement), "keyboard dismissal returns to invoking thumbnail");
+    // Independent remove control never opens preview.
+    await activate(draftPage.getByRole("button", { name: "Remove portrait.svg", exact: true }));
+    assert.equal(await preview.count(), 0);
+    assert.equal(await triggers.count(), 2);
+    await activate(triggers.nth(1));
+    await preview.getByRole("status").waitFor();
+    assert.equal(await preview.getByRole("status").innerText(), "Image unavailable");
+    await activate(preview.getByRole("button", { name: "Previous image", exact: true }));
+    assert.equal(await preview.locator("img").getAttribute("alt"), "wide.svg");
+    // Stable identity survives removing an earlier image; removing the selected closes.
+    await draftPage.evaluate(() => { const c = (window as any).imagePreviewFixture.controller; c.dispatch({ type: "remove-attachment", id: c.getSnapshot().draft.attachments[1].id }); });
+    assert.equal(await preview.locator("img").getAttribute("alt"), "wide.svg");
+    await draftPage.evaluate(() => { const c = (window as any).imagePreviewFixture.controller; c.dispatch({ type: "remove-attachment", id: c.getSnapshot().draft.attachments[0].id }); });
+    await preview.waitFor({ state: "detached" });
+    await addFiles(files.slice(0, 1));
+    await activate(triggers.first());
+    await preview.waitFor();
+    await draftPage.evaluate(() => (window as any).imagePreviewFixture.switchThread("other"));
+    await preview.waitFor({ state: "detached" });
+    await draftPage.evaluate(() => (window as any).imagePreviewFixture.complete());
+    await draftPage.evaluate(() => (window as any).imagePreviewFixture.switchThread("images"));
+    assert.equal(await preview.count(), 0, "returning to a draft does not reopen its dismissed gallery");
+    await activate(triggers.first());
+    await preview.waitFor();
+    await draftPage.evaluate(() => (window as any).imagePreviewFixture.controller.dispatch({ type: "clear" }));
+    await preview.waitFor({ state: "detached" });
+    assert.equal(await draftPage.evaluate(() => (window as any).imagePreviewFixture.submissions), 0);
+    assert.deepEqual(draftErrors, []);
+    await context.close();
+    console.log("composer preview", touchMode ? "touch" : "desktop", mode, "passed");
+  }
   console.log("PASS: sent image opens and closes inside the embedded presentation root");
 } finally {
   await browser?.close();
