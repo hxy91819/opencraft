@@ -1374,7 +1374,7 @@ Different owners remain isolated even when their lease strings match.
 | --- | --- |
 | Tab, WebContents, partition, recovery checkpoint | Server; detach/park keeps the live document, explicit owner close/discard destroys the page and all viewing attachments |
 | Encoded H.264 output | One encoder per tab, fanout to visible viewers; paint while any viewer is visible, suspend when none are visible |
-| Socket, decoder, local geometry and keyboard candidate UI | Each viewer; a slow viewer disconnects independently |
+| Socket, decoder, local geometry and keyboard candidate UI | Each viewer; a short output backlog recovers independently at a new keyframe, sustained overload disconnects only that viewer |
 | Remote viewport, zoom, mouse, keys, touch and composition | Current control lease; observers scale the shared frame and cannot change remote geometry |
 | DOM result, focus, selection, native editor identity | Remote renderer; private IME/context-menu/new-window events go to the current controller |
 | Browser-use authority and read inspection | Existing actor/thread/tool authorization; a viewing attachment grants no additional rights |
@@ -1406,6 +1406,34 @@ A remote tab outlives its display socket. Its renderer is authoritative for page
 content and editing; local presentation owns video decoding, client geometry
 and system input. Disconnect suspends that viewer and releases its owned pressed
 keys, buttons and touch contacts; video production continues for other viewers without navigating or destroying the page.
+
+Managed Linux gateways running with root service management attach to a separate
+DynamicUser browser owner over a private mode-0600 Unix socket. The owner holds
+Electron and its bounded native stderr pipe in memory; it has no public listener,
+CDP endpoint or persisted stderr. A Gateway deployment closes its viewing
+connections with retryable 1012, but does not stop this owner. The next Gateway
+uses a versioned handshake, adopts only native IDs already authorized by its
+durable logical-tab records, and destroys orphan native pages. Owner handoff
+drains previously accepted commands once, revokes all old input tokens and
+pressed/composition state, and pauses video before returning native snapshots.
+It never replays unknown writes or navigates an adopted document. Native DOM,
+forms, scroll, history and effective viewport/zoom remain in the same process.
+Immutable runtime files are retained outside release cleanup. Existing tabs
+keep their pinned runtime; incompatible owner protocol is rejected without
+replacing the live process. The initial migration from a pipe-owned worker
+requires one replacement. Unmanaged/direct process adapters and actual owner
+failure retain checkpoint recovery, which does not promise live-DOM survival.
+
+Viewer output above 128KiB enters a bounded prediction-gap state rather than
+immediately disconnecting. That viewer skips video until its output falls below
+64KiB and a new keyframe arrives; control/authorization messages still flow.
+Keyframe refreshes are bounded, other viewers continue the original stream,
+and no stale video queue is retained. An unrecovered gap after ten seconds or
+output above 4MiB closes only that connection with retryable 1013 and a two-second
+close-frame drain deadline. Per-event bounded diagnostics distinguish paused,
+resumed, stalled, owner detach, shutdown and numeric peer close codes without
+URLs, input payloads or arbitrary native stderr.
+
 Input/control boundaries are ordered in the worker; moves are flushed before
 release and local compositions are discarded across a connection change.
 Continuous touch/drag movement keeps the active paint cadence. The worker
@@ -1815,3 +1843,7 @@ commits. It does not mirror remote text or implement local autocorrection of
 remote selections. A failed input acknowledgement retires pending interaction
 work, cancels native pressed state and reports one current failure; obsolete
 connection/control/document errors stay retired, and no input is replayed.
+Transient owner attachment failures, including a still-attached prior Gateway,
+are retryable browser-unavailable errors. Protocol incompatibility remains
+terminal without replacing live tabs. Rejected private sockets drain their short
+status reply and then close, without retaining unread attachment data.
