@@ -3367,3 +3367,15 @@ The activity disclosure binds its measurement observer whenever its actual body
 mounts, including a diff that arrives after an initially empty file record.
 Removing that body releases the old observer; a later body binds a new one.
 The existing row, expansion intent, motion and viewport reflow owner remain.
+
+### Plan preview natural height
+
+A collapsed plan has a 320 CSS-pixel ceiling, rather than a minimum height.
+The body is capped by its natural content size while the existing Motion owner
+continues the expanded/collapsed height transition. The content wrapper retains
+the document inset; its border-box observation only decides whether the collapsed
+preview needs its fade and expansion overlay. Short content stays readable without
+an overlay, and streaming growth, shrinkage and width changes update that affordance.
+The existing View choice, completion defaults, copy/download and viewport ownership
+remain unchanged. `scripts/smoke-reasoning-disclosure.ts --plan-preview-only` covers
+short and long content, growth/shrinkage, expansion and View restoration.
