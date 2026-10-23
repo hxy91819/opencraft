@@ -27,7 +27,7 @@ not an Office layout-fidelity guarantee.
   locally in an opaque-origin iframe with scripts restricted to the packaged
   runtime, no outbound connections and no document link navigation. Page,
   zoom and layer controls remain available. Optional remote math rendering is
-  disabled; no WorkBuddy SDK or external executable viewer is used.
+  disabled; the packaged static viewer runs without an external executable.
 - Excalidraw uses its independent library's scene restore/SVG export path,
   supports packaged scene images and fonts, and rejects scenes over 20,000
   elements. Embeddable live content is disabled. Exported SVG is sanitized before
