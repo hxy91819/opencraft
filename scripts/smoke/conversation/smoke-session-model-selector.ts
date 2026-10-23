@@ -6,7 +6,7 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { compile, Logger } from "sass";
 
-const root = resolve(import.meta.dirname, "..");
+const root = resolve(import.meta.dirname, "../../..");
 const fixture = `
 import React from "react";
 import { createRoot } from "react-dom/client";
@@ -57,6 +57,7 @@ const css = compile(resolve(root, "apps/workbench-web/src/styles/app.scss"), {
   importers: [{ findFileUrl(url: string) {
     const roots = {
       "@opencraft/design-system/": "packages/design-system/src/",
+      "@opencraft/design-system-web/": "packages/design-system-web/src/",
       "@opencraft/plugin-cloud-desktop/": "plugins/cloud-desktop/src/",
     };
     for (const [prefix, path] of Object.entries(roots)) {
@@ -178,7 +179,8 @@ try {
       agentGroups: [{ id: "server", label: "Server", active: true, models, select: model => { window.__selectedEngineModel = model.value; } }] });`);
   await editor.fill("Keep this engine selection draft");
   await picker.click();
-  const standalone = page.locator(".opencraft-composer-selection-menu--intelligence");
+  await page.locator(".opencraft-composer-model-quick__title").click();
+  const standalone = page.locator(".opencraft-composer-selection-menu--model-select");
   await standalone.getByText("DSH · Models", { exact: true }).waitFor();
   await standalone.getByText("Pi · provider", { exact: true }).waitFor();
   assert.equal(await standalone.getByRole("menuitem", { name: "Shared model", exact: true }).count(), 2);
