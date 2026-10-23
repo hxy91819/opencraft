@@ -27,7 +27,24 @@ try{
   assert.equal(await page.evaluate(()=>JSON.parse(document.getElementById('opencraft-server-context')!.textContent!).id),'join');
   await page.screenshot({path:join(output,'legacy-join-settings.png')});
   await page.goto(fixture.origin+'/__opencraft_servers');await page.waitForURL('**/servers');await page.getByRole('heading',{name:'选择服务器',exact:true}).waitFor();
-  await page.goto(fixture.origin);await page.waitForURL('**/servers/join/**');await page.locator('[data-action-id]').first().waitFor({timeout:60_000});
+  // Hold the parser immediately before the existing final navigation script.
+  // This exposes the first-paint document without changing selection decisions.
+  let releaseEntry!:()=>void;const entryHeld=new Promise<void>(resolve=>{releaseEntry=resolve;});
+  let entered!:()=>void;const entering=new Promise<void>(resolve=>{entered=resolve;});
+  const holdEntry=async(route:any)=>{entered();await entryHeld;await route.fulfill({contentType:'text/javascript',body:''});};
+  const entryDocument=async(route:any)=>{const response=await route.fetch({url:fixture.base+'/',headers:{...route.request().headers(),host:fixture.host}});const html=await response.text();const last=html.lastIndexOf('<script>');assert.ok(last>=0);await route.fulfill({response,body:html.slice(0,last)+'<script src="/__entry-probe-delay.js"></script>'+html.slice(last)});};
+  await page.route('**/__entry-probe-delay.js',holdEntry);await page.route(fixture.origin+'/',entryDocument);
+  await page.goto(fixture.origin,{waitUntil:'commit'});await Promise.race([entering,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Entry parser hold did not start')),15000))]);
+  for(const width of [390,1280])for(const colorScheme of ['light','dark'] as const){
+    await page.setViewportSize({width,height:900});await page.emulateMedia({colorScheme});
+    await page.waitForTimeout(100);
+    assert.equal(await page.getByRole('heading',{name:'选择服务器',exact:true}).isVisible(),false,'automatic entry never paints the chooser');
+    assert.equal(await page.locator('[data-server="join"]').isVisible(),false,'automatic entry never exposes selectable targets');
+    await page.getByRole('status').waitFor();
+    await page.screenshot({path:join(output,`automatic-entry-${width}-${colorScheme}.png`)});
+  }
+  releaseEntry();await page.unroute('**/__entry-probe-delay.js',holdEntry);await page.unroute(fixture.origin+'/',entryDocument);
+  await page.waitForURL('**/servers/join/**');await page.locator('[data-action-id]').first().waitFor({timeout:60_000});
   await page.goto(fixture.origin+'/servers');await page.getByRole('heading',{name:'选择服务器',exact:true}).waitFor();
   assert.equal(await page.locator('[data-server="join"]').innerText(),'OpenCraft');
   for(const width of [320,390,1280])for(const colorScheme of ['light','dark'] as const){await page.setViewportSize({width,height:900});await page.emulateMedia({colorScheme});await page.screenshot({path:join(output,`chooser-${width}-${colorScheme}.png`)});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);}
@@ -98,6 +115,10 @@ try{
   const logout=await page.evaluate(()=>fetch('/__opencraft_relay/logout',{method:'POST'}).then(r=>r.status));assert.equal(logout,204);
   await context.setExtraHTTPHeaders({'x-fixture-user':'bob'});await page.goto(fixture.origin);await page.getByRole('heading',{name:'选择服务器',exact:true}).waitFor();
   assert.equal(await page.locator('[data-server="join"]').count(),1);assert.equal(await page.locator('[data-server="lighthouse"]').count(),0);
+  const noScript=await browser.newContext({javaScriptEnabled:false,extraHTTPHeaders:{'x-fixture-user':'alice'}});
+  const noScriptPage=await noScript.newPage();await noScriptPage.goto(fixture.origin);
+  await noScriptPage.getByRole('heading',{name:'选择服务器',exact:true}).waitFor();
+  assert.ok(await noScriptPage.locator('[data-server="join"]').isVisible());await noScript.close();
   const escaped=requests.filter(path=>/^(?:\/assets\/|\/apphost|\/appserver|\/__opencraft_access|\/__opencraft_enterprise_identity|\/__opencraft_ssh|\/__opencraft_updates|\/opencraft-icon\.svg)/u.test(path));assert.deepEqual(escaped,[],'business requests and assets stay under the selected target');
   assert.ok(sockets.some(x=>x.startsWith('/servers/lighthouse/apphost')));assert.ok(sockets.some(x=>x.startsWith('/servers/join/apphost')));
   await page.locator('[data-server="join"]').click();await page.locator('[data-action-id]').first().waitFor();
@@ -112,7 +133,7 @@ try{
   assert.equal(await freshPage.locator('[data-server="lighthouse"]').count(),1);
   assert.match(await freshPage.locator('p').first().innerText(),/不可用/u);await fresh.close();
   assert.deepEqual(errors,[]);
-  await writeFile(join(output,'receipt.json'),JSON.stringify({actualBuiltWorkbench:true,explicitUrlWins:true,directEntryBecomesRememberedChoice:true,deepLinkPreservesQueryAndFragment:true,backgroundAndIframeDoNotChangeChoice:true,storageUnavailableDirectEntry:true,legacySettingsBookmark:true,realSshDiscovery:discovery,sshGrantRequests:sshGrants,existingUserDefault:true,defaultNeverOverridesChoice:true,newIdentityShowsChooser:true,unavailableDefaultNeverFallsBack:true,realRelayCoreMembership:true,rememberedChoice:true,multiTabIsolation:true,independentTargetRoles:true,revocationReturnsChooser:true,identitySwitchDoesNotReuseChoice:true,offlineReturnsChooser:true,dataScope,sockets,escaped,errors,boundary:'Synthetic verified identity and Codex transport only; actual packaged Workbench, Chromium, relay tunnel and target membership. No production employee identity or model inference.'},null,2));
+  await writeFile(join(output,'receipt.json'),JSON.stringify({actualBuiltWorkbench:true,automaticEntryDoesNotPaintChooser:true,noScriptLinksAvailable:true,explicitUrlWins:true,directEntryBecomesRememberedChoice:true,deepLinkPreservesQueryAndFragment:true,backgroundAndIframeDoNotChangeChoice:true,storageUnavailableDirectEntry:true,legacySettingsBookmark:true,realSshDiscovery:discovery,sshGrantRequests:sshGrants,existingUserDefault:true,defaultNeverOverridesChoice:true,newIdentityShowsChooser:true,unavailableDefaultNeverFallsBack:true,realRelayCoreMembership:true,rememberedChoice:true,multiTabIsolation:true,independentTargetRoles:true,revocationReturnsChooser:true,identitySwitchDoesNotReuseChoice:true,offlineReturnsChooser:true,dataScope,sockets,escaped,errors,boundary:'Synthetic verified identity and Codex transport only; actual packaged Workbench, Chromium, relay tunnel and target membership. No production employee identity or model inference.'},null,2));
   console.log(JSON.stringify({output,success:true}));
 } catch(error){await writeFile(join(output,'failure.json'),JSON.stringify({error:String(error),errors,requests,sockets},null,2));throw error;}
 finally{await browser.close();await fixture.close();}
