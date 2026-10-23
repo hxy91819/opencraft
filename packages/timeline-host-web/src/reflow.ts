@@ -24,7 +24,7 @@ export function timelineReflowScrollAdjustment(
 
 /**
  * Pin an interacted element to its visual Y position while an expandable
- * timeline block reflows. This is the source-faithful complement to the
+ * timeline block reflows. This complements the
  * virtualizer's distance-from-bottom transaction: the transaction stabilizes
  * the viewport, while this adapter stabilizes the user's local interaction
  * anchor through an animated disclosure.
