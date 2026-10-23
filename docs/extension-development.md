@@ -122,7 +122,7 @@ When proposing a new contribution point:
 
 The architecture's isolated ExtensionHosts, publisher distribution, full
 resolver and richer permissions remain proposals, tracked separately from this
-implemented path. See [remaining ecosystem work](plugin-architecture.md#142-尚未完成的生态边界).
+implemented path. See [remaining ecosystem work](architecture/extensions/implementation-and-acceptance.md#142-尚未完成的生态边界).
 
 ### Host model configuration destinations
 

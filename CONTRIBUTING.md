@@ -15,7 +15,7 @@ older snapshot or edit two copies of the same core feature independently.
 | Shared behavior, Actor authorization, Hub dispatch, lifecycle or a reusable integration port | OpenCraft core, with a focused PR against `main` | [AGENTS.md](AGENTS.md), then the affected package and its tests |
 | Commands, navigation, settings, themes or other supported client contributions | A client Extension using public API V1 | [Extension development](docs/extension-development.md) and the [runnable example](examples/extensions/README.md) |
 | Company login, branding, private services or deployment defaults | Downstream trusted product composition | [Boundary and compatibility guide](docs/extension-development.md#choose-a-boundary) |
-| Skills, MCP, hooks or execution-engine capabilities | The owning Host/AppServer plugin or adapter | [Execution-side versus client plugins](docs/plugin-architecture.md#3-先区分两种插件) |
+| Skills, MCP, hooks or execution-engine capabilities | The owning Host/AppServer plugin or adapter | [Execution-side versus client plugins](docs/architecture/extensions/architecture-and-lifecycle.md#3-先区分两种插件) |
 
 A client Extension does not need a core PR merely to be installed. Propose a
 small reusable port upstream when the existing contract cannot express a real
