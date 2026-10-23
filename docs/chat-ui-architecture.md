@@ -375,7 +375,7 @@ Native viewport owner 在视口高度变化及没有位置写入的内容尺寸�
 ```text
 WebSocket / Replay Transport
           |
-Codex AppServer protocol
+Host AppServer protocol
           |
 Conversation Read Model
 V4 ReplicaClient or AppServer V3 compatibility projection

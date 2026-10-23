@@ -1104,7 +1104,7 @@ function abortError(): Error {
 }
 
 /**
- * Codex skills are host/cwd query data, not Replica state. The returned
+ * Skills are host/cwd query data, not Replica state. The returned
  * catalog delays `skills/list` until the user opens `$` (including an empty
  * query); file search still requires text. It shares Host/root-scoped results
  * through TanStack Query and invalidates every cached
@@ -1141,7 +1141,7 @@ function fileSearchEntries(
 
 /**
  * One host-scoped Composer catalog. Skills are cached query data while file
- * mentions use Codex's long-lived fuzzy-search session and therefore avoid a
+ * mentions use the Host's long-lived fuzzy-search session and therefore avoid a
  * request/session waterfall for every keystroke.
  */
 export function useAppServerComposerCatalog(workspaceRoots: readonly string[]): ComposerCatalog {

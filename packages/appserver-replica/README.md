@@ -7,6 +7,6 @@ snapshot immediately, but it becomes authoritative only after `replica/sync`.
 Receipts survive Journal compaction, so an old `commandId` cannot execute twice.
 
 The package has no React, Vite, Expo or Electron dependency. Cordis owns
-host-scoped client instances. The existing Codex V3 AppServer Resume protocol enters
+host-scoped client instances. The existing V3 AppServer Resume protocol enters
 through the separate V3 adapter in `@opencraft/appserver-session`; it is never
 misreported as a server-sequenced V4 stream.

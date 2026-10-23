@@ -60,7 +60,7 @@
 协议层只提供权威事实，`chat-core` 将事实投影成平台无关的 Activity presentation，Web/RN 再选择图标、布局与可交互表面。
 
 ```text
-Codex AppServer Item
+Host AppServer Item
   -> TimelineBlock（事实、稳定 id、状态、输入输出、错误、耗时）
   -> ToolActivityPresentation（grouping、文案状态、是否可展开）
   -> Web / Native Activity renderer（测量、动画、字体、hover）
