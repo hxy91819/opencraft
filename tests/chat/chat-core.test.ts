@@ -1844,7 +1844,7 @@ test("Codex command actions and patch diffs survive projection for semantic Acti
   });
 });
 
-test("multi-action command Items fan out into source-faithful exec rows without duplicating provenance", () => {
+test("multi-action command Items fan out into per-action exec rows with one review and Item anchor", () => {
   const snapshot = projectTimeline(source([{
     id: "turn-multi-action-command",
     status: "complete",
@@ -2957,7 +2957,7 @@ test("real Codex reasoning keeps content when the summary array is empty", () =>
       type: "reasoning",
       payload: {
         summary: [],
-        content: ["Inspected the recovered renderer.", "Compared the scroll transaction."],
+        content: ["Inspected the renderer layout.", "Checked the scroll transaction."],
       },
     }],
   }]), createDefaultTimelineProjectorRegistry());
@@ -2965,7 +2965,7 @@ test("real Codex reasoning keeps content when the summary array is empty", () =>
   assert.equal(block?.type, "reasoning");
   if (block?.type !== "reasoning") throw new Error("Expected a reasoning block");
   assert.equal(block.summary, "");
-  assert.equal(block.detail, "Inspected the recovered renderer.\nCompared the scroll transaction.");
+  assert.equal(block.detail, "Inspected the renderer layout.\nChecked the scroll transaction.");
 });
 
 test("reasoning presentation uses actual summary once, falls back to returned detail, and defaults collapsed", () => {

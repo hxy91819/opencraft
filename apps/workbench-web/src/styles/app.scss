@@ -3819,7 +3819,7 @@ html[data-opencraft-window-type="browser"] .main-content-top-fade {
   scroll-padding-block-end: 0;
 }
 
-// Source-equivalent User Message Navigation Rail. Its geometry deliberately
+// User message navigation rail. Its geometry deliberately
 // lives beside the scroll viewport: virtualized rows may mount/unmount, while
 // the prompt index and its pointer-capture interaction remain stable.
 .conversation-navigation-rail {
@@ -5279,7 +5279,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 // server-request panel. The card remains reachable while Composer stays open.
 
 
-// Source-equivalent OptionPickerRequestPrompt geometry. It is a distinct
+// Option picker geometry. It is a distinct
 // product dynamic tool, not the numbered request_user_input questionnaire.
 .thread-option-picker {
   overflow: hidden;

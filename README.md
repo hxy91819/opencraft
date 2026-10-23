@@ -164,7 +164,7 @@ and their platform requirements. `npm run build:expo:ios` runs the
 Linux-compatible Metro iOS bundle gate; launching an Apple Simulator and
 compiling the native pods still require macOS and Xcode.
 
-The frame contract and exact recovery evidence are documented in
+The frame layout contract is documented in
 `docs/workbench-frame-spec.md`. Platform boundaries and reuse rules are documented
 in `docs/platform-architecture.md`. The Cordis-backed extension kernel,
 capability boundary and future marketplace model are documented in

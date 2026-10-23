@@ -30,9 +30,9 @@ MCP initialization/admission race without permitting an early effect. Persisted 
 restart preserves identity while rotating the listener address. Pending
 reservations are bounded and are not recovered as completed creations.
 
-The Host starts capability providers before allowing recovered Codex execution
-to prepare its tools. Shutdown withdraws domain providers, drains admitted
-calls, then closes the listener and storage. Closing a browser does not revoke
+The Host starts capability providers before allowing Codex sessions restored
+after a restart to prepare their tools. Shutdown withdraws domain providers,
+drains admitted calls, then closes the listener and storage. Closing a browser does not revoke
 Host ownership. Actor/channel revocation still rejects calls immediately.
 Signing-key rotation invalidates credentials; native session preparation then
 rebuilds the runtime configuration at its next idle boundary.
