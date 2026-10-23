@@ -84,9 +84,10 @@ Owned DSH permission metadata now comes from sandboxPolicy.resolve,
 approval.overrideOf/config and permissionPresets rather than fixed workspace
 claims. Named profiles use the canonical setter and flush; arbitrary
 unsupported policy overrides are rejected instead of silently ignored.
-Confined file policy projects as externalSandbox with explicit DSH metadata,
-not a claim of Codex OS sandbox enforcement. Real-engine read/switch/restore,
-host scenario smoke, projection tests and typecheck pass.
+Confined file policy projects as externalSandbox with explicit DSH metadata;
+this reports file-effect enforcement and does not claim OS process isolation.
+Real-engine read/switch/restore, host scenario smoke, projection tests and
+typecheck pass.
 Generation intent carries the exact named permission preset; new seed Agent
 is set before publication. Custom unmatched policy recovery currently refuses
 rather than broadening authority, and remains unfinished. External DSH metadata
