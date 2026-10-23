@@ -247,14 +247,14 @@ test("Thread capability readiness distinguishes cold deferral from partial Host 
   const dynamicTools = [
     {
       type: "namespace" as const,
-      name: "vela_browser",
+      name: "opencraft_browser",
       description: "Browser tools",
       tools: [
         { type: "function" as const, name: "get_tab_context", description: "Read", inputSchema: { type: "object" } },
         { type: "function" as const, name: "browser_use", description: "Operate", inputSchema: { type: "object" } },
       ],
     },
-    { type: "function" as const, name: "open_in_vela", description: "Open", inputSchema: { type: "object" } },
+    { type: "function" as const, name: "open_in_opencraft", description: "Open", inputSchema: { type: "object" } },
   ];
 
   assert.equal(countDynamicToolDefinitions(dynamicTools), 3);
