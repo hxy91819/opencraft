@@ -1,11 +1,14 @@
 import { createRoot } from "react-dom/client";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import type { WebPreviewDocument } from "@opencraft/file-preview-web";
+import type { FilePreviewIntl, WebPreviewDocument } from "@opencraft/file-preview-web";
 import { columnLabel, decodeDelimitedBytes, parseDelimited } from "./delimited-model";
 import "./preview.web.scss";
 
-function DelimitedTable({ rows, source, name }: { rows: string[][]; source: string; name: string }) {
+const tableMessage = { id: "chat.table.table", defaultMessage: "Table" };
+const sourceMessage = { id: "panel.markdownSource", defaultMessage: "Source" };
+
+function DelimitedTable({ rows, source, name, intl }: { rows: string[][]; source: string; name: string; intl?: FilePreviewIntl }) {
   const scroll = useRef<HTMLDivElement>(null);
   const [showSource, setShowSource] = useState(false);
   const columns = rows.reduce((max, row) => Math.max(max, row.length), 0);
@@ -15,8 +18,8 @@ function DelimitedTable({ rows, source, name }: { rows: string[][]; source: stri
   const visibleColumns = horizontal.getVirtualItems();
   return <div className="structured-preview structured-preview--table">
     <div className="structured-preview__toolbar">
-      <button type="button" aria-pressed={!showSource} onClick={() => setShowSource(false)}>Table</button>
-      <button type="button" aria-pressed={showSource} onClick={() => setShowSource(true)}>Source</button>
+      <button type="button" aria-pressed={!showSource} onClick={() => setShowSource(false)}>{intl ? intl.formatMessage(tableMessage) : tableMessage.defaultMessage}</button>
+      <button type="button" aria-pressed={showSource} onClick={() => setShowSource(true)}>{intl ? intl.formatMessage(sourceMessage) : sourceMessage.defaultMessage}</button>
       <span>{rows.length.toLocaleString()} × {columns.toLocaleString()}</span>
     </div>
     <pre className="structured-preview__source" hidden={!showSource}>{source}</pre>
@@ -46,9 +49,10 @@ export async function openDelimited(input: { blob: Blob; name: string; signal: A
   const element = document.createElement("div");
   element.className = "structured-preview-host";
   const root = createRoot(element);
-  root.render(<DelimitedTable rows={rows} source={source} name={input.name} />);
+  const render = (intl?: FilePreviewIntl) => root.render(<DelimitedTable rows={rows} source={source} name={input.name} intl={intl} />);
+  render();
   let disposed = false;
   const dispose = () => { if (!disposed) { disposed = true; input.signal.removeEventListener("abort", dispose); root.unmount(); element.remove(); } };
   input.signal.addEventListener("abort", dispose, { once: true });
-  return { element, dispose, setActive: active => { element.inert = !active; } };
+  return { element, dispose, setIntl: intl => { if (!disposed) render(intl); }, setActive: active => { element.inert = !active; } };
 }

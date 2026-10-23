@@ -9,7 +9,7 @@ import { ObserveStore, observationSchemaV1 } from '../apps/observability-service
 import { mkdtemp, rm, readFile, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { sanitizeEvent, windowFor } from '../packages/observability-contract/index.mjs';
+import { limits, sanitizeEvent, windowFor } from '../packages/observability-contract/index.mjs';
 import { createEventQueue } from '../packages/observability-contract/queue.mjs';
 import { compare } from '../packages/observability-query/index.mjs';
 import { startObserve } from '../apps/observability-service/service.mjs';
@@ -33,6 +33,128 @@ test('comparison rejects missing/mixed workload and detects paired improvement a
   const missing=snapshot(10);missing.events.pop();assert.equal(compare(snapshot(100),missing).status,'inconclusive');
   const mixed=snapshot(10);mixed.events[0].cache='warm';assert.equal(compare(snapshot(100),mixed).status,'inconclusive');
 });
+test('SQLite full aborts the batch atomically, drops the batch and keeps loss/query readable',async()=>{
+  const directory=await mkdtemp(join(tmpdir(),'opencraft-observe-full-'));
+  const store=new ObserveStore(join(directory,'observe.sqlite'));
+  try{
+    const pages=store.db.prepare('PRAGMA page_count').get().page_count;
+    store.db.exec(`PRAGMA max_page_count=${pages+3}`);
+    const events=Array.from({length:32},(_,i)=>event({eventId:`full-${i}`,originClass:'interactive',visibility:'visible',measurementScope:'in_page',cache:'cold',engine:'codex',actorKind:'human',durationMs:10+i}));
+    const receipt=store.ingest(events,'a'.repeat(64));
+    assert.equal(receipt.accepted,0);assert.equal(receipt.dropped,32);assert.equal(receipt.rejected,0);assert.equal(receipt.duplicates,0);
+    assert.equal(store.accepted,0);assert.equal(store.dropped,32);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM events').get().n,0,'full batch must not leave a partial commit');
+    assert.equal(store.activity(now-1000,now+1000).humans,0);
+  }finally{store.close();await rm(directory,{recursive:true,force:true});}
+});
+
+test('SQLite full does not count an existing duplicate as accepted or dropped',async()=>{
+  const directory=await mkdtemp(join(tmpdir(),'opencraft-observe-full-duplicate-'));
+  const store=new ObserveStore(join(directory,'observe.sqlite'));
+  try{
+    const existing=event({eventId:'existing'});
+    assert.equal(store.ingest([existing]).accepted,1);
+    const pages=store.db.prepare('PRAGMA page_count').get().page_count;
+    store.db.exec(`PRAGMA max_page_count=${pages+3}`);
+    const receipt=store.ingest([existing,...Array.from({length:32},(_,i)=>event({eventId:`duplicate-full-${i}`,originClass:'interactive',visibility:'visible',measurementScope:'in_page',cache:'cold',engine:'codex',actorKind:'human',durationMs:10+i}))],'a'.repeat(64));
+    assert.equal(receipt.accepted,0);assert.equal(receipt.duplicates,1);assert.equal(receipt.dropped,32);
+    assert.equal(store.accepted,1);assert.equal(store.dropped,32);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM events').get().n,1);
+  }finally{store.close();await rm(directory,{recursive:true,force:true});}
+});
+
+test('SQLite full counts persisted and intra-batch duplicates that appear after the failure',async()=>{
+  const directory=await mkdtemp(join(tmpdir(),'opencraft-observe-full-asymmetric-'));
+  const store=new ObserveStore(join(directory,'observe.sqlite'));
+  try{
+    const existing=event({eventId:'asymmetric-existing'});
+    assert.equal(store.ingest([existing]).accepted,1);
+    const pages=store.db.prepare('PRAGMA page_count').get().page_count;
+    store.db.exec(`PRAGMA max_page_count=${pages+3}`);
+    const prefix=Array.from({length:64},(_,i)=>event({eventId:`asymmetric-new-${i}`,originClass:'interactive',visibility:'visible',measurementScope:'in_page',cache:'cold',engine:'codex',actorKind:'human',durationMs:10+i}));
+    const receipt=store.ingest([...prefix,existing,prefix[0]],'a'.repeat(64));
+    assert.equal(receipt.accepted,0);
+    assert.equal(receipt.duplicates,2);
+    assert.equal(receipt.dropped,64);
+    assert.equal(store.accepted,1);
+    assert.equal(store.dropped,64);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM events').get().n,1);
+  }finally{store.close();await rm(directory,{recursive:true,force:true});}
+});
+
+test('capacity receipt survives a secondary rollback failure without masking the full batch',async()=>{
+  const directory=await mkdtemp(join(tmpdir(),'opencraft-observe-full-rollback-'));
+  const store=new ObserveStore(join(directory,'observe.sqlite'));
+  try{
+    const pages=store.db.prepare('PRAGMA page_count').get().page_count;
+    store.db.exec(`PRAGMA max_page_count=${pages+3}`);
+    const original=store.db.exec.bind(store.db);
+    store.db.exec=(sql)=>{if(sql==='ROLLBACK')throw Error('secondary rollback failure');return original(sql);};
+    const events=Array.from({length:32},(_,i)=>event({eventId:`rollback-full-${i}`,originClass:'interactive',visibility:'visible',measurementScope:'in_page',cache:'cold',engine:'codex',actorKind:'human',durationMs:10+i}));
+    const receipt=store.ingest(events,'a'.repeat(64));
+    assert.equal(receipt.accepted,0);assert.equal(receipt.dropped,32);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM events').get().n,0);
+  }finally{store.close();await rm(directory,{recursive:true,force:true});}
+});
+
+test('service stays queryable and exposes the loss counter after a capacity drop',async()=>{
+  const directory=await mkdtemp(join(tmpdir(),'opencraft-observe-full-service-'));
+  const service=await startObserve({directory,deploymentId:'full-test',metricsPort:0,prometheus:'http://127.0.0.1:1'});
+  try{
+    const before=service.store.db.prepare('SELECT count(*) AS n FROM events').get().n;
+    const pages=service.store.db.prepare('PRAGMA page_count').get().page_count;
+    service.store.db.exec(`PRAGMA max_page_count=${pages+3}`);
+    const events=Array.from({length:32},(_,i)=>event({eventId:`service-full-${i}`,originClass:'interactive',visibility:'visible',measurementScope:'in_page',cache:'cold',engine:'codex',actorKind:'human',durationMs:10+i}));
+    const receipt=service.store.ingest(events,'a'.repeat(64));
+    assert.equal(receipt.accepted,0);assert.equal(receipt.dropped,32);
+    const result=await service.query('usage.activity24h');
+    assert.equal(result.loss.dropped,32);assert.equal(result.query,'usage.activity24h');
+    assert.equal(service.store.db.prepare('SELECT count(*) AS n FROM events').get().n,before);
+  }finally{await service.close();await rm(directory,{recursive:true,force:true});}
+});
+
+test('heartbeat-shaped batch at capacity is a drop, not a process failure',async()=>{
+  const directory=await mkdtemp(join(tmpdir(),'opencraft-observe-full-heartbeat-'));
+  const service=await startObserve({directory,deploymentId:'full-heartbeat',metricsPort:0,prometheus:'http://127.0.0.1:1'});
+  try{
+    const pages=service.store.db.prepare('PRAGMA page_count').get().page_count;
+    service.store.db.exec(`PRAGMA max_page_count=${pages}`);
+    const insert=service.store.db.prepare('INSERT INTO events(event_id,at,received,kind,component,actor,body) VALUES(?,?,?,?,?,?,?)');
+    let full=false;
+    for(let i=0;i<500;i++){
+      try{insert.run(`fill-${i}`,now,now,'operation','web',null,JSON.stringify({schemaVersion:1,kind:'operation',component:'web',eventId:`fill-${i}`,producerId:'fill',at:now,operationType:'thread_open',outcome:'ok',durationMs:1,padding:'x'.repeat(1800)}));}
+      catch(error){full=error.errcode===13||/database or disk is full/i.test(error.message);break;}
+    }
+    assert(full,'fixture must fill the small page budget');
+    const heartbeats=Array.from({length:32},(_,i)=>({schemaVersion:1,kind:'resource',component:'observe',producerId:'observe',eventId:`full-heartbeat-${i}`,at:now+i,rssBytes:1,cpuSeconds:1,sourceRevision:null,buildId:null,observedBy:'self',identitySource:'self',producerMode:'native',originClass:'operator'}));
+    const receipt=service.store.ingest(heartbeats);
+    assert.equal(receipt.accepted,0);assert.equal(receipt.dropped,32);
+    const result=await service.query('usage.activity24h');
+    assert.equal(result.loss.dropped,32);assert.equal(result.query,'usage.activity24h');
+  }finally{await service.close();await rm(directory,{recursive:true,force:true});}
+});
+
+test('configured database bytes raise the SQLite page cap without losing old rows',async()=>{
+  const directory=await mkdtemp(join(tmpdir(),'opencraft-observe-capacity-'));
+  const path=join(directory,'observe.sqlite');
+  let store=new ObserveStore(path,()=>now);
+  try{
+    assert.equal(store.ingest([event({eventId:'capacity-old'})]).accepted,1);
+    const pageSize=store.db.prepare('PRAGMA page_size').get().page_size;
+    const pages=store.db.prepare('PRAGMA page_count').get().page_count;
+    store.db.exec(`PRAGMA max_page_count=${pages}`);
+    assert.equal(store.ingest(Array.from({length:32},(_,i)=>event({eventId:`capacity-blocked-${i}`}))).accepted,0);
+    store.close();
+    const configured=(pages+64)*pageSize;
+    store=new ObserveStore(path,()=>now,configured);
+    assert.equal(store.db.prepare('PRAGMA max_page_count').get().max_page_count,pages+64);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM events').get().n,1,'old row must survive reopening');
+    assert.equal(store.ingest(Array.from({length:8},(_,i)=>event({eventId:`capacity-accepted-${i}`}))).accepted,8);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM events').get().n,9);
+    assert.equal(limits.retentionMs,7*86400000);
+  }finally{store.close();await rm(directory,{recursive:true,force:true});}
+});
+
 test('real socket, domain dedup, immutable CLI output, unknown query and unavailable backend',async()=>{
   const directory=await mkdtemp(join(tmpdir(),'opencraft-observe-'));
   const service=await startObserve({directory,deploymentId:'test',metricsPort:0,prometheus:'http://127.0.0.1:1'});

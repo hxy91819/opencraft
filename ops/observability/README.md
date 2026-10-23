@@ -12,9 +12,14 @@ provisioning directory. No source checkout or enterprise service is required.
 1. Copy this directory to an operator-owned configuration directory. Create a private
    `/var/lib/opencraft-observe` (0700), including `grafana` owned by the container's
    UID 472. Configure separate persistent filesystems with capacity limits of 10 GiB
-   for `prometheus`, 5 GiB for `loki`, and 1 GiB for Observe. Use filesystem/project
-   quotas or the optional image-backed preparation helper; retention alone is not a
-   disk quota. Do not place business data in these filesystems.
+   for `prometheus`, 5 GiB for `loki`, and 1 GiB for Observe by default. Use
+   filesystem/project quotas or the optional image-backed preparation helper;
+   retention alone is not a disk quota. Deployments that need a larger Observe
+   database may pass a bounded GiB value as the helper's second argument, while the
+   service's `databaseBytes` config sets the SQLite logical cap below that volume
+   with WAL/headroom. The default remains 1 GiB; deployments may choose a
+   bounded value and must keep backups outside the data volume. Do not place
+   business data in these filesystems.
 2. Set `OPENCRAFT_OBSERVE_DIRECTORY` and `OPENCRAFT_OBSERVE_PUBLIC_ORIGIN` in a private
    `.env`. The latter is the existing authenticated workbench origin, with no trailing
    slash. Ports 23302–23306 and 23308 bind loopback only. Grafana has **no TCP listener**; its
