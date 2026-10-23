@@ -83,7 +83,7 @@ try {
     assert.ok(!(await page.evaluate(() => (window as any).chatModels())).groups.some((g: any) => g.id === provider.id));
     if (process.env.OPENCRAFT_SPEECH_UI_ARTIFACT_DIR) await page.screenshot({ path: `${process.env.OPENCRAFT_SPEECH_UI_ARTIFACT_DIR}/model-services-asr-${width}-${colorScheme}.png` });
     await page.getByRole("button", { name: "语音设置", exact: true }).click();
-    const modelSelect = page.getByRole("combobox", { name: "转写模型" });
+    const modelSelect = page.getByRole("combobox", { name: "Transcription model" });
     await modelSelect.selectOption(JSON.stringify([provider.id, "ep-hyasr3"]));
     await page.waitForFunction(() => (window as any).speech.getSnapshot().phase === "ready" && document.querySelector('#web-speech-model')?.getAttribute('disabled') === null);
     assert.deepEqual((await repository.read()).defaultModel, { providerId: "deepseek-official", modelId: "deepseek-v4-flash" });

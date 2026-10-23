@@ -46,7 +46,7 @@
     "smoke:sidebar-execution-owner": "tsx scripts/smoke-sidebar-execution-owner.ts",
     "smoke:sent-image-preview": "tsx scripts/smoke-sent-image-preview.ts",
     "check:i18n": "node scripts/check-i18n.mjs",
-    "test:i18n": "tsx --test tests/i18n-runtime.test.ts tests/i18n-controller.test.ts tests/settings-menu-messages.test.ts",
+    "test:i18n": "tsx --test tests/i18n-runtime.test.ts tests/i18n-controller.test.ts tests/settings-menu-messages.test.ts tests/web-voice-settings-i18n.test.tsx",
     "smoke:i18n": "tsx scripts/smoke-i18n.ts",
     "postinstall": "node scripts/patch-expo-modules-jsi.mjs && node scripts/patch-novnc-desktop-events.mjs && node scripts/patch-heroui-menu-measurement.mjs",
     "protocol:refresh": "node scripts/refresh-codex-protocol.mjs",
