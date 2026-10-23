@@ -89,6 +89,7 @@
   }
   .shell-sidebar__navigation {
     --size-application-navigation-icon: 20px;
+    --size-icon-navigation: var(--size-application-navigation-icon);
   }
   .shell-sidebar__rail-footer .shell-navigation__entrance {
     border-radius: var(--radius-md);
