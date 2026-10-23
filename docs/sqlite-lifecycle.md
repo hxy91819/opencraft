@@ -208,7 +208,7 @@ IndexedDB 使用原生升级事务，不运行 SQL runner；广播仅通知已�
 - Local Agent 配置目录的六库启动门禁、owner claim、认证 ready 摘要及 gateway 健康投影；OAuth 清理与 execution fencing 保留在业务 owner。
 - [共享模块测试](../tests/storage/sqlite-node.test.ts) 覆盖空库、旧库采纳/移开、多版本升级、重复打开、checksum/未知新版拒绝、事务回滚、WAL 备份与保留；各 store 测试验证原领域读写/CAS 和旧库处置。
 - [Host storage 测试](../tests/storage/local-agent-storage.test.ts)、[daemon 测试](../tests/execution/opencraft-daemon.test.ts)、[更新器测试](../tests/server/server-deployment.test.mjs) 覆盖双启动、启动失败拒绝 ready、旧五库/新完整 owner 摘要与健康失败回退。
-- 既有 [服务器 smoke](../scripts/smoke-server-updates.ts) 使用真实 npm、生产 SPA、打包 gateway/daemon 与 Codex CLI，推理为合成回环服务，systemd 为隔离重启替身。早期 routing 移开报告不再证明当前已知无 intent 的处理；当前原子转换与未知拒绝/移开由 owner fixtures 验证。本阶段不宣称重跑完整更新 gate 或真实局域网端到端。
+- 既有 [服务器 smoke](../scripts/smoke/server/smoke-server-updates.ts) 使用真实 npm、生产 SPA、打包 gateway/daemon 与 Codex CLI，推理为合成回环服务，systemd 为隔离重启替身。早期 routing 移开报告不再证明当前已知无 intent 的处理；当前原子转换与未知拒绝/移开由 owner fixtures 验证。本阶段不宣称重跑完整更新 gate 或真实局域网端到端。
 
 ### 明确未做
 

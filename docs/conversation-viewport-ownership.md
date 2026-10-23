@@ -88,7 +88,7 @@ and restoration of an active Turn without replaying initial placement.
 `npm run test:chat` covers the measurement transaction and owner lifetime tests.
 `npx tsx --test tests/shell/workbench-timeline-host.test.ts` checks host integration.
 
-`npx tsx scripts/smoke-conversation-scroll.ts` runs the real Conversation and
+`npx tsx scripts/smoke/conversation/smoke-conversation-scroll.ts` runs the real Conversation and
 viewport owner in headless Chromium against deterministic local content. It checks
 first measurement, streaming bottom-follow, historical/latest growth while reading,
 completion, return to bottom, content-only resize, and prework-to-final transfer.

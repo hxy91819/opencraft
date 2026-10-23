@@ -50,7 +50,7 @@ refactors.
   preserves ordered todo observations and does not alter Turn lifecycle.
 - `tests/execution/dsh-projection.test.ts`: event identity, no duplicate plan emission,
   repeat fold stability, existing tool/interaction behavior.
-- `scripts/smoke-conversation-presentation.ts`: headless Chromium running the
+- `scripts/smoke/conversation/smoke-conversation-presentation.ts`: headless Chromium running the
   real `Conversation`, built-in renderer registration, Markdown and virtual
   list. Checks writing/completed plans, Planning placeholder, collapse retention,
   download, remount, latest-only fixed todo outside transcript, terminal removal,

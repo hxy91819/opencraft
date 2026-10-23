@@ -98,7 +98,7 @@ async function gate(config) {
     await run('build', [npm, 'run', 'build:web:release'], { OPENCRAFT_SOURCE_REVISION: report.source.commit + (report.source.dirty ? '-dirty' : ''), ...(config.profile === 'headless' ? { OPENCRAFT_HEADLESS_SERVER_BUILD: 'true', VITE_HYPERNODE_PLUGIN: 'disabled', VITE_APPSERVER_HOSTS_JSON: JSON.stringify(headlessWebHostDefinitions()) } : {}) });
     for (const scenario of config.scenario === 'all' ? ['install', 'self-upgrade'] : [config.scenario]) {
       const evidence = join(directory, scenario); await mkdir(evidence);
-      await run(scenario, ['--import', loader, config.profile === 'headless' ? 'scripts/smoke-headless-server-updates.ts' : 'scripts/smoke-server-updates.ts'], {
+      await run(scenario, ['--import', loader, config.profile === 'headless' ? 'scripts/smoke/server/smoke-headless-server-updates.ts' : 'scripts/smoke/server/smoke-server-updates.ts'], {
         OPENCRAFT_SERVER_SMOKE_SYSTEMD: '1', OPENCRAFT_SERVER_SMOKE_SELF_UPGRADE: scenario === 'self-upgrade' ? '1' : '0',
         OPENCRAFT_SERVER_UPDATE_EVIDENCE_DIRECTORY: evidence,
       });

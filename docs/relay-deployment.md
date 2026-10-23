@@ -161,7 +161,7 @@ with trusted server operators. Separate origins are the supported boundary for
 mutually untrusted application code; storage/cookie namespacing is not a browser
 sandbox against malicious same-origin JavaScript.
 
-Validate the built Headless Web client with `npx tsx scripts/smoke-server-selection.ts`
+Validate the built Headless Web client with `npx tsx scripts/smoke/execution/smoke-server-selection.ts`
 (after a Headless Web release build). It uses two real isolated core membership
 stores, relay tunnels and Chromium with synthetic provider/Codex boundaries.
 It does not stand in for actual corporate employee sign-in.

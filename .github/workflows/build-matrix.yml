@@ -151,7 +151,7 @@ jobs:
       - name: Verify and launch the app from the final DMG
         env:
           OPENCRAFT_SMOKE_OUTPUT: ${{ runner.temp }}/opencraft-macos-smoke
-        run: node scripts/smoke-macos-dmg.mjs apps/workbench-electron/release/OpenCraft-*.dmg
+        run: node scripts/smoke/desktop/smoke-macos-dmg.mjs apps/workbench-electron/release/OpenCraft-*.dmg
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

@@ -40,7 +40,7 @@ its receipt in layout effect before paint. Empty, detached, hidden or exiting
 viewports cannot overwrite receipts with clamped zeros; a deliberate scroll to
 zero in a visible viewport is valid. Hidden selection updates do not auto-scroll.
 No new persistence, polling or drawer keep-mounted policy is implied.
-Acceptance: `OPENCRAFT_SIDEBAR_SCROLL_ONLY=1 npx tsx scripts/smoke-mobile-sidebar-gesture.ts`
+Acceptance: `OPENCRAFT_SIDEBAR_SCROLL_ONLY=1 npx tsx scripts/smoke/shell/smoke-mobile-sidebar-gesture.ts`
 uses the actual AppShell/Sidebar and verifies reopen, zero, quick reversal,
 hidden selection updates and desktop/mobile handoff in light/dark/reduced motion.
 
@@ -112,7 +112,7 @@ have the same priority as accessible modal surfaces. Opening a foreground layer
 revokes any pending/held Shell gesture before its late move/end can commit.
 Closing it permits a new Shell sequence, never resumes the revoked contact.
 
-Acceptance: `OPENCRAFT_GESTURE_CONTENT_ONLY=1 npx tsx scripts/smoke-mobile-sidebar-gesture.ts`
+Acceptance: `OPENCRAFT_GESTURE_CONTENT_ONLY=1 npx tsx scripts/smoke/shell/smoke-mobile-sidebar-gesture.ts`
 uses real reasoning, inspected/generated/sent-image renderers and CDP touch to
 check held following, no activation on swipe, original tap actions, cancellation
 and native input exclusions in light/dark and normal/reduced motion.
@@ -179,7 +179,7 @@ areas. In the desktop list column, the heading and its filter button stay fixed;
 `.sidebar-activity-list` is the conversation scroll owner. Mobile uses the shared
 native viewport described below, rather than a separate fixed navigation strip. Selection reveal targets that
 viewport. Moving the shared content portals preserves its DOM and scroll position.
-Evidence: `scripts/smoke-sidebar-thread-insets.mjs` (real AppShell/Sidebar).
+Evidence: `scripts/smoke/shell/smoke-sidebar-thread-insets.mjs` (real AppShell/Sidebar).
 
 Mobile navigation rows, including Home, scroll out with conversations in the shared native viewport. No Home-only sticky surface or top scroll offset remains; the floating New chat and settings actions remain reachable at the bottom. Desktop navigation is unchanged. Acceptance: FAB-only mobile sidebar smoke measures Home displacement against actual scrollTop and verifies it leaves the viewport while creation/settings stay fixed.
 
@@ -263,7 +263,7 @@ advance on every build or first visit. Newer offline/live results remain unread,
 and stale reads cannot acknowledge newer live results. Unset/invalid values
 preserve normal read behavior; this is not a change to backend waits or errors.
 Tests: `thread-attention.test.ts`, `thread-catalog-query.test.ts`,
-`scripts/smoke-thread-attention.ts` (real DOM/intersection/occlusion; platform focus is substituted because Playwright forces tabs focused).
+`scripts/smoke/conversation/smoke-thread-attention.ts` (real DOM/intersection/occlusion; platform focus is substituted because Playwright forces tabs focused).
 
 ## Thread list typography (2026-10-15)
 
@@ -299,13 +299,13 @@ and does not receive the standard task-flow continuation button.
 
 ### Desktop navigation surface (2026-10-15)
 
-Unified Shell uses a 60px icon rail with 36px desktop controls, 20px application glyphs, 16px footer glyphs, and 18px account avatars. Controls consume the shared application-navigation row/density token, expanding to at least 44px in touch-friendly density; labeled mobile rows retain their original 20px glyphs and neutral current-page highlighting. Home is the single conversation-area destination for both existing chat and draft routes, invoking openChat without creating a new draft. Desktop retains a full-width New chat row directly below Conversations. Mobile projects the same creation action into a Shell-owned floating pill over the bottom of the scroll track, with a circular settings button on its right. The floating settings button composites its secondary state tint over the existing theme opaque elevated surface in resting, hover and pressed states, so list content cannot show through. The mobile account/avatar entrance and bottom plate are omitted; desktop retains its rail footer. The list reserves space so its last row can clear both controls. New chat dismisses the mobile drawer. The generic Settings entrance retains the open mobile drawer while its shared left slot becomes settings-category navigation; only an explicit category selection dismisses it, including selecting the already active category. Desktop keeps its direct default Appearance route; route normalization and explicit deep links do not create a new drawer or a second navigation owner. Filters retain their existing scroll lifetime; mobile search is a floating header action. Real Shell browser coverage: `OPENCRAFT_GESTURE_FAB_ONLY=1` in `scripts/smoke-mobile-sidebar-gesture.ts`. The toolbar exposes the sidebar toggle and preserves the measured native-window safe area; history remains in the router/browser without rendered arrow controls. A standalone managed site has a mascot/wordmark brand region in compact layout, sized from the default sidebar metric and capped by viewport space, with collapse at its trailing edge. Touch layout or a browser window whose unified sidebar has moved into its narrow drawer hides both the mark and wordmark in the persistent page header and releases the reserved rail width in visible and measurement copies, retaining navigation controls. The narrow browser rule also applies with compact density; wide compact browser and native desktop branding remain visible. Drawer headers retain the wordmark and a plugin-provided leading mark; plugins can opt out of their mark. The managed site retains its mascot there, replacing the internal mobile collapse button. The closed page retains its plain sidebar entrance, matching right-panel chrome. Search keeps its separate glass circular control. The existing data-ui-density preference owns interaction density; Shell owns the separate narrow-browser branding condition from its existing docking decision. The browser header uses the shared surface color, avoiding a separate gray empty strip. The context column and context-free main frame meet the toolbar and rail with square top-start seams; context presence changes neither saved width nor DOM ownership. Cards and modal surfaces retain their own semantic corner tokens. Tasks owns its single title above its Board/List toolbar; shell chrome omits duplicate management titles. Embedded shells retain their host presentation.
+Unified Shell uses a 60px icon rail with 36px desktop controls, 20px application glyphs, 16px footer glyphs, and 18px account avatars. Controls consume the shared application-navigation row/density token, expanding to at least 44px in touch-friendly density; labeled mobile rows retain their original 20px glyphs and neutral current-page highlighting. Home is the single conversation-area destination for both existing chat and draft routes, invoking openChat without creating a new draft. Desktop retains a full-width New chat row directly below Conversations. Mobile projects the same creation action into a Shell-owned floating pill over the bottom of the scroll track, with a circular settings button on its right. The floating settings button composites its secondary state tint over the existing theme opaque elevated surface in resting, hover and pressed states, so list content cannot show through. The mobile account/avatar entrance and bottom plate are omitted; desktop retains its rail footer. The list reserves space so its last row can clear both controls. New chat dismisses the mobile drawer. The generic Settings entrance retains the open mobile drawer while its shared left slot becomes settings-category navigation; only an explicit category selection dismisses it, including selecting the already active category. Desktop keeps its direct default Appearance route; route normalization and explicit deep links do not create a new drawer or a second navigation owner. Filters retain their existing scroll lifetime; mobile search is a floating header action. Real Shell browser coverage: `OPENCRAFT_GESTURE_FAB_ONLY=1` in `scripts/smoke/shell/smoke-mobile-sidebar-gesture.ts`. The toolbar exposes the sidebar toggle and preserves the measured native-window safe area; history remains in the router/browser without rendered arrow controls. A standalone managed site has a mascot/wordmark brand region in compact layout, sized from the default sidebar metric and capped by viewport space, with collapse at its trailing edge. Touch layout or a browser window whose unified sidebar has moved into its narrow drawer hides both the mark and wordmark in the persistent page header and releases the reserved rail width in visible and measurement copies, retaining navigation controls. The narrow browser rule also applies with compact density; wide compact browser and native desktop branding remain visible. Drawer headers retain the wordmark and a plugin-provided leading mark; plugins can opt out of their mark. The managed site retains its mascot there, replacing the internal mobile collapse button. The closed page retains its plain sidebar entrance, matching right-panel chrome. Search keeps its separate glass circular control. The existing data-ui-density preference owns interaction density; Shell owns the separate narrow-browser branding condition from its existing docking decision. The browser header uses the shared surface color, avoiding a separate gray empty strip. The context column and context-free main frame meet the toolbar and rail with square top-start seams; context presence changes neither saved width nor DOM ownership. Cards and modal surfaces retain their own semantic corner tokens. Tasks owns its single title above its Board/List toolbar; shell chrome omits duplicate management titles. Embedded shells retain their host presentation.
 
 ### Unified navigation conversation search
 
 The unified desktop Shell exposes conversation search as a `shell.search` rail action, using the same navigation sizes and accessible tooltip as other actions. The mobile drawer projects that same action into a floating glass header button beside the wordmark, hiding the duplicate list row. It replaces the inline sidebar search input in that presentation. Cmd+K on macOS and Ctrl+K on Windows/Linux open the same app-level search from conversation and management routes, including while a composer is focused. Other dialogs and IME keep keyboard ownership. ModalSurface/Radix owns focus trapping, Escape, outside dismissal and focus restoration; search never rewrites the composer draft or sidebar filters/scroll state.
 
-The modal searches titles in the existing multi-Host loaded catalog, explicitly labels its all-server scope, orders by recency and identifies each result's server. Host + Thread remain the selection identity; disabled interactions stay disabled. Arrow keys and Enter navigate through the existing `selectConversation` authority. Closing clears the ephemeral query; presentations without unified navigation retain their original inline filtering. Evidence: `tests/chat/conversation-search-shortcut.test.ts` and `scripts/smoke-conversation-search.ts`.
+The modal searches titles in the existing multi-Host loaded catalog, explicitly labels its all-server scope, orders by recency and identifies each result's server. Host + Thread remain the selection identity; disabled interactions stay disabled. Arrow keys and Enter navigate through the existing `selectConversation` authority. Closing clears the ephemeral query; presentations without unified navigation retain their original inline filtering. Evidence: `tests/chat/conversation-search-shortcut.test.ts` and `scripts/smoke/conversation/smoke-conversation-search.ts`.
 
 ### Conversation group disclosures
 
@@ -314,7 +314,7 @@ Opacity alone changes for fine mouse hover or keyboard focus; reserved geometry
 and the full-row button remain stable. Mobile layout and coarse/touch input keep
 the chevron visible, with a 44px mobile target. Existing aria-expanded/controls,
 collapse persistence and plugin grouping ownership remain authoritative. Real consumer coverage:
-scripts/smoke-sidebar-thread-catalog.ts.
+scripts/smoke/shell/smoke-sidebar-thread-catalog.ts.
 
 In unified Shell, each collapsible group heading sticks to the top of the current
 native scrollport only while its own section passes through it. The next group
@@ -340,7 +340,7 @@ checkout; this record does not establish a current passing sticky-geometry check
 
 ### Consolidated conversation filters
 
-The conversation heading's single Filters button contains the existing display-mode radios, optional Only my conversations checkbox, and server radios. The separate participation/server chips are removed on desktop and mobile. Checked items reflect the existing plugin participation preference and Shell server preference; the closed button emphasizes active filters through its foreground and summarizes them in its tooltip, without a resting fill. Missing identity still omits participation filtering, and a saved server absent during loading never broadens the result scope. Radix owns keyboard/focus/dismissal and viewport-constrained menu scrolling. Core probe: `scripts/smoke-sidebar-thread-catalog.ts` (filter operation, offline continuity, reload persistence). Historical desktop/mobile/touch scroll-geometry coverage named `scripts/smoke-sidebar-topology.ts`, which is absent from this standalone checkout.
+The conversation heading's single Filters button contains the existing display-mode radios, optional Only my conversations checkbox, and server radios. The separate participation/server chips are removed on desktop and mobile. Checked items reflect the existing plugin participation preference and Shell server preference; the closed button emphasizes active filters through its foreground and summarizes them in its tooltip, without a resting fill. Missing identity still omits participation filtering, and a saved server absent during loading never broadens the result scope. Radix owns keyboard/focus/dismissal and viewport-constrained menu scrolling. Core probe: `scripts/smoke/shell/smoke-sidebar-thread-catalog.ts` (filter operation, offline continuity, reload persistence). Historical desktop/mobile/touch scroll-geometry coverage named `scripts/smoke-sidebar-topology.ts`, which is absent from this standalone checkout.
 
 Conversations has equal block spacing from the existing navigation section token.
 Desktop New chat is an unfilled quiet action with no extra top margin; the mobile
@@ -370,7 +370,7 @@ automatic drawer-to-dock. That probe is absent from this standalone checkout.
 
 The navigation hover/focus preview reads the selected prompt sender, never the viewer or a later steer author. Photo resolution reuses IdentityAvatarContext/AvatarImage. Known identities retain a fixed avatar slot on missing/failed images; unknown authors have no avatar. Existing Turn marker topology, preview caching and stale-result fences remain unchanged.
 
-Goal time uses full days and remaining hours/minutes rather than unbounded hours. The server counter remains unchanged. Evidence: `scripts/smoke-thread-goal-ui.ts` (316h36m → 13d4h36m).
+Goal time uses full days and remaining hours/minutes rather than unbounded hours. The server counter remains unchanged. Evidence: `scripts/smoke/conversation/smoke-thread-goal-ui.ts` (316h36m → 13d4h36m).
 
 ## Global conversation search
 

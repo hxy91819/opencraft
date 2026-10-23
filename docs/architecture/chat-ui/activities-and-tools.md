@@ -36,7 +36,7 @@ The ordinary task policy applies to ordered multi-response slices. Input
 boundaries do not grant fold eligibility. The distinct Bot chat renderer and
 viewport retain their own presentation contract. The explicit eligibility and
 preference tables in `chat-activity-disclosure` cover all 96 ordinary-task state
-combinations; `scripts/smoke-activity-disclosure.ts` covers the input sequences
+combinations; `scripts/smoke/conversation/smoke-activity-disclosure.ts` covers the input sequences
 and real Conversation. Deployment and native-device acceptance remain separate.
 
 ### Returned thinking content
@@ -180,7 +180,7 @@ those inner choices.
 
 The interaction draws on DSH `ReasoningRow` in locally inspected
 `@deepseek-ai/dsh-client-ui-conversation@0.1.1-rc.2`. Shared model and adapter
-tests plus `scripts/smoke-reasoning-disclosure.ts` cover empty/summary/detail
+tests plus `scripts/smoke/conversation/smoke-reasoning-disclosure.ts` cover empty/summary/detail
 content, first control activation, browser touch/mouse/keyboard, separate tool groups,
 in-place streaming, completion, prepended history and View restoration. The
 browser fixture uses synthetic engine text; it does not claim paid-provider
@@ -294,7 +294,7 @@ move the viewport and following rows naturally move down, but neither is a
 spacing authority. Do not use descendant open-state selectors to reclassify
 rows, or replace the regression with per-reasoning overrides or delayed layout.
 
-`scripts/smoke-activity-spacing.ts` samples actual Conversation geometry before,
+`scripts/smoke/conversation/smoke-activity-spacing.ts` samples actual Conversation geometry before,
 during and after mouse/touch disclosures, including first/middle/last reasoning,
 image details, nested commands, streaming, rapid reversal and reduced motion.
 The regression is sibling-boundary and unrelated-size stability, not constant
@@ -309,7 +309,7 @@ scoped activity stylesheet alone owns optical size/stroke; renderers supply
 unchanged glyphs and content. Reading preferences retain control of expanded
 reasoning/documents. This visual contract does not reclassify spacing roles or
 change compaction lifecycle. See [activity visuals](../../../design/ui/activity-icons.md)
-and `scripts/smoke-conversation-activity-metrics.ts`.
+and `scripts/smoke/conversation/smoke-conversation-activity-metrics.ts`.
 
 A single visible compaction record remains directly readable after an answer,
 without an outer work disclosure. Determine this from the projected collapsible

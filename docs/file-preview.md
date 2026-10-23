@@ -111,7 +111,7 @@ A self-contained static build remains runnable. Package creation includes the
 runtime dependency license closure, including the spreadsheet WASM engine.
 
 Verification: `tests/resources/file-preview-core.test.ts`, `tests/resources/structured-preview.test.ts`,
-`scripts/smoke-office-preview.ts`, `scripts/smoke-structured-preview.ts`
+`scripts/smoke/resources/smoke-office-preview.ts`, `scripts/smoke/resources/smoke-structured-preview.ts`
 and the packaged resource cold-start/retry/offline smoke cover ownership and
 actual engine output. A new adapter must satisfy cancellation and disposal before
 it can replace an engine; an engine-specific cache must not become a second

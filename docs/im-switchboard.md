@@ -159,7 +159,7 @@ credentials, identity maps or message content.
 `tests/extensions/im-switchboard.test.ts`, `im-programmable.test.ts`, `wecom-plugin.test.ts`
 and `slack-plugin.test.ts` cover migration/checksum, CAS, sandbox limits,
 identity/revocation, duplicate and restart behavior, connection ACKs and original
-reply destinations. `scripts/smoke-im-channels.ts` runs the actual Settings,
+reply destinations. `scripts/smoke/execution/smoke-im-channels.ts` runs the actual Settings,
 HTTP service, SQLite and QuickJS with synthetic human admission and external
 transports, including draft navigation, light/dark and narrow DOM. These are
 not evidence that real WeCom/Slack credentials or external delivery work.

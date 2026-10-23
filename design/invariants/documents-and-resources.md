@@ -30,8 +30,8 @@ Changing node construction must not create a second resource or identity owner.
 - 已发送图片由 Timeline 及媒体加载边界投影。缩略图进入图片查看器，不绕过通用链接策略来打开 `data:` URL；查看器按原资源身份加载并在关闭后恢复焦点。
 
 ## Markdown 文件预览
-- 文件标题栏提供文件树显隐开关；收起后内容占满宽度，树保持挂载以保留展开、搜索和滚动位置，不重建预览或编辑器。只读嵌入预览仍无目录入口。验证：`scripts/smoke-file-tree-toggle.ts`。
-- 文件树的目录数据归Host作用域Query缓存，展开/键盘活动项/滚动归当前面板；按数据版本排序、展开分支拍平，DOM仅挂载可视窗口和overscan。侧栏/聊天更新不得触发未变化目录排序或每目录会话订阅。隐藏和搜索保留展开/滚动，键盘上下/Home/End/左右/Enter与选中文件仍可达；目录折叠后迟到数据不恢复子行。验证：`tests/resources/workspace-file-tree-model.test.ts`、`scripts/smoke-workspace-file-tree.ts`。
+- 文件标题栏提供文件树显隐开关；收起后内容占满宽度，树保持挂载以保留展开、搜索和滚动位置，不重建预览或编辑器。只读嵌入预览仍无目录入口。验证：`scripts/smoke/resources/smoke-file-tree-toggle.ts`。
+- 文件树的目录数据归Host作用域Query缓存，展开/键盘活动项/滚动归当前面板；按数据版本排序、展开分支拍平，DOM仅挂载可视窗口和overscan。侧栏/聊天更新不得触发未变化目录排序或每目录会话订阅。隐藏和搜索保留展开/滚动，键盘上下/Home/End/左右/Enter与选中文件仍可达；目录折叠后迟到数据不恢复子行。验证：`tests/resources/workspace-file-tree-model.test.ts`、`scripts/smoke/resources/smoke-workspace-file-tree.ts`。
 - 下载按钮沿用文件标题栏同排操作的尺寸、图标和反馈样式；不单独放大下载控件或为它撑高标题栏。
 - 文件预览标题栏右侧提供下载原文件；包括空文件、图片和不可预览的二进制。下载使用当前 Host/path/runtime generation 下已读取的 Blob 和文件名，不导出渲染 HTML 或未保存编辑草稿，不写回 Host。读取未完成、读取失败或旧资源 URL 尚未替换时禁用；切换身份/关闭释放 URL。只读内嵌预览同样允许下载。
 - 文件面板默认将 `.md` / `.markdown`（大小写不敏感）交给既有 WebChatDocument 排版，可切换到原始文本；不将原始 HTML 注入 DOM。相对文件链接与图片以当前文件目录解析，继续消费当前 Host 的资源接口和 Blob lease。
@@ -82,7 +82,7 @@ panel limits; table and Mermaid renderers share the budget. Compact latest-turn
 previews and ownerless embedded documents cannot borrow ancestor/window space.
 Narrow surfaces do not use negative margins selected by window size. Toolbar
 anchors are scoped per table with an inside-container fallback. Evidence:
-`scripts/smoke-markdown-wide-layout.ts` (live resizing and independent previews).
+`scripts/smoke/resources/smoke-markdown-wide-layout.ts` (live resizing and independent previews).
 
 Web/Electron tables preserve intrinsic column widths in a non-shrinking wrapper,
 with long cells bounded and wrapped. The table scrollport owns horizontal
@@ -91,11 +91,11 @@ the available container. Phone, iPad (including split view) and desktop Web use
 this same container-driven contract and native touch/trackpad/scrollbar input;
 ordinary text selection is not converted into panning. Links, source copy and
 expanded preview keep their existing behavior. Streaming row additions retain
-table DOM and horizontal position. Evidence: `scripts/smoke-markdown-table-scroll.ts`;
+table DOM and horizontal position. Evidence: `scripts/smoke/resources/smoke-markdown-table-scroll.ts`;
 Chromium touch is not iOS device proof.
 
 
-Task recycle bin projects the existing seven-day soft-delete window from the Task authority. Restore retains task and conversation identities and original status, appends to that column and never controls execution. Main board/list stays mounted across recycle navigation. Errors flow through the platform reportError port into shared non-blocking notices. Verification: `scripts/smoke-tasks-recycle.ts` and task store/controller/Host tests.
+Task recycle bin projects the existing seven-day soft-delete window from the Task authority. Restore retains task and conversation identities and original status, appends to that column and never controls execution. Main board/list stays mounted across recycle navigation. Errors flow through the platform reportError port into shared non-blocking notices. Verification: `scripts/smoke/tasks/smoke-tasks-recycle.ts` and task store/controller/Host tests.
 Task description expand/collapse retains the same editor and draft; expanding does not save or change task data.
 
 Conversation headers expose capability-gated rename in standalone as well as embedded layouts. The same Host/Thread title writer owns persistence; Escape cancels, Enter saves, and failures use shared nonblocking notices. The pencil remains reachable for touch outside the Newera floating-header presentation; there, the existing menu retains Rename.
@@ -123,7 +123,7 @@ visible 44px targets on touch. Mermaid defaults to classic/base with lazily
 registered ELK layout and existing semantic theme tokens; no neo node shadows.
 This keeps the reading-surface wide-content limits and render-key continuity.
 Actual layout and source visibility are verified by
-`scripts/smoke-mermaid-display.ts`.
+`scripts/smoke/resources/smoke-mermaid-display.ts`.
 
 ## Read-only file preview ownership
 
@@ -161,7 +161,7 @@ Actual layout and source visibility are verified by
   only near-viewport thumbnails (at most eight) hold render handles. Hidden/
   detached views release thumbnail work; close/replacement cancels all handles.
 - Evidence: `tests/resources/file-preview-core.test.ts`, `tests/resources/structured-preview.test.ts`,
-  `scripts/smoke-office-preview.ts`, `scripts/smoke-structured-preview.ts`;
+  `scripts/smoke/resources/smoke-office-preview.ts`, `scripts/smoke/resources/smoke-structured-preview.ts`;
   detailed boundaries and limits: [file previews](../../docs/file-preview.md).
 
 

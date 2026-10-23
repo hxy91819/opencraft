@@ -16,8 +16,8 @@
 |---|---|---|
 | 设置页、创建/编辑表单、工具弹窗 | 按 [UI 工作流](ui-design.md) 确认容器、共享视觉壳、字段与反馈槽的组合；按改动复用既有消费方 smoke | 从相关首次入口打开实际表单，检查窄/宽及主题下标签/输入关系、密度、反馈与操作可达；记录实际看过的画面和判断，不以原型或生成截图替代产品复核 |
 | 任务目录、管理列表、页面层级 | 先按 `design/ui/collections.md` 选择范式、容器 owner 和主次动作；有客观布局缺陷时在既有消费者烟测补能拒绝旧行为的断言 | 在真实 Shell/路由检查留白、阅读顺序、动作层级及相关混合状态；触屏使用触控上下文与触摸输入，单改 viewport 不算触控验收。具体矩阵见该文档，不新增通用测试框架或每次修改的全局截图门禁 |
-| Sidebar 几何/动画 | `npm run test:shell-space`；`npx tsx --test tests/shell/workbench-sidebar-dock.test.ts` | `npx tsx scripts/smoke-shared-sidebar.ts`；已确认的独立桌面 CDP 上运行 `scripts/smoke-primary-visibility.mjs` |
-| 登录/账户 | `npm run test:desktop-login` | 通用 `scripts/smoke-sign-in-menu.ts`；下游产品下游在产品目录运行 `npm run smoke:authentication-flows`，控件改动再跑 `npm run smoke:account-controls` |
+| Sidebar 几何/动画 | `npm run test:shell-space`；`npx tsx --test tests/shell/workbench-sidebar-dock.test.ts` | `npx tsx scripts/smoke/shell/smoke-shared-sidebar.ts`；已确认的独立桌面 CDP 上运行 `scripts/smoke/conversation/smoke-primary-visibility.mjs` |
+| 登录/账户 | `npm run test:desktop-login` | 通用 `scripts/smoke/shell/smoke-sign-in-menu.ts`；下游产品下游在产品目录运行 `npm run smoke:authentication-flows`，控件改动再跑 `npm run smoke:account-controls` |
 | 环境目录/创建服务（无产品页面） | `npm run test:environments` | 验证服务与 Chat/Host 消费边界；不得重建已删除的 Environment 页面作为验收替身 |
 | 模型连接/默认模型 | `npx tsx --test tests/execution/model-capability-consistency.test.ts tests/execution/runtime-provider-service.test.ts tests/execution/local-agent-reasoning-settings.test.ts tests/execution/model-services.test.ts` | `npm run smoke:model-capabilities` 验证真实 DSH 输入能力、默认/清除/重启与已有模型绑定（隔离本地合成推理）；`npm run smoke:model-services` 验证页面 |
 | 本机项目目录选择 | `npm run test:projects` | `npm run smoke:project-picker`：显式提供已签名预览的 `OPENCRAFT_PROJECT_PICKER_EXECUTABLE`，使用隔离项目/profile；系统点击取消单独人工验收 |

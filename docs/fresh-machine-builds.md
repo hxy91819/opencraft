@@ -27,7 +27,7 @@ After packaging, verify the shipped runtime outside the source directory:
 
 ```bash
 # Linux example; on macOS use the executable and Resources inside OpenCraft.app
-node scripts/smoke-packaged-runtime.mjs \
+node scripts/smoke/desktop/smoke-packaged-runtime.mjs \
   /absolute/path/to/linux-unpacked/opencraft \
   /absolute/path/to/linux-unpacked/resources
 ```

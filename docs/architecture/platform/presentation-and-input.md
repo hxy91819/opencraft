@@ -131,7 +131,7 @@ Role usage and progressive Agent loading are owned by
 [the UI typography contract](../../../design/ui/typography.md). The repository-wide
 parser gate rejects typography literals in owned apps/packages/plugins; specialist
 exceptions are exact and fail when stale. Semantic tests also cover role misuse,
-such as paragraphs consuming button typography. `scripts/smoke-control-standards.ts` renders actual controls across
+such as paragraphs consuming button typography. `scripts/smoke/shell/smoke-control-standards.ts` renders actual controls across
 light/dark/custom palettes and tests size, focus, invalid, disabled and loading
 states; optional isolated Electron execution requires an explicit executable.
 
@@ -165,7 +165,7 @@ mode-only messages retain their previous backing defaults. Material changes do
 not recreate the window or change its bounds.
 
 `tests/shell/theme-material-capabilities.test.ts` covers the shared contract and native
-policy; `scripts/smoke-theme-materials.ts` uses real extension registration,
+policy; `scripts/smoke/shell/smoke-theme-materials.ts` uses real extension registration,
 renderer projection, production preload and native applicator in an isolated
 Electron harness. The harness does not boot the full Agent runtime. Expo still
 uses its static light/dark palette adapter; dynamic Native themes are not part

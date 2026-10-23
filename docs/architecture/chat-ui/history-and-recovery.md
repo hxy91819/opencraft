@@ -73,7 +73,7 @@ account-scoped display only for the exact Host, Thread, Turn and block identity.
 Its newer text and supplied clocks win; active frames never inherit terminal
 work labels. The authoritative baseline can correct or remove all cached clocks.
 This handoff remains paint-only and does not enable history or execution actions.
-`scripts/smoke-session-cold-open.ts` exercises the built Application with held
+`scripts/smoke/conversation/smoke-session-cold-open.ts` exercises the built Application with held
 initialization, canonical replacement and a separate uncached browser profile.
 
 ### History positions and concurrent observations
@@ -201,7 +201,7 @@ add a cache or require backend protocol changes. A settled collapsed work header
 remains synchronous. Lazy inner tool groups also restore directly into their
 collapsed or explicitly expanded state. Mounting a folded Thinking group must
 never expose command bodies before an effect closes them; only actual disclosure
-changes have prior visible geometry to animate. Verification: `scripts/smoke-conversation-entry-motion.ts`
+changes have prior visible geometry to animate. Verification: `scripts/smoke/conversation/smoke-conversation-entry-motion.ts`
 uses the real Conversation, checks first-commit opacity/height, repeated remounts,
 in-place scope switches, progressive preview/authority promotion, live work entry
 and manual expansion in light/dark and desktop/touch.
