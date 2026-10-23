@@ -51,6 +51,9 @@ async function probe(page, text) {
 }
 
 test.beforeAll(async () => {
+  // Copy and pack four complete releases per worker before timing UI actions.
+  // The hook has its own budget; individual tests keep their configured timeout.
+  test.setTimeout(180_000);
   directory = await mkdtemp(join(tmpdir(), 'opencraft-playwright-updates-'));
   const realWebRoots = {};
   for (const version of ['1.0.0', '1.1.0', '1.2.0', '1.3.0']) {
