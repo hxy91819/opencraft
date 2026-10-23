@@ -2653,3 +2653,5 @@ through the shared coarse-pointer/no-hover/current-touch policy. Desktop pointer
 clocks remain hidden at rest and reveal on existing message hover/focus. Keep
 time metadata, slot geometry, history cache and action-button availability;
 elapsed work duration is separate.
+
+The task-link action uses two interlocking rounded links in its shared semantic glyph. Toolbar, overflow and customization consume the same artwork and localized accessible name; artwork changes do not change action identity, geometry, preferences or task transactions.
