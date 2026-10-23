@@ -242,6 +242,20 @@ for (const [code, kind, text] of [
   expect((await status(page)).checkError).toBeNull();
 });
 
+test('390px update actions keep every label inside its own button', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await check(page); await authorize(page);
+  const failures = await page.locator('.settings-control-actions.web-updates-actions button').evaluateAll(buttons => buttons.flatMap(button => {
+    const range = document.createRange(); range.selectNodeContents(button);
+    const text = range.getBoundingClientRect(); const box = button.getBoundingClientRect();
+    const label = (button.textContent ?? '').trim();
+    return text.left < box.left - 0.5 || text.right > box.right + 0.5
+      ? [{ label, textLeft: text.left, textRight: text.right, buttonLeft: box.left, buttonRight: box.right }]
+      : [];
+  }));
+  expect(failures).toEqual([]);
+});
+
 test('install and rollback preserve the execution WebSocket and serve the selected build to new pages', async ({ page, context }) => {
   await check(page); await authorize(page);
   await page.evaluate(() => new Promise((accept, reject) => {
