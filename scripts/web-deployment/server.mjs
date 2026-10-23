@@ -6,7 +6,7 @@ import { readFile, writeFile, mkdir, rename, rm, cp, stat, readdir } from 'node:
 import { join, resolve } from 'node:path';
 import { createLocalReleaseSource } from './local-release.mjs';
 import semver from 'semver';
-import { createHeadlessBackendProxy, isHeadlessBackendPath } from './headless-backend.mjs';
+import { createHeadlessBackendProxy, isHeadlessBackendPath, validHeadlessBackendRoutes } from './headless-backend.mjs';
 import { loadLocalMachineAccess } from '../local-machine-access.mjs';
 import { acquireDeploymentLock } from './lock.mjs';
 import { WEB_UPDATE_PATH } from '../../packages/web-update-protocol/src/index.mjs';
@@ -50,6 +50,7 @@ async function startWorker(release, environment) {
       const onError = () => finish(new Error('Unable to start Web worker'));
       const onMessage = message => {
         if (message?.protocol !== 1 || message.version !== release.version || message.buildId !== release.buildId
+          || (message.headlessBackendRoutes !== undefined && !validHeadlessBackendRoutes(message.headlessBackendRoutes))
           || !Number.isInteger(message.port) || message.port < 1 || message.port > 65535) finish(new Error('New Web worker identity mismatch'));
         else finish(null, message);
       };
@@ -60,6 +61,7 @@ async function startWorker(release, environment) {
       child.once('exit', onExit); child.once('error', onError); child.once('message', onMessage);
     });
     worker.port = ready.port;
+    worker.headlessBackendRoutes = ready.headlessBackendRoutes;
     const health = await fetch(`http://127.0.0.1:${worker.port}/__opencraft_health`, { signal: AbortSignal.timeout(5000) });
     const version = await fetch(`http://127.0.0.1:${worker.port}/version.json`, { signal: AbortSignal.timeout(5000) });
     if (!health.ok || (await health.json()).ok !== true || !version.ok || (await version.json()).buildId !== release.buildId || !worker.alive)
@@ -311,7 +313,7 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
         relayIngress.http(request, response, () => {}); return;
       }
       const worker = active;
-      if (headlessBackend && isHeadlessBackendPath(pathname)) { headlessBackend.http(request, response, lease(worker)); return; }
+      if (headlessBackend && isHeadlessBackendPath(pathname, false, worker.headlessBackendRoutes)) { headlessBackend.http(request, response, lease(worker)); return; }
       if (headlessBackend && pathname !== '/version.json'
         && (local || (relayIngress && internal) || (request.method === 'GET' && request.headers.accept?.includes('text/html')))
         && !await headlessBackend.admitDocument(request, response)) return;
@@ -340,7 +342,7 @@ export async function createManagedWebServer({ initialRelease, stateDirectory, r
         request.rawHeaders = raw;
       }
       if (relayIngress && !internal && !local) { relayIngress.upgrade(request, socket, head, () => {}, tunnels); return; }
-      if (!closed && headlessBackend && isHeadlessBackendPath(pathname, true)) {
+      if (!closed && headlessBackend && isHeadlessBackendPath(pathname, true, active.headlessBackendRoutes)) {
         headlessBackend.upgrade(request, socket, head, lease(active), tunnels); return;
       }
       if (closed || !active.alive || !['/appserver', '/codex-appserver'].includes(pathname)) { socket.destroy(); return; }

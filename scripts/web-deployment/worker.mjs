@@ -1,3 +1,4 @@
+import { headlessBackendRoutes } from './headless-backend.mjs';
 import { resolve } from 'node:path';
 import { createOptionalResources } from './optional-resources.mjs';
 import { readFile } from 'node:fs/promises';
@@ -12,6 +13,6 @@ const server = await createWorkbenchWebServer({ optionalResources, machineDispla
   headlessBackendTarget: process.env.OPENCRAFT_HEADLESS_BACKEND_URL || null,
   codexServerTarget: process.env.OPENCRAFT_CODEX_APPSERVER_URL || null, hyperNodeUser: process.env.OPENCRAFT_HYPERNODE_USER || '' });
 const address = await server.listen({ host: '127.0.0.1', port: 0 });
-process.send?.({ protocol: 1, port: address.port, version: identity.version, buildId: identity.buildId });
+process.send?.({ protocol: 1, port: address.port, version: identity.version, buildId: identity.buildId, headlessBackendRoutes });
 const close = async () => { await server.close(); process.exit(0); };
 process.once('SIGTERM', close); process.once('SIGINT', close); process.once('disconnect', close);

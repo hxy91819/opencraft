@@ -3466,3 +3466,7 @@ without retiring the shared connection. Configuration snapshots are confirmed
 only after native installation in each adapter. The detailed ownership and
 limits are in [execution ownership](execution-ownership.md#bounded-history-replies)
 and [session capabilities](session-capabilities.md).
+
+### Connector HTTP recovery and consumers
+
+Headless connector reads use the selected browser server context. Polling owns state and pending approvals; a successful read only invalidates managed configuration when supported definitions or instances change. Management views retain and release their Host subscription independently of background connection/approval synchronization. List reads coalesce while in flight and support cancellation; a configuration invalidation during a read schedules at most one subsequent read. Authentication failure revokes earlier requests across Hosts and backs off recovery; stale rejections cannot invalidate a newer successful response. Origin/protocol or resource denial clears only the affected Host and waits for an explicit retry. Mutations are never automatically replayed.
