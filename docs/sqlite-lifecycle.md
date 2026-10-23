@@ -502,9 +502,10 @@ and resolve their identity under the existing stopped-owner recovery procedure;
 there is no automatic preference, merge or repair. Path selection is not an
 exclusive-writer lock and does not permit concurrent old/new owners.
 
-Existing installations therefore retain their physical legacy names. An offline
-physical relocation still requires its own stopped-owner, conflict, crash and
-rollback procedure; this change does not implement or run one. Never start an
+Ordinary opening therefore retains existing physical names. The separate
+[offline maintenance command](#两个-host-自有文件的离线改名) implements explicit
+relocation with stopped-owner, conflict, interruption and reverse-name handling;
+delivering the command does not run it on installed data. Never start an
 older binary against a newly named store: it does not understand the new paths
 and may create a separate empty legacy store. An older
 managed binary rejects the new migration version. Code rollback therefore
