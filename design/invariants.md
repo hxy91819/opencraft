@@ -1951,6 +1951,12 @@ the Application; they never mutate the default library fallback or other apps.
 
 ### Relay server selection in Settings
 
+Automatic root entry resolves its remembered/default destination before presenting
+server choices. Successful automatic entry does not flash the chooser; unresolved
+or unavailable targets and explicit switch requests keep the usable chooser.
+URL authority, identity-scoped successful-entry memory and target admission remain
+unchanged; JavaScript-disabled browsers retain the server links.
+
 Relayed Web clients expose current deployment and Switch server under Settings →
 Servers, including narrow layouts. Shell application/account navigation does not
 duplicate it. Presence comes from validated browser deployment context, not an

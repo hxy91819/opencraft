@@ -103,7 +103,10 @@ top-level document opens, the browser remembers that server under a key derived
 from verified provider and stable subject, within that entry origin. This includes
 direct links, not just chooser clicks. Future root visits reopen it only while
 target admission succeeds. Failed navigation, background requests and embedded
-frames do not change the preference; a different tab remains bound to its own URL. Explicitly opening the chooser never redirects
+frames do not change the preference; a different tab remains bound to its own URL. Root entry resolves the saved/default destination before the chooser can paint.
+When automatically navigating, it shows only a quiet entry status; the full chooser
+appears only when a choice is needed. Without JavaScript the choices remain usable.
+Explicitly opening the chooser never redirects
 automatically. Another browser, cleared browser data or a different identity
 requires another choice unless an operator configured an identity migration default. Offline or revoked targets return document navigation
 to the chooser; APIs/WS return errors and never silently switch servers. Existing
