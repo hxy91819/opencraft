@@ -51,7 +51,7 @@ test("provider action titles remain presentation-only and worktree context survi
   for (const [status, label] of [["running", "Running"], ["complete", "Completed"], ["failed", "Failed"], ["interrupted", "Stopped"]] as const) {
     const result = presentToolActivity({ ...block, status });
     assert.equal(result.summary, `Review branch · Worktree · ${label}`);
-    assert.equal(result.summaryKey, "codex_app:fork_thread:default");
+    assert.equal(result.summaryKey, "thread-tool:fork_thread:default");
   }
 });
 
