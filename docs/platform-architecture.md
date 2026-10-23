@@ -317,27 +317,23 @@ connecting/reconnecting/idle/error states retain already loaded rows in the same
 recipe and authorization scope without authorizing new requests or execution.
 Lock/logout, removal, disablement and recipe/authorization changes revoke
 visibility immediately; scoped query keys prevent reuse across incarnations, and expansion discloses hidden remote rows within the fetched catalog.
-The shared Sidebar/global title-search catalog follows every Server metadata
-cursor, rather than limiting discoverability to the first 50 recent Threads.
-Pages are read sequentially under the same recipe/authorization admission,
-deduplicating native pin backfill by Thread ID. An empty page with a cursor is
-not completion; repeated cursors or failed/revoked later pages fail that Host's
-read without publishing a partial complete catalog. These reads do not resume
-Threads or load message history, and retain the runtime's indexed SSH policy. Cold observers may display the authoritative initial page (including old pin backfill)
-while subsequent metadata pages load. This observer-only placeholder never enters
-the complete directory cache, never reports complete search, and is removed on a
-failed cold read. Refreshes retain the last complete snapshot; recipe/authorization
-keys, cancellation and live admission fence initial pages as well as final results.
-The Sidebar exposes partial loading in its fixed-height toolbar, with an accessible
-status label and reduced-motion-aware progress glyph. It adds no status row that
-could displace already visible conversations on completion. Completion replaces it with the entire
-catalog without an empty frame. Goal enrichment and unread catch-up wait for the
-complete catalog, preserving their existing request schedule. First usable rows
-and complete directory readiness are separate performance metrics. Cold in-flight
-invalidations (for example, edits to already visible rows) are coalesced into one
-ordinary refresh after complete success is committed. They cannot be swallowed by
-the pending Query or indefinitely postpone the first complete cache; scope and
-cancellation still fence the scheduled refresh.
+The per-Host metadata index uses TanStack infinite-query pages. Each successful
+page is committed immediately; navigation projects the available rows and title
+search separately tracks directory completeness. Sequential background pagination
+continues through every cursor, so older conversations remain discoverable without
+resuming Threads or reading messages. Native pin backfill is deduplicated by ID,
+with the first page authoritative. Empty intermediate pages are valid; repeated
+cursors fail the read. The scoped key distinguishes the paginated cache from
+legacy complete-directory response shapes.
+Cancellation, retry backoff and later-page failure retain all committed pages.
+An ordinary refresh retains its prior snapshot until the refreshed pages succeed.
+Status notifications cancel stale reads before patching known cached rows, then
+invalidate the directory; paginated data survives this handover. Recipe and
+authorization scopes still fence visibility and late results. Directory failure
+exposes retry while retaining navigation; search cannot claim an exhaustive empty
+result when its metadata index is partial, failed or unavailable. Message search
+keeps its own provider/capability/cursor state and does not depend on sidebar row
+limits. Goal enrichment and unread catch-up wait for the final metadata page.
 
 The optional conversation overview is isolated in
 `apps/workbench-web/src/features/conversation-overview`. Appearance controls its

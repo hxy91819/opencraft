@@ -73,7 +73,7 @@ try {
         } while (cursor !== null);
       }
       const before = requests.length; const page = await browser.newPage({ viewport: { width: 1100, height: 850 } });
-      const errors: string[] = []; page.on('pageerror', (error: Error) => errors.push(error.message)); await page.addInitScript('window.__name=value=>value');
+      const errors: string[] = []; page.on('pageerror', (error: Error) => { errors.push(error.message); console.error(error.message); }); await page.addInitScript('window.__name=value=>value');
       await page.goto(`${origin}/?legacy=${legacy ? 1 : 0}`);
       await page.locator('.sidebar-activity-item').first().waitFor();
       const firstVisible = await page.evaluate(() => performance.now() - (window as any).catalogEntry.started);
@@ -86,10 +86,10 @@ try {
     for (const width of [390, 1100]) for (const theme of ['light', 'dark']) {
       hold = true; fail = false; release = undefined;
       const page = await browser.newPage({ viewport: { width, height: 850 }, hasTouch: width === 390 });
-      const errors: string[] = []; page.on('pageerror', (error: Error) => errors.push(error.message)); await page.addInitScript('window.__name=value=>value');
+      const errors: string[] = []; page.on('pageerror', (error: Error) => { errors.push(error.message); console.error(error.message); }); await page.addInitScript('window.__name=value=>value');
       await page.goto(`${origin}/?theme=${theme}`); await page.locator('.sidebar-activity-item').first().waitFor();
-      await page.locator('.sidebar-tasks[aria-busy="true"]').waitFor();
-      assert.equal(await page.evaluate(() => (window as any).catalogEntry.cached()), undefined);
+      await page.waitForFunction(() => (window as any).catalogEntry?.snapshot().partial);
+      assert.ok((await page.evaluate(() => (window as any).catalogEntry.cached()?.data.length)) > 0);
       assert.equal(await page.locator('.sidebar-tasks').getAttribute('aria-busy'), 'true');
       await page.getByText('Conversation 221', { exact: true }).waitFor();
       await page.locator('.sidebar-activity-item').first().click();
@@ -138,17 +138,35 @@ try {
     hold = false; release?.();
     await mutationPage.waitForFunction(() => (window as any).catalogEntry.cached()?.data.find((row: any) => row.id === 't0')?.name === 'Conversation 0 renamed during initial load', undefined, { timeout: 5000 });
     await mutationPage.getByText('Conversation 0 renamed during initial load', { exact: true }).waitFor();
-    assert.equal(await mutationPage.evaluate(() => (window as any).catalogEntry.cached().data.length), 222);
-    assert.equal(pageCalls - mutationCalls, 10, 'coalesce cold invalidations into one complete refresh');
+    await mutationPage.waitForFunction(() => (window as any).catalogEntry.cached()?.data.length === 222);
+    assert.ok(pageCalls - mutationCalls <= 10, 'notifications do not restart an unbounded directory crawl');
     await mutationPage.close(); rows[0] = { ...rows[0]!, name: 'Conversation 0' };
-    // A later-page failure during the first load removes transient rows and exposes retry.
+    // A lifecycle fact cancels an in-flight next page while committed rows stay visible.
+    hold = true; fail = false; release = undefined;
+    const eventPage = await browser.newPage(); await eventPage.addInitScript('window.__name=value=>value'); await eventPage.goto(origin);
+    await eventPage.waitForFunction(() => (window as any).catalogEntry?.calls.length === 2);
+    rows[0] = { ...rows[0]!, status: { type: 'active', activeFlags: [] } } as any;
+    hold = false; release?.();
+    await eventPage.evaluate(() => {
+      (window as any).catalogFrameCounts = [];
+      (window as any).sampleCatalogFrames = true;
+      const sample = () => { (window as any).catalogFrameCounts.push(document.querySelectorAll('.sidebar-activity-item').length); if ((window as any).sampleCatalogFrames) requestAnimationFrame(sample); };
+      sample(); (window as any).catalogEntry.notify();
+    });
+    await eventPage.waitForFunction(() => (window as any).catalogEntry.cached()?.data.length === 222 && !(window as any).catalogEntry.snapshot().fetching);
+    assert.equal(await eventPage.evaluate(() => { (window as any).sampleCatalogFrames = false; return (window as any).catalogFrameCounts.some((count: number) => count === 0); }), false);
+    assert.equal(await eventPage.evaluate(() => (window as any).catalogEntry.cached().data.find((row: any) => row.id === 't0').status.type), 'active');
+    evidence.push({ scenario: 'notification-during-pagination', blankFrames: 0 });
+    await eventPage.close(); rows[0] = { ...rows[0]!, status: { type: 'idle' } };
+    // A later-page failure retains successful pages and exposes retry.
     hold = true; fail = false; release = undefined;
     const page = await browser.newPage(); await page.addInitScript('window.__name=value=>value'); await page.goto(origin);
     await page.waitForFunction(() => (window as any).catalogEntry?.snapshot().partial);
     hold = false; fail = true; release?.();
     await page.getByText("Couldn't load Fixture conversations", { exact: true }).waitFor();
-    assert.equal(await page.locator('.sidebar-activity-item').count(), 0);
-    assert.equal(await page.evaluate(() => (window as any).catalogEntry.cached()), undefined);
+    assert.equal(await page.evaluate(() => { const samples = (window as any).catalogEntry.observations; const first = samples.findIndex((sample: any) => sample.rows > 0); return samples.slice(first).some((sample: any) => sample.rows === 0); }), false);
+    assert.ok(await page.locator('.sidebar-activity-item').count() > 0);
+    assert.ok((await page.evaluate(() => (window as any).catalogEntry.cached()?.data.length)) > 0);
     fail = false; await page.getByRole('button', { name: 'Retry', exact: true }).click();
     await page.waitForFunction(() => (window as any).catalogEntry.cached()?.data.length === 222);
     await page.close();

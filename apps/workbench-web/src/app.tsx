@@ -2308,6 +2308,7 @@ export function App({
           onSelect={(hostId, threadId) => hostCatalog.selectConversation(createWorkbenchThreadLocation(hostId, threadId))} />
         <ConversationSearch enabled={presentation.shellNavigation} open={conversationSearchOpen} onOpenChange={setConversationSearchOpen}
           sources={multiHostCatalog.searchSources}
+          incomplete={multiHostCatalog.discovery === "error" || multiHostCatalog.catalogs.some(catalog => catalog.phase === "error" || catalog.phase === "unavailable" || catalog.partial)}
           threads={multiHostCatalog.threads} loading={multiHostCatalog.discovery === "loading" || multiHostCatalog.catalogs.some(catalog => catalog.phase === "loading")}
           onSelectThread={selectSearchedThread} />
         </AppShell>

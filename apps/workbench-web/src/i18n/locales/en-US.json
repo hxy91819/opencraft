@@ -877,5 +877,6 @@
   "preview.slideNumber": "Slide number",
   "preview.slide": "Slide {page}",
   "preview.slides": "Slide thumbnails",
-  "preview.fitSlide": "Fit slide"
+  "preview.fitSlide": "Fit slide",
+  "sidebar.catalog.searchIncomplete": "No matches yet · conversation list is incomplete"
 }

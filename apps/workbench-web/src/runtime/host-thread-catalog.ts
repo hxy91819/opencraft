@@ -103,9 +103,11 @@ export async function readHostThreadCatalog(input: {
   readonly currentProfile: () => HostConnectionProfile | undefined;
   readonly management: ManagedHostCatalogSource | null;
   readonly registry: Pick<HostRuntimeRegistry<AppServerWorkbenchRuntime>, "peekRuntime" | "ensureConnected">;
-  /** Transient cold-start presentation only; the returned promise still owns completion. */
+  /** Compatibility reader for consumers requiring a complete metadata directory. */
   readonly onInitialPage?: (page: ThreadListResponse) => void;
   readonly signal?: AbortSignal;
+  /** Read one independently cacheable metadata page when specified. */
+  readonly pageCursor?: string | null;
 }) {
   // SSH authorization cannot revoke or invalidate a different Host's reads.
   const management = input.profile.hostKind === "remote-ssh" ? input.management : null;
@@ -123,17 +125,16 @@ export async function readHostThreadCatalog(input: {
   // A connection precondition is not a catalog attempt. Starting observation
   // after it prevents a false 0ms catalog failure when the reader is not ready.
   assertCurrent();
-  const finishFull = beginObservedOperation("catalog_complete");
-  const finishFirst = beginObservedOperation("catalog_first");
+  const finishFull: ReturnType<typeof beginObservedOperation> = "pageCursor" in input ? () => {} : beginObservedOperation("catalog_complete");
+  const finishFirst: ReturnType<typeof beginObservedOperation> = input.pageCursor == null ? beginObservedOperation("catalog_first") : () => {};
   const pages: ThreadListResponse[] = [];
   try {
   const runtime = await input.registry.ensureConnected(input.profile.hostId);
   assertCurrent();
-  // Sidebar and global title search share this catalog. A recent-page window
-  // silently hides older conversations from both, even when the Server still
-  // has them. Follow the Server's cursor through metadata pages only.
+  // Complete-directory callers follow every metadata cursor. The navigation
+  // query uses independently cacheable pages under the same admission fence.
   const cursors = new Set<string>();
-  let cursor: string | null = null;
+  let cursor: string | null = input.pageCursor ?? null;
   do {
     assertCurrent();
     const page = await runtime.resources.threads.list({ cursor, limit: 50 });
@@ -141,6 +142,11 @@ export async function readHostThreadCatalog(input: {
     // partial catalog as a successful complete search after a failed page.
     assertCurrent();
     pages.push(page);
+    if ("pageCursor" in input) {
+      finishFirst("ok", { count: page.data.length });
+      finishFull("ok", { count: page.data.length });
+      return page;
+    }
     if (pages.length === 1) finishFirst("ok", {count:page.data.length});
     cursor = page.nextCursor ?? null;
     if (cursor !== null && cursors.has(cursor)) throw new Error("Repeated thread catalog cursor");

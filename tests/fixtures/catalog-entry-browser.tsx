@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, useQueries } from "@tanstack/react-qu
 import { createIntlTestRoot } from "./intl-root";
 import { Sidebar } from "../../apps/workbench-web/src/components/sidebar";
 import { useHostThreadCatalogQueries } from "../../apps/workbench-web/src/runtime/use-host-thread-catalog-queries";
+import { bindThreadCatalogNotifications } from "../../apps/workbench-web/src/runtime/thread-catalog-notifications";
 import { readHostThreadCatalog } from "../../apps/workbench-web/src/runtime/host-thread-catalog";
 import { sidebarThreadCatalogQueryKey, threadCatalogPhase } from "../../apps/workbench-web/src/runtime/thread-catalog-query";
 import { projectAppServerThread, legacyDirectServerProjectionFromHost } from "@opencraft/workbench-runtime";
@@ -13,6 +14,8 @@ const params = new URL(location.href).searchParams;
 initializeAppearanceTheme(); setThemePreference(params.get("theme") === "dark" ? "dark" : "light");
 const layout = await SidebarLayoutStore.open({ load: async () => null, save: async () => {} });
 const client = new QueryClient({ defaultOptions: { queries: { retryDelay: 5, refetchOnWindowFocus: false } } });
+let notify: (notification: any) => void = () => {};
+bindThreadCatalogNotifications({ subscribeNotification: listener => { notify = listener; return () => {}; } }, "fixture", client);
 const profile = { hostId: "fixture", hostKind: "local", enabled: true, includeInSidebar: true, autoConnect: true, revision: 1 } as any;
 let current = profile;
 let phase = "ready";
@@ -37,19 +40,20 @@ function App() {
   const [query] = useCatalog([{ profile: { ...profile, revision }, currentProfile: () => current, management: null, registry, enabled, queryKey: key }]);
   const rows = enabled ? query!.data?.data ?? [] : [];
   const threads = rows.map((thread: any) => ({ ...projectAppServerThread(thread), ...legacyDirectServerProjectionFromHost({ hostId: 'fixture', hostKind: 'local', label: 'Fixture' }), connectionHostId: 'fixture', connectionHostLabel: 'Fixture', interactionAvailable: enabled && phase === 'ready' }));
-  const catalog = { hostId: 'fixture', label: 'Fixture', phase: threadCatalogPhase({ admitted: enabled, status: query!.status, isFetching: query!.isFetching }), partial: query!.isPlaceholderData };
-  observations.push({ ms: performance.now() - started, rows: rows.length, status: query!.status, fetching: query!.isFetching, partial: query!.isPlaceholderData, cached: client.getQueryData(key) !== undefined, revision, enabled });
+  const catalog = { hostId: 'fixture', label: 'Fixture', phase: threadCatalogPhase({ admitted: enabled, status: query!.status, isFetching: query!.isFetching, partial: "hasNextPage" in query! ? query!.hasNextPage : query!.isPlaceholderData }), partial: "hasNextPage" in query! ? query!.hasNextPage : query!.isPlaceholderData };
+  observations.push({ ms: performance.now() - started, rows: rows.length, status: query!.status, fetching: query!.isFetching, partial: "hasNextPage" in query! ? query!.hasNextPage : query!.isPlaceholderData, cached: client.getQueryData(key) !== undefined, revision, enabled });
   React.useLayoutEffect(() => {
     if (!rows.length) return;
-    const complete = !query!.isFetching && !query!.isPlaceholderData && query!.status === 'success';
+    const complete = !query!.isFetching && !("hasNextPage" in query! ? query!.hasNextPage : query!.isPlaceholderData) && query!.status === 'success';
     requestAnimationFrame(() => {
       metrics.firstPaintMs ??= performance.now() - started;
       if (complete) metrics.completePaintMs ??= performance.now() - started;
     });
   }, [rows.length, query!.isFetching, query!.isPlaceholderData, query!.status]);
   (window as any).catalogEntry = { observations, calls, actions, started, metrics, snapshot: () => observations.at(-1),
+    notify: () => notify({ method: "turn/started", params: { threadId: "t0" } }),
     refresh: () => client.invalidateQueries({ queryKey: key }),
-    cached: () => client.getQueryData(key),
+    cached: () => { const value = client.getQueryData<any>(key); return value?.pages ? { ...value.pages[0], data: [...new Map(value.pages.flatMap((page: any) => page.data).map((row: any) => [row.id, row])).values()] } : value; },
     revoke: () => { current = { ...current, enabled: false }; setEnabled(false); },
     replace: () => { current = { ...profile, revision: revision + 1 }; setRevision(revision + 1); },
     disconnect: () => { phase = 'reconnecting'; setEnabled(false); },

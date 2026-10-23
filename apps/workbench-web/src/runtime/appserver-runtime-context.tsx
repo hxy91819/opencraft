@@ -703,11 +703,11 @@ export function useMultiHostThreadCatalog(): {
   const displayable = hosts.map(host => canDisplayHostThreadCatalog(
     application.profiles.find(profile => profile.hostId === host.hostId)!, management,
   ));
-  const querySignature = queries.map((query, index) => `${displayable[index]}:${admitted[index]}:${phases[index]}:${query.dataUpdatedAt}:${query.status}:${query.fetchStatus}`).join("|");
+  const querySignature = queries.map((query, index) => `${displayable[index]}:${admitted[index]}:${phases[index]}:${query.dataRevision}:${query.hasNextPage}:${query.status}:${query.fetchStatus}`).join("|");
   const goalSources = useMemo(() => hosts.flatMap((host, index): SidebarGoalSource[] => {
     const profile = application.profiles.find(value => value.hostId === host.hostId)!;
     const runtime = application.registry.peekRuntime(host.hostId);
-    if (!runtime || !admitted[index] || !displayable[index] || phases[index] !== "ready" || queries[index]?.isPlaceholderData) return [];
+    if (!runtime || !admitted[index] || !displayable[index] || phases[index] !== "ready" || queries[index]?.hasNextPage) return [];
     const epoch = profile.hostKind === "remote-ssh" ? application.managedHostCatalog?.getAuthorizationEpoch() : undefined;
     return [{
       goals: runtime.resources.goals,
@@ -731,7 +731,7 @@ export function useMultiHostThreadCatalog(): {
   useEffect(() => {
     const scope = application.threadAttention.getScope();
     for (const [index, host] of hosts.entries()) {
-      if (!admitted[index] || !displayable[index] || queries[index]?.isPlaceholderData) continue;
+      if (!admitted[index] || !displayable[index] || queries[index]?.hasNextPage) continue;
       const profile = application.profiles.find(value => value.hostId === host.hostId)!;
       void application.threadAttention.catchUp(profile, queries[index]?.data?.data ?? [], () => {
         const current = application.hostProfiles.getSnapshot().profiles.find(value => value.hostId === host.hostId);
@@ -807,8 +807,8 @@ export function useMultiHostThreadCatalog(): {
   const catalogs = useMemo(() => hosts.map((host, index) => ({
       hostId: host.hostId,
       label: host.label,
-      phase: threadCatalogPhase({ admitted: admitted[index]!, status: queries[index]!.status, isFetching: queries[index]!.isFetching }),
-      ...(queries[index]!.isPlaceholderData ? { partial: true } : {}),
+      phase: threadCatalogPhase({ admitted: admitted[index]!, status: queries[index]!.status, isFetching: queries[index]!.isFetching, partial: queries[index]!.hasNextPage }),
+      ...(queries[index]!.hasNextPage ? { partial: true } : {}),
       ...(displayable[index] && catalogCachedAt(queries[index]!.data) !== undefined ? { cachedAt: catalogCachedAt(queries[index]!.data) } : {}),
     })),
     [hosts, querySignature]);

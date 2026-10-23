@@ -29,7 +29,7 @@ export interface HostThreadCatalogState {
   readonly label: string;
   readonly phase: "unavailable" | "loading" | "ready" | "error";
   readonly cachedAt?: number;
-  /** Authoritative first-page rows while the complete directory is still loading. */
+  /** Successful metadata pages exist, but the directory has a continuation cursor. */
   readonly partial?: boolean;
 }
 
@@ -48,9 +48,10 @@ export function threadCatalogPhase(query: {
   readonly admitted: boolean;
   readonly status: "pending" | "error" | "success";
   readonly isFetching: boolean;
+  readonly partial?: boolean;
 }): HostThreadCatalogState["phase"] {
   if (!query.admitted) return "unavailable";
-  if (query.isFetching || query.status === "pending") return "loading";
+  if (query.isFetching || query.status === "pending" || (query.partial && query.status !== "error")) return "loading";
   return query.status === "error" ? "error" : "ready";
 }
 
@@ -60,5 +61,5 @@ export function sidebarThreadCatalogQueryKey(hostId: string, scope: {
 }) {
   // A valid late-read fence alone cannot protect previously cached data from
   // being reused after logout/unlock or a recipe revision change.
-  return ["appserver", hostId, "threads", "sidebar", "updated_at", "desc", false, scope.revision, scope.authorizationEpoch] as const;
+  return ["appserver", hostId, "threads", "sidebar-pages", "updated_at", "desc", false, scope.revision, scope.authorizationEpoch] as const;
 }
