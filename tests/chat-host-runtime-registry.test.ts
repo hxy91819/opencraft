@@ -210,10 +210,10 @@ test("Connection provider retirement waits for Host-owned leases and rejects new
     subscribeStatus: () => () => undefined,
     close: async () => undefined,
   };
-  const unregister = registry.register("vela.test", {
-    id: "vela.test.websocket",
+  const unregister = registry.register("opencraft.test", {
+    id: "opencraft.test.websocket",
     label: "Test socket",
-    settingsPageId: "vela.test.settings",
+    settingsPageId: "opencraft.test.settings",
     targets: ["web"],
     configVersion: 1,
     validate: (config) => config,
@@ -221,15 +221,15 @@ test("Connection provider retirement waits for Host-owned leases and rejects new
   });
   assert.equal(
     registry.getSnapshot().providers[0]?.settingsPageId,
-    "vela.test.settings",
+    "opencraft.test.settings",
   );
-  const lease = registry.acquire("vela.test.websocket", "web");
+  const lease = registry.acquire("opencraft.test.websocket", "web");
   let retired = false;
   const retirement = unregister().then(() => { retired = true; });
   await Promise.resolve();
   assert.equal(retired, false);
   assert.deepEqual(registry.getSnapshot().providers, []);
-  assert.throws(() => registry.acquire("vela.test.websocket", "web"), /unavailable/u);
+  assert.throws(() => registry.acquire("opencraft.test.websocket", "web"), /unavailable/u);
   assert.equal(lease.provider.createTransport(null, {
     platform: "web", hostId: "local", profileRevision: 0,
   }), transport);
@@ -241,8 +241,8 @@ test("Connection provider retirement waits for Host-owned leases and rejects new
 
 test("Connection providers reject an empty target settings identity", () => {
   const registry = new HostConnectionProviderRegistry();
-  assert.throws(() => registry.register("vela.test", {
-    id: "vela.test.invalid-settings",
+  assert.throws(() => registry.register("opencraft.test", {
+    id: "opencraft.test.invalid-settings",
     label: "Invalid settings",
     settingsPageId: "   ",
     targets: ["web"],

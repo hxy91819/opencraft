@@ -10285,6 +10285,7 @@ html[data-opencraft-window-type="electron"] .thread-scroll {
 }
 
 .opencraft-composer-image-attachment {
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   position: relative;
   display: grid;
   flex: 0 0 80px;

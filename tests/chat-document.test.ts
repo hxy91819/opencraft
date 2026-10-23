@@ -123,7 +123,7 @@ test("chat document compiles prose, GFM, code, math, links and tables", () => {
   const parsed = compiler.compile([
     "# Result",
     "",
-    "Use **strong**, `inline()` and \\(x^2\\) at [source](file:///vela/a.ts).",
+    "Use **strong**, `inline()` and \\(x^2\\) at [source](file:///opencraft/a.ts).",
     "",
     "- [x] parsed",
     "- [ ] rendered",
@@ -141,7 +141,7 @@ test("chat document compiles prose, GFM, code, math, links and tables", () => {
   assert.ok(nodes.some((node) => node.kind === "strong"));
   assert.ok(nodes.some((node) => node.kind === "inline-code" && node.code === "inline()"));
   assert.ok(nodes.some((node) => node.kind === "math" && node.source === "x^2" && !node.display));
-  assert.ok(nodes.some((node) => node.kind === "link" && node.href === "file:///vela/a.ts"));
+  assert.ok(nodes.some((node) => node.kind === "link" && node.href === "file:///opencraft/a.ts"));
   assert.ok(nodes.some((node) => node.kind === "list-item" && node.checked === true));
   assert.ok(nodes.some((node) => node.kind === "table" && node.rows.length === 1));
   assert.ok(nodes.some((node) => node.kind === "table" && node.markdownSource.startsWith("| name | value |")));
@@ -162,7 +162,7 @@ test("Markdown tables use the reading surface rather than a bordered card", () =
   assert.match(tableRendererSource, /data-markdown-table="true"/u);
   assert.match(tableRendererSource, /"text\/plain": node\.markdownSource/u);
   assert.match(tableRendererSource, /"text\/html": table\.outerHTML/u);
-  assert.match(tableRendererSource, /aria-label="Expand table"/u);
+  assert.match(tableRendererSource, /aria-label=\{intl\.formatMessage\(\{ id: "chat\.table\.expand", defaultMessage: "Expand table"/u);
   assert.match(tableStyles, /@include wide-content\.bounds/u);
   assert.match(tableStyles, /width: var\(--wide-block-width\)/u);
   assert.match(tableStyles, /border-collapse: separate/u);
@@ -229,7 +229,7 @@ test("streaming markdown stabilizes incomplete syntax without mutating canonical
   const image = preprocessChatMarkdown("Ready\n\n![screen](https://assets.exam", { streaming: true });
   assert.equal(image.markdown, "Ready\n\n");
 
-  const link = preprocessChatMarkdown("Read [the source](file:///vela/src", { streaming: true });
+  const link = preprocessChatMarkdown("Read [the source](file:///opencraft/src", { streaming: true });
   assert.equal(link.markdown, "Read the source");
 
   const emphasis = preprocessChatMarkdown("This is **still streaming", { streaming: true });
@@ -412,30 +412,30 @@ test("Text decorations lift skill variables, workspace mentions and color swatch
 test("The user-message dialect preserves Composer link semantics", () => {
   const compiler = new ChatDocumentCompiler();
   const parsed = compiler.compile([
-    "Open [source\\]](file:///vela/src/a\\)b.ts) now.",
-    "Malformed [source](file:///vela/src/a.ts remains literal",
+    "Open [source\\]](file:///opencraft/src/a\\)b.ts) now.",
+    "Malformed [source](file:///opencraft/src/a.ts remains literal",
     "![screen](https://assets.example.test/screen.png)",
   ].join("\n"), { dialect: "user-message" });
   const nodes = flatten(parsed.nodes);
   const links = nodes.filter((node) => node.kind === "link");
   assert.equal(links.length, 2);
-  assert.equal(links[0]?.kind === "link" ? links[0].href : null, "file:///vela/src/a)b.ts");
+  assert.equal(links[0]?.kind === "link" ? links[0].href : null, "file:///opencraft/src/a)b.ts");
   assert.equal(links[1]?.kind === "link" ? links[1].href : null, "https://assets.example.test/screen.png");
   assert.equal(nodes.some((node) => node.kind === "image"), false);
-  assert.ok(nodes.flatMap((node) => node.kind === "text" ? [node.text] : []).join("").includes("Malformed [source](file:///vela/src/a.ts remains literal"));
+  assert.ok(nodes.flatMap((node) => node.kind === "text" ? [node.text] : []).join("").includes("Malformed [source](file:///opencraft/src/a.ts remains literal"));
   assert.ok(nodes.some((node) => node.kind === "text" && node.text === "!"));
 });
 
 test("The Markdown-link scanner rejects empty, multiline, and incomplete targets", () => {
-  assert.deepEqual(findMarkdownLink("x [label](file:///vela/a.ts) y", 0), {
+  assert.deepEqual(findMarkdownLink("x [label](file:///opencraft/a.ts) y", 0), {
     start: 2,
-    end: 28,
+    end: 33,
     label: "label",
-    path: "file:///vela/a.ts",
+    path: "file:///opencraft/a.ts",
   });
   assert.equal(findMarkdownLink("[label]()", 0), null);
-  assert.equal(findMarkdownLink("[label](file:///vela/a.ts", 0), null);
-  assert.equal(findMarkdownLink("[label\n](file:///vela/a.ts)", 0), null);
+  assert.equal(findMarkdownLink("[label](file:///opencraft/a.ts", 0), null);
+  assert.equal(findMarkdownLink("[label\n](file:///opencraft/a.ts)", 0), null);
 });
 
 test("User-message block preprocessing separates list kinds and protects fences", () => {

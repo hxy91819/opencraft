@@ -60,9 +60,9 @@ test("extension palettes freeze nested options and reject invalid activation ato
   const supervisor = new ExtensionSupervisor({platform:"web"});
   const surfaces={panel:"#eeeeee"};
   const material={window:"opaque" as const};
-  const definition=(bad=false)=>({manifest:{manifestVersion:1 as const,id:"vela.theme-test",name:"Theme test",version:"1.0.0",apiVersion:1 as const,trust:"trusted" as const,platforms:["web" as const],activationEvents:["onStartupFinished"]},activate(api: any){
-    api.commands.register({id:"vela.theme-test.command",title:"Test"},()=>{});
-    api.themes.register({id:"vela.theme-test.palette",label:"Theme",palettes:{light:{...opencraftNeutralThemePalette.light,surfaces:bad?{panel:"url(x)"}:surfaces,material},dark:opencraftNeutralThemePalette.dark}});
+  const definition=(bad=false)=>({manifest:{manifestVersion:1 as const,id:"opencraft.theme-test",name:"Theme test",version:"1.0.0",apiVersion:1 as const,trust:"trusted" as const,platforms:["web" as const],activationEvents:["onStartupFinished"]},activate(api: any){
+    api.commands.register({id:"opencraft.theme-test.command",title:"Test"},()=>{});
+    api.themes.register({id:"opencraft.theme-test.palette",label:"Theme",palettes:{light:{...opencraftNeutralThemePalette.light,surfaces:bad?{panel:"url(x)"}:surfaces,material},dark:opencraftNeutralThemePalette.dark}});
   }});
   await assert.rejects(supervisor.activate(definition(true)),/Invalid theme surface/u);
   assert.equal(supervisor.contributions.getSnapshot().themes.length,0);
