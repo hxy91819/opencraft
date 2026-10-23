@@ -89,17 +89,18 @@ The AppServer V3 compatibility path uses View hydration rather than server-side
 `appserver-v3:<hostId>:<connectionGeneration>` as a compatibility epoch. Adjacent
 local View revisions can feed the common ReplicaClient reader shape. They are
 not V4 Authority sequence numbers. A missed revision or generation change
-forces a snapshot because Codex has no retained server Journal to replay.
+forces a snapshot because this V3 source exposes no retained server Journal
+to replay.
 
 The AppServer remains the business write authority in this compatibility path.
 ReplicaClient is the UI's normalized materialized read model; calling it the UI
 read authority must never be interpreted as upgrading a local View revision
 into a durable server log.
 
-Writes stay semantic: Codex-compatible clients continue using AppServer
+Writes stay semantic: V3-compatible clients continue using AppServer
 business commands (`thread/start`, send, cancel, approval, and so on). OpenCraft
 does not pretend an arbitrary Replica mutation can be translated back into a
-Codex command. A V4-native server uses `replica/mutate` and may project the same
+V3 command. A V4-native server uses `replica/mutate` and may project the same
 domain commands internally.
 
 ## Replica synchronization invariants
