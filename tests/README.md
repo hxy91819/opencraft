@@ -33,3 +33,11 @@ suites. Keep shared helpers in `support/` and browser/service inputs in
 when introducing a new category; directory placement alone does not schedule a
 suite. Preserve test assertions when moving files, and resolve source paths
 relative to the test module or the repository root as appropriate.
+
+Tests for downstream product adapters and site-region policies belong with the
+downstream implementation and its fixtures; the standalone core must not need
+private product sources to run its tests. Core Bot history is covered by
+`chat/chat-bot-history-source.test.ts` and
+`chat/chat-bot-history-demand.test.ts`; locale resolution is covered by
+`shell/i18n-runtime.test.ts`. These suites do not establish downstream Hermes
+integration or product site-region behavior.

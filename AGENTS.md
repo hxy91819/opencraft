@@ -51,7 +51,7 @@ GitHub `opencraft-app/opencraft` 是目标核心上游，产品身份来源、�
 | 从源码打包替换服务器本地 Web | [本地替换指引](docs/web-local-deployment.md)；先核对 `.local/README.md` 中的实际部署信息 |
 | 开源提交、公开发布 | [安全与发布说明](SECURITY.md)；按 [opencraft-release](.agents/skills/opencraft-release/SKILL.md) 核对实际来源、隐私、依赖、固定tag和归档；贡献PR遵循仓库当前检查 |
 
-- 根 `ref/` 是固定版本参考，只读。借鉴前核对版本和真实运行入口，说明借鉴的是交互、状态模型、组件 contract 还是视觉 token；参考代码和截图都不是产品事实。
+- 参考 checkout 应固定版本并只读使用；独立仓库不要求根 `ref/` 目录。借鉴前核对版本和真实运行入口，说明借鉴的是交互、状态模型、组件 contract 还是视觉 token；参考代码和截图都不是产品事实。
 - 参考开源代码时必须先理解思路与原理，再独立设计和实现，不得直接照抄或机械改写，并核对许可证兼容性、避免引入不兼容的许可义务；独立新实现不添加参考来源注释，既有来源记录以及许可证要求的版权声明、署名与 NOTICE 仍须保留。
 
 ## 手机端入口
@@ -149,7 +149,7 @@ UI 任务按需读取 [UI 专题索引](design/ui/README.md)，字体任务继�
 
 | 目标 | 命令与边界 |
 |---|---|
-| Web 轻量预览 | 在 `opencraft/` 运行 `npm run dev:web`，使用终端实际 URL。固定地址时先运行 `npm run build:preview-bridge`，再运行 `npm run dev --workspace @opencraft/workbench-web -- --host 127.0.0.1 --port 5173`。不包含 Main/Preload、IPC、本机 DSH、原生 chrome 或系统能力。 |
+| Web 轻量预览 | 在仓库根目录运行 `npm run dev:web`，使用终端实际 URL。固定地址时先运行 `npm run build:preview-bridge`，再运行 `npm run dev --workspace @opencraft/workbench-web -- --host 127.0.0.1 --port 5173`。不包含 Main/Preload、IPC、本机 DSH、原生 chrome 或系统能力。 |
 | Electron 当前源码 | 先运行 `npm run build:electron`；创建 `preview_profile="$(mktemp -d /tmp/opencraft-electron-preview-XXXXXX)"`；再运行 `npm run start --workspace @opencraft/workbench-electron -- --user-data-dir="$preview_profile" --remote-debugging-port=9333`。端口仅为示例，启动前确认未占用。 |
 | macOS 打包预览 | 仅在验证签名、打包资源、原生 helper、安装路径或最终桌面行为时运行 `npm run package:electron:mac:arm64:preview`；使用隔离 worktree/profile，按 `docs/build-matrix.md` 验收。 |
 
@@ -168,7 +168,7 @@ UI 任务按需读取 [UI 专题索引](design/ui/README.md)，字体任务继�
 
 ## 硬边界
 
-- `opencraft/` 是独立 npm workspace，保留自己的 `package-lock.json`；不得与 `frontend/` 的 pnpm workspace 或锁文件合并。
+- 本仓库是独立 npm workspace，保留自己的 `package-lock.json`；不得与下游产品的 workspace 或锁文件合并。
 - GitHub 是目标核心上游，下游产品持有私有装配并固定版本消费；当前切换状态见 `docs/upstream-transition.md`，不要恢复旧单向镜像或双写。旧私有仓库仅为有界历史和回退证据。
-- OpenCraft 校验或构建不得隐式触发 frontend、GitOps、发布、生产或云资源修改。
+- OpenCraft 校验或构建不得隐式触发下游产品构建、GitOps、发布、生产或云资源修改。
 - 构建产物、`node_modules`、本地日志、隔离 profile 和机器路径不得进入 Git。

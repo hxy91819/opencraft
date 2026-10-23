@@ -36,7 +36,7 @@ description: 创建、修改或评审 OpenCraft 界面（设置页、列表、�
 
 ## 入口与权威
 
-本文中的路径均相对 **OpenCraft 服务根**（包含 `AGENTS.md`、独立 `package.json` 和 `docs/` 的 `opencraft/`），不是当前终端目录。
+本文中的路径均相对 **OpenCraft 仓库根目录**（包含 `AGENTS.md`、独立 `package.json` 和 `docs/` 的 checkout），不依赖 checkout 的目录名称或当前终端目录。
 
 1. 从OpenCraft服务根的 `AGENTS.md` 进入；独立GitHub仓库不依赖任何下游或父级脚本与目录。GitHub目标上游及切换状态读 `docs/upstream-transition.md`，不把过渡中的混合源码当已完成开源。
 2. 架构修改读 `docs/platform-architecture.md`；按下面路由只读触及的专题。正式文档和当前源码/测试是事实依据，本 Skill 是维护方法，不建立平行真源。
