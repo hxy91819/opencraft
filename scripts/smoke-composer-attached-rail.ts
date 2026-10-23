@@ -24,8 +24,8 @@ try {
     const photo = e.querySelector('.opencraft-composer-queue-item__avatar')!;
     const grip = e.querySelector('.opencraft-composer-queue-item__grip')!;
     const text = e.querySelector('.opencraft-composer-queue-item__preview')!;
-    return {rowLeft:e.getBoundingClientRect().left, handleLeft:handle.getBoundingClientRect().left, handleRight:handle.getBoundingClientRect().right, photoLeft:photo.getBoundingClientRect().left,
-    return {handleRight:handle.getBoundingClientRect().right, handleWidth:handle.getBoundingClientRect().width, photoLeft:photo.getBoundingClientRect().left,
+    return {rowLeft:e.getBoundingClientRect().left, handleLeft:handle.getBoundingClientRect().left,
+     handleRight:handle.getBoundingClientRect().right, handleWidth:handle.getBoundingClientRect().width, photoLeft:photo.getBoundingClientRect().left,
      photoRight:photo.getBoundingClientRect().right, textLeft:text.getBoundingClientRect().left,
      opacity:getComputedStyle(photo).opacity, gripOpacity:getComputedStyle(grip).opacity,
      photoActivatesDrag:handle.contains(photo)};
