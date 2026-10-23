@@ -76,9 +76,29 @@ try {
     await card.locator(".thread-async-question__title").waitFor();
     assert.equal(await card.locator("details").getAttribute("open"), "");
     await card.locator("summary").click();
+    await page.evaluate(([palette, theme]) => (window as any).setQuestionPalette(palette, theme), [palette, theme]);
+    await card.scrollIntoViewIfNeeded();
     await page.screenshot({ path: resolve(output, `${mobile ? "touch" : "desktop"}-${palette}-${theme}-answered.png`) });
+    const resolvedMetrics = await card.evaluate((node: HTMLElement) => {
+      const summary = node.querySelector("summary")!;
+      return { height: node.getBoundingClientRect().height, hitHeight: summary.getBoundingClientRect().height,
+        overflow: node.scrollWidth > node.clientWidth };
+    });
+    assert.ok(resolvedMetrics.height <= resolvedMetrics.hitHeight + 2, "resolved row must not stack vertical panel padding outside its hit target");
+    assert.ok(resolvedMetrics.hitHeight >= (mobile ? 44 : 36));
+    assert.equal(resolvedMetrics.overflow, false);
+    await page.evaluate(() => (window as any).setQuestionMode("dismissed"));
+    await card.waitFor({ state: "detached" });
+    assert.equal(await page.getByText("已被后续消息替代", { exact: true }).count(), 0);
+    assert.equal(await page.getByText("查看问题", { exact: true }).count(), 0);
+    const history = page.locator(".opencraft-chat-document").filter({ hasText: "请选择本次提交使用的身份。" });
+    assert.equal(await history.count(), 1, "superseded question remains ordinary message history exactly once");
+    await history.scrollIntoViewIfNeeded();
+    await history.waitFor({ state: "visible" });
+    assert.equal(await page.evaluate(() => (window as any).answers.length), 2, "hiding a superseded card must not submit an answer");
+    await page.screenshot({ path: resolve(output, `${mobile ? "touch" : "desktop"}-${palette}-${theme}-dismissed.png`) });
     assert.deepEqual(errors, []);
-    results.push({ mobile, palette, theme, metrics, draftFocusPreserved: true, authoritativeAnswer: true, disclosure: true });
+    results.push({ mobile, palette, theme, metrics, resolvedMetrics, draftFocusPreserved: true, authoritativeAnswer: true, disclosure: true, supersededCardHidden: true, originalQuestionHistoryPreserved: true });
     await page.close();
   }
   await writeFile(resolve(output, "results.json"), JSON.stringify(results, null, 2));
