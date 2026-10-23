@@ -1,12 +1,13 @@
-import { Suspense, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { lazy, Suspense, useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CloseIcon, InfoIcon } from "@opencraft/design-system-web/action-icons";
 import type { ConversationSummaryContext, ConversationSummaryViewState } from "@opencraft/workbench-panels-react";
 import type { ThreadGoalResource } from "@opencraft/workbench-runtime";
 import { useIntl } from "@opencraft/i18n/react";
 import { useWorkbenchPanelRuntime } from "../runtime/panel-runtime-context";
 import { ModalSurface } from "./modal/modal-surface";
-import { AdaptiveSheetHandle } from "./modal/adaptive-sheet-handle";
 import "./conversation-summary.scss";
+
+const AdaptiveSheetHandle = lazy(() => import("./modal/adaptive-sheet-handle").then(module => ({ default: module.AdaptiveSheetHandle })));
 
 const noopSubscribe = () => () => {};
 const noGoal = () => null;
@@ -70,6 +71,6 @@ export function ConversationSummarySurface({ controller, context }: { controller
   return controller.wide ? <aside id="conversation-task-summary" className="conversation-summary" aria-label={label}>{content}</aside>
     : <ModalSurface label={label} className="conversation-summary-sheet" appearance="utility" presentation="adaptive-sheet" size="compact" closeLabel={closeLabel}
       onDismiss={controller.dismiss} returnFocus={() => controller.triggerRef.current}>
-      <AdaptiveSheetHandle onDismiss={controller.dismiss} /><div id="conversation-task-summary" className="conversation-summary__sheet-content">{content}</div>
+      <Suspense fallback={null}><AdaptiveSheetHandle onDismiss={controller.dismiss} /></Suspense><div id="conversation-task-summary" className="conversation-summary__sheet-content">{content}</div>
     </ModalSurface>;
 }

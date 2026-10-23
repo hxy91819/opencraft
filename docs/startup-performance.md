@@ -51,6 +51,10 @@ with small required protocol modules: that merge also promotes KaTeX CSS into
 the startup closure. The source-level demand gate checks the renderer, and
 actual default/product builds retain the same byte and request budgets.
 
+The conversation task summary loads its sheet gesture only when the narrow
+modal is opened. Its always available toolbar and desktop summary must not
+promote the optional gesture module or sheet styles into the startup closure.
+
 Build-selected browser plugins use a dedicated compatibility TypeScript
 program covering Web and plugin sources with uniform ESNext and DOM declarations.
 ESNext describes APIs for the checker; existing browser/ECMAScript policy still
