@@ -172,8 +172,8 @@ function Demo() {
       };
       setTurn({ id: "turn", status: running ? "streaming" : "complete", items: [{ id: item.id, type: item.type, payload: item }] }); return;
     }
-    if (action === "command-view-hide" || action === "command-view-show") {
-      const visible = action === "command-view-show";
+    if (action === "command-view-hide" || action === "command-view-show" || action === "presentation-hide" || action === "presentation-show") {
+      const visible = action.endsWith("-show");
       setPresentationHidden(!visible); setPresentationActive(visible); return;
     }
     if (action.startsWith("command-view-")) {
