@@ -58,7 +58,7 @@ interface HarnessOptions {
 }
 
 const initializeResult = {
-  codexHome: "/tmp/codex",
+  codexHome: "/tmp/appserver-session-fixture",
   platformFamily: "unix",
   platformOs: "linux",
   userAgent: "session-fixture/1",
