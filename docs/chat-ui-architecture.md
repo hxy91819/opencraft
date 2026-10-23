@@ -3186,8 +3186,11 @@ choices contain no output, execution state, permission or automatic action.
 
 The shared Composer projects the host's read-only `isUnstable` state to its
 `data-warning` shell attribute. Workbench derives it from the existing active
-conversation recovery presentation, including pending and terminal failure,
-never from normal AI execution. Ready conversations and new drafts stay neutral.
+conversation recovery presentation and diagnostic: actual reconnection, an
+observed transport/history failure being retried, or terminal failure. Initial
+connection, ordinary history activation and cached-history refresh stay neutral,
+even while pending; entering a conversation must not briefly tint the editor.
+Normal AI execution, ready conversations and new drafts also stay neutral.
 Only the existing material pseudo-element receives a static low-saturation red
 tint and faint inset rim using the semantic danger token. Background opacity is
 constant: no breathing, blinking or scaling. Text, caret, controls and geometry
