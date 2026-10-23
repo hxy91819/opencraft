@@ -74,9 +74,9 @@ export function defaultAppearanceThemeId(
   return normalizeBuiltinThemeId(presentation.defaultThemeId ?? coreThemeId);
 }
 
-function readPreference(key: string): string | null {
+function readPreference(key: string): string | null | undefined {
   try { return window.localStorage.getItem(key); }
-  catch { return null; }
+  catch { return undefined; }
 }
 
 function writePreference(key: string, value: string): void {
@@ -98,10 +98,21 @@ function snapshot(preference: ThemePreference, requestedThemeId: string): Appear
   });
 }
 
-const persistedMode = readPreference(preferenceKey) ?? readPreference("vela.appearance-theme");
+const storedMode = readPreference(preferenceKey);
+const persistedMode = storedMode ?? readPreference("vela.appearance-theme");
+const storedThemeId = readPreference(selectionKey);
+const persistedThemeId = (storedThemeId ?? readPreference("vela.appearance-theme-id"))?.trim();
+const initialThemeId = normalizeBuiltinThemeId(persistedThemeId || defaultAppearanceThemeId());
+// Copy known old preferences forward without deleting recovery inputs or
+// replacing an opaque extension ID with the currently displayed fallback.
+// An unavailable read is distinct from a missing key: never overwrite it.
+if (storedMode === null && isThemePreference(persistedMode)) writePreference(preferenceKey, persistedMode);
+if (persistedThemeId && (storedThemeId === null || (typeof storedThemeId === "string" && initialThemeId !== storedThemeId.trim()))) {
+  writePreference(selectionKey, initialThemeId);
+}
 let current = snapshot(
   isThemePreference(persistedMode) ? persistedMode : defaultThemePreference,
-  normalizeBuiltinThemeId((readPreference(selectionKey) ?? readPreference("vela.appearance-theme-id"))?.trim() || defaultAppearanceThemeId()),
+  initialThemeId,
 );
 
 export function getAppearanceThemeSnapshot(): AppearanceThemeSnapshot { return current; }

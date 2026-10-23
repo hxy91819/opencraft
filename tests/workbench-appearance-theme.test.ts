@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { defaultThemePreference } from "@opencraft/design-system/theme";
 
 import { ExtensionContributionStore } from "@opencraft/extension-runtime";
 import {
@@ -11,6 +12,71 @@ import {
   graphiteThemePalette,
   opencraftCanvasThemePalette,
 } from "@opencraft/design-system/theme-engine";
+
+let preferenceReadCase = 0;
+async function readInitialPreferences(stored: Map<string, string>, options: { unreadable?: readonly string[]; denyWrites?: boolean } = {}) {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window"), writes: Array<[string, string]> = [];
+  Object.defineProperty(globalThis, "window", { configurable: true, value: {
+    localStorage: {
+      getItem: (key: string) => { if (options.unreadable?.includes(key)) throw new Error("Storage unavailable"); return stored.get(key) ?? null; },
+      setItem: (key: string, value: string) => { if (options.denyWrites) throw new Error("Storage unavailable"); writes.push([key, value]); stored.set(key, value); },
+    },
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+  } });
+  try {
+    const appearance = await import(`../apps/workbench-web/src/appearance-theme.ts?initial-preferences=${++preferenceReadCase}`);
+    return { snapshot: appearance.getAppearanceThemeSnapshot(), writes };
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow);
+    else Reflect.deleteProperty(globalThis, "window");
+  }
+}
+
+test("old appearance preferences copy forward once without changing selection or deleting recovery inputs", async () => {
+  const old = [["vela.appearance-theme", "light"], ["vela.appearance-theme-id", "vela.core.codex"]] as const;
+  const stored = new Map<string, string>(old), first = await readInitialPreferences(stored);
+  assert.equal(first.snapshot.preference, "light"); assert.equal(first.snapshot.requestedThemeId, "opencraft.core.neutral");
+  assert.equal(stored.get("opencraft.appearance-theme"), "light"); assert.equal(stored.get("opencraft.appearance-theme-id"), "opencraft.core.neutral");
+  for (const [key, value] of old) assert.equal(stored.get(key), value);
+  const next = await readInitialPreferences(stored);
+  assert.deepEqual(next.snapshot, first.snapshot); assert.deepEqual(next.writes, []);
+});
+
+test("current preferences win over stale old keys without additional writes", async () => {
+  const stored = new Map([["opencraft.appearance-theme", "dark"], ["opencraft.appearance-theme-id", "opencraft.core.canvas"], ["vela.appearance-theme", "light"], ["vela.appearance-theme-id", "vela.core.codex"]]);
+  const { snapshot, writes } = await readInitialPreferences(stored);
+  assert.equal(snapshot.preference, "dark"); assert.equal(snapshot.requestedThemeId, "opencraft.core.canvas"); assert.deepEqual(writes, []);
+});
+
+test("old built-in identity in the current key normalizes without rewriting an opaque extension identity", async () => {
+  const stored = new Map([["opencraft.appearance-theme-id", "vela.core.codex"]]);
+  assert.equal((await readInitialPreferences(stored)).snapshot.requestedThemeId, "opencraft.core.neutral");
+  assert.equal(stored.get("opencraft.appearance-theme-id"), "opencraft.core.neutral");
+  const extension = new Map([["vela.appearance-theme-id", "plugin.codex.paper"]]);
+  const { snapshot } = await readInitialPreferences(extension);
+  assert.equal(snapshot.requestedThemeId, "plugin.codex.paper"); assert.equal(snapshot.themeId, "opencraft.core.neutral");
+  assert.equal(extension.get("opencraft.appearance-theme-id"), "plugin.codex.paper", "a missing extension's display fallback must not replace the requested identity");
+});
+
+test("fresh or explicitly empty current selection does not persist a product default or resurrect stale keys", async () => {
+  assert.deepEqual((await readInitialPreferences(new Map())).writes, []);
+  const stored = new Map([["opencraft.appearance-theme", "invalid"], ["opencraft.appearance-theme-id", ""], ["vela.appearance-theme", "dark"], ["vela.appearance-theme-id", "vela.core.web"]]);
+  const { snapshot, writes } = await readInitialPreferences(stored);
+  assert.equal(snapshot.preference, defaultThemePreference); assert.equal(snapshot.requestedThemeId, "opencraft.core.neutral"); assert.deepEqual(writes, []);
+});
+
+test("unreadable current keys cannot be overwritten using readable old preferences", async () => {
+  const stored = new Map([["opencraft.appearance-theme", "dark"], ["opencraft.appearance-theme-id", "opencraft.core.canvas"], ["vela.appearance-theme", "light"], ["vela.appearance-theme-id", "vela.core.codex"]]);
+  const before = [...stored];
+  const { writes } = await readInitialPreferences(stored, { unreadable: ["opencraft.appearance-theme", "opencraft.appearance-theme-id"] });
+  assert.deepEqual(writes, []); assert.deepEqual([...stored], before);
+});
+
+test("failed migration writes preserve the in-memory choice and old preferences", async () => {
+  const stored = new Map([["vela.appearance-theme", "light"], ["vela.appearance-theme-id", "vela.core.codex"]]);
+  const before = [...stored], { snapshot } = await readInitialPreferences(stored, { denyWrites: true });
+  assert.equal(snapshot.preference, "light"); assert.equal(snapshot.requestedThemeId, "opencraft.core.neutral"); assert.deepEqual([...stored], before);
+});
 
 test("keyboard focus is neutral and independent of brand accent, including legacy aliases", () => {
   for (const mode of ["light", "dark"] as const) {
@@ -198,6 +264,8 @@ test("extension theme selection is root-owned and unload falls back atomically",
 
   try {
     const appearance = await import("../apps/workbench-web/src/appearance-theme.ts");
+    assert.equal(stored.get("opencraft.appearance-theme-id"), appearance.coreThemeId);
+    assert.equal(stored.get("opencraft.appearance-theme"), "light");
     assert.equal(appearance.defaultAppearanceThemeId({defaultThemeId: appearance.canvasThemeId}), appearance.canvasThemeId);
     assert.equal(appearance.defaultAppearanceThemeId({}), appearance.coreThemeId);
     appearance.initializeAppearanceTheme();
