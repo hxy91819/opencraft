@@ -11,6 +11,11 @@ on:
         description: Existing stable vX.Y.Z tag to publish
         required: true
         type: string
+      oidc_probe:
+        description: Run the publish job's OIDC exchange probe and skip publishing
+        required: false
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -244,46 +249,14 @@ jobs:
           path: release
 
       # TEMPORARY diagnosis (remove with the verbose line): one OIDC exchange
-      # under this exact job identity. Prints an allowlist only (claims,
-      # status code, registry error message, request identifiers); tokens and
-      # response bodies stay unlogged, and no publish runs here.
+      # under this exact job identity (same workflow ref, job and environment).
       - name: OIDC exchange probe (temporary diagnosis)
+        if: ${{ inputs.oidc_probe == true }}
         run: |
-          set -euo pipefail
-          RESPONSE=$(curl --fail --silent --show-error \
-            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm%3Aregistry.npmjs.org")
-          ID_TOKEN=$(printf '%s' "$RESPONSE" | python3 -c "import json,sys; print(json.load(sys.stdin)['value'])")
-          echo '::add-mask::'"$ID_TOKEN"
-          printf '%s' "$ID_TOKEN" | cut -d. -f2 | python3 -c "
-          import base64, json, sys
-          payload = sys.stdin.read().strip(); payload += '=' * (-len(payload) % 4)
-          claims = json.loads(base64.urlsafe_b64decode(payload))
-          for key in ('sub', 'aud', 'repository', 'repository_owner_id', 'repository_id',
-                      'repository_visibility', 'job_workflow_ref', 'ref', 'environment',
-                      'runner_environment', 'event_name'):
-              print(f'{key}: {claims.get(key)!r}')
-          "
-          PACKAGE=$(node -p "require('./packaging/web-server/package.json').name")
-          # Mirror npm-package-arg's escaped name for the exchange path.
-          ESCAPED=$(printf '%s' "$PACKAGE" | python3 -c "import sys; print(sys.stdin.read().strip().replace('/', '%2f'))")
-          STATUS=$(curl --silent --show-error --output /tmp/exchange-response.json --dump-header /tmp/exchange-headers.txt \
-            --write-out '%{http_code}' --request POST \
-            --header "Authorization: Bearer $ID_TOKEN" \
-            --header 'npm-command: publish' \
-            --url "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/$ESCAPED")
-          echo "exchange HTTP status: $STATUS"
-          awk 'BEGIN{IGNORECASE=1} /^npm-request-id|^cf-ray|^x-fetch-attempts|^[Ss]erver:|^date:/ {print}' /tmp/exchange-headers.txt || true
-          python3 -c "
-          import json
-          body = json.load(open('/tmp/exchange-response.json'))
-          if isinstance(body, dict) and body.get('token'):
-              print('exchange verdict: token issued (withheld)')
-          else:
-              print('exchange verdict:', json.dumps(body, ensure_ascii=False)[:400])
-          "
+          python3 "$KIT" oidc-probe --package "$(node -p "require('./packaging/web-server/package.json').name")" --registry "$NPM_REGISTRY" --npm-version "$NPM_VERSION"
 
       - name: Reverify and publish exact bytes
+        if: ${{ inputs.oidc_probe != true }}
         env:
           RELEASE_TAG: ${{ needs.request.outputs.tag }}
           NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/opencraft-npmrc
@@ -302,6 +275,7 @@ jobs:
           fi
 
       - name: Verify public metadata and clean npm installation
+        if: ${{ inputs.oidc_probe != true }}
         env:
           RELEASE_TAG: ${{ needs.request.outputs.tag }}
           NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/opencraft-npmrc
@@ -316,6 +290,7 @@ jobs:
 
   github-release:
     needs: [request, publish]
+    if: ${{ inputs.oidc_probe != true }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
