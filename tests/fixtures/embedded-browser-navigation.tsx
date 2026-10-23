@@ -23,8 +23,9 @@ const navigationPolicy: BrowserNavigationPolicy = {
 const pages = new WebBrowserPageRuntime(surfaces, null, () => null, null, navigationPolicy);
 const panelOpens: string[] = [];
 const coordinator = new BrowserWorkbenchCoordinator(pages, {
-  open(owner: string) { panelOpens.push(owner); return { id: `panel-${panelOpens.length}` }; }, dispatch() {},
+  open(owner: string) { panelOpens.push(owner); return { id: `panel-${panelOpens.length}` }; }, dispatch() {}, close() {},
 } as never, createConversationBindingStore());
+coordinator.restorePersistedTabs();
 const targets = {
   allowed: "https://workbench.example/preview",
   subdomain: "https://preview.workbench.example/app",
@@ -54,4 +55,8 @@ createRoot(document.getElementById("root")!).render(<IntlRuntimeProvider runtime
 </IntlRuntimeProvider>);
 Object.assign(window, { __browserFixture: {
   snapshot: () => ({ pages: pages.list(), tabs: coordinator.listForOwner("conversation-fixture"), panelOpens }),
+  openRetained: () => {
+    for (const { tab } of coordinator.listForOwner("conversation-fixture")) coordinator.open(tab.ownerId, { tabId: tab.id, background: true });
+  },
+  closeRetained: () => coordinator.disposeOwner("conversation-fixture"),
 } });

@@ -11,7 +11,8 @@ import {
 } from "@opencraft/workbench-runtime";
 import { createBrowserRouter, createMemoryRouter } from "react-router";
 
-const HISTORY_NAMESPACE = "vela.application.route.v7";
+// Read-only input from the former Router. All current entries use v8 below.
+const LEGACY_HISTORY_NAMESPACE = "vela.application.route.v7";
 
 export type ApplicationRoute =
   | { readonly kind: "conversation" }
@@ -32,7 +33,7 @@ function equalApplicationRoute(left: ApplicationRoute, right: ApplicationRoute):
 const CONVERSATION_ROUTE: ApplicationRoute = { kind: "conversation" };
 
 interface WorkbenchHistoryState {
-  readonly namespace: typeof HISTORY_NAMESPACE;
+  readonly namespace: typeof LEGACY_HISTORY_NAMESPACE;
   readonly index: number;
   readonly location: ReturnType<typeof serializeWorkbenchLocation>;
   readonly routeScopeId: string;
@@ -83,7 +84,7 @@ function isWorkbenchHistoryState(
   if (typeof value !== "object" || value === null) return false;
   const candidate = value as Partial<WorkbenchHistoryState>;
   return (
-    candidate.namespace === HISTORY_NAMESPACE &&
+    candidate.namespace === LEGACY_HISTORY_NAMESPACE &&
     typeof candidate.index === "number" &&
     Number.isInteger(candidate.index) &&
     candidate.index >= 0 &&

@@ -12,6 +12,7 @@ import {
 } from "@opencraft/browser-core";
 import type { PreviewBridgeChildMessage } from "@opencraft/browser-preview-bridge";
 import type { BrowserMetadataStorage } from "./desktop-browser-storage";
+import { browserMetadataKeys, readBrowserMetadataValue } from "@opencraft/workbench-runtime/browser-metadata-identity";
 
 import {
   WebIframeSurfaceHost,
@@ -19,7 +20,7 @@ import {
   type BrowserSurfaceHost,
 } from "./web-browser-surface-host";
 
-const STORAGE_KEY = "vela.browser-pages.v1";
+const STORAGE_KEY = browserMetadataKeys.pages;
 
 interface StoredBrowserPage {
   readonly id: string;
@@ -552,7 +553,7 @@ export class WebBrowserPageRuntime {
   private restore(): void {
     let parsed: unknown;
     try {
-      parsed = JSON.parse((this.storage ?? window.localStorage).getItem(STORAGE_KEY) ?? "[]");
+      parsed = JSON.parse(readBrowserMetadataValue(this.storage ?? window.localStorage, STORAGE_KEY) ?? "[]");
     } catch {
       return;
     }
