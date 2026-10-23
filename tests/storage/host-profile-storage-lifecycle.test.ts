@@ -100,7 +100,7 @@ test("failed initial profile loading releases the database for a clean retry", a
   const factory = new IDBFactory();
   const duplicate = { ...profile, displayName: "Duplicate activation" };
   await assert.rejects(IndexedDbHostConnectionProfileStore.open({ factory, seed: [profile], ephemeral: [duplicate] }), /conflicts/);
-  const deletion = factory.deleteDatabase("vela-host-connections");
+  const deletion = factory.deleteDatabase("opencraft-host-connections");
   await result(deletion);
   await setImmediate();
 });
@@ -110,7 +110,7 @@ test("timeout identifies a migration that started, without exposing profile data
   context.mock.timers.enable({ apis: ["setTimeout"] });
   const request = new EventTarget() as IDBOpenDBRequest;
   Object.defineProperty(request, "result", { value: { objectStoreNames: { contains: () => true } } });
-  const opening = IndexedDbHostConnectionProfileStore.open({ factory: { open: () => request } as unknown as IDBFactory });
+  const opening = IndexedDbHostConnectionProfileStore.open({ databaseName: "fixture-schema-upgrade", factory: { open: () => request } as unknown as IDBFactory });
   const rejected = assert.rejects(opening, (error: unknown) => error instanceof BrowserStorageError
     && error.storageDiagnostics?.stage === "upgrading"
     && error.storageDiagnostics.oldVersion === 1

@@ -1,4 +1,5 @@
 import type { ReplicaJsonValue } from "@opencraft/appserver-protocol";
+import { migrateIndexedDbIdentity } from "@opencraft/indexeddb-storage";
 import {
   REPLICA_STORAGE_SCHEMA_VERSION,
   type ReplicaClientState,
@@ -10,6 +11,7 @@ const CLIENTS_STORE = "clients";
 
 export interface IndexedDbReplicaClientStorageConfig {
   databaseName?: string;
+  formerDatabaseName?: string;
   factory?: IDBFactory;
 }
 
@@ -38,11 +40,13 @@ export class IndexedDbReplicaClientStorage<TValue extends ReplicaJsonValue = Rep
 implements ReplicaClientStorage<TValue> {
   private readonly databaseName: string;
   private readonly factory: IDBFactory;
+  private readonly formerDatabaseName: string | undefined;
   private database: IDBDatabase | null = null;
   private opening: Promise<IDBDatabase> | null = null;
 
   constructor(config: IndexedDbReplicaClientStorageConfig = {}) {
-    this.databaseName = config.databaseName ?? "vela-appserver-replica";
+    this.databaseName = config.databaseName ?? "opencraft-appserver-replica";
+    this.formerDatabaseName = config.formerDatabaseName ?? (config.databaseName === undefined ? "vela-appserver-replica" : undefined);
     this.factory = config.factory ?? indexedDB;
   }
 
@@ -101,20 +105,23 @@ implements ReplicaClientStorage<TValue> {
   private open(): Promise<IDBDatabase> {
     if (this.database !== null) return Promise.resolve(this.database);
     if (this.opening !== null) return this.opening;
-    this.opening = new Promise<IDBDatabase>((resolve, reject) => {
-      const request = this.factory.open(this.databaseName, DATABASE_VERSION);
-      request.addEventListener("upgradeneeded", () => {
-        if (!request.result.objectStoreNames.contains(CLIENTS_STORE)) {
-          request.result.createObjectStore(CLIENTS_STORE, { keyPath: "storageKey" });
-        }
+    this.opening = (async () => {
+      if (this.formerDatabaseName) await migrateIndexedDbIdentity({ factory: this.factory, name: this.databaseName, formerName: this.formerDatabaseName, formerWriterVersion: DATABASE_VERSION });
+      return new Promise<IDBDatabase>((resolve, reject) => {
+        const request = this.factory.open(this.databaseName, DATABASE_VERSION);
+        request.addEventListener("upgradeneeded", () => {
+          if (!request.result.objectStoreNames.contains(CLIENTS_STORE)) {
+            request.result.createObjectStore(CLIENTS_STORE, { keyPath: "storageKey" });
+          }
+        });
+        request.addEventListener("success", () => {
+          this.database = request.result;
+          resolve(request.result);
+        });
+        request.addEventListener("error", () => reject(request.error ?? new Error("Failed to open Replica IndexedDB")));
+        request.addEventListener("blocked", () => reject(new Error("Replica IndexedDB open was blocked")));
       });
-      request.addEventListener("success", () => {
-        this.database = request.result;
-        resolve(request.result);
-      });
-      request.addEventListener("error", () => reject(request.error ?? new Error("Failed to open Replica IndexedDB")));
-      request.addEventListener("blocked", () => reject(new Error("Replica IndexedDB open was blocked")));
-    }).finally(() => {
+    })().finally(() => {
       this.opening = null;
     });
     return this.opening;
