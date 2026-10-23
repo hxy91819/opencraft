@@ -43,7 +43,9 @@ export function createImExecution({actors,collaboration,getAppHost,prepareCapabi
   const invoke = async (context,ref,method,params,signal) => {
     signal?.throwIfAborted(); authorize(context,ref);
     const host = getAppHost(); if (!host) throw new Error('IM execution unavailable');
-    const result = await callConversationHost(host,{hostId,threadId:ref?.threadId ?? ''},'im',method,params,{sender:null,actorContext:context});
+    const targetHost = ref ? collaboration.execution.hostForServer?.(ref.serverId) ?? hostId : hostId;
+    if (ref && collaboration.execution.serverForHost && collaboration.execution.serverForHost(targetHost,ref.threadId) !== ref.serverId) throw new ImFault('denied');
+    const result = await callConversationHost(host,{hostId:targetHost,threadId:ref?.threadId ?? ''},'im',method,params,{sender:null,actorContext:context});
     signal?.throwIfAborted(); authorize(context,ref);
     return result;
   };

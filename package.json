@@ -112,6 +112,7 @@
     "test:bot-management": "tsx --test tests/bot-management-host.test.ts tests/bot-configuration-editor.test.ts tests/bot-directory.test.ts tests/chat-bot-appserver.test.ts",
     "test:dsh-bridge": "tsx --test tests/dsh-*.test.ts tests/dsh-*.test.mjs tests/local-agent-host.test.ts tests/loopback-http.test.ts",
     "smoke:dsh-continuity": "tsx scripts/smoke-independent-dsh-host.ts",
+    "smoke:im-dsh": "tsx scripts/smoke-im-dsh.ts",
     "smoke:skills-refresh": "tsx scripts/smoke-skills-refresh.ts",
     "test:connectors": "tsx --test tests/platform-connectors*.test.ts",
     "test:extension-storage": "tsx --test tests/extension-persistence.test.ts tests/extension-storage-api.test.ts tests/extension-settings.test.ts tests/extension-installations.test.ts",
@@ -252,7 +253,7 @@
     "smoke:control-icons": "node scripts/smoke-native-control-icons.mjs",
     "generate:control-icons": "tsx scripts/generate-native-control-icons.tsx",
     "test:pi-engine": "tsx --test tests/pi-durable-engine.test.ts tests/pi-model-configuration.test.ts tests/pi-runtime-packaging.test.mjs",
-    "test:im": "tsx --test tests/im-switchboard.test.ts tests/im-programmable.test.ts tests/im-tool-reply.test.ts tests/session-capabilities.test.ts tests/wecom-plugin.test.ts",
+    "test:im": "tsx --test tests/im-multi-engine.test.ts tests/im-switchboard.test.ts tests/im-programmable.test.ts tests/im-tool-reply.test.ts tests/session-capabilities.test.ts tests/wecom-plugin.test.ts",
     "test:session-capabilities": "tsx --test tests/session-capabilities.test.ts",
     "smoke:structured-preview": "tsx scripts/smoke-structured-preview.ts",
     "smoke:headless-connectors": "tsx scripts/smoke-headless-connectors.ts"

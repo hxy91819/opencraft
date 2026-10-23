@@ -123,7 +123,15 @@ New channels explicitly activate the source preset. Function-routed channels
 handle those commands with a settings instruction; they never create hidden
 manual overrides. `/identify` is a private identity control message outside
 routing and Agent execution. Human provisioning remains with the existing
-account provider. Execution currently targets the local Codex core server.
+account provider. Fixed existing conversation references can target local Codex,
+Pi or DSH when the engine is enabled. The picker reports each engine identity;
+message links map canonical server IDs back to their actual workbench Host.
+Chat-source queries use the same mapping, including the shared Pi/DSH Host.
+An unbound source preset still creates a Codex conversation; it does not silently
+choose or migrate an engine. Pi/DSH use native durable input ports and wait when
+busy, without browser callbacks or a second native queue. Tool-mode final/dedupe
+behavior is identical across engines. Independent DSH requires the matching Host
+upgrade described in [session capabilities](session-capabilities.md).
 
 WeCom follows the [official long-connection contract](https://developer.work.weixin.qq.com/document/path/101463):
 fixed WSS endpoint, Bot ID/Secret subscription, 30-second heartbeat and bounded

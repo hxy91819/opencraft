@@ -14,7 +14,8 @@
     "./desktop": "./src/desktop.ts",
     "./mcp-apps": "./src/mcp-apps.ts",
     "./collaboration": "./src/collaboration.ts",
-    "./token-usage": "./src/token-usage.ts"
+    "./token-usage": "./src/token-usage.ts",
+    "./host-inputs": "./src/host-inputs.ts"
   },
   "dependencies": {
     "@opencraft/document-storage": "0.1.0"

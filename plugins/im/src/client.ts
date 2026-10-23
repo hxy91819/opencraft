@@ -30,6 +30,7 @@ export interface ImDocument {
   actorId: string;
   serverId: string;
   workbenchHostId: string;
+  servers?: { serverId: string; hostId: string }[];
 }
 export class ImHttpError extends Error {
   constructor(readonly code: string, readonly status: number) { super(code); }

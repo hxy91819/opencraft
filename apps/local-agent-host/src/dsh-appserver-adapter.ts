@@ -1164,7 +1164,8 @@ export class DshAppServerAdapter {
     }
     return this.dispatchCommand(method, params);
   }
-  async dispatchOwned(method: string, params: unknown, owner: DshExecutionOwner, requestId: string | number): Promise<unknown> {
+  async dispatchOwned(method: string, params: unknown, owner: DshExecutionOwner, requestId: string | number,
+    canAdmit?: () => boolean | Promise<boolean>): Promise<unknown> {
     if (!this.authority || !this.admission) return this.dispatch(method, params);
     if (!this.engineReady) throw new Error("DSH runtime is unavailable");
     const value = object(params);
@@ -1207,6 +1208,7 @@ export class DshAppServerAdapter {
         }
         const content = await this.promptContent(sessionId, value.input);
         await this.selectModel(sessionId, value.model, value.effort);
+        if (canAdmit && !await canAdmit()) throw new Error("Host input authorization changed before native admission");
         this.authority.assertConnected(owner);
         await this.client.call("session.prompt", {
           sessionId, mode: "queue", content, clientTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,

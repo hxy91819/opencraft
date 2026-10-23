@@ -25,13 +25,28 @@ async function readDshHost(path, expectedDataDirectory, expectedMachineId) {
   if (!response.ok || health.ok !== true || health.engine !== 'dsh' || health.pid !== descriptor.pid
     || !Number.isSafeInteger(health.enginePid) || health.enginePid < 1)
     throw new Error('Independent DSH Host is unavailable');
-  return { websocketUrl: descriptor.websocketUrl, storageOutcomes: health.storage,
+  return { websocketUrl: descriptor.websocketUrl, storageOutcomes: health.storage, hostInputs: health.hostInputs === 1,
     identity: { pid: health.pid, enginePid: health.enginePid } };
 }
 
 export async function attachDshHost(path, expectedDataDirectory, expectedMachineId) {
   const read = () => readDshHost(path, expectedDataDirectory, expectedMachineId);
+  const input = async (action, threadId, inputId, text) => {
+    const host = await read(); if (!host.hostInputs) return null; // No native attempt on an older Host; safe until drained upgrade.
+    const url = new URL(host.websocketUrl), token = url.searchParams.get('token');
+    const response = await fetch(new URL('/host-inputs', url.origin.replace('ws:', 'http:')), {
+      method: 'POST', headers: {'content-type':'application/json', Authorization:'Bearer '+token},
+      body: JSON.stringify({action,threadId,inputId,...(text === undefined ? {} : {text})}), signal:AbortSignal.timeout(35_000),
+    });
+    if (!response.ok) throw new Error('DSH input outcome unknown');
+    const result = await response.json(), receipt = result?.receipt;
+    if (receipt !== null && (!receipt || !['delivered','discarded','unknown'].includes(receipt.state)
+      || receipt.turnId !== null && typeof receipt.turnId !== 'string')) throw new Error('Invalid DSH input receipt');
+    return receipt;
+  };
   return { ...await read(),
+    inputs: { receipt: (threadId,inputId) => input('receipt',threadId,inputId),
+      submit: async (threadId,inputId,text,canAdmit) => await canAdmit() ? input('submit',threadId,inputId,text) : null },
     resolveWebsocketUrl: async () => (await read()).websocketUrl,
     getIdentity: async () => (await read()).identity,
     async close() {} };

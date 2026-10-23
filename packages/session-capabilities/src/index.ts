@@ -13,6 +13,7 @@ export interface SessionCapabilityProvider {
   call(session: CapabilitySession, name: string, args: unknown, signal: AbortSignal): Promise<unknown>;
 }
 export interface SessionCapabilityPort {
+  refresh?(threadId: string): Promise<void>;
   tools(threadId: string): readonly CapabilityTool[];
   call(threadId: string, name: string, args: unknown, signal: AbortSignal): Promise<CapabilityResult>;
 }

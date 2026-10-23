@@ -1,5 +1,6 @@
 import { nodeObserver } from "../../../packages/observability-contract/node.mjs";
 import type { SessionCapabilityPort } from "@opencraft/session-capabilities";
+import type { HostInputPort } from "@opencraft/appserver-protocol/host-inputs";
 import { ConversationSchedules, ScheduleFault, type ScheduleExecutionPort } from "@opencraft/host-schedules";
 import { OPENCRAFT_PERMISSION_MODES_EXTENSION, OPENCRAFT_PERMISSION_MODES_CAPABILITY, CONVERSATION_SCHEDULES_EXTENSION } from "@opencraft/appserver-protocol";
 import { AppServerRpcError, projectedTurnsPage, projectedItemsPage, projectedHistoryHeadCursors } from "@opencraft/appserver-client";
@@ -143,6 +144,7 @@ export class PiEngine {
     return tools;
   }
   private async refreshHostTools(session: Session): Promise<void> {
+    await this.options.sessionCapabilities?.refresh?.(session.id);
     const previous = session.hostTools, tools = this.hostTools(session);
     session.hostTools = previous;
     if (previous !== undefined && isDeepStrictEqual(previous, tools)) return;
@@ -343,6 +345,27 @@ export class PiEngine {
     void operation.finally(() => { if (this.operations.get(key) === operation) this.operations.delete(key); }).catch(() => {});
     return operation;
   }
+  /** In-process Host admission; native submission identity is the receipt. */
+  readonly inputs: HostInputPort = {
+    receipt: async (threadId, inputId) => {
+      const session = await this.session(threadId), turnId = `${threadId}:turn:client:${inputId}`;
+      return await (await this.native(session)).execution(turnId) ? { state: "delivered", turnId } : null;
+    },
+    submit: (threadId, inputId, text, canAdmit) => this.serialize(threadId, async () => {
+      const prior = await this.inputs.receipt(threadId, inputId); if (prior) return prior;
+      const session = await this.session(threadId);
+      if (session.archived || session.ephemeral) return { state: "discarded", turnId: null };
+      if (session.active || !await canAdmit()) return null;
+      const owner: EngineClient = { notify() {}, request: async () => { throw new Error("No browser tool owner"); } };
+      try {
+        await this.handle("turn/start", { threadId, clientUserMessageId: inputId, input: [{ type: "text", text }] }, owner, canAdmit);
+        return await this.inputs.receipt(threadId, inputId) ?? { state: "unknown", turnId: null };
+      } catch (error) {
+        if (error instanceof ScheduleAdmissionDeferred) return null;
+        return await this.inputs.receipt(threadId, inputId) ?? { state: "unknown", turnId: null };
+      }
+    }),
+  };
   private schedules(): ConversationSchedules {
     if (!this.scheduleService) {
       const owner: EngineClient = { notify() {}, request: async () => { throw new Error("Scheduled Pi inputs cannot use browser tool leases"); } };
@@ -394,7 +417,7 @@ export class PiEngine {
       : typeof params.threadId === "string" ? params.threadId : method.startsWith("config/") ? "config" : undefined;
     return key === undefined ? this.handle(method, params, client) : this.serialize(key, () => this.handle(method, params, client));
   }
-  private async handle(method: string, params: Value, client: EngineClient, canAdmit?: () => boolean): Promise<any> {
+  private async handle(method: string, params: Value, client: EngineClient, canAdmit?: () => boolean | Promise<boolean>): Promise<any> {
     await this.load(); if (this.closed) throw new Error("Pi engine is closed");
     if (method.startsWith("opencraft/schedules/")) {
       const schedules = this.schedules();
@@ -546,18 +569,20 @@ export class PiEngine {
       const createdAtMs = Date.now();
       const turn: PiTurn = { id: turnId, items: [{ type: "userMessage", id: `${turnId}:user`, clientId, content: params.input }], itemsView: "complete", status: "inProgress", error: null,
         startedAt: Math.floor(createdAtMs / 1000), completedAt: null, durationMs: null };
-      if (canAdmit && !canAdmit()) throw new ScheduleAdmissionDeferred();
+      if (canAdmit && !await canAdmit()) throw new ScheduleAdmissionDeferred();
       session.active = turn; session.pendingRecovery = true;
       const previousPreview = session.preview, previousUpdated = session.updatedAt;
       session.preview ||= textOf(content).slice(0, 200); session.updatedAt = seconds();
       try {
         await this.save(session);
-        if (canAdmit && !canAdmit()) {
+        if (canAdmit && !await canAdmit()) {
           session.active = undefined; session.pendingRecovery = false;
           session.preview = previousPreview; session.updatedAt = previousUpdated;
           await this.save(session); throw new ScheduleAdmissionDeferred();
         }
-        this.attach(session, client); this.notify("turn/started", { threadId: session.id, turn });
+        // A Host input does not replace the browser's separate tool lease.
+        if (!canAdmit) this.attach(session, client);
+        this.notify("turn/started", { threadId: session.id, turn });
         await native.submit(content, { turnId, clientId, input: params.input, additionalContext: params.additionalContext ?? null,
           createdAtMs, turnTrigger: params.turnTrigger ?? null }, turnId);
         await this.refresh(session);
