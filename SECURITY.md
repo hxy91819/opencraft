@@ -17,7 +17,7 @@ should be upgraded or assessed against the current code before reporting.
   runs audit all three roots. Managed Web regression/Playwright runs when update
   or deployment inputs change. The selection policy and stable aggregate checks
   are documented in [Build Matrix](docs/build-matrix.md#pull-request-ci-selection).
-- Dependabot covers the root workspace, isolated DSH runtime, `hemesclient` and
+- Dependabot covers the root workspace, isolated DSH runtime, `apps/bridges/hermes` and
   GitHub Actions. Credentials belong to a deployment user's private configuration.
 - The CodeQL workflow analyzes JavaScript/TypeScript when the repository is public.
   Private repositories require the corresponding GitHub Code Security entitlement.
@@ -27,7 +27,7 @@ should be upgraded or assessed against the current code before reporting.
 
 For local inspection, scan a clean export of the intended commit with Gitleaks
 8.30.1 or newer, using this repository's configuration. Run `npm audit` in the root,
-`runtime/dsh` and `hemesclient`; retain the findings and verify each lockfile is
+`runtime/dsh` and `apps/bridges/hermes`; retain the findings and verify each lockfile is
 unchanged. A failed audit is a finding, not a completed remediation.
 
 ### Outstanding dependency findings (2026-10-13)

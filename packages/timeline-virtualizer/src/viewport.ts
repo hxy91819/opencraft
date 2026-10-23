@@ -105,8 +105,7 @@ export function resolveTimelineViewportPolicy({
   if (kind === "electron") {
     return {
       lockRootScroll: true,
-      // Source-faithful: the original Electron thread leaves the nested
-      // scrollport at auto and locks only the application viewport.
+      // Keep the nested scrollport at auto; lock only the application viewport.
       threadOverscroll: "auto",
       localElasticEffect: platform === "darwin",
       tracksVisualViewport: false,

@@ -4,7 +4,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 export const portableTargets = ['web-browser', 'electron-renderer', 'electron-host', 'expo-web', 'expo-ios-bundle'];
-const auditDirectories = ['.', 'runtime/dsh', 'hemesclient'];
+const auditDirectories = ['.', 'runtime/dsh', 'apps/bridges/hermes'];
 /** Automatic checks stay on Linux/Web. Other platforms require an explicit manual request. */
 export function planChanges(paths, { event = 'pull_request', unknownDiff = false, fullMatrix = false } = {}) {
   const builds = new Set();
@@ -46,8 +46,8 @@ export function planChanges(paths, { event = 'pull_request', unknownDiff = false
     if (/^\.github\//.test(path) || /^(package(?:-lock)?\.json|\.npmrc|\.nvmrc|tsconfig[^/]*|config\/build-matrix\.json)$/.test(path)
       || path === 'scripts/ci-plan.mjs' || path === 'tests/tooling/ci-plan.test.mjs') { automaticChecks(); continue; }
     if (path === '.gitleaks.toml') continue; // Secrets scan always runs.
-    if (/^(runtime\/dsh|hemesclient)\/(package(?:-lock)?\.json|\.npmrc)$/.test(path)) {
-      audits.add(path.startsWith('runtime/') ? 'runtime/dsh' : 'hemesclient');
+    if (/^(runtime\/dsh|apps\/bridges\/hermes)\/(package(?:-lock)?\.json|\.npmrc)$/.test(path)) {
+      audits.add(path.startsWith('runtime/') ? 'runtime/dsh' : 'apps/bridges/hermes');
     } else if (/^(apps|packages|plugins)\/[^/]+\/package\.json$/.test(path)) audits.add('.');
     if (/^apps\/workbench-web\//.test(path)) {
       web();

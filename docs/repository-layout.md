@@ -15,11 +15,16 @@ with the area that owns them; a task's working notes are not project entry point
 | `config/` | Explicitly loaded tool configuration, versioned baselines and [repository metadata](../config/catalog-info.yaml) |
 | `scripts/`, `tests/` | Development/build utilities, [tests grouped by domain](../tests/README.md) and browser fixtures |
 | `packaging/`, `runtime/`, `ops/` | Distribution templates, isolated execution-runtime inputs and service operations |
-| `examples/`, `vendor/`, `hemesclient/` | Runnable extension examples and separately maintained integrations or dependencies |
+| `examples/`, `vendor/` | Runnable extension examples and separately maintained integrations or dependencies |
 | `.github/`, `.agents/` | GitHub workflows and repository-local agent skills |
 | `.local/` (ignored) | Machine-specific logs, screenshots, profiles and temporary verification evidence |
 
-Run npm commands from the repository root. Browser compatibility and Web update
+The optional Hermes AppServer bridge lives in
+[`apps/bridges/hermes/`](../apps/bridges/hermes/README.md), with its own Bun
+toolchain and lockfile outside the root `apps/*` workspace pattern. Run its
+commands from that directory.
+
+Run root-workspace npm commands from the repository root. Browser compatibility and Web update
 Playwright configurations live in `config/`; package scripts resolve them
 explicitly. Test discovery, browser source selection and ignored report locations
 remain rooted in the workspace.

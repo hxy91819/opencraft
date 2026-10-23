@@ -22,7 +22,7 @@ test('docs-only and empty diffs need no build; main and weekly runs still audit 
     assert.deepEqual(planChanges(paths), emptyPlan);
   }
   for (const event of ['push', 'schedule']) {
-    assert.deepEqual(planChanges([], { event }).audits, ['.', 'runtime/dsh', 'hemesclient']);
+    assert.deepEqual(planChanges([], { event }).audits, ['.', 'runtime/dsh', 'apps/bridges/hermes']);
     assert.equal(planChanges([], { event }).managedWeb, false);
   }
 });
@@ -46,7 +46,7 @@ test('root toolchain, lockfile, workflow and selector changes stay on Web/Linux'
     'config/build-matrix.json', '.github/workflows/ci-plan.yml', 'scripts/ci-plan.mjs', 'tests/tooling/ci-plan.test.mjs']) {
     const plan = planChanges([path]);
     assert.deepEqual(plan.targets, webTargets, path);
-    assert.deepEqual(plan.audits, ['.', 'runtime/dsh', 'hemesclient'], path);
+    assert.deepEqual(plan.audits, ['.', 'runtime/dsh', 'apps/bridges/hermes'], path);
     assert.equal(plan.native, false, path);
     assert.equal(plan.headlessTests, true, path);
     assert.equal(plan.headlessPackage, path === 'config/build-matrix.json', path);
@@ -71,7 +71,7 @@ test('server runtime changes test without packaging; archive inputs also build a
 });
 test('isolated lockfiles audit their own install roots and workspace manifests audit the root', () => {
   assert.deepEqual(planChanges(['runtime/dsh/package-lock.json']).audits, ['runtime/dsh']);
-  assert.deepEqual(planChanges(['hemesclient/package-lock.json']).audits, ['hemesclient']);
+  assert.deepEqual(planChanges(['apps/bridges/hermes/package-lock.json']).audits, ['apps/bridges/hermes']);
   assert.deepEqual(planChanges(['apps/workbench-web/package.json']).audits, ['.']);
   assert.deepEqual(planChanges(['plugins/voice-input/package.json']).audits, ['.']);
 });
@@ -85,14 +85,14 @@ test('managed Web is selected for update UI, deployment, protocol and Vite chang
   }
 });
 test('manual Web is the default, and missing diffs conservatively validate the Linux server archive', () => {
-  const automatic = { ...emptyPlan, targets: webTargets, audits: ['.', 'runtime/dsh', 'hemesclient'],
+  const automatic = { ...emptyPlan, targets: webTargets, audits: ['.', 'runtime/dsh', 'apps/bridges/hermes'],
     managedWeb: true, headlessTests: true, extensions: true };
   assert.deepEqual(planChanges([], { event: 'workflow_dispatch' }), automatic);
   assert.deepEqual(planChanges([], { unknownDiff: true }), { ...automatic, headlessPackage: true });
 });
 test('only explicit manual full requests restore other platforms and macOS', () => {
   assert.deepEqual(planChanges([], { event: 'workflow_dispatch', fullMatrix: true }), {
-    targets: portableTargets, audits: ['.', 'runtime/dsh', 'hemesclient'], managedWeb: true,
+    targets: portableTargets, audits: ['.', 'runtime/dsh', 'apps/bridges/hermes'], managedWeb: true,
     native: true, headlessTests: true, headlessPackage: true, extensions: true,
   });
   for (const event of ['pull_request', 'push', 'schedule']) {
