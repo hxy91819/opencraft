@@ -425,7 +425,7 @@ export class WebConversationViewportOwner {
     };
     const clearTouch = () => { touchPoint = null; };
     const handleScroll = () => {
-      if (element.clientHeight === 0) return;
+      if (this.scrollElementRef.current !== element || element.clientHeight === 0) return;
       const physicalDistance = Math.max(0, -element.scrollTop);
       if (
         pointerSnapshot !== null

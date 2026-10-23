@@ -39,7 +39,10 @@ import { flushSync } from "react-dom";
 
 export interface WebVirtualizedTurnListApi extends VirtualizedTurnListApi {
   cancelPositioning(): void;
-  captureRestoreState(): VirtualizedTurnRestoreState | null;
+  captureRestoreSnapshot(): {
+    readonly distanceFromBottomPx: number;
+    readonly virtualizedTurnList: VirtualizedTurnRestoreState | null;
+  };
 }
 
 export interface VirtualizedConversationTurnsProps {
@@ -246,12 +249,18 @@ export function VirtualizedConversationTurns({
   const virtualizedTurnListApi = useMemo<WebVirtualizedTurnListApi>(
     () => ({
       cancelPositioning: cancelPendingTargetPosition,
-      captureRestoreState: () =>
-        serializeTurnRestoreState(
+      captureRestoreSnapshot: () => ({
+        // Cleanup can interrupt flushSync before the layout effect applies
+        // compensation. Save the position belonging to these measured heights.
+        distanceFromBottomPx:
+          pendingMeasurementTransactionRef.current?.scrollDistanceFromBottomPx
+          ?? scrollController.getLastScrollDistanceFromBottomPx(),
+        virtualizedTurnList: serializeTurnRestoreState(
           measuredHeightsRef.current,
           layoutRef.current.turnKeys,
           viewportRef.current.renderedRange,
         ),
+      }),
       getEntryGeometry: (turnKey) =>
         getTurnGeometry(layoutRef.current, turnKey),
       getViewportState: () => viewportRef.current,
@@ -300,7 +309,7 @@ export function VirtualizedConversationTurns({
           setPendingScrollRequest(request);
         }),
     }),
-    [cancelPendingTargetPosition],
+    [cancelPendingTargetPosition, scrollController],
   );
 
   useLayoutEffect(() => {

@@ -111,3 +111,23 @@ test("observer commits rows before follow targets; stale registrations and dispo
     globalThis.Node = originalNode;
   }
 });
+
+test("a late scroll from a detached port cannot overwrite its compensated reading distance", () => {
+  const owner = new WebConversationViewportOwner(900);
+  const port = Object.assign(new EventTarget(), {
+    clientHeight: 600, scrollHeight: 4000, scrollTop: -900,
+    style: { removeProperty() {} },
+    scrollTo({ top }: { top: number }) { this.scrollTop = top; },
+  }) as unknown as HTMLDivElement;
+  try {
+    owner.attachScrollElement(port);
+    owner.bindScrollBehavior({});
+    owner.scrollController.compensateScrollToDistanceFromBottomPx(500);
+    assert.equal(port.scrollTop, -500);
+    owner.attachScrollElement(null);
+    // Ref detachment precedes listener cleanup. The native scroll queued by
+    // compensation can arrive while the retired element still has layout.
+    port.dispatchEvent(new Event("scroll"));
+    assert.equal(owner.scrollController.getLastScrollDistanceFromBottomPx(), 500);
+  } finally { owner.dispose(); }
+});
