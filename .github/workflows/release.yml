@@ -248,10 +248,9 @@ jobs:
           name: npm-release-${{ needs.request.outputs.tag }}
           path: release
 
-      # TEMPORARY diagnosis (remove with the verbose line): one OIDC exchange
-      # under this exact job identity (same workflow ref, job and environment).
-      # The tag tree is the publish source and may predate oidc-probe; the
-      # probe kit is the immutable workflow SHA, not a branch name.
+      # TEMPORARY diagnosis: native pinned-npm publish --dry-run under this
+      # exact job identity. The tag tree stays the publish source; the kit is
+      # github.workflow_sha, not a branch name. Formal publish stays skipped.
       - name: Require the workflow SHA for the OIDC probe
         if: ${{ inputs.oidc_probe == true }}
         run: test -n "${{ github.workflow_sha }}"
@@ -264,13 +263,18 @@ jobs:
           path: workflow-kit
           persist-credentials: false
 
-      - name: OIDC exchange probe (temporary diagnosis)
+      - name: Native npm OIDC dry-run probe (temporary diagnosis)
         if: ${{ inputs.oidc_probe == true }}
         env:
           WORKFLOW_KIT: workflow-kit/.github/secure-release/v1/secure_release.py
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/opencraft-oidc-probe-npmrc
         run: |
           test -f "$WORKFLOW_KIT"
-          python3 "$WORKFLOW_KIT" oidc-probe --package "$(node -p "require('./packaging/web-server/package.json').name")" --registry "$NPM_REGISTRY" --npm-version "$NPM_VERSION"
+          mapfile -t TARBALLS < <(find release -maxdepth 1 -type f -name '*.tgz' -print)
+          test "${#TARBALLS[@]}" -eq 1
+          TARBALL="$(realpath -- "${TARBALLS[0]}")"
+          python3 "$WORKFLOW_KIT" oidc-dry-run --artifact "$TARBALL" --registry "$NPM_REGISTRY" --provenance true --userconfig "$NPM_CONFIG_USERCONFIG"
+          echo "handwritten oidc-probe is contrast-only and is not the native CLI"
 
       - name: Reverify and publish exact bytes
         if: ${{ inputs.oidc_probe != true }}
