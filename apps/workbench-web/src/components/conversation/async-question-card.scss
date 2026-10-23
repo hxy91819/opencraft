@@ -52,13 +52,17 @@
   &__send .ui-button__label { display: inline-flex; align-items: center; gap: calc(var(--spacing) * 2); }
   &__send svg { width: 15px; height: 15px; }
   &__status { margin: 0; }
-  &[data-state="answered"], &[data-state="dismissed"] { border-color: transparent; background: var(--color-background-button-secondary); }
+  &[data-state="answered"], &[data-state="dismissed"] {
+    margin-block: calc(var(--spacing) * 2);
+    border-color: transparent;
+    background: var(--color-background-button-secondary);
+  }
   &__result {
-    padding: calc(var(--spacing) * 3) calc(var(--spacing) * 4);
+    padding-inline: calc(var(--spacing) * 3);
     > summary {
       display: flex;
       min-width: 0;
-      min-height: max(28px, var(--size-control-hit-min));
+      min-height: max(36px, var(--size-control-hit-min));
       align-items: center;
       gap: calc(var(--spacing) * 2);
       list-style: none;
@@ -68,6 +72,7 @@
       flex-wrap: wrap;
       > svg { width: 16px; height: 16px; flex: 0 0 auto; color: var(--color-status-success); }
     }
+    &[open] { padding-bottom: calc(var(--spacing) * 3); }
     > .thread-async-question__title { margin-top: calc(var(--spacing) * 3); }
     &[open] .thread-async-question__disclosure > svg { transform: rotate(180deg); }
   }

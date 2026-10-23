@@ -76,9 +76,26 @@ try {
     await card.locator(".thread-async-question__title").waitFor();
     assert.equal(await card.locator("details").getAttribute("open"), "");
     await card.locator("summary").click();
+    await page.evaluate(([palette, theme]) => (window as any).setQuestionPalette(palette, theme), [palette, theme]);
+    await card.scrollIntoViewIfNeeded();
     await page.screenshot({ path: resolve(output, `${mobile ? "touch" : "desktop"}-${palette}-${theme}-answered.png`) });
+    await page.evaluate(() => (window as any).setQuestionMode("dismissed"));
+    await card.getByText("已被后续消息替代", { exact: true }).waitFor();
+    const resolvedMetrics = await card.evaluate((node: HTMLElement) => {
+      const summary = node.querySelector("summary")!;
+      return { height: node.getBoundingClientRect().height, hitHeight: summary.getBoundingClientRect().height,
+        overflow: node.scrollWidth > node.clientWidth };
+    });
+    assert.ok(resolvedMetrics.height <= resolvedMetrics.hitHeight + 2, "resolved row must not stack vertical panel padding outside its hit target");
+    assert.ok(resolvedMetrics.hitHeight >= (mobile ? 44 : 36));
+    assert.equal(resolvedMetrics.overflow, false);
+    if (mobile) await card.locator("summary").tap(); else await card.locator("summary").click();
+    await card.locator(".thread-async-question__title").waitFor({ state: "visible" });
+    await card.locator("summary").click();
+    await card.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: resolve(output, `${mobile ? "touch" : "desktop"}-${palette}-${theme}-dismissed.png`) });
     assert.deepEqual(errors, []);
-    results.push({ mobile, palette, theme, metrics, draftFocusPreserved: true, authoritativeAnswer: true, disclosure: true });
+    results.push({ mobile, palette, theme, metrics, resolvedMetrics, draftFocusPreserved: true, authoritativeAnswer: true, disclosure: true });
     await page.close();
   }
   await writeFile(resolve(output, "results.json"), JSON.stringify(results, null, 2));
