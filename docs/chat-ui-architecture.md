@@ -87,7 +87,8 @@ own author tooltip and is never a drag target. Unknown authors and failed photos
 retain a same-size person icon. Hover, keyboard focus and held dragging do not
 fade the photo or place the grip over it. The warning indicator belongs to the
 sender slot; right-side Steer/Send, edit, delete and unconfirmed-delivery review
-stay distinct. Coarse pointers get a 44px handle contained in non-overlapping rows.
+stay distinct. Fine pointers use a compact 24px handle column with a centered
+12px grip; coarse pointers get a 44px handle contained in non-overlapping rows.
 ChatRuntime carries the original per-entry protocol sender. Exact-client local
 submission hints may paint a pending queue before acknowledgement; explicit server
 identity (including null) wins, and restored/unrelated entries never inherit the
