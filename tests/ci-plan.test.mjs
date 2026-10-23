@@ -173,6 +173,11 @@ test('CLI propagates explicit manual full-matrix requests without widening PRs',
 
 test('extension guide and example select contract tests without platform builds', () => {
   for (const path of ['CONTRIBUTING.md', 'docs/extension-development.md', 'docs/plugin-architecture.md',
+    'docs/architecture/extensions/architecture-and-lifecycle.md',
+    'docs/architecture/extensions/manifest-and-contributions.md',
+    'docs/architecture/extensions/identity-and-execution.md',
+    'docs/architecture/extensions/product-composition.md',
+    'docs/architecture/extensions/implementation-and-acceptance.md',
     'examples/extensions/README.md', 'examples/extensions/hello.mjs', 'examples/extensions/serve.mjs', 'tests/extension-example.test.ts']) {
     assert.deepEqual(planChanges([path]), { ...emptyPlan, extensions: true }, path);
   }
@@ -185,5 +190,7 @@ test('contract, runtime, loader and regression changes retain builds and add ext
     assert.deepEqual(plan.targets, webTargets, path);
   }
   assert.equal(planChanges(['README.md']).extensions, false);
+  assert.equal(planChanges(['docs/architecture/browser/overview-and-ownership.md']).extensions, false);
+  assert.equal(planChanges(['docs/architecture/extensions-guide.md']).extensions, false);
   assert.equal(planChanges(['package-lock.json']).extensions, true);
 });
