@@ -231,6 +231,11 @@ export class ThreadResumeCoordinatorService extends Service {
     }));
   }
 
+  /** A confirmed lifecycle change may make a previously rejected Thread resumable. */
+  clearResumeRejection(threadId: string): void {
+    this.rejectedResumes.delete(threadId);
+  }
+
   /** Drop presentation/history ownership after the last runtime consumer.
    * Background history checks its operation identity before publishing, so
    * deleting it also fences an old drain from recreating an evicted View. */

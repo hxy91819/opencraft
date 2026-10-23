@@ -31,15 +31,17 @@ test("unrelated missing resources and transient failures cannot retire a Thread"
 function fixture(failure?: { code: number; message: string }) {
   let peer!: InMemoryAppServerPeer;
   let hold = false, release: (() => void) | undefined;
+  let rejected = failure;
   const requests: Array<{ method: string; id?: string }> = [];
   const transport = new MemoryTransport({ connected(value) { peer = value; }, receive(frame, reply) {
     const request = JSON.parse(frame); if (request.id === undefined) return;
     const id = request.params?.threadId; requests.push({ method: request.method, id });
     const send = (result: unknown) => reply.send(JSON.stringify({ id: request.id, result }));
     if (request.method === "initialize") send({ codexHome: "/tmp", platformFamily: "unix", platformOs: "linux", userAgent: "unavailable-test" });
-    else if (request.method === "thread/read" || request.method === "thread/unarchive") send({ thread: thread(id) });
+    else if (request.method === "thread/unarchive") { rejected = undefined; send({ thread: thread(id) }); }
+    else if (request.method === "thread/read") send({ thread: thread(id) });
     else if (request.method === "thread/resume") {
-      if (failure && id === "old") { reply.send(JSON.stringify({ id: request.id, error: { ...failure, data: { retryable: true } } })); return; }
+      if (rejected && id === "old") { reply.send(JSON.stringify({ id: request.id, error: { ...rejected, data: { retryable: true } } })); return; }
       const complete = () => send({ thread: thread(id), model: "test", modelProvider: "test", cwd: "/workspace",
         approvalPolicy: "on-request", approvalsReviewer: "user", runtimeWorkspaceRoots: ["/workspace"],
         sandbox: { type: "workspaceWrite", writableRoots: ["/workspace"] }, initialTurnsPage: { data: [], nextCursor: null }, turnsBackwardsCursor: null, itemsBackwardsCursor: null });
@@ -99,5 +101,19 @@ test("archive notification fences a late successful resume", async () => {
     assert.equal(f.runtime.resources.threads.getUnavailableReason!("old"), "archived");
     assert.equal(f.runtime.getSnapshot().phase, "ready");
     lease.release();
+  } finally { await f.runtime.dispose(); }
+});
+
+test("confirmed unarchive clears a cached rejection before ordinary acquire in the same connection", async () => {
+  const f = fixture({ code: -32071, message: "Thread is archived" });
+  try {
+    await f.runtime.connect(); const lease = await f.runtime.acquireThread("old"); await settle();
+    assert.equal(lease.getSnapshot().authoritative, false);
+    await f.runtime.resources.threads.unarchive!("old");
+    const reopened = await f.runtime.acquireThread("old"); await settle();
+    assert.equal(reopened.getSnapshot().authoritative, true);
+    assert.equal(f.requests.filter(r => r.method === "initialize").length, 1);
+    assert.equal(f.requests.filter(r => r.method === "thread/resume").length, 2);
+    reopened.release(); lease.release();
   } finally { await f.runtime.dispose(); }
 });

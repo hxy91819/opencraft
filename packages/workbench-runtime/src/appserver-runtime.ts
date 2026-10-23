@@ -1255,6 +1255,7 @@ export function createAppServerWorkbenchRuntime(
   const markThreadAvailable = (threadId: string) => {
     unavailableThreads.delete(threadId);
     availabilityRevisions.set(threadId, (availabilityRevisions.get(threadId) ?? 0) + 1);
+    session?.resume.clearResumeRejection(threadId);
     session?.resume.markNeedsResume(threadId);
   };
 
