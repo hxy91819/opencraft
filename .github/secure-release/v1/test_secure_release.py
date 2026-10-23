@@ -639,6 +639,39 @@ else:
         self.assertNotIn("Bearer bb.aa.cc", result.stdout)
         self.assertIn("[redacted]", result.stdout)
 
+    def test_tagged_kit_without_oidc_probe_cannot_satisfy_the_temporary_command(self):
+        tagged = self.root / "tagged-kit.py"
+        tagged.write_text(
+            SCRIPT.read_text(encoding="utf-8").replace(
+                'commands.add_parser("oidc-probe"',
+                'commands.add_parser("oidc-probe-absent"',
+                1,
+            ),
+            encoding="utf-8",
+        )
+        result = subprocess.run(
+            (sys.executable, str(tagged), "oidc-probe", "--package", "@opencraft-app/opencraft"),
+            cwd=self.repo, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("invalid choice: 'oidc-probe'", result.stderr)
+        workflow = subprocess.run(
+            (sys.executable, str(SCRIPT), "--help"),
+            cwd=self.repo, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+        )
+        self.assertEqual(workflow.returncode, 0, workflow.stderr)
+        self.assertIn("oidc-probe", workflow.stdout)
+        self.assertIn("npm-publish", workflow.stdout)
+
+    def test_oidc_probe_help_does_not_offer_npm_publish(self):
+        result = subprocess.run(
+            (sys.executable, str(SCRIPT), "oidc-probe", "--help"),
+            cwd=self.repo, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("npm-publish", result.stdout)
+        self.assertIn("oidc-probe", result.stdout)
+
     def test_oidc_probe_requires_the_github_oidc_mint_environment(self):
         environment = dict(os.environ)
         environment.pop("ACTIONS_ID_TOKEN_REQUEST_URL", None)
