@@ -2404,7 +2404,7 @@ test("unknown AppServer Item types remain visible and never break the projection
   const snapshot = projectTimeline(source([{
     id: "turn-unknown",
     status: "complete",
-    items: [{ id: "item-unknown", type: "futureCodexItem", payload }],
+    items: [{ id: "item-unknown", type: "futureEngineItem", payload }],
   }]), createDefaultTimelineProjectorRegistry());
 
   assert.equal(snapshot.frames[0]?.type, "event");
@@ -2412,7 +2412,7 @@ test("unknown AppServer Item types remain visible and never break the projection
     type: "unknown",
     id: "unknown:item-unknown",
     sourceItemIds: [asItemId("item-unknown")],
-    itemType: "futureCodexItem",
+    itemType: "futureEngineItem",
     payload,
   });
 });
@@ -3172,8 +3172,8 @@ test("reasoning stays inside response work but outside tool groups around commen
       } },
       { id: "commentary-two", type: "agentMessage", payload: { text: "Now I can continue with the adapter notes.", phase: "commentary", completed: true } },
       { id: "notes-read", type: "commandExecution", payload: {
-        command: "cat codex-tools.md",
-        commandActions: [{ type: "read", command: "cat", name: "codex-tools.md", path: "/workspace/codex-tools.md" }],
+        command: "cat adapter-notes.md",
+        commandActions: [{ type: "read", command: "cat", name: "adapter-notes.md", path: "/workspace/adapter-notes.md" }],
         status: "completed",
       } },
       { id: "answer", type: "agentMessage", payload: { text: "Done.", phase: "final_answer", completed: true } },
