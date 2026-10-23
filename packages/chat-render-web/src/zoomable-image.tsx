@@ -44,15 +44,17 @@ function ImageViewport({ fitToContainer = false, onBackgroundClick, ...props }: 
     gesture.current = measured ? { ...measured, transform: current.current } : null;
   };
   useEffect(() => {
+    const element = viewport.current;
+    if (element === null) return;
     const observer = new ResizeObserver(() => {
-      setViewportHeight(viewport.current!.clientHeight);
+      setViewportHeight(element.clientHeight);
       backgroundPress.current = null;
       pointers.current.clear();
       gesture.current = null;
       current.current = fitted;
       setTransform(fitted);
     });
-    observer.observe(viewport.current!);
+    observer.observe(element);
     return () => observer.disconnect();
   }, []);
 

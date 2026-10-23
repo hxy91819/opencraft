@@ -50,7 +50,7 @@ presentationRoot.style.minHeight = "100dvh";
 presentationRoot.style.background = "var(--color-background-primary)";
 const controller = createComposerController({ type: "existing-thread", key: createConversationKey("local", "images") }, { now: () => Date.now(), createId: () => crypto.randomUUID() });
 const completions: (() => void)[] = [];
-Object.assign(window, { imagePreviewFixture: { controller, complete: () => completions.splice(0).forEach(complete => complete()), submissions: 0 } });
+Object.assign(window, { imagePreviewFixture: { controller, switchThread: (id: string) => controller.dispatch({ type: "switch-target", target: { type: "existing-thread", key: createConversationKey("local", id) } }), complete: () => completions.splice(0).forEach(complete => complete()), submissions: 0 } });
 createIntlTestRoot(presentationRoot).render(
   <WorkbenchPresentationRootProvider target={presentationRoot}>
     <UserMessageBlock block={block} />

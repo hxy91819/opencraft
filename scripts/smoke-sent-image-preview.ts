@@ -103,6 +103,8 @@ try {
     assert.equal(await triggers.count(), 3);
     await editor.click();
     await editor.evaluate(el => { (window as any).previewEditor = el; });
+    await editor.press("Home"); await editor.press("ArrowRight"); await editor.press("ArrowRight");
+    const selectionOffset = await editor.evaluate(el => (el.getRootNode() as ShadowRoot).getSelection()?.anchorOffset);
     const before = await draftPage.evaluate(() => (window as any).imagePreviewFixture.controller.getSnapshot().draft.document);
     const activate = async (target: any) => touchMode ? target.tap() : target.click();
     await activate(triggers.first());
@@ -137,6 +139,7 @@ try {
     await preview.waitFor({ state: "detached" });
     assert(await editor.evaluate(el => el === (window as any).previewEditor && el === el.getRootNode().activeElement), "pointer dismissal returns to the original editor");
     assert.deepEqual(await draftPage.evaluate(() => (window as any).imagePreviewFixture.controller.getSnapshot().draft.document), before);
+    assert.equal(await editor.evaluate(el => (el.getRootNode() as ShadowRoot).getSelection()?.anchorOffset), selectionOffset);
     await triggers.nth(1).focus();
     await draftPage.keyboard.press("Enter");
     await preview.waitFor();
@@ -158,6 +161,13 @@ try {
     await draftPage.evaluate(() => { const c = (window as any).imagePreviewFixture.controller; c.dispatch({ type: "remove-attachment", id: c.getSnapshot().draft.attachments[0].id }); });
     await preview.waitFor({ state: "detached" });
     await addFiles(files.slice(0, 1));
+    await activate(triggers.first());
+    await preview.waitFor();
+    await draftPage.evaluate(() => (window as any).imagePreviewFixture.switchThread("other"));
+    await preview.waitFor({ state: "detached" });
+    await draftPage.evaluate(() => (window as any).imagePreviewFixture.complete());
+    await draftPage.evaluate(() => (window as any).imagePreviewFixture.switchThread("images"));
+    assert.equal(await preview.count(), 0, "returning to a draft does not reopen its dismissed gallery");
     await activate(triggers.first());
     await preview.waitFor();
     await draftPage.evaluate(() => (window as any).imagePreviewFixture.controller.dispatch({ type: "clear" }));
