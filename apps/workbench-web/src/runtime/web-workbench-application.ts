@@ -1,4 +1,5 @@
 import { ThreadSummaryPlugin } from "@opencraft/plugin-thread-summary";
+import { browserMetadataKeys, readBrowserMetadataValue } from "@opencraft/workbench-runtime/browser-metadata-identity";
 import { RemoteBrowserStorage } from '../browser/remote-browser-storage';
 import { supportsH264MediaSource } from '../browser/h264-media-source';
 import { RemoteBrowserSurfaceHost } from '../browser/remote-browser-surface-host';
@@ -63,11 +64,11 @@ export interface WebWorkbenchApplication {
   dispose(): Promise<void>;
 }
 
-const CONVERSATION_BINDINGS_STORAGE_KEY = serverStorageKey("vela.conversation-bindings.v1");
+const CONVERSATION_BINDINGS_STORAGE_KEY = serverStorageKey(browserMetadataKeys.bindings);
 
 function loadConversationBindings(storage: BrowserMetadataStorage = window.localStorage): readonly PersistedConversationBinding[] {
   try {
-    const value = JSON.parse(storage.getItem(CONVERSATION_BINDINGS_STORAGE_KEY) ?? "[]");
+    const value = JSON.parse(readBrowserMetadataValue(storage, browserMetadataKeys.bindings, serverStorageKey) ?? "[]");
     if (!Array.isArray(value)) return [];
     return value.flatMap((row): PersistedConversationBinding[] => {
       if (typeof row !== "object" || row === null) return [];

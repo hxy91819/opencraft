@@ -146,6 +146,7 @@ build inputs and task records.
 - `apps/workbench-web`: React DOM + Vite renderer for browser and Electron.
 - `apps/workbench-electron`: Electron main/preload host without a second UI.
 - `apps/workbench-expo`: Expo Router host for native and Expo Web.
+- `apps/bridges/hermes`: independently installed Bun bridge from Hermes to the AppServer protocol.
 - `packages/appserver-protocol`: Host-aware AppServer contracts and generated native Codex types.
 - `packages/chat-core`: typed `Turn -> DisplayItem` projection.
 - `packages/composer-core`: serializable cross-platform composer blocks.
