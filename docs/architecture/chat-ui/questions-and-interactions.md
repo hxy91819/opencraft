@@ -105,7 +105,7 @@ same guarded answer callback and the Conversation's existing synchronous in-flig
 guard; empty, queued, disconnected or resolved answers cannot send. Failed sends
 retain the draft for retry. This textarea policy does not change the main
 Composer's device-specific Return behavior or blocking interaction response port.
-Regression: `scripts/smoke-async-question-keyboard.ts` mounts the real Conversation
+Regression: `scripts/smoke/conversation/smoke-async-question-keyboard.ts` mounts the real Conversation
 and replaces only its external answer port.
 
 ### MCP approval multiline parameters

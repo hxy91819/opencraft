@@ -198,7 +198,7 @@ Skill contribution 目前接收已有安装服务提供的 `installationId + ref
 - `npm run gate`：边界、全 workspace typecheck、Connector/AppServer/DSH/Chat/Workbench 测试及 Web、Expo Web、Expo iOS 构建通过。
 - MCP adapter 使用真实 AppServer codec/handler 与受控 MCP 协议端点，服务调用经过真实 loopback HTTP；没有验证用户现有远端 MCP 配置或第三方 OAuth。
 - `npm run smoke:connector-controls`：真实 OpenCraftComposer Add 子菜单、状态 Chip、紧凑 Popover、Runtime/Authentication/IndexedDB + WebSocket AppServer，与隔离 HTTP 授权页进行实际浏览器弹窗交互，验证明确连接/选择、关闭 Popover 不取消 Scope owner、逐次允许/拒绝/Escape、刷新恢复待确认、浅深色/窄屏/焦点。实际 presentation hook 卸载时，Application 的 Manager/Runtime 保持存活； pending OAuth 必须取消，迟到 native completion 与重新挂载都不能授予工具，新的明确连接可以复用当前 Host 认证。禁用实际 hook cleanup 必须使同一浏览器序列失败；不能以源码出现 cancelOwner 代替此证据。仅 native Host/OAuth authority 为替身。通过 `OPENCRAFT_PLAYWRIGHT_MODULE` / `OPENCRAFT_CHROMIUM_EXECUTABLE` 指定已有测试环境。
-- `scripts/smoke-connector-desktop.ts`：当前源码 Electron Main/Preload IPC 保存、通知、CAS 冲突、字段白名单与真实进程重启，随后从新任务 Composer 的 Add 子菜单打开已保存但未连接的配置，并验证不支持托管连接器的 Host 不暴露凭据表单。使用独立 profile，不覆盖 `/Applications`，不代表签名发行包或真实 OAuth 已验收。
+- `scripts/smoke/extensions/smoke-connector-desktop.ts`：当前源码 Electron Main/Preload IPC 保存、通知、CAS 冲突、字段白名单与真实进程重启，随后从新任务 Composer 的 Add 子菜单打开已保存但未连接的配置，并验证不支持托管连接器的 Host 不暴露凭据表单。使用独立 profile，不覆盖 `/Applications`，不代表签名发行包或真实 OAuth 已验收。
 - `platform-connectors-lifecycle.test.ts`：原生 completion 去重、取消隔离、View owner 退出、草稿晋升、持久化 CAS/重开、保存期间撤销、精确参数审批与撤销。SQLite 使用真实数据库文件，不使用用户 profile。
 
 尚未交付：真实第三方账号接入与各服务权限范围验收、远端 MCP 配置/安装器、内置 Skill 安装 Provider、Expo 装配。Host 需要实际实现原生 MCP/OAuth 方法；本轮未给 DSH/Hermes 新增这些方法。恢复的是配置和期望选择，不是旧连接或执行授权。

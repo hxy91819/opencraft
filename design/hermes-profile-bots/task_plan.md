@@ -33,7 +33,7 @@
 ### 深层页面刷新修复
 
 最终实机reload发现Electron相对资源base导致`/views/assets`404白屏，已改为私有loopback origin根路径。
-`node scripts/smoke-electron-route-assets.mjs`验证实际构建HTML在根、Bots和Settings路由的每个JS/CSS资源经真实静态server返回200及正确MIME。
+`node scripts/smoke/desktop/smoke-electron-route-assets.mjs`验证实际构建HTML在根、Bots和Settings路由的每个JS/CSS资源经真实静态server返回200及正确MIME。
 发布测试8项通过；最终重新打包到`release/bot-management-ready-20260915`，严格签名验证通过、457个renderer文件匹配当前构建。
 该包实机进入Bots后执行深层路由reload，管理页正常恢复；无JS异常、无assets 404。截图`evidence/management-mac-final.png`。
 当前独立preview未登录，真实云端创建/删除未执行；真实控件与控制面API边界替身的CRUD验收已通过。

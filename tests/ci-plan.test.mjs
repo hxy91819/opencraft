@@ -60,7 +60,7 @@ test('server runtime changes test without packaging; archive inputs also build a
   }
   for (const path of ['scripts/package-headless-linux.mjs', 'scripts/install-headless-linux.sh',
     'scripts/headless-codex-launcher.sh', 'scripts/headless-server-launcher.sh', 'scripts/headless-web-release.mjs',
-    'scripts/smoke-headless-package.mjs', 'scripts/server-deployment/service.mjs',
+    'scripts/smoke/server/smoke-headless-package.mjs', 'scripts/server-deployment/service.mjs',
     'tests/headless-installer.test.mjs', 'tests/server-deployment.test.mjs', 'packaging/web-server/package.json']) {
     const plan = planChanges([path]);
     assert.equal(plan.headlessTests, true, path);

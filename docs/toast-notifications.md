@@ -51,7 +51,7 @@ unread replies, approval requests and failed execution attention. This center
 does not add task authority, retries, navigation or a durable inbox.
 
 Validation: `tests/notice-history.test.ts` and
-`scripts/smoke-conversation-header-menu.ts` exercise actual consumers, layout,
+`scripts/smoke/conversation/smoke-conversation-header-menu.ts` exercise actual consumers, layout,
 focus, expiry, all severities, history, owner isolation and disposal.
-`scripts/smoke-notification-header.ts` checks the real Shell action slots without
+`scripts/smoke/shell/smoke-notification-header.ts` checks the real Shell action slots without
 a bell, with Toast feedback and nonmodal editing at phone/desktop widths.

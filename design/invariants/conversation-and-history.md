@@ -57,7 +57,7 @@ nor persisted provenance.
   its existing overlay slot, with screen-reader-only status text and no badge
   surface. Reconnection/failure copy and retry actions remain visible. Retained
   timeline, scroll and Composer identity do not change. Verified by
-  `scripts/smoke-thread-loading.ts`.
+  `scripts/smoke/conversation/smoke-thread-loading.ts`.
 
 ## Conversation work-status entry motion
 
@@ -74,7 +74,7 @@ Opening and closing bodies remain inert and hidden from accessibility navigation
 visual height animation cannot keep invisible tool actions in the Tab order.
 The disclosure trigger keeps focus, and expanding restores normal keyboard access.
 Verify closing and expanded Tab sequences alongside reflow and interrupted motion
-in `scripts/smoke-disclosure-reflow.ts`.
+in `scripts/smoke/conversation/smoke-disclosure-reflow.ts`.
 
 ## Turn completion reminders
 

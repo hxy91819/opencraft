@@ -161,7 +161,7 @@ bounded stack; the action footer does not shrink or enter the editor scroll area
 Keeping the keyboard open must leave the Send hit target inside the visible
 surface and permit the first touch to submit. Height changes preserve the editor
 node and draft. Desktop and Native keep their own presentation rules.
-Verification: `scripts/smoke-composer-keyboard-viewport.ts` simulates iOS
+Verification: `scripts/smoke/composer/smoke-composer-keyboard-viewport.ts` simulates iOS
 VisualViewport with queue/long text, offsets, light/dark and keyboard dismissal;
 physical iPhone/in-app keyboard verification remains a separate surface.
 
@@ -272,7 +272,7 @@ retain priority. A docked keyboard uses a small gap, while keyboard dismissal
 restores the Home-indicator inset. iPad desktop UA with touch is still iOS;
 hardware/floating keyboards that do not shrink the viewport do not create a fake
 full-width inset, and pinch zoom is not classified as a software keyboard.
-`scripts/smoke-terminal-keyboard.ts` exercises real Shell/RightPanel/Terminal and
+`scripts/smoke/shell/smoke-terminal-keyboard.ts` exercises real Shell/RightPanel/Terminal and
 Composer components with Terminal → Composer focus reveal, shrink/pure-pan/
 dismissal, scroll ownership, a shifted fixed-containing-block origin and a hidden
 scrollport negative control. The origin shift is an adversarial coordinate test,
@@ -296,7 +296,7 @@ share the same axis. Default/minimum combined widths continue to derive from
 list width plus rail width; mobile stacked navigation retains its own geometry.
 
 ## Composer attached rail
-The queue and goal remain in the attached rail. The active Turn's file summary is a separate, content-width pill centered above that rail and editor, with the shared floating-summary gap, full radius, theme opaque elevated material, subtle border and low elevation. It never shares the attached rail's perimeter, tuck or mask. Long labels truncate while diff counts remain visible; narrow/floating/keyboard placements follow the actual Composer. Empty summary adds no height. Approval replacement retains the same independent summary. File review, counters, draft and queue ownership do not change. Geometry and material consume design-system tokens. `scripts/smoke-composer-attached-rail.ts` covers occupancy, separation, themes, review and draft identity.
+The queue and goal remain in the attached rail. The active Turn's file summary is a separate, content-width pill centered above that rail and editor, with the shared floating-summary gap, full radius, theme opaque elevated material, subtle border and low elevation. It never shares the attached rail's perimeter, tuck or mask. Long labels truncate while diff counts remain visible; narrow/floating/keyboard placements follow the actual Composer. Empty summary adds no height. Approval replacement retains the same independent summary. File review, counters, draft and queue ownership do not change. Geometry and material consume design-system tokens. `scripts/smoke/composer/smoke-composer-attached-rail.ts` covers occupancy, separation, themes, review and draft identity.
 
 
 ## Touch Newera composer
@@ -334,7 +334,7 @@ transcript paint must not leak through the lower corner cutouts.
 Touch keeps the Composer floating; transcript paint remains visible around the
 shell and below it in the safe area. Neither mode paints an exterior contour.
 The shell's own radius, glass, shadow and attached surfaces remain unchanged.
-`scripts/smoke-composer-bottom-corners.ts` compares actual exterior and gutter
+`scripts/smoke/composer/smoke-composer-bottom-corners.ts` compares actual exterior and gutter
 pixels while changing transcript paint, including a live density switch that
 preserves the same editor, draft and focus.
 
@@ -381,7 +381,7 @@ available; actions keep their existing router, draft and panel ownership.
 
 ### First-submit presentation continuity
 
-PendingConversationPage renders the immutable submitted input with UserMessageBlock and the normal thread viewport, width and top inset. It must not maintain an independent bubble surface, font scale or geometry. All submitted attachment names remain visible, including attachment-only input. Loading/failure/retry stays in the conversation, without redisplaying the submitted Draft or making any new identity fetch; a current account is never substituted for a message-author snapshot. Thread creation, receipt ownership and retry/promotion semantics remain unchanged. Real component coverage: `scripts/smoke-pending-conversation.ts`.
+PendingConversationPage renders the immutable submitted input with UserMessageBlock and the normal thread viewport, width and top inset. It must not maintain an independent bubble surface, font scale or geometry. All submitted attachment names remain visible, including attachment-only input. Loading/failure/retry stays in the conversation, without redisplaying the submitted Draft or making any new identity fetch; a current account is never substituted for a message-author snapshot. Thread creation, receipt ownership and retry/promotion semantics remain unchanged. Real component coverage: `scripts/smoke/conversation/smoke-pending-conversation.ts`.
 
 ### First-submit Thread handoff
 
