@@ -457,7 +457,7 @@ Closing the viewer leaves native desktop services and Codex work running.
 | Layer | Owns | Must not own |
 |---|---|---|
 | `plugins/cloud-desktop` | Desktop contract, panel/controller, lazy noVNC adapter, media focus and local input gating | the downstream product account, Bot selection, enterprise service, product HTTP or resource preparation |
-| `products/<product>/plugins/lightvela-platform/src/desktop` (downstream) | Account/region and canonical directory checks, desktop service preparation, authorized viewer attachment handoff | noVNC implementation, React/Shell placement, Chat's physical transport |
+| Downstream desktop provider (product workspace) | Account/region and canonical directory checks, desktop service preparation, authorized viewer attachment handoff | noVNC implementation, React/Shell placement, Chat's physical transport |
 | Backend viewer broker | Server-side target revalidation, attachment expiry, physical incarnation and exclusive input enforcement | Client menu/view lifetime as resource-stop policy |
 | Application composition | Install the pair; retire panel consumers before disposing the downstream product provider | Guessing a target from a renderer route or advertising unsupported media |
 
@@ -467,7 +467,7 @@ import the panel renderer entry or noVNC. Boundary checks cover source imports
 and the neutral plugin's product dependencies; they do not establish a security
 sandbox for trusted JavaScript.
 
-`createLightVelaCloudDesktopAdapter` returns the existing `{backend, surfaces}`
+The downstream desktop adapter returns the existing `{backend, surfaces}`
 pair plus an owner `dispose`. It uses the account's authenticated request port,
 not another credential store. Its injected directory supplies an exact
 Conversation/Server/instance binding; `activeBotId` is not a fallback. Account
@@ -481,13 +481,13 @@ fails rather than switching silently. The default 90-second consumer wait is
 shorter than the existing 120-second viewer bootstrap bound; expiration abandons
 the viewer attempt, not the desktop service's independent background resource job.
 
-The provider requires an explicit `LightVelaDesktopViewerPort`, which is an
+The provider requires an explicitly supplied downstream viewer port: an
 integration boundary, not a new HTTP endpoint claimed to exist. Without it,
 `resolveTarget` returns null and no preparation requests are made. It must return
 the authorized target, instance, preparation epoch and a separately verified
 physical incarnation. Legacy `/desktop/session` credentials are not substituted.
 No default canonical-directory adapter or production viewer port is wired yet.
-`createLightVelaDesktopViewerPort` now implements the product handoff against
+The downstream viewer-port implementation performs the product handoff against
 explicitly configured broker endpoints. It validates the full binding/physical
 identity and expiry, captures account credential scope/epoch, and does not accept
 peer-supplied addresses. HTTP uses the existing authenticated account port and
@@ -805,7 +805,7 @@ UDP or TURN listener. Local router/shard tests preserve binary messages includin
 ingress, mobile throughput or whether all external UDP is blocked.
 
 enterprise service command execution and enterprise-service session proxy are different capabilities. The
-existing `lightvela-hermes` multiplexer opens TCP byte streams to loopback ports
+existing downstream Hermes multiplexer opens TCP byte streams to loopback ports
 over a WSS/BSON session. Its RFC6455 adapter can therefore carry a desktop
 WebSocket, not just control commands. The desktop transport tests exercise the
 real RFC6455 adapter with synthetic external byte streams: binary fragmentation,

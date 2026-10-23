@@ -230,7 +230,8 @@ endpoint, revision and public fingerprint but never credentials. The execution
 catalog contains only Server ID, label and remote roots. Removed or locked bindings
 do not survive as a second durable browser authority.
 Catalog failure omits remote profiles with a sanitized diagnostic; it does not
-disable the local Codex extension. A legacy backend's 404 means no remote catalog.
+disable the Server Connections extension or its local Codex Host. A legacy
+backend's 404 means no remote catalog.
 
 Directory selection and a persistent Project record are separate operations.
 When a Server explicitly rejects the Project method as unsupported, choosing a

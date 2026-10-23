@@ -154,8 +154,8 @@ successful login. Authoritative 401 is handled centrally with an epoch/abort fen
 old requests cannot clear a newer session. Account changes clear old details before
 new data loads, and profile mutations are fenced after their asynchronous boundary.
 
-Hermes diagnostic/reset commands belong to `LightVelaHermesCommandService`, not
-`LightVelaAccountService`. The Hermes extension creates that command service and
+Downstream Hermes diagnostic/reset commands belong to the engine command service,
+not the product account service. The Hermes extension creates that command service and
 borrows the Application's account plus its exact-bound AppServer registry. Each
 activation owns a fresh command lifetime: unloading Hermes revokes its commands
 without closing a borrowed account. A standalone definition creates its owned

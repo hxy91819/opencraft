@@ -37,8 +37,8 @@ Closing the tab or changing the panel owner disposes the viewer. Other tools kee
 their existing physical-presentation lifetime. The control button projects the
 user's intention immediately as Stop; only a valid backend grant enables input.
 
-The neutral desktop plugin now owns the lazy noVNC media adapter; the downstream product's
-`lightvela-platform/desktop` provider owns account/directory validation, desktop service
+The neutral desktop plugin owns the lazy noVNC media adapter; the downstream
+desktop provider owns account/directory validation, desktop service
 preparation and attachment handoff through narrow ports. Dependencies point
 from product to neutral contract/media/session-wire, never in reverse. the downstream product's
 viewer port consumes configured authenticated broker endpoints and never owns

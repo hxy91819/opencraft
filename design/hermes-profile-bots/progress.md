@@ -25,7 +25,7 @@
 
 ## 云端实例固定归属
 
-用户澄清Bots页面不允许选择实例，当前Bot创建只可能属于云端Hermes。已移除实例下拉框，管理目标只解析启用的lightvela.hermes Host；Local/其他provider排除，多云端无唯一已连接owner时fail-closed。
+当时的下游产品需求限定Bots页面不选择实例，Bot创建只属于产品云端Hermes。该阶段移除了实例下拉框，只解析启用的产品云端Hermes Host；Local/其他provider排除，多云端无唯一已连接owner时fail-closed。此处保留历史产品决定，不代表当前公开核心按私有provider筛选；当前准入由产品 session 的 `botManagement` 声明，见[产品装配契约](../../docs/architecture/extensions/product-composition.md)。
 16项Bot管理测试、Workbench类型、Web/电子端构建、131项扩展测试和真实管理UI验收通过；UI probe明确断言无combobox及无Local文本。
 签名Mac预览release/cloud-bot-owner-20260915已启动并保留原登录profile；实机Bots页确认无选择器，仅云端连接状态。未提交推送。
 
