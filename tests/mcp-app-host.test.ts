@@ -81,6 +81,51 @@ test("cached built-in cards share one canonical history read; resources retry on
   await assert.rejects(owner.callTool("opencraft-app-example-r1", "write", {}), /write failed/);
   assert.equal(writes, 1);
 });
+test("failed history hydration is shared but a later explicit resource retry can recover", async () => {
+  let hydrated = false, hydrations = 0, reads = 0, current = true;
+  const inactive = Error("canonical resource denied");
+  const owner = createMcpAppOwner({ key: "host:thread:1", threadId: "thread",
+    assertCurrent() { if (!current) throw Error("stale owner"); },
+    request: (async (method: string) => {
+      if (method === "thread/read") {
+        hydrations++; await new Promise(resolve => setTimeout(resolve, 0));
+        if (hydrations === 1) throw Error("temporary history failure");
+        hydrated = true; return {};
+      }
+      assert.equal(method, "mcpServer/resource/read"); reads++;
+      if (!hydrated) throw inactive;
+      return { contents: [] };
+    }) as any, sendMessage: async () => {}, openLink() {},
+  });
+  const read = () => owner.readResource("opencraft-app-example-r1", "ui://opencraft/apps/first", null);
+  const first = await Promise.allSettled([read(), read()]);
+  assert.ok(first.every(result => result.status === "rejected" && result.reason === inactive));
+  assert.equal(hydrations, 1); assert.equal(reads, 2);
+  await Promise.all([read(), read()]);
+  assert.equal(hydrations, 2); assert.equal(reads, 6);
+  current = false;
+  await assert.rejects(read(), /stale owner/);
+  assert.equal(hydrations, 2); assert.equal(reads, 6);
+});
+test("history recovery preserves resource authorization and built-in scope", async () => {
+  let hydrations = 0, reads = 0;
+  const denied = Error("denied");
+  const owner = createMcpAppOwner({ key: "host:thread:1", threadId: "thread", assertCurrent() {},
+    request: (async (method: string) => {
+      if (method === "thread/read") { hydrations++; return {}; }
+      assert.equal(method, "mcpServer/resource/read"); reads++; throw denied;
+    }) as any, sendMessage: async () => {}, openLink() {},
+  });
+  for (const [server, uri] of [["external", "ui://opencraft/apps/first"], ["opencraft-app-example-r1", "ui://other/app"]]) {
+    await assert.rejects(owner.readResource(server, uri, null), error => error === denied);
+  }
+  assert.equal(hydrations, 0); assert.equal(reads, 2);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await assert.rejects(owner.readResource("opencraft-app-example-r1", "ui://opencraft/apps/first", null), error => error === denied);
+  }
+  assert.equal(hydrations, 1, "successful history stays cached without granting resource access");
+  assert.equal(reads, 6, "each explicit attempt retries its read only once");
+});
 function fixture() {
   let current = true;
   const calls: unknown[] = [], messages: unknown[] = [], sent: any[] = [];
