@@ -25,6 +25,18 @@ const backfill = `
 INSERT OR IGNORE INTO activity_hours SELECT CAST(at/3600000 AS INTEGER),actor FROM events WHERE actor IS NOT NULL AND json_extract(body,'$.actorKind')='human' AND json_extract(body,'$.originClass')='interactive';
 INSERT OR IGNORE INTO recovery_episodes SELECT json_extract(body,'$.recoveryId'),min(at),max(at),'unknown' FROM events WHERE kind='recovery' AND json_extract(body,'$.recoveryId') IS NOT NULL GROUP BY json_extract(body,'$.recoveryId');
 `;
+function primarySqliteCode(error: unknown) {
+  const value = error as {errcode?: number; cause?: {errcode?: number}} | null;
+  const code = value?.errcode ?? value?.cause?.errcode;
+  return typeof code === 'number' ? code & 0xff : undefined;
+}
+
+function isCapacityError(error: unknown) {
+  if (primarySqliteCode(error) === 13) return true;
+  const value = error as {message?: string; cause?: {message?: string}} | null;
+  return /SQLITE_FULL|database or disk is full/i.test(String(value?.message ?? value?.cause?.message ?? ''));
+}
+
 export class ObserveStore {
   db; outcome; accepted = 0; rejected = 0; dropped = 0;
   readonly now: () => number;
@@ -38,12 +50,16 @@ export class ObserveStore {
   ingest(inputs: unknown[], actor: string | null = null) {
     let accepted = 0, rejected = 0, duplicates = 0, dropped = 0;
     const now = this.now();
-    this.db.exec('BEGIN');
+    const events: Array<{event: any; body: string}> = [];
+    for (const input of inputs) {
+      const event = sanitizeEvent(input, now);
+      if (!event) { rejected++; continue; }
+      events.push({event, body: JSON.stringify(event)});
+    }
+    let transaction = false;
     try {
-      for (const input of inputs) {
-        const event = sanitizeEvent(input, now);
-        if (!event) { rejected++; continue; }
-        const body = JSON.stringify(event);
+      this.db.exec('BEGIN'); transaction = true;
+      for (const {event, body} of events) {
         try {
           const result = this.db.prepare('INSERT OR IGNORE INTO events(event_id,at,received,kind,component,actor,body) VALUES(?,?,?,?,?,?,?)')
             .run(event.eventId, event.at, now, event.kind, event.component, actor, body);
@@ -78,10 +94,24 @@ export class ObserveStore {
               outcome=CASE WHEN excluded.ended IS NOT NULL THEN excluded.outcome ELSE executions.outcome END, updated=MAX(executions.updated,excluded.updated)`)
               .run(key,event.outcome==='started'?event.at:null,terminal?event.at:null,terminal?event.outcome:'started',now);
           }
-        } catch { dropped++; }
+        } catch (error) {
+          if (isCapacityError(error)) throw error;
+          dropped++;
+        }
       }
-      this.db.exec('COMMIT');
-    } catch (error) { this.db.exec('ROLLBACK'); throw error; }
+      this.db.exec('COMMIT'); transaction = false;
+    } catch (error) {
+      // SQLITE_FULL can make SQLite roll back the whole transaction itself.
+      // Attempt release only if needed, and never replace the original failure.
+      if (transaction) { try { this.db.exec('ROLLBACK'); } catch {} }
+      if (isCapacityError(error)) {
+        const lost = events.length - duplicates;
+        this.rejected += rejected;
+        this.dropped += lost;
+        return {accepted: 0, rejected, duplicates, dropped: lost};
+      }
+      throw error;
+    }
     this.accepted += accepted; this.rejected += rejected; this.dropped += dropped;
     return {accepted,rejected,duplicates,dropped};
   }
