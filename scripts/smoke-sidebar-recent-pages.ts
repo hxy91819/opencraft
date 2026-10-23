@@ -63,6 +63,17 @@ await scroll.evaluate(el=>{el.scrollTop=el.scrollHeight;});await waitRows(31);
 assert.equal(await more.count(),0);assert.equal(await recent.getByRole('status').innerText(),locale==='zh-CN'?'没有更多了':'No more conversations');
 await page.screenshot({path:join(output,locale+'-'+theme+'-'+(touch?'touch':'desktop')+'-auto.png')});
 await activate(less);
+// Move the same panel into another Shell host without remounting it.
+await page.evaluate(()=>{
+ const panel=document.querySelector('.sidebar-panel')!;const old=panel.closest('.shell-sidebar__column')!;
+ const column=old.cloneNode(false) as HTMLElement;column.classList.add('owner-probe');column.style.position='fixed';column.style.inset='0';
+ const scroll=document.createElement('div');scroll.className='shell-sidebar__scroll';column.append(scroll);document.body.append(column);scroll.append(panel);
+});
+const movedScroll=page.locator(touch?'.owner-probe .shell-sidebar__scroll':'.owner-probe .sidebar-activity-list');
+await movedScroll.evaluate(el=>{el.scrollTop=0});await page.waitForTimeout(30);
+await movedScroll.evaluate(el=>{el.scrollTop=el.scrollHeight});await waitRows(20);
+assert.equal(await rows.count(),20,'scroll arrival follows retained panel into new Shell owner');
+await activate(less);
 for(const count of [10,11,0]){await page.evaluate(n=>(window as any).setCount(n),count);await page.waitForTimeout(30);assert.equal(await rows.count(),Math.min(count,10));assert.equal(await more.count(),count>10?1:0);assert.equal(await less.count(),0);}
 assert.deepEqual(errors,[]);await page.close();}
 console.log(JSON.stringify({passed:true,output}));}finally{await browser?.close();await vite.close();}

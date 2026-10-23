@@ -11,13 +11,17 @@ export function useSidebarEndPull(footerRef: RefObject<HTMLDivElement | null>, e
     const footer = footerRef.current;
     const panel = footer?.closest<HTMLElement>(".sidebar-panel");
     if (!footer || !panel) return;
-    const column = panel.closest(".shell-sidebar__column");
-    const target = column?.querySelector<HTMLElement>(".shell-sidebar__scroll") ?? panel;
+    const doc = panel.ownerDocument;
     let touch: { x: number; y: number } | null = null;
     let downward = false;
     let consumed = false;
-    const viewport = () => column?.getAttribute("data-navigation-layout") === "mobile"
-      ? target : panel.querySelector<HTMLElement>(column ? ".sidebar-activity-list" : ".sidebar-content-scroll");
+    // Shell reparents this retained Sidebar between dock and drawer.
+    const viewport = () => {
+      const column = panel.closest(".shell-sidebar__column");
+      return column?.getAttribute("data-navigation-layout") === "mobile"
+        ? column.querySelector<HTMLElement>(".shell-sidebar__scroll")
+        : panel.querySelector<HTMLElement>(column ? ".sidebar-activity-list" : ".sidebar-content-scroll");
+    };
     let lastViewport = viewport();
     let lastScrollTop = lastViewport?.scrollTop ?? 0;
     const atEnd = () => {
@@ -37,7 +41,7 @@ export function useSidebarEndPull(footerRef: RefObject<HTMLDivElement | null>, e
     const scroll = (event: Event) => {
       const root = viewport();
       if (!root || event.target !== root) return;
-      const previous = root === lastViewport ? lastScrollTop : root.scrollTop;
+      const previous = root === lastViewport ? lastScrollTop : 0;
       lastViewport = root;
       lastScrollTop = root.scrollTop;
       if (root.scrollTop <= previous) return;
@@ -70,19 +74,19 @@ export function useSidebarEndPull(footerRef: RefObject<HTMLDivElement | null>, e
       tryReveal();
     };
     const end = () => { touch = null; downward = false; };
-    target.addEventListener("scroll", scroll, { capture: true, passive: true });
-    target.addEventListener("wheel", wheel, { passive: true });
-    target.addEventListener("touchstart", start, { passive: true });
-    target.addEventListener("touchmove", move, { passive: true });
-    target.addEventListener("touchend", end, { passive: true });
-    target.addEventListener("touchcancel", end, { passive: true });
+    doc.addEventListener("scroll", scroll, { capture: true, passive: true });
+    doc.addEventListener("wheel", wheel, { capture: true, passive: true });
+    doc.addEventListener("touchstart", start, { capture: true, passive: true });
+    doc.addEventListener("touchmove", move, { capture: true, passive: true });
+    doc.addEventListener("touchend", end, { capture: true, passive: true });
+    doc.addEventListener("touchcancel", end, { capture: true, passive: true });
     return () => {
-      target.removeEventListener("scroll", scroll, true);
-      target.removeEventListener("wheel", wheel);
-      target.removeEventListener("touchstart", start);
-      target.removeEventListener("touchmove", move);
-      target.removeEventListener("touchend", end);
-      target.removeEventListener("touchcancel", end);
+      doc.removeEventListener("scroll", scroll, true);
+      doc.removeEventListener("wheel", wheel, true);
+      doc.removeEventListener("touchstart", start, true);
+      doc.removeEventListener("touchmove", move, true);
+      doc.removeEventListener("touchend", end, true);
+      doc.removeEventListener("touchcancel", end, true);
     };
   }, [footerRef]);
 }
