@@ -27,13 +27,15 @@ try {
     await page.goto(url);
     await page.waitForFunction(() => document.documentElement.dataset.conversationReady === "true");
     const activity = page.locator("[data-activity-id]");
-    const assertLive = async () => {
+    const assertLive = async (thinkingPlaceholders = 0) => {
       assert.equal(await activity.count(), 1);
       assert.equal(await activity.getAttribute("data-collapsed"), null, "resource cannot fold active work, even with a saved collapsed choice");
       assert.equal(await page.locator(".thread-agent-activity__turn-toggle").count(), 0, "resource creates no disclosure boundary");
       assert.equal(await page.locator('[data-work-status="working"]').count(), 1, "work clock keeps its owner");
-      assert.equal(await page.locator(".thread-thinking-placeholder").count(), 0, "active command owns Thinking");
-      assert(await activity.innerText().then((text: string) => text.includes("Active progress")));
+      assert.equal(await page.locator(".thread-thinking-placeholder").count(), thinkingPlaceholders,
+        "only the latest work may own a Thinking placeholder");
+      // Conversation layout can be ready while the document renderer is still loading.
+      await activity.getByText("Active progress", { exact: true }).waitFor({ state: "visible" });
     };
     await assertLive();
     const initialLiveIndicators = await activity.locator(".is-shimmering").count();
@@ -57,8 +59,9 @@ try {
     await page.getByRole("button", { name: "Close review changed files" }).click();
     await assertLive();
     await update("new-work");
-    await assertLive();
-    assert((await activity.innerText()).includes("Later progress"));
+    // The new empty reasoning item now owns Thinking after the running command.
+    await assertLive(1);
+    await activity.getByText("Later progress", { exact: true }).waitFor({ state: "visible" });
     assert(await page.evaluate(() => (window as any).originalActivity === document.querySelector("[data-activity-id]")), "diff and new work retain the live DOM identity");
     await update("complete");
     assert.equal(await activity.getAttribute("data-collapsed"), "true", "real final answer may close the disclosure");
