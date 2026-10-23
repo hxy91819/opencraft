@@ -322,7 +322,7 @@ try {
     await adaptive.goto(`http://127.0.0.1:${(vite.httpServer!.address() as {port:number}).port}`);
     await adaptive.locator('.thread-goal__summary').waitFor();
     await adaptive.evaluate(touch => { document.documentElement.dataset.uiDensity=touch?'touch':'compact'; (window as any).fixture.setExtras(true); },touch);
-    for (const capacity of touch ? [320,390] : [430,800]) for (const palette of ['vela','lavender']) for (const mode of ['light','dark']) for (const language of ['zh-CN','en-US']) {
+    for (const capacity of touch ? [320,390] : [430,800]) for (const palette of ['canvas','lavender']) for (const mode of ['light','dark']) for (const language of ['zh-CN','en-US']) {
       await adaptive.setViewportSize({width:touch?capacity:1280,height:844});
       await adaptive.evaluate(({capacity,palette,mode,language}) => {
         const f=(window as any).fixture; f.setCapacity(capacity); f.setPalette(mode,palette); return f.setLocale(language);
@@ -452,7 +452,7 @@ try {
     const composerBefore = await adaptive.locator('.opencraft-composer-editor').elementHandle();
     const countsBefore = await adaptive.evaluate(() => { const f=(window as any).fixture; return {set:f.setCalls(),clear:f.clearCalls()}; });
     for (const mode of ['light','dark']) {
-      await adaptive.evaluate(mode => { const f=(window as any).fixture; f.setPalette(mode,'vela'); f.setGoal({status:'active',objective:'Keep the completed result',tokenBudget:12345,tokensUsed:1234}); }, mode);
+      await adaptive.evaluate(mode => { const f=(window as any).fixture; f.setPalette(mode,'canvas'); f.setGoal({status:'active',objective:'Keep the completed result',tokenBudget:12345,tokensUsed:1234}); }, mode);
       await adaptive.locator('.thread-goal__summary').click();
       await adaptive.locator('.thread-goal__detail').waitFor();
       await adaptive.evaluate(() => (window as any).fixture.setGoal({status:'complete',objective:'Keep the completed result',tokenBudget:12345,tokensUsed:1234}));
