@@ -45,6 +45,7 @@ async function fixture(t) {
 test('a replacement Gateway adopts the same native document/form/scroll and retires old input control', async t => {
   const f = await fixture(t), first = f.service(); await first.start();
   const key = JSON.stringify(['synthetic-owner', 'browser-logical-tab']), id = createHash('sha256').update(key).digest('hex');
+  await first.commit(draft => { draft.pages.push({ id, key, ownerId: 'synthetic-owner', zoom: 100, lifecycle: 'open', runtime: { kind: 'starting', generation: 1 } }); });
   first.pages.set(key, { id, key, ownerId: 'synthetic-owner', zoom: 100, live: true });
   await first.request(id, 'create'); await first.request(id, 'control', { token: 'old-human' });
   // Accepted old writes finish once before the owner permits a new attachment.
@@ -86,6 +87,11 @@ test('an overlapping Gateway receives a retryable open failure while the prior o
     assert.equal(message.error?.code, 'BROWSER_UNAVAILABLE'); assert.equal(message.error?.retryable, true);
     assert.equal(first.child.workerPid, f.owner.child.pid);
     assert.deepEqual(await first.request(undefined, 'inventory'), []);
+    first.close(); await first.persistence;
+    const recovered = once(client, 'message');
+    client.send(JSON.stringify({ id: 'after-writer-exit', method: 'state' }));
+    const state = JSON.parse((await recovered)[0]);
+    assert.equal(state.error, undefined); assert.equal(state.value.revision, 0);
   } finally {
     client.terminate(); first.close(); second.close();
     await first.persistence; await second.persistence;
