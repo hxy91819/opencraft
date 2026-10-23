@@ -30,6 +30,11 @@ explicitly. Test discovery, browser source selection and ignored report location
 remain rooted in the workspace.
 
 The [Harness charter](architecture/harness.md) describes behavior verification.
+[Platform](platform-architecture.md) and [ChatUI](chat-ui-architecture.md)
+architecture entry points index the maintained topics under
+`docs/architecture/platform/` and `docs/architecture/chat-ui/`. Keep changes to
+behavior and ownership in the relevant topic; the entry points retain earlier
+section permalinks and provide navigation.
 [Upstream history](upstream-history.md) records repository history and downstream
 consumption. Historical local-project-selection notes live together under
 [`design/local-project-selection/`](../design/local-project-selection/task_plan.md);
