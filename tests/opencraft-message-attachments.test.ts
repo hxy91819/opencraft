@@ -16,8 +16,8 @@ const file: AttachmentRef = {
   location: { kind: "host-file", path: "/host/attachments/file-1/content-note.pdf" },
 };
 
-test("Codex message attachments survive store reopen and follow forked history", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "codex-message-attachments-"));
+test("OpenCraft message attachments survive store reopen and follow forked history", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "opencraft-message-attachments-"));
   try {
     const first = new OpenCraftMessageAttachments(directory);
     first.record("thread-1", "client-1", [file]);
@@ -36,7 +36,7 @@ test("Codex message attachments survive store reopen and follow forked history",
   }
 });
 
-test("Codex live acknowledgement and paged history receive the same typed file metadata", async () => {
+test("Thread live acknowledgement and paged history receive the same typed file metadata", async () => {
   const directory = await mkdtemp(join(tmpdir(), "thread-message-projection-"));
   try {
     const store = new OpenCraftMessageAttachments(directory);
