@@ -461,18 +461,22 @@ migration, scheduling or write from browsing. The board does not introduce a
 formal overdue cutoff: orange identifies human waiting. The old strict 72-hour
 helper remains for legacy consumers, but no overdue group survives this layout.
 
-Cards show title, a two-line decision when applicable, recorded material,
-current state/time, Owner and a clear detail action. Full content and editing use
-the existing task workspace/activity; conversation actions independently open the
-exact Server/Thread through the original resolver, using the accessible menu for
-multiple links. The card body is static selectable content, including the title,
-state/time and Owner; it is never a button or a hidden click target. A separated
-action footer contains a quiet View details button and a primary Open chat button.
-Both stay visible without hover; neither contains the other. When links or
-navigation are unavailable, only View details is shown as the primary action; no
-non-action placeholder occupies the footer. Detail opens the existing workspace,
-not an external destination. Current judge and task
-Owner are separate, and avatars use existing profile identity resolution.
+Cards show the shared task-kind badge, title, a bounded decision when applicable,
+current state/time and Owner. Full report and material contents stay in original
+activity/conversation. Card body/title/metadata/Owner are static selectable text,
+never an implicit click target. The only card action is a persistent quiet Open
+chat text button with a directional arrow; multiple chats retain the original
+accessible menu and exact Server/Thread resolver. No View details button or
+missing-link placeholder is shown. Without a navigable chat the card has no action.
+Task editing remains reachable through the ordinary Board/List workspace; those
+entries are not merged in this visual update. Judge and Owner remain distinct;
+avatars retain the existing profile identity resolution.
+
+Lane headers explain each category directly above the cards, without column
+borders, backgrounds, enforced empty height, or colored top edges. Cards have one
+subtle outline; state and action rows have no additional separators. Owner and
+chat share a lightweight bottom row. The shared quiet control owns pointer,
+keyboard focus and touch density; only its text receives accent emphasis.
 
 Owner filtering supports all, a stored member ID and unassigned. All/Needs me/My
 work and material/title search apply to every lane and count. Needs me matches
@@ -480,7 +484,7 @@ only an explicit judge and the established current member, never a guessed login
 Selections persist across Board/List/conversation remounts in the same activation,
 scoped to task authority and verified account. Ordinary board filters stay
 independent. Needs you sorts by oldest current round; other lanes use stable task
-order/ID. Five columns reflow to three/two/one by actual Tasks container capacity.
+order/ID. Five columns stay in one horizontal row; only the board scrollport scrolls horizontally when the Tasks container is narrow.
 Narrow layouts may hide the redundant Owner text label, never the shared select wrapper or its accessible control.
 Typography, colors, focus, touch targets, shared controls and Radix behavior come
 from the existing design owners. No synthetic prototype task or simulate button
