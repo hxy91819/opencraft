@@ -1,14 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveComposerFooterDensity } from "@opencraft/composer-editor";
+import { registerHooks } from "node:module";
+
+// Codec and density tests import the public entry without rendering DOM styles.
+const styles = registerHooks({
+  load(url, context, nextLoad) {
+    return /\.(?:css|scss)$/u.test(new URL(url).pathname)
+      ? { format: "module", source: "export default {};", shortCircuit: true }
+      : nextLoad(url, context);
+  },
+});
 
 import type { ComposerDocument } from "@opencraft/composer-core";
-import {
-  composerDocumentToProseMirror,
-  composerSchema,
-  proseMirrorToComposerDocument,
-} from "@opencraft/composer-editor";
+const { composerDocumentToProseMirror, composerSchema, proseMirrorToComposerDocument, resolveComposerFooterDensity } = await import("@opencraft/composer-editor");
+styles.deregister();
 
 const document: ComposerDocument = {
   version: 1,
@@ -22,7 +28,7 @@ const document: ComposerDocument = {
           id: "file-1",
           label: "runtime.ts",
           mentionKind: "file",
-          uri: "file:///vela/runtime.ts",
+          uri: "file:///opencraft/runtime.ts",
           metadata: { line: 42 },
         },
         { type: "hard-break" },

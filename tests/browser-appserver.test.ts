@@ -5,6 +5,7 @@ import type { AppServerServerRequestInterceptor } from "@opencraft/appserver-cli
 import {
   installBrowserDynamicToolHandler,
   OPENCRAFT_BROWSER_DYNAMIC_TOOLS,
+  OPENCRAFT_BROWSER_EXTENSION,
   type BrowserDynamicToolHost,
 } from "@opencraft/browser-appserver";
 import type { AppServerServerRequest } from "@opencraft/appserver-protocol";
@@ -31,14 +32,15 @@ function harness(host: BrowserDynamicToolHost, hostId = "host-1") {
 }
 
 test("OpenCraft browser tools are stable namespaced DynamicTool specs", () => {
+  assert.equal(OPENCRAFT_BROWSER_EXTENSION, "opencraft/browser-use");
   assert.deepEqual(OPENCRAFT_BROWSER_DYNAMIC_TOOLS.map((spec) => spec.name), [
-    "vela_app", "vela_browser",
+    "opencraft_app", "opencraft_browser",
   ]);
   const names = OPENCRAFT_BROWSER_DYNAMIC_TOOLS.flatMap((spec) =>
     spec.type === "namespace" ? spec.tools.map((tool) => tool.name) : [spec.name]);
-  assert.deepEqual(names, ["open_in_vela", "get_tab_context", "browser_use"]);
+  assert.deepEqual(names, ["open_in_opencraft", "get_tab_context", "browser_use"]);
 
-  const openNamespace = OPENCRAFT_BROWSER_DYNAMIC_TOOLS.find((spec) => spec.name === "vela_app");
+  const openNamespace = OPENCRAFT_BROWSER_DYNAMIC_TOOLS.find((spec) => spec.name === "opencraft_app");
   assert.equal(openNamespace?.type, "namespace");
   const openSchema = openNamespace?.type === "namespace"
     ? openNamespace.tools[0]?.inputSchema as {
@@ -47,7 +49,7 @@ test("OpenCraft browser tools are stable namespaced DynamicTool specs", () => {
     : null;
   assert.deepEqual(openSchema?.properties?.placement?.enum, ["right"]);
 
-  const browserNamespace = OPENCRAFT_BROWSER_DYNAMIC_TOOLS.find((spec) => spec.name === "vela_browser");
+  const browserNamespace = OPENCRAFT_BROWSER_DYNAMIC_TOOLS.find((spec) => spec.name === "opencraft_browser");
   assert.equal(browserNamespace?.type, "namespace");
   const browserSchema = browserNamespace?.type === "namespace"
     ? browserNamespace.tools.find((tool) => tool.name === "browser_use")?.inputSchema as {
@@ -79,8 +81,8 @@ test("browser handler captures only OpenCraft item/tool/call requests", async ()
       threadId: "thread-1",
       turnId: "turn-1",
       callId: "call-1",
-      namespace: "vela_app",
-      tool: "open_in_vela",
+      namespace: "opencraft_app",
+      tool: "open_in_opencraft",
       arguments: { url: "http://127.0.0.1:5173/" },
     },
   });
@@ -129,8 +131,8 @@ test("browser handler returns a structured honest failure instead of mock succes
       threadId: "thread-1",
       turnId: "turn-1",
       callId: "call-1",
-      namespace: "vela_app",
-      tool: "open_in_vela",
+      namespace: "opencraft_app",
+      tool: "open_in_opencraft",
       arguments: { url: "https://blocked.example/" },
     },
   });
@@ -140,4 +142,29 @@ test("browser handler returns a structured honest failure instead of mock succes
     /page blocked by policy/,
   );
   h.dispose();
+});
+
+
+test("exact former browser calls retain context while mixed and unknown pairs fall through", async () => {
+  const calls: unknown[] = [];
+  const h = harness({
+    open: (context, input) => { calls.push({ method: "open", context, input }); return { opened: true }; },
+    getTabContext: (context, input) => { calls.push({ method: "context", context, input }); return "page"; },
+    browserUse: (context, input) => { calls.push({ method: "use", context, input }); return { ok: true }; },
+  }, "saved-owner");
+  const request = (namespace: string, tool: string, args: unknown = {}) => ({ id: "request", method: "item/tool/call" as const,
+    params: { namespace, tool, arguments: args, threadId: "saved-thread", turnId: "saved-turn", callId: "saved-call" } });
+  try {
+    for (const [namespace, tool] of [["vela_app", "open_in_vela"], ["vela_browser", "get_tab_context"], ["vela_browser", "browser_use"]]) {
+      const result = await h.call(request(namespace!, tool!, { tab_id: "saved-tab" })) as { success: boolean };
+      assert.equal(result.success, true);
+    }
+    assert.deepEqual(calls, ["open", "context", "use"].map(method => ({ method,
+      context: { hostId: "saved-owner", threadId: "saved-thread", turnId: "saved-turn", callId: "saved-call" }, input: { tab_id: "saved-tab" } })));
+    for (const [namespace, tool] of [["vela_app", "open_in_opencraft"], ["opencraft_app", "open_in_vela"], ["third_party", "browser_use"], ["vela_browser.custom", "browser_use"], ["opencraft_browser", "unrelated"]]) {
+      assert.equal(await h.call(request(namespace!, tool!, null)), "fallback");
+    }
+    assert.equal(calls.length, 3);
+    assert.equal((await h.call(request("opencraft_app", "open_in_opencraft", null)) as {success: boolean}).success, false);
+  } finally { h.dispose(); }
 });

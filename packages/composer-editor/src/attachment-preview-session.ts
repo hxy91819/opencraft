@@ -48,6 +48,34 @@ export class AttachmentPreviewSession {
     return this.jobs.has(jobKey(draftId, attachmentId));
   }
 
+  /** Replace only the initiating active draft's image. Old upload results lose ownership. */
+  replaceImage(draftId: string, attachmentId: string, expectedSource: string, file: File, resolve: AttachmentResolver | undefined): boolean {
+    if (this.disposed || this.composer.getSnapshot().draft.id !== draftId) return false;
+    const current = this.composer.getDraftAttachment(draftId, attachmentId);
+    if (!current || !current.mimeType.startsWith("image/") || !file.type.startsWith("image/")) return false;
+    if ((this.previewUrl(draftId, attachmentId) ?? current.uri) !== expectedSource) return false;
+    const key = jobKey(draftId, attachmentId), previous = this.jobs.get(key);
+    const previewUrl = URL.createObjectURL(file);
+    const entry: AttachmentJob = { draftId, attachmentId, file, previewUrl, controller: null };
+    this.jobs.set(key, entry);
+    try {
+      if (!this.composer.updateDraftAttachment(draftId, attachmentId, {
+        name: file.name, mimeType: file.type, size: file.size, uri: null, metadata: {},
+        lifecycle: resolve === undefined ? "failed" : "processing",
+        error: resolve === undefined ? "No browser-to-AppServer attachment bridge is configured" : null,
+      })) throw new Error("Image attachment no longer exists");
+    } catch (error) {
+      if (previous) this.jobs.set(key, previous); else this.jobs.delete(key);
+      URL.revokeObjectURL(previewUrl);
+      throw error;
+    }
+    previous?.controller?.abort();
+    if (previous?.previewUrl) URL.revokeObjectURL(previous.previewUrl);
+    this.notify();
+    if (resolve) this.start(entry, resolve);
+    return true;
+  }
+
   addFiles(files: readonly File[], resolve: AttachmentResolver | undefined): void {
     if (this.disposed) return;
     const draftId = this.composer.getSnapshot().draft.id;
