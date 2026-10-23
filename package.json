@@ -256,6 +256,8 @@
     "test:pi-engine": "tsx --test tests/pi-durable-engine.test.ts tests/pi-model-configuration.test.ts tests/pi-runtime-packaging.test.mjs",
     "test:im": "tsx --test tests/im-multi-engine.test.ts tests/im-switchboard.test.ts tests/im-programmable.test.ts tests/im-tool-reply.test.ts tests/session-capabilities.test.ts tests/wecom-plugin.test.ts",
     "test:session-capabilities": "tsx --test tests/session-capabilities.test.ts",
+    "test:hover-policy": "node --test tests/hover-policy.test.mjs",
+    "smoke:touch-hover": "tsx scripts/smoke-touch-hover.ts",
     "smoke:structured-preview": "tsx scripts/smoke-structured-preview.ts",
     "smoke:headless-connectors": "tsx scripts/smoke-headless-connectors.ts"
   },
@@ -281,6 +283,7 @@
     "jsdom": "^28.1.0",
     "postcss": "^8.5.30",
     "postcss-scss": "^4.0.9",
+    "postcss-selector-parser": "^7.1.7",
     "semver": "7.8.5",
     "sharp": "0.35.5",
     "tar": "7.5.22",

@@ -1,5 +1,4 @@
 @use "@opencraft/design-system/interaction-mixins.web" as controls;
-
 .token-usage__page { overflow-anchor:none; display:flex; flex-direction:column; gap:var(--gap-token-settings-sections); min-width:0; }
 
 .token-usage__toolbar {
@@ -40,15 +39,16 @@
 .token-usage__heatmap-wrap { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; min-width:0; }
 .token-usage__heatmap-days { display:grid; grid-template-rows:repeat(7,minmax(0,1fr)); gap:3px; color:var(--color-text-tertiary); font:var(--typography-disclaimer-font); }
 .token-usage__heatmap { display:grid; grid-auto-flow:column; grid-template-rows:repeat(7,minmax(0,1fr)); gap:3px; min-width:0; }
-.token-usage__heatmap-cell { aspect-ratio:1; min-width:4px; border-radius:2px; background:var(--token-usage-heat-0); box-shadow:inset 0 0 0 0.5px color-mix(in srgb,var(--color-border-subtle) 70%,transparent); }
+.token-usage__heatmap-cell { appearance:none; display:block; padding:0; border:0; cursor:pointer; aspect-ratio:1; min-width:4px; border-radius:2px; background:var(--token-usage-heat-0); box-shadow:inset 0 0 0 0.5px color-mix(in srgb,var(--color-border-subtle) 70%,transparent); }
 .token-usage__heatmap-cell[data-level="1"] { background:var(--token-usage-heat-1); }
 .token-usage__heatmap-cell[data-level="2"] { background:var(--token-usage-heat-2); }
 .token-usage__heatmap-cell[data-level="3"] { background:var(--token-usage-heat-3); }
 .token-usage__heatmap-cell[data-level="4"] { background:var(--token-usage-heat-4); }
 .token-usage__heatmap-cell[data-state="outside"] { background:transparent; opacity:.35; }
-@include controls.hover-capable {
-  .token-usage__heatmap-cell:hover { outline:2px solid var(--color-border-strong); outline-offset:1px; }
-}
+@include controls.hover-capable { .token-usage__heatmap-cell:not(:disabled):hover { outline:2px solid var(--color-border-strong); outline-offset:1px; } }
+.token-usage__heatmap-cell[aria-pressed="true"],
+:root:not([data-pointer-focus]) .token-usage__heatmap-cell:focus-visible { outline:2px solid var(--color-border-strong); outline-offset:1px; }
+.token-usage__heatmap-cell:disabled { cursor:default; }
 .token-usage__heatmap-months { display:grid; gap:3px; margin-inline-start:24px; color:var(--color-text-tertiary); font:var(--typography-disclaimer-font); }
 .token-usage__heatmap-months span { overflow:hidden; white-space:nowrap; }
 .token-usage__activity-caption { min-height:16px; margin:0; color:var(--color-text-secondary); font:var(--typography-metadata-font); }

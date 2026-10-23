@@ -33,7 +33,7 @@ const ConversationSearchResult = memo(function ConversationSearchResult({ thread
 }) {
   return <button type="button" role="option" tabIndex={-1} id={`${listId}-${index}`}
     aria-selected={selected} disabled={thread.interactionAvailable === false}
-    onMouseMove={() => onActivate(thread)} onClick={() => { if (!selecting) void select(thread); }}>
+    onPointerMove={event => { if (event.pointerType !== "mouse") return; onActivate(thread); }} onClick={() => { if (!selecting) void select(thread); }}>
     <span className="conversation-search__result-icon" aria-hidden="true"><MessageSquare size={20} /></span>
     <span className="conversation-search__text"><span className="conversation-search__title">{thread.title}</span>
       {thread.snippet ? <SearchSnippet text={thread.snippet} term={thread.searchTerm ?? ""} /> : null}</span>

@@ -78,7 +78,9 @@ export function TokenUsageDashboardView({
   const [refresh, setRefresh] = useState(0);
 
   const [activityMode, setActivityMode] = useState<"daily" | "weekly" | "cumulative">("daily");
-  const [activeCell, setActiveCell] = useState<ActivityCell | null>(null);
+  const [previewCell, setPreviewCell] = useState<ActivityCell | null>(null);
+  const [selectedCell, setSelectedCell] = useState<ActivityCell | null>(null);
+  const activeCell = previewCell ?? selectedCell;
 
   const generation = useRef(0);
   const revision = useRef(-1);
@@ -98,6 +100,8 @@ export function TokenUsageDashboardView({
   useEffect(() => {
     const epoch = ++generation.current;
     revision.current = -1;
+    setPreviewCell(null);
+    setSelectedCell(null);
     setSnapshot(null);
     setError(null);
     setDisplayKey(requestKey);
@@ -444,21 +448,27 @@ export function TokenUsageDashboardView({
                   </div>
                   <div
                     className="token-usage__heatmap"
-                    role="img"
+                    role="group"
                     aria-label={copy("每日 Token 活跃度热力图", "Daily token activity heatmap")}
                     style={{ gridTemplateColumns: `repeat(${grid.weeks},minmax(4px,1fr))` }}
                   >
                     {grid.columns.map((week) =>
                       week.map((cell) => (
-                        <span
+                        <button
+                          type="button"
                           key={cell.date}
                           className="token-usage__heatmap-cell"
                           data-date={cell.date}
                           data-level={cell.level}
                           data-state={cell.state}
-                          title={`${cell.date} · ${count(cell.tokens)} tokens · ${cell.turns} turns`}
-                          onPointerEnter={event => { if (event.pointerType === "mouse") setActiveCell(cell); }}
-                          onPointerLeave={event => { if (event.pointerType === "mouse") setActiveCell(null); }}
+                          aria-label={copy(`${cell.date} · ${count(cell.tokens)} Token · ${cell.turns} 轮`, `${cell.date} · ${count(cell.tokens)} tokens · ${cell.turns} turns`)}
+                          aria-pressed={selectedCell?.date === cell.date}
+                          disabled={cell.state === "outside"}
+                          onPointerEnter={event => { if (event.pointerType !== "mouse") return; setPreviewCell(cell); }}
+                          onPointerLeave={event => { if (event.pointerType === "mouse") setPreviewCell(null); }}
+                          onFocus={event => { if (!event.currentTarget.matches(":focus-visible") || document.documentElement.dataset.pointerFocus) return; setPreviewCell(cell); }}
+                          onBlur={() => setPreviewCell(null)}
+                          onClick={() => { setPreviewCell(null); setSelectedCell(current => current?.date === cell.date ? null : cell); }}
                         />
                       )),
                     )}
@@ -472,7 +482,7 @@ export function TokenUsageDashboardView({
                 <p className="token-usage__activity-caption" role="status">
                   {activeCell
                     ? `${activeCell.date} · ${count(activeCell.tokens)} tokens · ${activeCell.turns} ${copy("轮", "turns")}`
-                    : copy("将指针移到方格上查看当日用量", "Hover a cell for daily usage")}
+                    : copy("选择方格查看当日用量", "Choose a cell for daily usage")}
                 </p>
               </>
             ) : (

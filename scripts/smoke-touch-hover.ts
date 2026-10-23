@@ -24,7 +24,7 @@ const results: unknown[] = [];
 try {
   for (const touch of [false,true]) for (const theme of ["light","dark"]) {
     const context=await browser.newContext({viewport:{width:touch?390:1280,height:844},hasTouch:touch,isMobile:touch});
-    const page=await context.newPage();const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+    const page=await context.newPage();page.setDefaultTimeout(60000);const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
     await page.addInitScript('window.__name=value=>value');
     await page.goto(`${vite.resolvedUrls!.local[0]}?theme=${theme}${touch?'&inline&toolbar':'&desktop&toolbar'}`);
     const editor=page.locator('.opencraft-composer-editor'), model=page.locator('.opencraft-composer-mode--intelligence');

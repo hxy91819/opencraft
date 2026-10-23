@@ -2703,6 +2703,15 @@ The Tasks application uses “看板” (English: “Board”) for its navigatio
 collapsed rail tooltip and main page heading. Board, list and follow-up remain
 views within the same application; task actions keep their task terminology.
 
+### Hover policy enforcement (2026-10-23)
+
+Hover selectors require the shared input/capability guard on every alternative.
+Focus, open and selected alternatives remain outside that guard. Hover entry
+handlers admit mouse input before effects; pointer drag movement requires its
+existing matching owner. Token usage heatmap preview follows mouse or keyboard,
+while explicit tap/keyboard selection is persistent and accessible through
+native buttons and aria-pressed. The daily table remains available.
+
 ### Conversation task summary
 
 The optional `thread-summary` trusted plugin owns a read-only projection of structured plans,

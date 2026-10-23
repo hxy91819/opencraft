@@ -561,7 +561,6 @@
     {"file":"apps/workbench-web/src/components/thread-management.tsx","kind":"jsx-expression","text":"Restoring…","count":1},
     {"file":"apps/workbench-web/src/components/thread-management.tsx","kind":"jsx-expression","text":"Restore","count":1},
     {"file":"apps/workbench-web/src/components/thread-management.tsx","kind":"jsx-text","text":"Refresh","count":1},
-    {"file":"apps/workbench-web/src/components/token-usage-dashboard.tsx","kind":"title","text":"${…} · ${…} tokens · ${…} turns","count":1},
     {"file":"apps/workbench-web/src/components/token-usage-dashboard.tsx","kind":"jsx-expression","text":"${…} · ${…} tokens · ${…} ${…}","count":1},
     {"file":"apps/workbench-web/src/components/token-usage-dashboard.tsx","kind":"jsx-text","text":"ms ·","count":1},
     {"file":"apps/workbench-web/src/components/token-usage-dashboard.tsx","kind":"jsx-text","text":"ms","count":1},
