@@ -225,7 +225,7 @@ export async function createWorkbenchWebServer({
 
   const server = createServer(async (request, response) => {
     try {
-      const url = new URL(request.url || "/", "http://vela.invalid");
+      const url = new URL(request.url || "/", "http://opencraft.invalid");
       if (url.pathname === "/__opencraft_health") {
         sendJson(response, 200, { ok: true, staticRoot, appServerTarget: normalizedTarget });
         return;
@@ -317,7 +317,7 @@ export async function createWorkbenchWebServer({
   server.on("upgrade", (request, socket, head) => {
     let pathname;
     try {
-      pathname = new URL(request.url || "/", "http://vela.invalid").pathname;
+      pathname = new URL(request.url || "/", "http://opencraft.invalid").pathname;
     } catch {
       socket.destroy();
       return;

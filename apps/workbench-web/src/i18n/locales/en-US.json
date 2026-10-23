@@ -26,7 +26,7 @@
   "account.remaining": "{remaining, number, percent} left",
   "account.signIn": "Sign in",
   "account.signInIncomplete": "Sign-in incomplete",
-  "account.signInLightVela": "Sign in",
+  "account.signIn": "Sign in",
   "account.signOut": "Sign out",
   "account.signingIn": "Signing in…",
   "account.signingOut": "Signing out…",

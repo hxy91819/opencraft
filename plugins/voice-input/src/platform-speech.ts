@@ -11,7 +11,7 @@ export function nativeSpeechPort(): NativeSpeechPort | null {
 export function platformSpeechInputProvider(): SpeechInputProvider {
   const port = nativeSpeechPort(); if (port) return new NativeSpeechInputProvider(port);
   if ((globalThis as any).opencraftDesktop?.kind === "electron") return {
-    id: "vela.desktop-speech-unavailable", unavailableMessage: "当前桌面平台尚未接通原生语音输入", isAvailable: () => false,
+    id: "opencraft.desktop-speech-unavailable", unavailableMessage: "当前桌面平台尚未接通原生语音输入", isAvailable: () => false,
     start: () => { throw new Error("Native speech is unavailable"); },
   };
   return new BrowserSpeechInputProvider();

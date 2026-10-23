@@ -213,7 +213,7 @@
   "account.signingIn": "正在登录…",
   "account.signInIncomplete": "登录未完成",
   "account.title": "账户",
-  "account.signInLightVela": "登录",
+  "account.signIn": "登录",
   "account.settings": "账户设置",
   "account.usage": "用量",
   "account.remaining": "剩余 {remaining, number, percent}",

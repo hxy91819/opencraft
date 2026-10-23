@@ -186,7 +186,7 @@
   "account.signInIncomplete": "การลงชื่อเข้าใช้ไม่สมบูรณ์",
   "account.signIn": "เข้าสู่ระบบ",
   "account.title": "บัญชี",
-  "account.signInLightVela": "เข้าสู่ระบบ",
+  "account.signIn": "เข้าสู่ระบบ",
   "account.usage": "การใช้งาน",
   "account.remaining": "เหลือ {remaining, number, percent}",
   "account.signingOut": "กำลังออกจากระบบ…",

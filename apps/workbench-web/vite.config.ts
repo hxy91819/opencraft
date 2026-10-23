@@ -282,7 +282,7 @@ export function createWorkbenchWebConfig(
       });
     };
     return {
-      name: "vela-preview-bridge-asset",
+      name: "opencraft-preview-bridge-asset",
       configureServer(server) {
         attach(server.middlewares);
       },

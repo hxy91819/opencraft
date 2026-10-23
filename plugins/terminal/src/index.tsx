@@ -389,7 +389,7 @@ export function createTerminalWorkbenchPanelPlugin(
         Component: TerminalPanel,
       }),
       ctx.workbenchPanels.registerToolbarAction({
-        id: "vela.terminal.new-session",
+        id: "opencraft.terminal.new-session",
         region: "right",
         order: 200,
         label: "New terminal",
