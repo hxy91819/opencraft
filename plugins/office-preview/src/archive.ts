@@ -1,3 +1,4 @@
+import { FilePreviewError } from "@opencraft/file-preview-web";
 import { unzipSync } from "fflate";
 
 /** Inspect the directory before inflating OOXML. ZIP64/encrypted archives are
@@ -16,7 +17,8 @@ export function validateOfficeArchive(buffer: ArrayBuffer, kind: string): void {
     if (offset + 46 > end || view.getUint32(offset, true) !== 0x02014b50) throw new Error("Invalid archive directory");
     const size = view.getUint32(offset + 24, true);
     total += size;
-    if ((view.getUint16(offset + 8, true) & 1) || size > 32 * 1024 * 1024 || total > 64 * 1024 * 1024) throw new Error("Office archive exceeds preview limits");
+    if (view.getUint16(offset + 8, true) & 1) throw new FilePreviewError("encrypted");
+    if (size > 32 * 1024 * 1024 || total > 64 * 1024 * 1024) throw new Error("Office archive exceeds preview limits");
     offset += 46 + view.getUint16(offset + 28, true) + view.getUint16(offset + 30, true) + view.getUint16(offset + 32, true);
   }
   const metadata = unzipSync(bytes, { filter: file => file.name === "[Content_Types].xml" || file.name.endsWith(".rels") });

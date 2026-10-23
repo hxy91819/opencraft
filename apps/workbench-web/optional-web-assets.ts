@@ -47,7 +47,7 @@ export function optionalWebAssets(): Plugin {
       }
       for (const item of Object.values(bundle)) {
         if (item.type !== "chunk") continue;
-        if (!Object.keys(item.modules).some(id => /\/node_modules\/(?:pdfjs-dist|@aiden0z\/pptx-renderer|@extend-ai\/react-xlsx|@dukelib\/sheets-wasm|@excalidraw\/excalidraw|docx-preview|jszip|fflate)\/|\/plugins\/office-preview\/src\/(?:office-document|spreadsheet|archive)\.|\/plugins\/structured-preview\/src\/(?!index\.)|\/panels\/(?:workspace-pdf-preview|pdf-assets)\./.test(id))) continue;
+        if (!Object.keys(item.modules).some(id => /\/node_modules\/(?:pdfjs-dist|@aiden0z\/pptx-renderer|@extend-ai\/react-(?:xlsx|docx)|@dukelib\/sheets-wasm|@excalidraw\/excalidraw|docx-preview|jszip|fflate)\/|\/plugins\/office-preview\/src\/(?:office-document|legacy-word|paper-viewport|spreadsheet|archive)\.|\/plugins\/structured-preview\/src\/(?!index\.)|\/panels\/(?:workspace-pdf-preview|pdf-assets)\./.test(id))) continue;
         if (item.isEntry) this.error("Preview resources must remain a lazy feature");
         selected.add(item.fileName);
       }

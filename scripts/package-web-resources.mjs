@@ -36,6 +36,11 @@ async function copyOfficeLicenses(repositoryRoot, packageRoot) {
       await cp(join(repositoryRoot, 'plugins/office-preview/licenses/duke-sheets-MIT.txt'), join(target, 'LICENSE'));
       files.push('LICENSE');
     }
+    if (metadata.name === '@extend-ai/react-docx') {
+      await cp(join(repositoryRoot, 'plugins/office-preview/licenses/react-docx-MIT.txt'), join(target, 'LICENSE'));
+      await cp(join(source, 'dist/dingbat-to-unicode-LICENSE'), join(target, 'dingbat-to-unicode-LICENSE'));
+      files.push('LICENSE', 'dingbat-to-unicode-LICENSE');
+    }
     manifest.push({ name: metadata.name, version: metadata.version, license: metadata.license ?? null, files });
   }
   await writeFile(join(packageRoot, 'web/licenses/office/dependencies.json'), JSON.stringify(manifest, null, 2));

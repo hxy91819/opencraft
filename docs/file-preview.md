@@ -1,21 +1,30 @@
 # Read-only file previews
 
 The existing resource panel reads bytes through the Host and owns the download
-of the original file. Registered adapters route DOCX, PPTX, XLSX, XLS, XLSM,
+of the original file. Registered adapters route DOC, DOCX, PPTX, XLSX, XLS, XLSM,
 CSV/TSV, Draw.io/DIO, Excalidraw and standalone `.mmd`/`.mermaid` files into
 `FilePreviewView`. PDF, HTML, Markdown, code and the file-tree policy retain
 their existing renderers. Embedded read-only workspaces use the same byte-to-view
-path. Legacy DOC/PPT, password-protected files, macro execution, editing and
+path. Legacy PPT, password-protected files, macro execution, editing and
 writeback are outside this slice. Lightweight engines provide useful previews,
 not an Office layout-fidelity guarantee.
 
 ## Supported format behavior
 
+- Legacy Word 97–2003 `.doc` requires a CFB/OLE signature and is parsed locally
+  using `@extend-ai/react-docx@0.11.3` in a cancellable Worker with packaged WASM.
+  The independent MIT implementation reuses its document model and read-only
+  viewer, fits the available width, and releases embedded fonts on disposal.
+  Encrypted and damaged files keep download and actionable failure text.
+
 - CSV/TSV preserve text rather than coercing numbers, dates or formula strings.
   UTF-8, BOM-marked UTF-16 and GB18030 fallback decoding support common exports.
   Quoted delimiters, escaped quotes and embedded newlines are parsed; malformed
   quoting is a retryable preview error. A virtual table includes row/column
-  headings, horizontal/vertical scrolling and an escaped source view. Admission
+  headings, horizontal/vertical scrolling and an escaped source view. Column
+  widths support pointer and keyboard resizing; selected cells show their full
+  multiline text in a selectable read-only area. Find advances between matching
+  actual cells without coercion. Reading state survives locale/theme changes. Admission
   is bounded to 100,000 rows, 4,096 columns and 1,000,000 cells.
 - XLS is admitted as legacy OLE rather than an OOXML ZIP. XLS/XLSM reuse the
   packaged spreadsheet engine and worksheet navigation. Macro execution is
@@ -61,12 +70,16 @@ are source/admission bounds, not a precise bound on third-party heap memory.
 Eviction discards engine reading state; retained instances keep their own state.
 ZIP admission rejects encrypted/ZIP64 archives, over 4,000 entries, entries over
 32 MiB, total expanded size over 64 MiB and external resource relationships.
-Document hyperlinks do not navigate the application. No document macros run.
+Word and PowerPoint text hyperlinks never navigate the application. HTTP(S) URLs without embedded
+credentials are passed to an optional host action; fragment targets scroll only
+inside the current document. Other protocols, relative paths and control characters
+are rejected. Hosts without a link action keep external navigation disabled.
+Spreadsheet cell/drawing links and diagram previews retain their no-navigation policy; their engines do not expose a host link action. No document macros run.
 
 ## Replaceable adapters and deployment
 
 The built-in registry accepts an extension list and asynchronous `open` operation
-returning an element, idempotent dispose and optional activation/theme/failure hooks.
+returning an element, idempotent dispose and optional activation/theme/locale/link/failure hooks.
 An engine failure after readiness transitions the same session to a retryable
 failed state and releases the broken view; it cannot silently leave a ready blank.
 DOCX uses docx-preview 0.4.1, PPTX uses @aiden0z/pptx-renderer 1.3.0 and spreadsheets use
@@ -87,3 +100,11 @@ and the packaged resource cold-start/retry/offline smoke cover ownership and
 actual engine output. A new adapter must satisfy cancellation and disposal before
 it can replace an engine; an engine-specific cache must not become a second
 resource identity authority.
+
+Preview controls consume the current application formatter. Locale changes update
+CSV controls, spreadsheet labels, diagram zoom/fit and common Draw.io toolbar
+labels without rebuilding documents or resetting their transforms. Size, capacity,
+opening timeout and encrypted legacy Word failures use fixed, localized action
+messages rather than raw parser diagnostics.
+
+DOC and DOCX share a retained paper viewport with zoom and fit-width controls. The scroll container and scaled page frame remain local to the preview; changing application locale does not recreate the renderer or reset zoom.

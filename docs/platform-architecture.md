@@ -3223,7 +3223,7 @@ Headless 将 `access-control/collaboration` 作为 ActorStore / ActorAccess 后�
 Host file authorization, byte reads, resource identity and download remain in the
 Workbench resource panel. `file-preview-core` owns engine leases without renderer
 imports; `file-preview-web` owns DOM attachment and the built-in adapter registry.
-`plugins/office-preview` receives authorized Blob bytes, lazily parses DOCX/PPTX/XLSX
+`plugins/office-preview` receives authorized Blob bytes, lazily parses legacy DOC/DOCX/PPTX and spreadsheet formats
 and owns third-party renderer cleanup. This is a trusted built-in service boundary,
 not an additional public extension ABI. See [file previews](file-preview.md).
 

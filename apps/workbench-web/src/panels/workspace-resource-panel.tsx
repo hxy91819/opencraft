@@ -470,7 +470,7 @@ export function WorkspaceResourcePanel({ tab, ownerId, active, previewOnly = fal
         ) : hasFilePreview && resource.data?.blob ? (
           <FilePreviewView key={documentId} ownerId={ownerId} tabId={tab.id} resource={documentId}
             blob={resource.data.blob} name={workspaceResourceBasename(selectedPath)}
-            active={active} dark={theme.resolvedTheme === "dark"} prepare={preparePreviewResources} />
+            onOpenLink={url => window.open(url, "_blank", "noopener,noreferrer")} active={active} dark={theme.resolvedTheme === "dark"} prepare={preparePreviewResources} />
         ) : chatMediaKind(selectedPath) === "pdf" && resource.data?.blob ? (
           <Suspense fallback={<div className="workspace-file-viewer__state"><LoaderCircle className="is-spinning" size={18} />{intl.formatMessage({ id: "pdf.loading", defaultMessage: "Loading PDF…" })}</div>}>
             <WorkspacePdfPreview key={fileKey} blob={resource.data.blob} name={workspaceResourceBasename(selectedPath)} />

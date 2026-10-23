@@ -38,3 +38,19 @@
 .structured-preview__drawio { flex: 1; min-height: 0; width: 100%; border: 0; }
 
 @media (pointer: coarse) { .structured-preview__toolbar button, .structured-preview__toolbar select { min-height: 44px; } }
+
+.structured-preview__search {
+  display: flex; align-items: center; gap: var(--spacing); padding: var(--spacing) calc(var(--spacing) * 2);
+  border-bottom: 1px solid var(--color-border-subtle);
+  input { @include typography.role(body); color: var(--color-text); background: var(--color-background-input); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-sm); padding: calc(var(--spacing) * 1); min-width: 0; width: 100%; }
+  button { @include controls.quiet-control; padding-inline: calc(var(--spacing) * 2); }
+  span { @include typography.role(metadata, secondary); flex: none; }
+}
+.structured-preview__column-resize { position: absolute; right: 0; top: 0; width: 12px; height: 100%; cursor: col-resize; touch-action: none; }
+.structured-preview__table-row [data-selected="true"] { background: var(--color-background-navigation-current); }
+.structured-preview__cell-detail {
+  display: flex; flex: none; flex-direction: column; gap: var(--spacing); padding: calc(var(--spacing) * 2); border-top: 1px solid var(--color-border-subtle);
+  span { @include typography.role(metadata, secondary); }
+  textarea { @include typography.role(body); color: var(--color-text); background: var(--color-background-input); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-sm); padding: calc(var(--spacing) * 1); box-sizing: border-box; width: 100%; height: 96px; max-height: 25vh; resize: none; white-space: pre-wrap; }
+}
+@media (pointer: coarse) { .structured-preview__search button { min-height: 44px; } }

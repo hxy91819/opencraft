@@ -2720,3 +2720,7 @@ Cached history remains readable, but cannot authorize resource or agent navigati
 labels its history coverage; a completed spawn tool is never treated as agent completion.
 
 Task summary navigation requires a real receiver/agent/state thread identity; presentation fallback IDs do not become thread links. Renamed file entries point to their new Host path.
+
+### Document reading controls
+
+Legacy Word uses the same retained read-only preview identity, with local Worker/WASM and font disposal. CSV cell selection, column widths, find query and full multiline contents belong to that retained view; theme/locale switches do not reset them. Table bytes are never coerced or edited. Host-opened Office links admit only HTTP(S) without credentials; document fragments stay inside their own root, all other protocols are inert. Locale projection updates labels in place; diagrams keep the packaged offline sandbox. Known preview failures use actionable localized messages in the existing failure area and preserve download/retry.

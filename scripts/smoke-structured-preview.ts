@@ -7,13 +7,13 @@ import react from '@vitejs/plugin-react';
 import {optionalWebAssets} from '../apps/workbench-web/optional-web-assets';
 import {writeFile} from 'node:fs/promises';
 const output=await mkdtemp(join(tmpdir(),'opencraft-files-entry-'));
-const fixtures=Object.fromEntries(await Promise.all(['csv','tsv','xls','xlsm','drawio','dio','excalidraw','mmd','mermaid'].map(async ext=>[ext,(await readFile('tests/fixtures/structured/sample.'+ext)).toString('base64')])));
+const fixtures=Object.fromEntries(await Promise.all(['doc','docx','csv','tsv','xls','xlsm','drawio','dio','excalidraw','mmd','mermaid'].map(async ext=>[ext,(await readFile('tests/fixtures/'+(['doc','docx'].includes(ext)?'office':'structured')+'/sample.'+ext)).toString('base64')])));
 const runtime=`
 const reads=[];window.fixtureReads=reads;const fixtures=${JSON.stringify(fixtures)};
 const runtime={resources:{host:{canRequest:method=>method==='fuzzyFileSearch/sessionStart'},fileSystem:{
 async getMetadata(path){return {isFile:path!=='/fixture',isDirectory:path==='/fixture',modifiedAtMs:0,size:100}},
-async readFile(path){reads.push(path);return {dataBase64:path.includes('broken')?btoa('invalid document'):fixtures[path.split('.').at(-1)]??btoa('invalid document')}},
-async readDirectory(path){return {entries:path==='/fixture'? [{fileName:'nested',isDirectory:true,isFile:false},...['csv','tsv','xls','xlsm','drawio','dio','excalidraw','mmd','mermaid'].map(ext=>({fileName:'sample.'+ext,isDirectory:false,isFile:true}))]:[{fileName:'child.html',isDirectory:false,isFile:true}]}},
+async readFile(path){reads.push(path);if(path.includes('encrypted.doc')){const bytes=Uint8Array.from(atob(fixtures.doc),c=>c.charCodeAt(0));bytes[523]|=1;return {dataBase64:btoa(String.fromCharCode(...bytes))}}return {dataBase64:path.includes('broken')?btoa('invalid document'):fixtures[path.split('.').at(-1)]??btoa('invalid document')}},
+async readDirectory(path){return {entries:path==='/fixture'? [{fileName:'nested',isDirectory:true,isFile:false},...['doc','docx','csv','tsv','xls','xlsm','drawio','dio','excalidraw','mmd','mermaid'].map(ext=>({fileName:'sample.'+ext,isDirectory:false,isFile:true}))]:[{fileName:'child.html',isDirectory:false,isFile:true}]}},
 async createFuzzyFileSearchSession(options){return {update:async()=>{options.onUpdated({files:[{root:'/fixture',path:'report-0.html',file_name:'report-0.html',match_type:'file'}]});options.onCompleted()},stop:async()=>{}}}
 }}};
 export const useAppServerRuntime=()=>runtime;
@@ -45,12 +45,12 @@ createIntlTestRoot(document.getElementById('root')).render(<QueryClientProvider 
 // Reuse production dependency ownership, without crawling generated Expo HTML.
 const workbenchConfig=await loadConfigFromFile({command:'serve',mode:'development'},resolve('apps/workbench-web/vite.config.ts'));
 if(!workbenchConfig)throw new Error('Workbench Vite configuration unavailable');
-const vite=await createServer({configFile:false,root:process.cwd(),cacheDir:join(output,'vite-cache'),logLevel:'error',resolve:{dedupe:['react','react-dom','react-intl']},esbuild:{jsx:'automatic'},optimizeDeps:{...workbenchConfig.config.optimizeDeps,entries:['/tree-fixture.tsx'],include:[...workbenchConfig.config.optimizeDeps?.include??[],'@extend-ai/react-xlsx','docx-preview','@aiden0z/pptx-renderer/browser','@excalidraw/excalidraw','dompurify','@tanstack/react-virtual']},server:{host:'127.0.0.1',port:0,hmr:false,cors:false},plugins:[react(),optionalWebAssets(),{name:'file-tree-fixture',enforce:'pre',resolveId(id,importer){if(id.endsWith('/appserver-runtime-context')&&importer?.includes('/panels/'))return '/tree-runtime.ts';return ['/tree-runtime.ts','/tree-fixture.tsx'].includes(id)?id:null},load:id=>id==='/tree-runtime.ts'?runtime:id==='/tree-fixture.tsx'?source:null,configureServer(server){server.middlewares.use((req,res,next)=>{if(req.url!=='/')return next();res.setHeader('content-type','text/html');res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><div id="root"></div><script type="module" src="/tree-fixture.tsx"></script>')})}}]});
+const vite=await createServer({configFile:false,root:process.cwd(),cacheDir:join(output,'vite-cache'),logLevel:'error',resolve:{dedupe:['react','react-dom','react-intl']},esbuild:{jsx:'automatic'},optimizeDeps:{...workbenchConfig.config.optimizeDeps,entries:['/tree-fixture.tsx'],include:[...workbenchConfig.config.optimizeDeps?.include??[],'@extend-ai/react-xlsx','@extend-ai/react-docx','docx-preview','@aiden0z/pptx-renderer/browser','@excalidraw/excalidraw','dompurify','@tanstack/react-virtual']},server:{host:'127.0.0.1',port:0,hmr:false,cors:false},plugins:[react(),optionalWebAssets(),{name:'file-tree-fixture',enforce:'pre',resolveId(id,importer){if(id.endsWith('/appserver-runtime-context')&&importer?.includes('/panels/'))return '/tree-runtime.ts';return ['/tree-runtime.ts','/tree-fixture.tsx'].includes(id)?id:null},load:id=>id==='/tree-runtime.ts'?runtime:id==='/tree-fixture.tsx'?source:null,configureServer(server){server.middlewares.use((req,res,next)=>{if(req.url!=='/')return next();res.setHeader('content-type','text/html');res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><div id="root"></div><script type="module" src="/tree-fixture.tsx"></script>')})}}]});
 let browser:any;
 try{
 await vite.listen();const {chromium}=await import(process.env.OPENCRAFT_PLAYWRIGHT_MODULE??'playwright');browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const evidence=[];
-for(const width of [390,1280])for(const theme of ['light','dark']){
+for(const width of (process.env.OPENCRAFT_PREVIEW_WIDTHS?.split(',').map(Number)??[390,1280]))for(const theme of ['light','dark']){
  const page=await browser.newPage({viewport:{width,height:900},hasTouch:width<700});const errors:string[]=[];const externalRequests:string[]=[];const sandboxAssetRequests:string[]=[];page.on('request',request=>{const url=new URL(request.url());if(url.protocol.startsWith('http')&&url.hostname!=='127.0.0.1')externalRequests.push(url.origin);if(url.pathname.includes('viewer-static')&&request.frame()!==page.mainFrame())sandboxAssetRequests.push(request.url())});page.on('pageerror',(e:Error)=>{errors.push(e.message);console.log('PAGE ERROR',e.message)});page.on('console',m=>{if(m.type()==='error')console.log('browser:',m.text())});await page.addInitScript('window.__name=value=>value');
  await page.goto('http://127.0.0.1:'+(vite.httpServer!.address() as any).port);await page.waitForFunction(()=>Boolean((window as any).fixture));await page.evaluate(theme=>(window as any).fixture.setThemePreference(theme),theme);
  const open=async(path:string)=>page.evaluate(path=>(window as any).fixture.panels.open('scope','resource',{resource:path,preview:false}),path);
@@ -60,13 +60,34 @@ for(const width of [390,1280])for(const theme of ['light','dark']){
    assert.equal(await page.locator('[data-file-preview-phase]').getAttribute('data-file-preview-phase'),'ready',await page.locator('body').innerText());
  };
  const formats=[];
- for(const ext of (process.env.OPENCRAFT_PREVIEW_FORMATS?.split(',')??['csv','tsv','xls','xlsm','drawio','dio','excalidraw','mmd','mermaid'])){
+ for(const ext of (process.env.OPENCRAFT_PREVIEW_FORMATS?.split(',')??['doc','docx','csv','tsv','xls','xlsm','drawio','dio','excalidraw','mmd','mermaid'])){
   await open('/fixture/sample.'+ext);await waitReady();
-  if(ext==='csv'||ext==='tsv'){
+  if(ext==='doc'||ext==='docx'){
+   await page.getByText(ext==='doc'?'Legacy Word preview':'Office preview document',{exact:true}).waitFor({timeout:60000});
+   if(ext==='doc')await page.getByText('中文旧版 Word 文档',{exact:true}).waitFor();
+   assert.equal(await page.locator('.office-preview [contenteditable="true"]').count(),0);
+   const zoomBefore=await page.locator('.office-preview__paper-content').getAttribute('style');
+   await page.getByRole('button',{name:'Zoom in',exact:true}).click();
+   assert.notEqual(await page.locator('.office-preview__paper-content').getAttribute('style'),zoomBefore);
+   await page.getByRole('button',{name:'Fit width',exact:true}).click();
+   await page.evaluate(()=>{window.fixtureOpenedLinks=[];window.open=(url)=>{window.fixtureOpenedLinks.push(url);return null};const root=document.querySelector('.office-preview');for(const [label,url]of [['safe','https://example.com/guide'],['unsafe','javascript:alert(1)']]){const link=document.createElement('a');link.textContent=label;link.href=url;root.append(link)}});
+   await page.getByRole('link',{name:'safe',exact:true}).click();await page.getByRole('link',{name:'unsafe',exact:true}).click();
+   assert.deepEqual(await page.evaluate(()=>(window as any).fixtureOpenedLinks),['https://example.com/guide']);
+   await page.getByRole('link',{name:'safe',exact:true}).evaluate(node=>node.remove());await page.getByRole('link',{name:'unsafe',exact:true}).evaluate(node=>node.remove());
+  }else if(ext==='csv'||ext==='tsv'){
    await page.getByRole('table',{name:'sample.'+ext,exact:true}).waitFor();
    await page.getByRole('cell',{name:ext==='csv'?'中文,数据':'中文',exact:true}).waitFor();
    if(ext==='csv'){
     await page.getByRole('cell',{name:'00125',exact:true}).waitFor();
+    const multiline=page.getByRole('cell',{name:'Line one Line two',exact:true});
+    if(width<700)await multiline.tap();else await multiline.click();
+    assert.equal(await page.getByRole('textbox',{name:'Cell contents',exact:true}).inputValue(),'Line one\nLine two');
+    const handle=page.getByRole('separator',{name:'Column width C',exact:true});
+    const originalWidth=Number(await handle.getAttribute('aria-valuenow'));await handle.focus();await handle.press('ArrowRight');
+    await page.waitForFunction(size=>Number(document.querySelector('[role="separator"][aria-label="Column width C"]')?.getAttribute('aria-valuenow'))===size,originalWidth+20);
+    await page.getByRole('searchbox',{name:'Find in table'}).fill('00125');await page.getByRole('button',{name:'Next match',exact:true}).click();
+    assert.equal(await page.getByRole('textbox',{name:'Cell contents',exact:true}).inputValue(),'00125');
+
     await page.getByRole('button',{name:'Source',exact:true}).click();
     assert.match(await page.locator('.structured-preview__source').innerText(),/Line one\nLine two/);
     await page.getByRole('button',{name:'Table',exact:true}).click();
@@ -77,6 +98,8 @@ for(const width of [390,1280])for(const theme of ['light','dark']){
     assert.equal(await page.getByRole('button',{name:'源码',exact:true}).getAttribute('aria-pressed'),'true');
     assert.equal(await page.evaluate(()=>document.querySelector('.structured-preview--table')===(window as any).localizedTable),true,'locale must preserve table DOM and source selection');
     await page.getByRole('button',{name:'表格',exact:true}).click();
+    assert.equal(await page.getByRole('textbox',{name:'单元格内容',exact:true}).inputValue(),'00125');
+    assert.equal(await page.getByRole('separator',{name:'列宽 C',exact:true}).getAttribute('aria-valuenow'),String(originalWidth+20));
     await page.evaluate(()=>(window as any).fixture.setLocale('en-US'));
     await page.getByRole('button',{name:'Table',exact:true}).waitFor();
    }
@@ -89,13 +112,19 @@ for(const width of [390,1280])for(const theme of ['light','dark']){
    await page.locator('[data-diagram-ready="true"]').waitFor({timeout:60000});
    const iframe=page.frameLocator('.structured-preview__drawio');
    await iframe.getByText('Draw.io first page',{exact:true}).waitFor();
-   await iframe.getByTitle('Next Page',{exact:true}).click();await iframe.getByText('第二页 / Second page',{exact:true}).waitFor();
-   await iframe.getByTitle('Previous Page',{exact:true}).click();await iframe.getByText('Draw.io first page',{exact:true}).waitFor();
+   await iframe.getByTitle('Next page',{exact:true}).click();await iframe.getByText('第二页 / Second page',{exact:true}).waitFor();
+   await iframe.getByTitle('Previous page',{exact:true}).click();await iframe.getByText('Draw.io first page',{exact:true}).waitFor();
    assert.ok(await iframe.locator('svg').count()>0);
+   await page.evaluate(()=>(window as any).fixture.setLocale('zh-CN'));
+   await iframe.getByTitle('下一页',{exact:true}).waitFor();
+   await iframe.getByTitle('下一页',{exact:true}).click();await iframe.getByText('第二页 / Second page',{exact:true}).waitFor();
+   await page.evaluate(()=>(window as any).fixture.setLocale('en-US'));await iframe.getByTitle('Previous page',{exact:true}).waitFor();
    await page.screenshot({path:join(output,ext+'-'+theme+'-'+width+'.png')});
   }else{
    await page.locator('[data-diagram-ready="true"] svg').waitFor();
    assert.ok(await page.locator('[data-diagram-ready] svg').evaluate(svg=>(svg as SVGSVGElement).viewBox.baseVal.width>0));
+   await page.evaluate(()=>(window as any).fixture.setLocale('zh-CN'));await page.getByRole('button',{name:'适合窗口',exact:true}).waitFor();
+   await page.evaluate(()=>(window as any).fixture.setLocale('en-US'));await page.getByRole('button',{name:'Fit diagram',exact:true}).waitFor();
    const transform=await page.locator('.structured-preview__diagram-content').getAttribute('style');
    await page.getByRole('button',{name:'Zoom in',exact:true}).click();
    assert.notEqual(await page.locator('.structured-preview__diagram-content').getAttribute('style'),transform);
@@ -119,6 +148,12 @@ for(const width of [390,1280])for(const theme of ['light','dark']){
    assert.equal(await page.evaluate(()=>document.querySelector('.structured-preview--table')===(window as any).retainedTable),true);
   }
  }
+ await open('/fixture/encrypted.doc');await page.locator('[data-file-preview-phase="failed"]').waitFor({timeout:60000});
+ await page.getByText('Password-protected files cannot be previewed. Download it to open with its password.',{exact:true}).waitFor();
+ await page.evaluate(()=>(window as any).fixture.setLocale('zh-CN'));await page.getByText('暂不支持预览加密文件，请下载后使用密码打开。',{exact:true}).waitFor();
+ await page.evaluate(()=>(window as any).fixture.setLocale('en-US'));
+ await open('/fixture/broken.doc');await page.locator('[data-file-preview-phase="failed"]').waitFor();
+ await page.getByText('This file is damaged or its contents do not match the format. Download the original to check it.',{exact:true}).waitFor();
  await open('/fixture/broken.mmd');await page.locator('[data-file-preview-phase="failed"]').waitFor({timeout:60000});
  await page.getByRole('button',{name:'Try again',exact:true}).waitFor();
  await page.evaluate(()=>{const f=(window as any).fixture;for(const t of f.state.right.tabs)f.panels.close('scope','right',t.id)});
