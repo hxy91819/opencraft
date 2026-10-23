@@ -50,7 +50,7 @@ The following rules are normative:
 ## 2. Boundary with existing `skills/list`
 
 The upstream AppServer method `skills/list` remains unchanged. It discovers
-Skills available to a Codex session from `cwds` and extra roots so the Composer
+Skills available to the connected engine session from `cwds` and extra roots so the Composer
 can build a per-Turn catalog.
 
 Profile administration uses the methods in this document:

@@ -1303,7 +1303,7 @@
       "test": "supports_cd_and_rg_files",
       "argv": [
         "cd",
-        "codex-rs",
+        "engine-core",
         "&&",
         "rg",
         "--files"
@@ -1517,15 +1517,15 @@
       "argv": [
         "grep",
         "-R",
-        "CODEX_SANDBOX_ENV_VAR",
+        "TEST_SANDBOX_ENV_VAR",
         "-n",
         "."
       ],
       "expected": [
         {
           "type": "search",
-          "cmd": "grep -R CODEX_SANDBOX_ENV_VAR -n .",
-          "query": "CODEX_SANDBOX_ENV_VAR",
+          "cmd": "grep -R TEST_SANDBOX_ENV_VAR -n .",
+          "query": "TEST_SANDBOX_ENV_VAR",
           "path": "."
         }
       ]
@@ -1535,15 +1535,15 @@
       "argv": [
         "grep",
         "-R",
-        "CODEX_SANDBOX_ENV_VAR",
+        "TEST_SANDBOX_ENV_VAR",
         "-n",
         "core/src/spawn.rs"
       ],
       "expected": [
         {
           "type": "search",
-          "cmd": "grep -R CODEX_SANDBOX_ENV_VAR -n core/src/spawn.rs",
-          "query": "CODEX_SANDBOX_ENV_VAR",
+          "cmd": "grep -R TEST_SANDBOX_ENV_VAR -n core/src/spawn.rs",
+          "query": "TEST_SANDBOX_ENV_VAR",
           "path": "spawn.rs"
         }
       ]
@@ -1553,14 +1553,14 @@
       "argv": [
         "grep",
         "-R",
-        "COD`EX_SANDBOX",
+        "TEST`ENV_SANDBOX",
         "-n"
       ],
       "expected": [
         {
           "type": "search",
-          "cmd": "grep -R 'COD`EX_SANDBOX' -n",
-          "query": "COD`EX_SANDBOX",
+          "cmd": "grep -R 'TEST`ENV_SANDBOX' -n",
+          "query": "TEST`ENV_SANDBOX",
           "path": null
         }
       ]
@@ -1791,14 +1791,14 @@
       "argv": [
         "bash",
         "-lc",
-        "cd /Users/pakrym/code/codex && rg -n \"codex_api\" codex-rs -S | head -n 50"
+        "cd /workspace/project && rg -n \"engine_api\" engine-core -S | head -n 50"
       ],
       "expected": [
         {
           "type": "search",
-          "cmd": "rg -n codex_api codex-rs -S",
-          "query": "codex_api",
-          "path": "codex-rs"
+          "cmd": "rg -n engine_api engine-core -S",
+          "query": "engine_api",
+          "path": "engine-core"
         }
       ]
     },
