@@ -119,7 +119,7 @@ fixed sentinel. Neither malformed field values nor raw frames enter the log.
 The diagnostic classifier is the admission validator, so adding observability
 cannot silently relax the existing protocol checks. Logging callbacks are guarded
 and cannot interrupt normal connections. The socket regression entry is
-`tests/apphost-frame-diagnostics.test.mjs`.
+`tests/shell/apphost-frame-diagnostics.test.mjs`.
 
 
 Weak-network recovery separates shared connection reachability, per-Host protocol
@@ -154,14 +154,14 @@ closing the shared client or cancelling service-owned startup. A grant already
 in flight is released against its original lease and generation; its completion
 cannot overwrite that channel's terminal closed status. Deterministic coverage
 exercises close before ready, during shared startup and between grant delivery
-and its promise callback (`tests/app-host.test.ts`); the browser origin smoke
+and its promise callback (`tests/shell/app-host.test.ts`); the browser origin smoke
 also checks late release while a peer remains open on the same real socket.
 Closing one logical channel cancels its own ready/claim wait without
 closing the shared client or cancelling service-owned startup. A grant already
 in flight is released against its original lease and generation; its completion
 cannot overwrite that channel's terminal closed status. Deterministic coverage
 exercises close before ready, during shared startup and between grant delivery
-and its promise callback (`tests/app-host.test.ts`); the browser origin smoke
+and its promise callback (`tests/shell/app-host.test.ts`); the browser origin smoke
 also checks late release while a peer remains open on the same real socket.
 
 Expired claim records still count toward the shared request budget because

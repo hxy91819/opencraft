@@ -69,8 +69,8 @@ Settings V1 刻意不包含 global/host/workspace 多层 scope、自定义 migra
 - HostRuntime、Replica、Session、Renderer 没有被塞进一个全局 Context；
 - Web 与 Native 已经按 semantic model / platform renderer 分层；
 - AppServer 协议已经拥有最新 Plugin 产品面类型；
-- 可信 `module-url` 已保存自包含 ESM 的 SHA-256 固定产物，支持离线重启和更新失败保留旧安装指针，见 [Artifact 链路](manifest-and-contributions.md#73-发行解析与-artifact) 与 [产物行为测试](../../../tests/extension-artifacts.test.ts)；
-- 可信 V1 的 API/平台兼容拒绝、激活失败回滚、期限和退出故障已有行为回归，见 [安装测试](../../../tests/extension-installations.test.ts) 与 [Supervisor 测试](../../../tests/extension-runtime.test.ts)。这些测试覆盖受信任模块的合作式故障边界。
+- 可信 `module-url` 已保存自包含 ESM 的 SHA-256 固定产物，支持离线重启和更新失败保留旧安装指针，见 [Artifact 链路](manifest-and-contributions.md#73-发行解析与-artifact) 与 [产物行为测试](../../../tests/extensions/extension-artifacts.test.ts)；
+- 可信 V1 的 API/平台兼容拒绝、激活失败回滚、期限和退出故障已有行为回归，见 [安装测试](../../../tests/extensions/extension-installations.test.ts) 与 [Supervisor 测试](../../../tests/extensions/extension-runtime.test.ts)。这些测试覆盖受信任模块的合作式故障边界。
 
 ### 14.2 尚未完成的生态边界
 

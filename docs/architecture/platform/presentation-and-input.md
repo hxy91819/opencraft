@@ -164,7 +164,7 @@ while focused. Unfocused windows and non-macOS windows remain opaque. Legacy
 mode-only messages retain their previous backing defaults. Material changes do
 not recreate the window or change its bounds.
 
-`tests/theme-material-capabilities.test.ts` covers the shared contract and native
+`tests/shell/theme-material-capabilities.test.ts` covers the shared contract and native
 policy; `scripts/smoke/shell/smoke-theme-materials.ts` uses real extension registration,
 renderer projection, production preload and native applicator in an isolated
 Electron harness. The harness does not boot the full Agent runtime. Expo still

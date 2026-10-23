@@ -31,7 +31,7 @@ Changing node construction must not create a second resource or identity owner.
 
 ## Markdown 文件预览
 - 文件标题栏提供文件树显隐开关；收起后内容占满宽度，树保持挂载以保留展开、搜索和滚动位置，不重建预览或编辑器。只读嵌入预览仍无目录入口。验证：`scripts/smoke/resources/smoke-file-tree-toggle.ts`。
-- 文件树的目录数据归Host作用域Query缓存，展开/键盘活动项/滚动归当前面板；按数据版本排序、展开分支拍平，DOM仅挂载可视窗口和overscan。侧栏/聊天更新不得触发未变化目录排序或每目录会话订阅。隐藏和搜索保留展开/滚动，键盘上下/Home/End/左右/Enter与选中文件仍可达；目录折叠后迟到数据不恢复子行。验证：`tests/workspace-file-tree-model.test.ts`、`scripts/smoke/resources/smoke-workspace-file-tree.ts`。
+- 文件树的目录数据归Host作用域Query缓存，展开/键盘活动项/滚动归当前面板；按数据版本排序、展开分支拍平，DOM仅挂载可视窗口和overscan。侧栏/聊天更新不得触发未变化目录排序或每目录会话订阅。隐藏和搜索保留展开/滚动，键盘上下/Home/End/左右/Enter与选中文件仍可达；目录折叠后迟到数据不恢复子行。验证：`tests/resources/workspace-file-tree-model.test.ts`、`scripts/smoke/resources/smoke-workspace-file-tree.ts`。
 - 下载按钮沿用文件标题栏同排操作的尺寸、图标和反馈样式；不单独放大下载控件或为它撑高标题栏。
 - 文件预览标题栏右侧提供下载原文件；包括空文件、图片和不可预览的二进制。下载使用当前 Host/path/runtime generation 下已读取的 Blob 和文件名，不导出渲染 HTML 或未保存编辑草稿，不写回 Host。读取未完成、读取失败或旧资源 URL 尚未替换时禁用；切换身份/关闭释放 URL。只读内嵌预览同样允许下载。
 - 文件面板默认将 `.md` / `.markdown`（大小写不敏感）交给既有 WebChatDocument 排版，可切换到原始文本；不将原始 HTML 注入 DOM。相对文件链接与图片以当前文件目录解析，继续消费当前 Host 的资源接口和 Blob lease。
@@ -68,7 +68,7 @@ The built-in resource plugin owns one Files creation action for both empty-panel
   rejection must reach the storage recovery boundary; early recovery retains
   saved data, gives a reload action, and does not expose raw storage diagnostics.
 
-分支会话的参与者不继承父会话：新分支头像先显示已认证创建者，后续实际接收的用户消息增加参与者。历史消息继续保留原作者。继承来源由Host持久化，刷新、重连与再次分支不能将历史作者恢复为新分支成员；创建者在头像列表去重。核心发送者回归入口：`tests/opencraft-message-senders.test.ts`。历史产品记录另引用 `tests/enterprise-identity-participants.test.ts`、`scripts/smoke-fork-participants.ts`；这两项未随独立公开核心交付，不能作为本仓库当前可运行的验收证据。
+分支会话的参与者不继承父会话：新分支头像先显示已认证创建者，后续实际接收的用户消息增加参与者。历史消息继续保留原作者。继承来源由Host持久化，刷新、重连与再次分支不能将历史作者恢复为新分支成员；创建者在头像列表去重。核心发送者回归入口：`tests/chat/opencraft-message-senders.test.ts`。历史产品记录另引用 `tests/enterprise-identity-participants.test.ts`、`scripts/smoke-fork-participants.ts`；这两项未随独立公开核心交付，不能作为本仓库当前可运行的验收证据。
 
 - Workspace resource panels default to a collapsed file tree for all file types; the header folder
   toggle remains available. Manual visibility takes precedence for that panel
@@ -160,7 +160,7 @@ Actual layout and source visibility are verified by
   keys. The thumbnail rail is inert document content within navigation buttons;
   only near-viewport thumbnails (at most eight) hold render handles. Hidden/
   detached views release thumbnail work; close/replacement cancels all handles.
-- Evidence: `tests/file-preview-core.test.ts`, `tests/structured-preview.test.ts`,
+- Evidence: `tests/resources/file-preview-core.test.ts`, `tests/resources/structured-preview.test.ts`,
   `scripts/smoke/resources/smoke-office-preview.ts`, `scripts/smoke/resources/smoke-structured-preview.ts`;
   detailed boundaries and limits: [file previews](../../docs/file-preview.md).
 

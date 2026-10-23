@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 import { once } from 'node:events';
 import { WebSocketServer } from 'ws';
 import { createManagedWebServer } from '../../scripts/web-deployment/server.mjs';
-import { releaseFixture } from '../web-deployment-fixture.mjs';
+import { releaseFixture } from '../support/web-deployment-fixture.mjs';
 
 // The production SPA, bundled worker/updater and real npm CLI are exercised.
 // Only the registry and execution endpoint are local fixtures: no publishing,

@@ -167,7 +167,7 @@ draft/focus and held fork state survive task-flow regrouping. Its desktop/touch
 and light/dark matrix covers independent menu hit targets, capability filtering,
 navigation/current-row semantics, stable status geometry and input-specific hover
 behavior. Action RPCs are synthetic. These observable checks replace JSX/SCSS
-spelling assertions in `tests/sidebar-activity.test.ts`; pure grouping, metadata
+spelling assertions in `tests/shell/sidebar-activity.test.ts`; pure grouping, metadata
 and stale-menu-close behavior remain covered by that unit suite.
 
 

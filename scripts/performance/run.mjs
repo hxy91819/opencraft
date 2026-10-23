@@ -42,7 +42,7 @@ async function run(id, args, env = {}) {
   finally { await log.close(); }
 }
 try {
-  await run('gate-tests', ['--test', 'tests/performance-gate.test.mjs']);
+  await run('gate-tests', ['--test', 'tests/tooling/performance-gate.test.mjs']);
   await run('cold-open-build', ['scripts/performance/build-cold-open.mjs']);
   await run('session-navigation', ['--import', 'tsx', 'scripts/smoke/conversation/smoke-session-cold-open.ts'], {
     OPENCRAFT_COLD_OPEN_WEB_ROOT: path.join(root, 'apps/workbench-web/dist'),

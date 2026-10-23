@@ -41,14 +41,14 @@ refactors.
 
 ## Verification
 
-- `tests/chat-conversation-presentation.test.ts`: distinct todo observations,
+- `tests/chat/chat-conversation-presentation.test.ts`: distinct todo observations,
   latest active todo selection without transcript rows, canonical step parsing,
   latest proposal identity, implementation false/body,
   compaction defaults/live/history, completed-message actions, detail modes,
   historical todo not retaining active ownership.
-- `tests/appserver-session.test.ts`: real session notification pipeline
+- `tests/protocol/appserver-session.test.ts`: real session notification pipeline
   preserves ordered todo observations and does not alter Turn lifecycle.
-- `tests/dsh-projection.test.ts`: event identity, no duplicate plan emission,
+- `tests/execution/dsh-projection.test.ts`: event identity, no duplicate plan emission,
   repeat fold stability, existing tool/interaction behavior.
 - `scripts/smoke/conversation/smoke-conversation-presentation.ts`: headless Chromium running the
   real `Conversation`, built-in renderer registration, Markdown and virtual

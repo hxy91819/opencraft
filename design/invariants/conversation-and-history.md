@@ -335,7 +335,7 @@ render no floating notice or spinner. Only terminal/blocked failure or required 
 update presents an action row in normal flow above the Composer, with collapsed
 copyable technical details. Existing recovery owners, cold-state presentation,
 authority, outbox and command replay remain unchanged. The Application keeps its
-Composer and transcript mounted. `tests/conversation-recovery.test.tsx` checks
+Composer and transcript mounted. `tests/chat/conversation-recovery.test.tsx` checks
 quiet automatic retry and actionable failures.
 ## Conversation top spacing
 

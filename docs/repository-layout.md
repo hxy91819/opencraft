@@ -13,7 +13,7 @@ with the area that owns them; a task's working notes are not project entry point
 | `docs/` | Maintained architecture, operations, build and contributor documentation; start at [the index](README.md) |
 | `design.md`, `design/` | UI authoring entry, interaction specifications and topic-specific implementation records |
 | `config/` | Explicitly loaded tool configuration, versioned baselines and [repository metadata](../config/catalog-info.yaml) |
-| `scripts/`, `tests/` | Development/build utilities, [domain smoke checks](../scripts/smoke/README.md), focused tests and browser fixtures |
+| `scripts/`, `tests/` | Development/build utilities, [tests grouped by domain](../tests/README.md), [domain smoke checks](../scripts/smoke/README.md) and browser fixtures |
 | `packaging/`, `runtime/`, `ops/` | Distribution templates, isolated execution-runtime inputs and service operations |
 | `examples/`, `vendor/` | Runnable extension examples and separately maintained integrations or dependencies |
 | `.github/`, `.agents/` | GitHub workflows and repository-local agent skills |

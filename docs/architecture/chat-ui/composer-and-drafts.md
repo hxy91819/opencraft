@@ -93,7 +93,7 @@ reload restoration are not implemented. Expired Object URLs and unfinished attac
 failed removable cards asking the user to re-add the file, never as ready files.
 Storage corruption, denial or quota failures retain in-memory editing; diagnostics
 do not log content. Mounted Views do not subscribe to cross-tab changes.
-Tests: `tests/chat-browser-drafts.test.ts`, `npm run smoke:browser-drafts`.
+Tests: `tests/chat/chat-browser-drafts.test.ts`, `npm run smoke:browser-drafts`.
 
 Thread identity, execution activation, capability leases and revocation follow
 the [execution ownership contract](../../execution-ownership.md), including its

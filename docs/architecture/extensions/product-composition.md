@@ -192,8 +192,8 @@ lifecycle, asset-size and desktop/mobile browser assertions; public generic test
 use synthetic plugin descriptors and the public fallback brand. This ownership
 transfer does not grant redistribution rights to product artwork.
 
-Verification: `tests/application-branding.test.ts` and
-`tests/extension-installations.test.ts` cover generic validation, ownership,
+Verification: `tests/identity/application-branding.test.ts` and
+`tests/extensions/extension-installations.test.ts` cover generic validation, ownership,
 rollback and persisted enable/disable. Downstream tests cover original product
 metadata/assets and the same desktop/mobile activation/unload/replacement paths.
 

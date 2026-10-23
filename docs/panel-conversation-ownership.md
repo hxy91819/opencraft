@@ -28,5 +28,5 @@ is currently application-process scoped; remote PTY enumeration alone cannot
 recover a conversation association after a full renderer restart without a
 persisted ownership directory.
 
-Regression coverage: `tests/panel-conversation-ownership.test.ts`, plus existing
+Regression coverage: `tests/shell/panel-conversation-ownership.test.ts`, plus existing
 panel, browser-runtime, terminal and navigation suites.

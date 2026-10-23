@@ -36,7 +36,7 @@ indexeddb-extension-settings-storage.ts:40 和 indexeddb-extension-installation-
 
 ## 验证
 
-- `npx tsx --test tests/extension-runtime.test.ts tests/extension-settings.test.ts tests/extension-installations.test.ts`：22/22 passed；日志 /tmp/opencraft-storage-gap-tests.log。
+- `npx tsx --test tests/extensions/extension-runtime.test.ts tests/extensions/extension-settings.test.ts tests/extensions/extension-installations.test.ts`：22/22 passed；日志 /tmp/opencraft-storage-gap-tests.log。
 - 两个真实 ExtensionSettingsStore + IndexedDbExtensionSettingsStorage，共享隔离 fake-indexeddb：复现 stale reader + 无冲突后写覆盖。
 - `git diff --check` 通过。
 - 未跑全部 gate/typecheck；本轮没有实现变更，以上证据不能替代未来升级或实机验收。

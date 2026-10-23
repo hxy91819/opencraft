@@ -66,7 +66,7 @@ This temporary delivery scope grants no attachment, execution or interaction
 ownership on failure and stops immediately when the Client is revoked.
 Do not claim this removes large-single-Turn cost or bounds native storage scans.
 
-Regression entry `tests/recovery-dsh-chain.test.mjs` exercises real Workbench,
+Regression entry `tests/execution/recovery-dsh-chain.test.mjs` exercises real Workbench,
 Session and Adapter over MemoryTransport, with synthetic native history only:
 merged first page, older-only navigation, same-generation revalidation, unchanged,
 small append and one-forward-probe→tail gap. It performs no model execution.

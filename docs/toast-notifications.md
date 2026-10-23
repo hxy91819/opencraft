@@ -50,7 +50,7 @@ Notification read state is presentation metadata, independent of conversation
 unread replies, approval requests and failed execution attention. This center
 does not add task authority, retries, navigation or a durable inbox.
 
-Validation: `tests/notice-history.test.ts` and
+Validation: `tests/chat/notice-history.test.ts` and
 `scripts/smoke/conversation/smoke-conversation-header-menu.ts` exercise actual consumers, layout,
 focus, expiry, all severities, history, owner isolation and disposal.
 `scripts/smoke/shell/smoke-notification-header.ts` checks the real Shell action slots without

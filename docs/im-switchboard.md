@@ -156,7 +156,7 @@ credentials, identity maps or message content.
 
 ## Verification
 
-`tests/im-switchboard.test.ts`, `im-programmable.test.ts`, `wecom-plugin.test.ts`
+`tests/extensions/im-switchboard.test.ts`, `im-programmable.test.ts`, `wecom-plugin.test.ts`
 and `slack-plugin.test.ts` cover migration/checksum, CAS, sandbox limits,
 identity/revocation, duplicate and restart behavior, connection ACKs and original
 reply destinations. `scripts/smoke/execution/smoke-im-channels.ts` runs the actual Settings,

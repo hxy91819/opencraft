@@ -19,5 +19,5 @@ Do not implement this with universal descendant rules, copy/selectstart handlers
 pointer cancellation, or Electron drag-region changes. Selection is independent
 of keyboard focus, accessibility, clipboard commands and window dragging.
 
-Run `node --test tests/text-selection.test.mjs`. Set `OPENCRAFT_TEST_CHROMIUM` to a
+Run `node --test tests/shell/text-selection.test.mjs`. Set `OPENCRAFT_TEST_CHROMIUM` to a
 Chromium executable to run the browser cascade test outside the default dev host.

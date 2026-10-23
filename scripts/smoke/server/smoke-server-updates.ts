@@ -9,12 +9,12 @@ import { once } from 'node:events';
 import { DatabaseSync } from 'node:sqlite';
 import WebSocket from 'ws';
 import { chromium } from '@playwright/test';
-import { startCodexCore } from "../../../apps/codex-core/src/main.ts";
-import { AccountPoolStore } from "../../../packages/account-pool-host/src/index.ts";
-import { createManagedWebServer } from "../../web-deployment/server.mjs";
-import { createExecutionDeployment, coreHealth } from "../../server-deployment/execution.mjs";
-import { seedLegacyHostStorage, seedNewerHostStorage } from "../../../tests/local-agent-storage-fixture.js";
-import { releaseFixture } from "../../../tests/web-deployment-fixture.mjs";
+import { startCodexCore } from '../../../apps/codex-core/src/main.ts';
+import { AccountPoolStore } from '../../../packages/account-pool-host/src/index.ts';
+import { createManagedWebServer } from '../../web-deployment/server.mjs';
+import { createExecutionDeployment, coreHealth } from '../../server-deployment/execution.mjs';
+import { seedLegacyHostStorage, seedNewerHostStorage } from '../../../tests/support/local-agent-storage-fixture.js';
+import { releaseFixture } from '../../../tests/support/web-deployment-fixture.mjs';
 
 let runAbort: AbortController | undefined;
 async function until(read: () => any, label: string, timeout = 40_000, abortable = true): Promise<any> {
