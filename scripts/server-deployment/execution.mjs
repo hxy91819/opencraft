@@ -10,6 +10,32 @@ import { assertExecutionNativePayload } from './native-preflight.mjs';
 import { attachDshHost, readPrivateJson } from './dsh-host-client.mjs';
 
 const exec = promisify(execFile);
+const daemonPayloadFiles = ['gateway.mjs', 'daemon.cjs', 'dsh-capability-plugin.mjs'];
+
+// Legacy execution archives predate the explicit daemon/headless discriminator.
+// Infer daemon only from a complete v1 payload; absence of execution is Web-only.
+export async function resolveExecutionProfile(releaseRoot, metadata) {
+  if (metadata === undefined) return null;
+  if (metadata?.profile === 'daemon' || metadata?.profile === 'headless') return metadata.profile;
+  if (metadata?.profile !== undefined || metadata?.protocolVersion !== 1
+    || typeof metadata.platform !== 'string' || !/^[a-z0-9]+$/i.test(metadata.platform)
+    || typeof metadata.arch !== 'string' || !/^[a-z0-9]+$/i.test(metadata.arch)
+    || typeof metadata.nodeAbi !== 'string' || !/^[1-9][0-9]*$/.test(metadata.nodeAbi))
+    throw new Error('Release execution profile metadata is invalid');
+  let web;
+  try { web = JSON.parse(await readFile(join(releaseRoot, 'web/version.json'), 'utf8')); }
+  catch (cause) {
+    if (cause.code !== 'ENOENT') throw new Error('Release execution profile metadata is invalid', { cause });
+  }
+  if (web?.headlessServer === true || metadata.independentDshHost === 1)
+    throw new Error('Release execution profile must explicitly declare Headless');
+  try {
+    for (const file of daemonPayloadFiles) {
+      if ((await readFile(join(releaseRoot, 'execution', file))).length === 0) throw new Error('Empty legacy payload');
+    }
+  } catch (cause) { throw new Error('Release execution profile has no complete legacy daemon payload', { cause }); }
+  return 'daemon';
+}
 async function executionFiles(directory, prefix = '') {
   const entries = await readdir(directory, { withFileTypes: true });
   entries.sort((left, right) => left.name.localeCompare(right.name));
@@ -151,11 +177,11 @@ export function createExecutionDeployment({ link, unit, coreUnit, coreEndpoint, 
     const manifest = JSON.parse(await readFile(join(release.releaseRoot, 'package.json'), 'utf8'));
     const metadata = manifest.opencraftExecution;
     if (metadata?.protocolVersion !== 1 || metadata.platform !== process.platform || metadata.arch !== process.arch || metadata.nodeAbi !== process.versions.modules
-      || (metadata.profile || 'daemon') !== profile)
+      || await resolveExecutionProfile(release.releaseRoot, metadata) !== profile)
       throw new Error('Release has no compatible execution payload');
     if (dshDescriptor && metadata.independentDshHost !== 1)
       throw new Error('Release cannot attach an independent DSH Host; crossing this migration boundary requires drained maintenance');
-    for (const file of ['gateway.mjs', 'daemon.cjs', 'dsh-capability-plugin.mjs', ...(profile === 'headless' ? ['dsh-thread-persistence-plugin.mjs', 'dsh-thread-projection-plugin.mjs'] : [])]) await readFile(join(release.releaseRoot, 'execution', file));
+    for (const file of [...daemonPayloadFiles, ...(profile === 'headless' ? ['dsh-thread-persistence-plugin.mjs', 'dsh-thread-projection-plugin.mjs'] : [])]) await readFile(join(release.releaseRoot, 'execution', file));
     await assertExecutionNativePayload(release.releaseRoot);
     await validate();
   }
