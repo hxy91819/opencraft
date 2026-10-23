@@ -7,6 +7,9 @@ import { ConversationRecoveryOwner, type RecoveryDemand } from "./recovery-polic
 import {
   AppServerClientError,
   AppServerRpcError,
+  threadUnavailableReason,
+  isRetryableAppServerRpcError,
+  type ThreadUnavailableReason,
   createCordisAppServerRegistry,
   type AppServerClient,
   type AppServerClientRegistryService,
@@ -268,6 +271,8 @@ export interface StartThreadOptions {
 }
 
 export interface AppServerThreadResourcePort {
+  getUnavailableReason?(threadId: string): ThreadUnavailableReason | null;
+  subscribeUnavailable?(listener: (threadId: string, reason: ThreadUnavailableReason) => void): () => void;
   capabilities?(threadId?: string): { fork: boolean; rename: boolean; archive: boolean; delete: boolean; pin?: boolean; reference?: boolean };
   setPinned?(threadId: string, pinned: boolean): Promise<void>;
   rename?(threadId: string, name: string): Promise<void>;
@@ -567,6 +572,9 @@ export function createAppServerWorkbenchRuntime(
     return threadPins.resource;
   };
   let session: CordisThreadSessionRuntime | null = null;
+  const unavailableThreads = new Map<string, { reason: ThreadUnavailableReason; error: AppServerRpcError }>();
+  const availabilityRevisions = new Map<string, number>();
+  const unavailableListeners = new Set<(threadId: string, reason: ThreadUnavailableReason) => void>();
   let interactions: AppServerInteractionBroker | null = null;
   let fuzzyFileSearch: AppServerFuzzyFileSearchController | null = null;
   let commandPort: ReturnType<
@@ -1227,6 +1235,29 @@ export function createAppServerWorkbenchRuntime(
     return operation;
   };
 
+  const markThreadUnavailable = (threadId: string, reason: ThreadUnavailableReason, cause?: AppServerRpcError) => {
+    const failure = cause ?? new AppServerRpcError({ code: reason === "archived" ? -32071 : -32600,
+      message: reason === "archived" ? "Thread is archived" : "Thread not found" });
+    unavailableThreads.set(threadId, { reason, error: failure });
+    availabilityRevisions.set(threadId, (availabilityRevisions.get(threadId) ?? 0) + 1);
+    const binding = bindings.get(threadId);
+    if (binding) {
+      recovery.remove(binding);
+      binding.phase = "error";
+      binding.replica.disconnect();
+      binding.replica.reportSyncFailure(failure);
+    }
+    for (const listener of unavailableListeners) {
+      try { listener(threadId, reason); } catch { /* Selection observers cannot affect the Host. */ }
+    }
+    publish();
+  };
+  const markThreadAvailable = (threadId: string) => {
+    unavailableThreads.delete(threadId);
+    availabilityRevisions.set(threadId, (availabilityRevisions.get(threadId) ?? 0) + 1);
+    session?.resume.markNeedsResume(threadId);
+  };
+
   const hydrateBinding = (
     binding: ConversationBinding,
     force: boolean,
@@ -1236,6 +1267,11 @@ export function createAppServerWorkbenchRuntime(
       return Promise.reject(
         new Error(`Thread ${binding.threadId} is disposed`),
       );
+    const unavailable = unavailableThreads.get(binding.threadId);
+    if (unavailable) {
+      markThreadUnavailable(binding.threadId, unavailable.reason, unavailable.error);
+      return Promise.reject(unavailable.error);
+    }
     if (binding.hydrationOperation !== null) {
       if (binding.hydrationConnectionRevision === connectionRevision && (!force || binding.hydrationForReconnect))
         return binding.hydrationOperation;
@@ -1245,8 +1281,10 @@ export function createAppServerWorkbenchRuntime(
     }
     binding.hydrationForReconnect = force;
     const revision = connectionRevision;
+    const availabilityRevision = availabilityRevisions.get(binding.threadId) ?? 0;
     binding.hydrationConnectionRevision = revision;
-    const current = () => !disposed && !binding.disposed && revision === connectionRevision;
+    const current = () => !disposed && !binding.disposed && revision === connectionRevision
+      && availabilityRevision === (availabilityRevisions.get(binding.threadId) ?? 0);
     const operation = Promise.resolve()
       .then(async () => {
         if (!current()) throw new AppServerClientError("ABORTED", "Thread recovery was superseded");
@@ -1297,6 +1335,8 @@ export function createAppServerWorkbenchRuntime(
       })
       .catch((cause) => {
         if (current()) {
+          const reason = threadUnavailableReason(cause);
+          if (reason !== null) markThreadUnavailable(binding.threadId, reason, cause as AppServerRpcError);
           binding.phase = "error";
           if (binding.replica.getSnapshot().lastError === null) {
             binding.replica.reportSyncFailure(cause);
@@ -1340,7 +1380,7 @@ export function createAppServerWorkbenchRuntime(
   };
 
   const recoveryDemand = (binding: ConversationBinding): RecoveryDemand => {
-    if (binding.disposed) return "cache";
+    if (binding.disposed || unavailableThreads.has(binding.threadId)) return "cache";
     if (binding.visibleCount > 0) return "visible";
     const activity = bindingActivity(binding);
     return binding.runtime.getSnapshot().queuedSubmissions.some(item => item.local)
@@ -1349,10 +1389,10 @@ export function createAppServerWorkbenchRuntime(
   };
 
   const retryableHistoryFailure = (cause: unknown) => !disposed && phase === "ready"
+    && threadUnavailableReason(cause) === null
     && ((cause instanceof AppServerClientError
       && ["TIMEOUT", "QUEUE_FULL", "TRANSPORT_ERROR", "NOT_CONNECTED"].includes(cause.code))
-      || (cause instanceof AppServerRpcError && typeof cause.data === "object" && cause.data !== null
-        && "retryable" in cause.data && cause.data.retryable === true));
+      || isRetryableAppServerRpcError(cause));
 
   // Resource restoration is not part of Host readiness. A missing Thread
   // must not reconnect the Host or delay another Thread's restoration.
@@ -1436,6 +1476,12 @@ export function createAppServerWorkbenchRuntime(
         }
       });
       removeGoalNotificationListener = client.subscribeNotification((notification) => {
+        const threadId = (notification.params as { threadId?: unknown } | null)?.threadId;
+        if (typeof threadId === "string") {
+          if (notification.method === "thread/archived") markThreadUnavailable(threadId, "archived");
+          else if (notification.method === "thread/deleted") markThreadUnavailable(threadId, "not-found");
+          else if (notification.method === "thread/unarchived") markThreadAvailable(threadId);
+        }
         if (notification.method === "opencraft/schedules/changed") {
           for (const listener of schedulesChangedListeners) { try { listener(); } catch { /* Isolate observers. */ } }
         }
@@ -1699,6 +1745,8 @@ export function createAppServerWorkbenchRuntime(
         },
       },
       threads: {
+        getUnavailableReason: threadId => unavailableThreads.get(threadId)?.reason ?? null,
+        subscribeUnavailable(listener) { unavailableListeners.add(listener); return () => { unavailableListeners.delete(listener); }; },
         capabilities(threadId) {
           const extension = (key: string) => executionEngineExtension(client?.initializeResult?.capabilities?.extensions, threadId, key);
           const reference = extension("opencraft/collaboration") !== undefined;
@@ -1708,9 +1756,13 @@ export function createAppServerWorkbenchRuntime(
         },
         async setPinned(threadId, pinned) { await pinResource(requireClient()).set(threadId, pinned); },
         async rename(threadId, name) { await requireClient().request("thread/name/set", { threadId, name }); },
-        async delete(threadId) { await requireClient().request("thread/delete", { threadId }); },
-        async archive(threadId) { await requireClient().request("thread/archive", { threadId }); },
-        async unarchive(threadId) { return (await requireClient().request("thread/unarchive", { threadId })).thread as ProtocolThread; },
+        async delete(threadId) { await requireClient().request("thread/delete", { threadId }); markThreadUnavailable(threadId, "not-found"); },
+        async archive(threadId) { await requireClient().request("thread/archive", { threadId }); markThreadUnavailable(threadId, "archived"); },
+        async unarchive(threadId) {
+          const thread = (await requireClient().request("thread/unarchive", { threadId })).thread as ProtocolThread;
+          markThreadAvailable(threadId);
+          return thread;
+        },
         supportsSideChat(threadId) {
           const capability = parseThreadLifecycleCapability(executionEngineExtension(requireClient().initializeResult?.capabilities?.extensions, threadId, OPENCRAFT_THREAD_LIFECYCLE_EXTENSION));
           return (capability?.fork === true || capability?.ephemeralFork === true) && capability.ephemeral === true && capability.injectItems === true && capability.unsubscribe === true;

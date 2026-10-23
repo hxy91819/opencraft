@@ -3367,3 +3367,20 @@ The activity disclosure binds its measurement observer whenever its actual body
 mounts, including a diff that arrives after an initially empty file record.
 Removing that body releases the old observer; a later body binds a new one.
 The existing row, expansion intent, motion and viewport reflow owner remain.
+
+### Archived and missing conversation restoration
+
+A confirmed archive/delete receipt or notification retires that Thread's live
+Replica authority and automatic recovery. A definite archived/not-found rejection
+from Thread metadata/Resume does the same, even if a provider also marks it
+retryable. Transport failures, missing models and unknown history failures never
+imply a missing conversation. Standard invalid-request/params/protocol RPC errors
+are deterministic and cannot opt into automatic history retries.
+
+The Host stays ready for other Threads. Recovery hints, reconnect and manual
+restore cannot resume a retired Thread; successful explicit unarchive reopens it.
+An archive fences pending hydration, so late success cannot restore authority.
+The Browser Application clears only matching Host/account selection memory and
+replaces an active invalid route with the existing Home and conversation list.
+Late failures cannot clear a newer selection or replace a newer navigation intent.
+This local draft does not create a remote Thread, unarchive it or replay input.
