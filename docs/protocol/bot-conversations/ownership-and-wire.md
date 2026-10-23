@@ -9,9 +9,10 @@ Extension identifier: **`opencraft/bot-conversations`**
 Version: **1**
 
 This document freezes the first implementable Bot and group-chat protocol for
-OpenCraft. It is intentionally engine-neutral. Hermes, DSH, Codex, and future
-engines are adapters behind an AppServer handler; none of their private types
-appear on the wire.
+OpenCraft. It is intentionally engine-neutral. An engine-specific adapter sits
+behind an AppServer handler; none of its private types appear on the wire.
+A Host advertises the extension only after its Bot handler is connected. Native
+Codex uses Thread/Turn and does not currently advertise this Bot extension.
 
 ## 1. Ownership boundaries
 
@@ -23,7 +24,7 @@ BotChatView
   -> AppServerBotConversationClient
   -> bot/* JSON-RPC methods
   -> AppServer BotConversationHandler
-  -> engine adapter (Hermes/DSH/Codex/...)
+  -> connected Bot-capable engine adapter
 ```
 
 For the temporary browser implementation, the handler may live in the browser,
