@@ -11,12 +11,12 @@ import {createWorkbenchPanelReactRuntime} from '@opencraft/workbench-panels-reac
 import {ThreadSummaryPlugin} from '@opencraft/plugin-thread-summary';
 import {WorkbenchPanelRuntimeProvider} from '/apps/workbench-web/src/runtime/panel-runtime-context';
 import {ConversationSummaryButton,ConversationSummarySurface,useConversationSummary} from '/apps/workbench-web/src/components/conversation-summary';
-import {initializeAppearanceTheme,setThemePreference} from '/apps/workbench-web/src/appearance-theme';
+import {initializeAppearanceTheme,setThemePreference,setAppearanceThemeId,coreThemeId} from '/apps/workbench-web/src/appearance-theme';
 import '/apps/workbench-web/src/styles/app.scss';
 initializeAppearanceTheme();
 const runtime=await createWorkbenchPanelReactRuntime();const fiber=await runtime.install(ThreadSummaryPlugin);
 const timeline={authoritative:true,frames:[{blocks:[{type:'todo',entries:Array.from({length:16},(_,i)=>({id:String(i),text:['Inspect the current workspace','Build the task information module','Verify desktop and mobile layouts'][i%3]+' '+i,status:i<2?'complete':i===2?'in-progress':'pending'}))}, {type:'patch',changes:[{path:'src/features/conversation/components/a-very-long-component-name.tsx',kind:'modify'},{path:'src/styles/task-information.scss',kind:'add'}]},{type:'subagent',id:'agent',label:'Design review',agentId:null,tool:'spawnAgent',status:'complete',activityKind:'started',receiverThreadIds:['child'],agentStates:{child:{status:'running'}},agentPath:null}]}]};
-function App(){const[scope,setScope]=useState('account/host/one');const summary=useConversationSummary(scope,true);window.fixture={setScope,setThemePreference,dispose:()=>fiber.dispose(),runtime};
+function App(){const[scope,setScope]=useState('account/host/one');const summary=useConversationSummary(scope,true);window.fixture={setScope,setThemePreference,setAppearanceThemeId,coreThemeId,dispose:()=>fiber.dispose(),runtime};
 return <WorkbenchPanelRuntimeProvider runtime={runtime}><div style={{height:'100dvh',display:'flex',flexDirection:'column'}}><header style={{height:56,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 24px'}}><span>Workspace / Task information</span><ConversationSummaryButton controller={summary}/></header><div className='local-conversation-page' style={{flex:1,minHeight:0}}><div ref={summary.layoutRef} className='conversation-summary-layout' data-summary-open={summary.wide&&summary.open}><div className='conversation-summary-reading'><div style={{maxWidth:720,margin:'auto',padding:'32px 24px'}}><h1>Build a task information panel</h1><p>Keep progress, files and activity close to the conversation.</p><textarea aria-label='Draft' defaultValue='Preserve this draft' style={{width:'100%',marginTop:48}}/></div></div><ConversationSummarySurface controller={summary} context={{scopeKey:scope,timeline,goal:{objective:'Make ongoing work easy to follow, on desktop and on the phone.',status:'active'},current:scope!=='cached',onOpenResource:path=>window.opened=path,onOpenThread:id=>window.opened=id}}/></div></div></div></WorkbenchPanelRuntimeProvider>}
 function Root(){return <WorkbenchPanelRuntimeProvider runtime={runtime}><App/></WorkbenchPanelRuntimeProvider>}
 createIntlTestRoot(document.getElementById('root')).render(<Root/>);`;
@@ -28,18 +28,20 @@ const evidence=[];
 for(const theme of ['light','dark','lavender']) {
  const page=await browser.newPage({viewport:{width:1440,height:900}});const errors:string[]=[];page.on('pageerror',(e:Error)=>errors.push(e.message));
  await page.goto(vite.resolvedUrls!.local[0]!); await page.waitForSelector('.thread-summary__section');
- await page.evaluate(theme=>(window as any).fixture.setThemePreference(theme),theme);
+ await page.evaluate(theme=>{(window as any).fixture.setThemePreference(theme==='dark'?'dark':'light');(window as any).fixture.setAppearanceThemeId(theme==='lavender'?'opencraft.core.lavender':(window as any).fixture.coreThemeId)},theme);
  const draft=await page.locator('textarea').elementHandle();
  assert.equal(await page.locator('aside.conversation-summary').count(),1);
  await page.getByRole('button',{name:/Plan/}).click();
  await page.screenshot({path:output+'/'+theme+'-desktop.png'});
  await page.setViewportSize({width:390,height:844}); await page.waitForFunction(()=>!document.querySelector('aside.conversation-summary'));
  await page.getByRole('button',{name:'Task info',exact:true}).click(); await page.getByRole('dialog').waitFor();
+ await page.waitForFunction(()=>{const r=document.querySelector('[role=dialog]')?.getBoundingClientRect();return r&&Math.abs(r.bottom-innerHeight)<1});
+ const sheet=await page.getByRole('dialog').boundingBox();assert(sheet);assert(Math.abs(sheet.width-390)<1);assert(Math.abs(sheet.x)<1);assert(Math.abs(sheet.y+sheet.height-844)<1);
  assert.equal(await page.getByRole('button',{name:/Plan/}).getAttribute('aria-expanded'),'false');
  await page.getByRole('button',{name:/Plan/}).click();
  await page.locator('.thread-summary__scroll').evaluate(e=>e.scrollTop=160);
  await page.waitForFunction(()=>document.querySelector('.thread-summary__scroll')!.scrollTop>=150);
- await page.screenshot({path:output+'/'+theme+'-mobile.png'});
+ await page.screenshot({path:output+'/'+theme+'-mobile.png',animations:'disabled'});
  await page.keyboard.press('Escape'); await page.waitForFunction(()=>!document.querySelector('[role=dialog]'));
  assert.equal(await page.getByRole('button',{name:'Task info',exact:true}).evaluate(e=>e===document.activeElement),true);
  await page.getByRole('button',{name:'Task info',exact:true}).click();
