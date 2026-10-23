@@ -503,16 +503,21 @@ function MermaidDiagram({
     dispatch({ type: "begin", key: renderKey });
   }, [renderKey]);
 
-  const requestMeasurement = context.requestMeasurement;
+  // Document generations change as prose streams past a closed fence. Keep
+  // measurement delivery current without restarting the SVG render effect.
+  const requestMeasurementRef = useRef(context.requestMeasurement);
+  useLayoutEffect(() => {
+    requestMeasurementRef.current = context.requestMeasurement;
+  }, [context.requestMeasurement]);
   const handleRendered = useCallback(
     (key: string, height: number) => {
       dispatch({ type: "rendered", key, height });
-      requestMeasurement?.({
+      requestMeasurementRef.current?.({
         geometryChanged: true,
         reason: "diagram-render",
       });
     },
-    [requestMeasurement],
+    [],
   );
   const handleError = useCallback((key: string, error: string) => {
     dispatch({ type: "failed", key, error });
