@@ -1,3 +1,5 @@
+import { ConversationSummaryService } from "./conversation-summary";
+export * from "./conversation-summary";
 import { Context, Service, type Fiber, type Plugin } from "@deepseek-ai/cordis";
 import {
   WorkbenchPanelService,
@@ -106,6 +108,7 @@ export async function createWorkbenchPanelReactRuntime(
   try {
     await install(WorkbenchPanelService, config);
     await install(WorkbenchPanelRendererRegistryService);
+    await install(ConversationSummaryService);
   } catch (error) {
     await disposeFibers().catch(() => undefined);
     throw error;

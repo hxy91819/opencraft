@@ -1,3 +1,4 @@
+import type { HeadlessConnectorPort } from "./headless-port";
 import type { AppServerClient } from "@opencraft/appserver-client";
 import type { AuthenticationService } from "../authentication/authentication-service";
 import type { ConversationBindingStore } from "../conversation-binding";
@@ -44,19 +45,20 @@ export class ConnectorManager {
 
   private constructor(readonly runtime: ConnectorRuntime, private readonly authService: AuthenticationService,
     private readonly bindings: ConversationBindingStore, private readonly store: ConnectorConfigurationStore,
-    private readonly resolveClient: (hostId: string) => Promise<AppServerClient>) {
-    this.managed = new ManagedConnectorController(this, resolveClient);
+    private readonly resolveClient: (hostId: string) => Promise<AppServerClient>, private readonly remote?: HeadlessConnectorPort) {
+    this.managed = new ManagedConnectorController(this, async hostId => remote?.owns(hostId) ? remote.client(hostId) : resolveClient(hostId));
     this.stops.push(runtime.subscribe(() => {
       for (const c of runtime.getSnapshot().connections) if (["authorization-required", "refresh-required", "disconnected", "failed"].includes(c.phase)) {
         const config = this.record.value.connectors.find(row => providerId(row.id) === c.connectorId);
         if (config) for (const selected of this.confirmedScopes.values()) selected.delete(config.id);
       }
       this.syncSelections(); this.publish();
-    }), bindings.subscribe(() => this.syncSelections()));
+    }), bindings.subscribe(() => { this.syncSelections(); this.publish(); }));
+    if (remote) this.stops.push(remote.subscribe(() => this.publish()));
     if (store.subscribe) this.stops.push(store.subscribe(() => { if (!this.saving) void this.reload(); }));
   }
-  static async open(runtime: ConnectorRuntime, auth: AuthenticationService, bindings: ConversationBindingStore, store: ConnectorConfigurationStore, resolveClient: (hostId: string) => Promise<AppServerClient>) {
-    const manager = new ConnectorManager(runtime, auth, bindings, store, resolveClient); await manager.reload(); return manager;
+  static async open(runtime: ConnectorRuntime, auth: AuthenticationService, bindings: ConversationBindingStore, store: ConnectorConfigurationStore, resolveClient: (hostId: string) => Promise<AppServerClient>, remote?: HeadlessConnectorPort) {
+    const manager = new ConnectorManager(runtime, auth, bindings, store, resolveClient, remote); await manager.reload(); return manager;
   }
   getSnapshot = () => this.snapshot;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
@@ -82,6 +84,7 @@ export class ConnectorManager {
     await this.save(value => ({ ...value, connectors: [...value.connectors, { id: crypto.randomUUID(), hostId, server, title: server }] }));
   }
   async attachManaged(hostId: string, instanceId: string, title: string): Promise<string> {
+    if (this.remote?.owns(hostId)) { await this.remote.refresh(hostId); return `headless:${hostId}:${instanceId}`; }
     const existing = this.record.value.connectors.find(c => c.hostId === hostId && c.kind === "managed" && c.server === instanceId);
     if (existing) {
       if (existing.title !== title) await this.save(value => ({ ...value, connectors: value.connectors.map(c => c.id === existing.id ? { ...c, title } : c) }));
@@ -94,10 +97,17 @@ export class ConnectorManager {
   savedSelection(hostId: string, scopeId: string, id: string): boolean {
     return this.record.value.selections.find(s => s.hostId === hostId && s.scopeId === scopeId)?.connectorIds.includes(id) === true;
   }
-  selectionConfirmed(hostId: string, scopeId: string, id: string): boolean { return this.confirmedScopes.get(key(hostId, scopeId))?.has(id) === true; }
+  selectionConfirmed(hostId: string, scopeId: string, id: string): boolean {
+    const remote = this.remoteConfig(id);
+    if (remote) { const binding = this.bindings.getSnapshot().bindings.find(b => b.scopeId === scopeId && b.hostId === hostId);
+      return !!binding?.conversationKey && this.remote?.state(hostId)?.selections.some(s => s.threadId === binding.conversationKey!.threadId && s.connectorIds.includes(remote.server)) === true; }
+    return this.confirmedScopes.get(key(hostId, scopeId))?.has(id) === true; }
   async select(hostId: string, scopeId: string, id: string, enabled: boolean): Promise<void> {
     const binding = this.bindings.getSnapshot().bindings.find(b => b.scopeId === scopeId && b.hostId === hostId);
     if (!binding) throw new Error("会话目标已失效");
+    const remote = this.remoteConfig(id);
+    if (remote) { if (!binding.conversationKey) throw new Error("会话目标已失效");
+      await this.remote!.command(hostId, "select", { threadId: binding.conversationKey.threadId, id: remote.server, enabled }); return; }
     const scopeKey = key(hostId, scopeId);
     const connection = this.runtime.getSnapshot().connections.find(c => c.connectorId === providerId(id) && c.hostId === hostId && ["ready", "partial"].includes(c.phase));
     if (enabled && !connection) throw new Error("请先连接服务，再为本会话确认使用");
@@ -120,6 +130,12 @@ export class ConnectorManager {
     this.confirmedScopes.set(scopeKey, confirmed); this.syncSelections(); this.publish();
   }
   async connect(id: string, owner: string): Promise<void> {
+    const remote = this.remoteConfig(id);
+    if (remote) { this.cancel(id); const operation: Operation = { id: crypto.randomUUID(), owner, abort: new AbortController() };
+      this.operations.set(id, operation); this.setState(id, { phase: "connecting" });
+      try { await this.remote!.command(remote.hostId, "connect", { id: remote.server }); }
+      catch (error) { if (this.operations.get(id) === operation) this.setState(id, { phase: "error", error: connectorErrorMessage("connect", error) }); }
+      finally { if (this.operations.get(id) === operation) this.operations.delete(id); this.publish(); } return; }
     const config = this.config(id); this.cancel(id);
     const operation: Operation = { id: crypto.randomUUID(), owner, abort: new AbortController() };
     this.operations.set(id, operation); this.setState(id, { phase: "connecting" });
@@ -152,6 +168,7 @@ export class ConnectorManager {
   cancel(id: string): void {
     const operation = this.operations.get(id); if (!operation) return;
     operation.abort.abort(); this.operations.delete(id);
+    const remote = this.remoteConfig(id); if (remote) { void this.remote!.command(remote.hostId, "disconnect", { id: remote.server }).catch(() => undefined); }
     const registration = this.registrations.get(id);
     if (registration?.auth) void this.authService.cancel(registration.auth.id).catch(() => undefined);
     for (const c of this.runtime.getSnapshot().connections) if (c.operationId === operation.id) void this.runtime.disconnect(c.connectionId);
@@ -159,13 +176,15 @@ export class ConnectorManager {
   }
   cancelOwner(owner: string): void { for (const [id, op] of this.operations) if (op.owner === owner) this.cancel(id); }
   async disconnect(id: string): Promise<void> {
+    const remote = this.remoteConfig(id);
+    if (remote) { await this.remote!.command(remote.hostId, "disconnect", { id: remote.server }); return; }
     this.cancel(id);
     for (const c of this.runtime.getSnapshot().connections) if (c.connectorId === providerId(id)) await this.runtime.disconnect(c.connectionId);
     this.setState(id, { phase: "disconnected" }); this.syncSelections();
   }
   async dispose(): Promise<void> {
     this.disposed = true;
-    this.managed.dispose();
+    this.managed.dispose(); this.remote?.dispose();
     for (const stop of this.stops) stop();
     for (const id of this.operations.keys()) this.cancel(id);
     await this.tail.catch(() => undefined);
@@ -216,6 +235,7 @@ export class ConnectorManager {
       this.cancel(id); await registration.stopProvider(); registration.stopAuth(); registration.auth?.dispose(); this.registrations.delete(id);
     }
   }
+  private remoteConfig(id: string) { return this.snapshot.configuration.connectors.find(c => c.id === id && c.kind === "managed" && this.remote?.owns(c.hostId)); }
   private config(id: string) { const c = this.record.value.connectors.find(c => c.id === id); if (!this.loaded || !c) throw new Error("连接器不存在"); return c; }
   private ensureOperation(id: string, operation: Operation) { if (this.disposed || this.operations.get(id) !== operation || operation.abort.signal.aborted) throw new Error("Cancelled"); this.config(id); }
   private setState(id: string, state: { phase: string; error?: string; authorizationUrl?: string }) { this.states.set(id, state); this.publish(); }
@@ -242,7 +262,18 @@ export class ConnectorManager {
       const config = this.record.value.connectors.find(row => providerId(row.id) === c.connectorId);
       if (config && !this.operations.has(config.id) && states[config.id]?.phase !== "authorization-ready") states[config.id] = { ...states[config.id], phase: c.phase, authorizationUrl: undefined };
     }
-    this.snapshot = Object.freeze({ revision: this.snapshot.revision + 1, loaded: this.loaded, configuration: structuredClone(this.record.value), states, error: this.error });
+    const configuration = { ...structuredClone(this.record.value), connectors: [...this.record.value.connectors] };
+    if (this.remote) {
+      const hostIds = new Set([...this.remote.hostIds(), ...configuration.connectors.map(c => c.hostId), ...this.bindings.getSnapshot().bindings.map(b => b.hostId)]);
+      configuration.connectors = configuration.connectors.filter(c => c.kind !== "managed" || !this.remote!.owns(c.hostId));
+      for (const hostId of hostIds) if (this.remote.owns(hostId)) for (const row of this.remote.state(hostId)?.instances ?? []) {
+        const id = `headless:${hostId}:${row.id}`;
+        configuration.connectors.push({ id, hostId, server: row.id, title: row.title, kind: "managed" });
+        const connection = this.remote.state(hostId)?.connections.find(c => c.connectorId === row.id);
+        if (!this.operations.has(id)) states[id] = { phase: connection?.phase ?? "saved" };
+      }
+    }
+    this.snapshot = Object.freeze({ revision: this.snapshot.revision + 1, loaded: this.loaded, configuration, states, error: this.error });
     for (const listener of this.listeners) listener();
   }
 }

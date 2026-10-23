@@ -24,6 +24,7 @@
     "@opencraft/chat-runtime": "0.1.0",
     "@opencraft/composer-appserver": "0.1.0",
     "@opencraft/composer-core": "0.1.0",
-    "@opencraft/extension-contract": "0.1.0"
+    "@opencraft/extension-contract": "0.1.0",
+    "@opencraft/connector-runtime": "0.1.0"
   }
 }

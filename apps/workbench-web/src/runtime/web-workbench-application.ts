@@ -1,3 +1,4 @@
+import { ThreadSummaryPlugin } from "@opencraft/plugin-thread-summary";
 import { RemoteBrowserStorage } from '../browser/remote-browser-storage';
 import { supportsH264MediaSource } from '../browser/h264-media-source';
 import { RemoteBrowserSurfaceHost } from '../browser/remote-browser-surface-host';
@@ -92,6 +93,8 @@ export interface CreateWebWorkbenchApplicationOptions extends Omit<WebWorkbenchS
   /** Trusted local renderer plugins; owned and released with this Application. */
   readonly chatRenderExtensions?: readonly Plugin[];
   readonly deferOptionalFeatures?: boolean;
+  /** Optional trusted information module; the conversation owns its data. */
+  readonly threadSummary?: boolean;
   readonly conversationPresentation?: ConversationPresentationProvider;
   readonly browserMetadataStorage?: BrowserMetadataStorage;
   readonly browserNavigationPolicy?: BrowserNavigationPolicy;
@@ -174,6 +177,7 @@ export async function createWebWorkbenchApplication(
     await panelRuntime.install(TimelineBlockRendererRegistryService);
     await panelRuntime.install(BuiltinTimelineRendererPlugin);
     await panelRuntime.install(BuiltinWorkbenchPanelPlugin);
+    if (options.threadSummary !== false) await panelRuntime.install(ThreadSummaryPlugin);
     if (options.cloudDesktop) await panelRuntime.install(createCloudDesktopWorkbenchPanelPlugin(options.cloudDesktop));
     browserWorkbench = new BrowserWorkbenchCoordinator(
       browserPages,

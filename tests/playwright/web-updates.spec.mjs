@@ -85,6 +85,12 @@ test.beforeEach(async ({ page }) => {
   base = `http://127.0.0.1:${(await app.listen({ port: 0 })).port}`;
   await page.goto(`${base}/settings/updates`);
   await expect(button(page, 'check')).toBeVisible();
+  // The settings shell starts a one-shot automatic check when the persisted
+  // status has no checkedAt. Let that real background check settle before a
+  // test holds the next npm lookup; otherwise the hold can time out the
+  // automatic check and insert its error notice while a test is measuring the
+  // administrator form.
+  await expect.poll(async () => { const s = await status(page); return !!s.checkedAt && !s.checking; }, { timeout: 15_000 }).toBe(true);
 });
 test.afterEach(async () => {
   releaseLookup?.(); releaseDownload?.(); fixture.holdLookup(null); fixture.holdDownload(null);

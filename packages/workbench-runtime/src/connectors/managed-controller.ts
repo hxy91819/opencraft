@@ -1,4 +1,4 @@
-import type { AppServerClient } from "@opencraft/appserver-client";
+import type { ConnectorManagementClient } from "./headless-port";
 import type { ConnectorHostSnapshot, ConnectorInstance, ConnectorOAuthProgress, ConnectorProbe, ConnectorSave } from "@opencraft/connector-core";
 import type { ConnectorManager } from "./manager";
 import { managedSnapshot } from "./managed-provider";
@@ -11,10 +11,10 @@ const EMPTY: ManagedHostState = Object.freeze({ phase: "idle", data: null, error
 export class ManagedConnectorController {
   private readonly hosts = new Map<string, ManagedHostState>();
   private readonly revisions = new Map<string, number>();
-  private readonly subscriptions = new Map<string, { client: AppServerClient; stop(): void }>();
+  private readonly subscriptions = new Map<string, { client: ConnectorManagementClient; stop(): void }>();
   private readonly listeners = new Set<() => void>();
   private disposed = false;
-  constructor(private readonly manager: ConnectorManager, private readonly resolve: (hostId: string) => Promise<AppServerClient>) {}
+  constructor(private readonly manager: ConnectorManager, private readonly resolve: (hostId: string) => Promise<ConnectorManagementClient>) {}
   snapshot = (hostId: string) => this.hosts.get(hostId) ?? EMPTY;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
   private publish(hostId: string, state: ManagedHostState) { if (this.disposed) return; this.hosts.set(hostId, state); for (const listener of this.listeners) listener(); }

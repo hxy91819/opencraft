@@ -835,5 +835,22 @@
   "chat.image.close": "Tutup pratonton imej",
   "chat.link.openInBrowser": "Buka dalam pelayar",
   "chat.link.openExternal": "Buka dalam pelayar luaran",
-  "chat.link.copy": "Salin pautan"
+  "chat.link.copy": "Salin pautan",
+  "threadSummary.title": "Maklumat tugas",
+  "threadSummary.goal": "Matlamat",
+  "threadSummary.plan": "Pelan",
+  "threadSummary.files": "Fail yang diubah",
+  "threadSummary.activity": "Aktiviti",
+  "threadSummary.waiting": "Menunggu",
+  "threadSummary.working": "Sedang berjalan",
+  "threadSummary.complete": "Selesai",
+  "threadSummary.failed": "Gagal",
+  "threadSummary.stopped": "Dihentikan",
+  "threadSummary.recent": "Aktiviti terkini",
+  "threadSummary.added": "Ditambah",
+  "threadSummary.deleted": "Dipadam",
+  "threadSummary.modified": "Diubah",
+  "threadSummary.emptyTitle": "Gambaran tugas",
+  "threadSummary.empty": "Pelan, perubahan fail dan aktiviti akan dipaparkan semasa tugas berjalan.",
+  "threadSummary.history": "Daripada sejarah perbualan yang dimuatkan"
 }

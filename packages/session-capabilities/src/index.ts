@@ -9,6 +9,7 @@ export interface CapabilityResult { success: boolean; contentItems: { type: "inp
 export interface SessionCapabilityProvider {
   readonly id: string;
   tools(session: CapabilitySession): readonly CapabilityTool[];
+  formatResult?(value: unknown): CapabilityResult;
   call(session: CapabilitySession, name: string, args: unknown, signal: AbortSignal): Promise<unknown>;
 }
 export interface SessionCapabilityPort {
@@ -40,6 +41,7 @@ export class SessionCapabilities {
     const entry = this.catalog(session).get(name);
     if (!entry) throw new Error("Capability is not authorized for this session");
     const value = await entry.provider.call(Object.freeze({ ...session }), name, args, signal);
+    if (entry.provider.formatResult) return entry.provider.formatResult(value);
     return { success: true, contentItems: [{ type: "inputText", text: JSON.stringify(value) ?? "null" }] };
   }
   scoped(serverId: string): SessionCapabilityPort {

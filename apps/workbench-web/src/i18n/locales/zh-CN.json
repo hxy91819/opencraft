@@ -857,5 +857,22 @@
   "chat.image.close": "关闭图片预览",
   "chat.link.openInBrowser": "在浏览器中打开",
   "chat.link.openExternal": "在外部浏览器中打开",
-  "chat.link.copy": "复制链接"
+  "chat.link.copy": "复制链接",
+  "threadSummary.title": "任务信息",
+  "threadSummary.goal": "目标",
+  "threadSummary.plan": "计划",
+  "threadSummary.files": "更改的文件",
+  "threadSummary.activity": "活动",
+  "threadSummary.waiting": "等待中",
+  "threadSummary.working": "进行中",
+  "threadSummary.complete": "已完成",
+  "threadSummary.failed": "失败",
+  "threadSummary.stopped": "已停止",
+  "threadSummary.recent": "最近活动",
+  "threadSummary.added": "已添加",
+  "threadSummary.deleted": "已删除",
+  "threadSummary.modified": "已修改",
+  "threadSummary.emptyTitle": "任务进展，一目了然",
+  "threadSummary.empty": "计划、文件更改和活动会随任务进展显示在这里。",
+  "threadSummary.history": "根据已加载的会话记录整理"
 }
