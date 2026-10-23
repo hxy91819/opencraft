@@ -1,4 +1,3 @@
-import { LoadingRingIcon as LoaderCircle } from "@opencraft/design-system-web/action-icons";
 import type { SubmitIntent } from "@opencraft/composer-core";
 import { submittedMessageDisplay } from "@opencraft/workbench-runtime";
 import type { NewThreadDraftSnapshot } from "@opencraft/workbench-runtime";
@@ -41,7 +40,7 @@ export function PendingConversationPage({
             <ConversationDocumentContext.Provider value={documentContext}>
               <UserMessageBlock block={message} />
             </ConversationDocumentContext.Provider>
-            {conversation.phase === "submit-failed" ? (
+            {conversation.phase === "submit-failed" && (
               <section className="pending-conversation-error" role="alert">
                 <div>
                   <strong>Could not start this task</strong>
@@ -51,11 +50,6 @@ export function PendingConversationPage({
                   Try again
                 </button>
               </section>
-            ) : (
-              <div className="pending-conversation-status" role="status">
-                <LoaderCircle aria-hidden="true" size={15} />
-                <span>Starting task…</span>
-              </div>
             )}
   </div>;
   if (embedded) return content;

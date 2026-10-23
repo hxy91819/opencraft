@@ -3453,3 +3453,11 @@ owner, persistence store or inference request is introduced. History may be part
 structured plan/file records and explicit agent states contribute. Terminal completion never
 implies completion of a background process. Desktop and narrow presentation reuse the same
 controlled disclosure/scroll state while the conversation DOM stays mounted.
+
+### New conversation submission presentation
+
+While the immutable first Turn awaits authoritative Thread binding, the shared
+PendingConversationPage shows the submitted message and attachments without a
+startup status row or spinner. A rejected submission still exposes its error and
+explicit retry action. This presentation does not change creation, binding,
+queuing, or the Conversation footer's ownership of follow-up input.
