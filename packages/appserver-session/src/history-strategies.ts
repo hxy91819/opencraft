@@ -1,5 +1,5 @@
 import { Context, Service } from "@deepseek-ai/cordis";
-import type { AppServerClient } from "@opencraft/appserver-client";
+import { isHistoryResponseTooLargeError, type AppServerClient } from "@opencraft/appserver-client";
 import type {
   AppServerThread,
   AppServerThreadItem,
@@ -127,14 +127,19 @@ async function fetchItemsPage(
   cursor: string | null,
   limit: number,
   sortDirection: "asc" | "desc",
-): Promise<{ items: AppServerThreadItem[]; nextCursor: string | null }> {
-  const page = await context.client.request("thread/items/list", {
-    threadId: context.threadId,
-    turnId,
-    cursor,
-    limit,
-    sortDirection,
-  }, { timeoutMs: context.requestTimeoutMs, priority: "background" });
+): Promise<{ items: AppServerThreadItem[]; nextCursor: string | null; limit: number }> {
+  let page: ThreadItemsListResponse;
+  while (true) {
+    try {
+      page = await context.client.request("thread/items/list", {
+        threadId: context.threadId, turnId, cursor, limit, sortDirection,
+      }, { timeoutMs: context.requestTimeoutMs, priority: "background" });
+      break;
+    } catch (error) {
+      if (limit <= 1 || !isHistoryResponseTooLargeError(error)) throw error;
+      limit = Math.max(1, Math.floor(limit / 2));
+    }
+  }
   if (!Array.isArray(page.data)) throw new Error("thread/items/list returned a non-array data field");
   if (!(page.nextCursor === null || typeof page.nextCursor === "string")) {
     throw new Error("thread/items/list returned an invalid nextCursor");
@@ -143,7 +148,7 @@ async function fetchItemsPage(
     throw new Error(`thread/items/list returned an unchanged cursor for Turn ${turnId}`);
   }
   const items = page.data.map((entry) => extractItem(entry, turnId));
-  return { items: sortDirection === "desc" ? items.reverse() : items, nextCursor: page.nextCursor };
+  return { items: sortDirection === "desc" ? items.reverse() : items, nextCursor: page.nextCursor, limit };
 }
 
 async function fetchAllTurnItems(
@@ -155,16 +160,8 @@ async function fetchAllTurnItems(
   let cursor: string | null = null;
   let limit = 100;
   while (true) {
-    let page;
-    try {
-      page = await fetchItemsPage(context, turnId, cursor, limit, "asc");
-    } catch (error) {
-      if (limit > 1 && error instanceof Error && error.message.includes("decoded message length too large")) {
-        limit = Math.max(1, Math.floor(limit / 2));
-        continue;
-      }
-      throw error;
-    }
+    const page = await fetchItemsPage(context, turnId, cursor, limit, "asc");
+    limit = page.limit;
     const seenIds = new Set(items.map((item) => item.id));
     for (const item of page.items) if (!seenIds.has(item.id)) {
       seenIds.add(item.id);
@@ -231,7 +228,7 @@ async function loadPaginatedTurnItems(
     const itemIds = new Set<string>();
     const cursors = new Set<string | null>();
     let cursor: string | null = context.response.itemsBackwardsCursor ?? null;
-    let requestedOnce = false;
+    let requestedOnce = false, itemLimit = 100;
     while ((!requestedOnce || cursor !== null) && remainingBudget > 0) {
       if (cursors.has(cursor)) throw new Error(`thread/items/list repeated cursor ${String(cursor)} for Turn ${turn.id}`);
       cursors.add(cursor);
@@ -240,9 +237,10 @@ async function loadPaginatedTurnItems(
         context,
         turn.id,
         cursor,
-        Math.min(100, remainingBudget),
+        Math.min(itemLimit, remainingBudget),
         "desc",
       );
+      itemLimit = page.limit;
       const unique = page.items.filter((item) => {
         if (itemIds.has(item.id)) return false;
         itemIds.add(item.id);
@@ -309,7 +307,7 @@ async function loadDurablePage(context: ResumeHistoryContext, cursor: string | n
   } catch (error) {
     // Retain the existing adaptive Item pagination for transport frame limits.
     // Connection/permission failures remain failures, never hidden retries.
-    if (!(error instanceof Error) || !error.message.includes("decoded message length too large")) throw error;
+    if (!isHistoryResponseTooLargeError(error)) throw error;
     page = await fetchTurns(context, cursor, context.pageSize, "notLoaded");
   }
   const turns = await mapConcurrent(page.data, 5, async turn => ({
