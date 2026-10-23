@@ -91,7 +91,7 @@ try {
       return slot.left >= row.left && slot.right <= row.right && slot.right <= innerWidth;
     })), true, "every account's reset count stays inside its row");
     for (const address of ["two@example.test", "zero@example.test", "unknown@example.test"]) assert.equal((await page.locator("body").innerHTML()).includes(address), false, "default DOM and accessible labels must mask email");
-    assert.equal(await page.locator(".engine-account__details dd").first().textContent(), "t***@e***.test");
+    assert.equal(await page.locator(".engine-account__details dd").first().textContent(), "***wo@e***.test");
     const copyWidth = await page.locator('.engine-account__credit-policy .settings-control-row__copy').evaluate(el => el.getBoundingClientRect().width);
     assert.ok(copyWidth > width * (width === 390 ? .4 : .2), "preference copy has readable width");
     await page.screenshot({ path: join(output, `${theme}-${width}.png`), fullPage: true });
