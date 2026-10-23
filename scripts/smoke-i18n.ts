@@ -77,8 +77,37 @@ try {
   await page.waitForFunction(() => document.documentElement.dir === "ltr");
   await page.selectOption("#workbench-language", "zh-CN");
   await page.waitForFunction(() => document.querySelector("[data-imperative]")?.textContent === "设置");
+  // Actual shared UI consumers update in place, including an already-open modal.
+  const shared = page.locator("[data-shared-i18n]");
+  await shared.getByRole("button", { name: "展开表格", exact: true }).waitFor();
+  assert.equal(await shared.getByRole("button", { name: "取消语音输入", exact: true }).count(), 1);
+  await shared.getByRole("button", { name: "查看并移除", exact: true }).click();
+  const dialog = page.getByRole("alertdialog");
+  await dialog.getByText("移除尚未确认送达的消息？", { exact: true }).waitFor();
+  await page.evaluate(() => { (window as any).__i18nDialog = document.querySelector('[role="alertdialog"]'); });
+  await page.evaluate(() => (window as any).__localeFixture.switch("en-US"));
+  await dialog.getByText("Discard message with unconfirmed delivery?", { exact: true }).waitFor();
+  assert.equal(await page.evaluate(() => document.querySelector('[role="alertdialog"]') === (window as any).__i18nDialog), true);
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  assert.equal(await shared.getByText("User-authored queue message", { exact: true }).textContent(), "User-authored queue message");
+  assert.equal(await shared.getByRole("button", { name: "Cancel voice input", exact: true }).count(), 1);
+  await shared.getByRole("button", { name: "Expand table", exact: true }).click();
+  const tableDialog = page.getByRole("dialog", { name: "Table preview", exact: true });
+  await tableDialog.waitFor();
+  await page.evaluate(() => { (window as any).__i18nTable = document.querySelector('.chat-table-preview[open]'); });
+  await page.evaluate(() => (window as any).__localeFixture.switch("zh-CN"));
+  const localizedTableDialog = page.getByRole("dialog", { name: "表格预览", exact: true });
+  await localizedTableDialog.waitFor();
+  assert.equal(await page.evaluate(() => document.querySelector('.chat-table-preview[open]') === (window as any).__i18nTable), true);
+  assert.match(await localizedTableDialog.textContent(), /User heading.*User cell/s);
+  await localizedTableDialog.getByRole("button", { name: "关闭表格预览", exact: true }).click();
+  await shared.getByRole("button", { name: "预览图片", exact: true }).click();
+  await page.getByRole("button", { name: "关闭图片预览", exact: true }).waitFor();
+  await page.evaluate(() => (window as any).__localeFixture.switch("en-US"));
+  await page.getByRole("button", { name: "Close image preview", exact: true }).click();
+  await page.evaluate(() => (window as any).__localeFixture.switch("zh-CN"));
   const output = await mkdtemp(join(tmpdir(), "opencraft-i18n-"));
   await page.screenshot({ path: join(output, "zh-CN.png") });
   assert.deepEqual(errors, []);
-  console.log(`PASS ${desktop ? "Electron with production preload and native Menu" : "Chromium"}: real Composer/Intl/Settings/IndexedDB, live language switch, draft/focus/undo continuity, independent roots, persistence and RTL. Screenshot: ${output}/zh-CN.png`);
+  console.log(`PASS ${desktop ? "Electron with production preload and native Menu" : "Chromium"}: real Composer/Intl/Settings/IndexedDB, live language switch, shared dictation/queue/image/table controls and open-dialog continuity, draft/focus/undo continuity, independent roots, persistence and RTL. Screenshot: ${output}/zh-CN.png`);
 } finally { await desktop?.close(); await browser?.close(); await vite.close(); }

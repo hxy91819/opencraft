@@ -31,7 +31,7 @@ const fixture = {
   },
 };
 (window as any).__ownershipFixture = fixture;
-createRoot(window.document.getElementById("root")!).render(<OpenCraftComposer controller={controller}
+createRoot(window.document.getElementById("root")!, undefined, "zh-CN").render(<OpenCraftComposer controller={controller}
   onSubmit={intent => { sent.push(composerDocumentToPlainText(intent.document)); return false; }}
   selectionCatalog={{ agents: [], models: [{ id: "fixture", value: "fixture", label: "Fixture", isDefault: true,
     description: null, efforts: [], defaultEffort: null, inputModalities: ["text"] }], permissionProfiles: [] }}

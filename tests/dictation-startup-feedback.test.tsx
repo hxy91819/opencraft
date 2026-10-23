@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { IntlProvider } from "react-intl";
+import messages from "../apps/workbench-web/src/i18n/locales/zh-CN.json";
 import { JSDOM } from "jsdom";
 import { DictationFooter } from "../packages/composer-editor/src/dictation-footer";
 
@@ -9,10 +11,10 @@ function render(phase: "starting" | "listening" | "transcribing") {
   const previous = (globalThis as any).React;
   (globalThis as any).React = React;
   try {
-    return new JSDOM(renderToStaticMarkup(<DictationFooter interaction={{ kind: "dictation", phase,
+    return new JSDOM(renderToStaticMarkup(<IntlProvider locale="zh-CN" messages={messages}><DictationFooter interaction={{ kind: "dictation", phase,
       startedAt: phase === "starting" ? null : Date.now(), audioLevels: { subscribe: () => () => {} },
       cancel() {}, finish: async () => false,
-    }} canSend onSend={() => {}} onCancel={() => {}} />));
+    }} canSend onSend={() => {}} onCancel={() => {}} /></IntlProvider>));
   } finally { (globalThis as any).React = previous; }
 }
 
@@ -73,10 +75,10 @@ test("waveform respects live reduced motion and releases paint and listener owne
   const root = createRoot(dom.window.document.getElementById("root")!);
   const flush = () => { for (const [id, paint] of [...frames]) { frames.delete(id); paint(0); } };
   try {
-    await React.act(async () => root.render(<DictationFooter interaction={{ kind: "dictation", phase: "listening",
+    await React.act(async () => root.render(<IntlProvider locale="zh-CN" messages={messages}><DictationFooter interaction={{ kind: "dictation", phase: "listening",
       startedAt: null, audioLevels: { subscribe(listener) { sample = listener; subscribed = true; return () => { subscribed = false; }; } },
       cancel() {}, finish: async () => false,
-    }} canSend onSend={() => {}} onCancel={() => {}} />));
+    }} canSend onSend={() => {}} onCancel={() => {}} /></IntlProvider>));
     flush(); strokes = 0;
     sample(0.8);
     assert.equal(frames.size, 0, "reduced motion must not repaint for samples");

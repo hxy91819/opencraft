@@ -83,6 +83,10 @@ GitHub `opencraft-app/opencraft` 是目标核心上游，产品身份来源、�
 - 改表必须有从上一版本结构升级并保留业务数据的测试，以及已记录 checksum 不一致时拒绝打开的测试；空库测试不能替代升级测试。
 - hypernode 的 `initializeSchema` 保持与 executions 基线一致，OpenCraft 不得依赖构造器建表或升级；改表同时维护 executions 基线迁移与初始化声明的一致性，运行 `tests/dsh-execution-authority.test.ts` 指纹等价测试。已发布基线仍不可改写，后续版本追加迁移并让等价测试覆盖完整迁移链。
 
+## 国际化
+
+OpenCraft 所有自有客户端及内置插件的用户界面遵循[全项目国际化约束](docs/internationalization.md)与[locale authority](docs/platform-architecture.md#internationalization-authority)。新增或调整的可见/无障碍文案必须消费既有应用 IntlRuntime/IntlPort 和稳定 ID、英文 defaultMessage，包含动态状态、空态、错误和通知；不得把文案写死后依赖英文回退。用户内容/实体身份/协议/诊断不翻译。现有全项目检查与显式存量清单不表示所有旧界面已完成迁移，不为新增硬编码扩增 baseline。运行 check:i18n/test:i18n，并验证相关入口切语言保留草稿/焦点/选区；不要添加全局翻译器或重挂载编辑器。各客户端支持语言和原生 provider 接线以实际实现为准。
+
 ## UI 与设计系统
 
 新增或修改界面前，先读 [设计入口](design.md)，选择最接近的 Settings、任务/对象目录、Chat、Sidebar 或嵌入 App 范式，并查看对应真实消费者。执行方法见维护 Skill 的 [UI 工作流](.agents/skills/opencraft-maintenance/references/ui-design.md)：把范式落实为可见组合，从相关真实使用状态复核，记录实际看过的画面及判断；目录页继续按[组合规范与正反例](design/ui/collections.md)设计。默认延续 OpenCraft 现有设计语言，优先复用共享组件、交互原语和语义 token；缺少可复用能力时在正确 owner 扩展。用户明确指定视觉方向时按该方向调整，并保留可访问性与工作连续性。Token 数值仍由设计系统源码持有；隔离 App 的可用样式以实际宿主能力为准。不以无溢出、组件导入或生成截图代替视觉复核，不新增用户审批步骤。
