@@ -50,7 +50,7 @@
 ## Focused Source Findings
 
 - Built-in Agents creates exactly one `LocalAgentSettingsService(options.requestHost, "local")`; the existing view is already permanently bound to local independent of the active chat Host.
-- Its settings contribution currently carries `environment: { providerId: "vela.builtin-agents", hostId: "local" }` solely so the Shell redirects it to the Environment container. Removing that presentation metadata makes the same view a normal Settings page without changing the controller.
+- At that investigation baseline, its settings contribution carried Environment presentation metadata for the built-in local provider solely so the Shell redirected it to the Environment container. Removing that presentation metadata makes the same view a normal Settings page without changing the controller.
 - Both connected `App` and `HostlessWorkbench` independently reproduce Environment routing, navigation, breadcrumbs, content, and creation UI; both must be removed to avoid two different products.
 - Environment route APIs also exist in base navigation and navigation-transaction wrappers. They should be removed rather than left as dead public surface.
 - `SettingsPageContribution.environment` has one production contributor: Built-in Model Services. Other matches are Environment-only tests/smokes. It is presentation metadata, not model-service data ownership.
@@ -93,10 +93,10 @@
 
 ## Desktop Visual Finding
 
-- The first packaged preview visibly removed the Environment action and opened Model Services through Settings at `/settings/vela.builtin-agents.model-services`.
+- The first packaged preview visibly removed the Environment action and opened Model Services through the then-current Model Services Settings route (current route: `/settings/opencraft.builtin-agents.model-services`).
 - Its Settings group still rendered the old `Local Agent` label instead of the worktree source's `本机`. Root cause: the temporary borrowed `node_modules` contains npm workspace symlinks pointing back to `<checkout>/opencraft`, so package imports can mix main-checkout code with this worktree.
 - That preview is diagnostic only and cannot be final acceptance evidence. Local worktree-owned workspace links are required before rebuilding and rerunning gates.
-- The final current-worktree preview renders `Chat` and `Settings` only in Applications. Settings shows a `本机` group with one `模型服务` entry, selected at `/settings/vela.builtin-agents.model-services`.
+- The final current-worktree preview renders `Chat` and `Settings` only in Applications. Settings shows a `本机` group with one `模型服务` entry, selected on the Model Services Settings route (current route: `/settings/opencraft.builtin-agents.model-services`).
 - The existing provider navigation/detail surface remains intact; no Environment navigation, breadcrumb, overview or content container is mounted.
 
 ## Local Gate Environment Root Cause

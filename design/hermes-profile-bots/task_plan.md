@@ -3,7 +3,7 @@
 ## Hosted Room 群聊桥接（2026-09-16）
 
 - Hermes `groups.capabilities` 是唯一能力门禁；不支持或协商失败时保持 direct-only，不能影响 Bot、Agent 或模型目录。
-- `groups.create/list/state/log/send/stop/rename/disband/approve` 薄映射现有 `vela/bot-conversations` group topology；Room拥有身份、成员、历史、执行和authority，浏览器不建第二份群聊数据库。
+- `groups.create/list/state/log/send/stop/rename/disband/approve` 薄映射现有 `opencraft/bot-conversations` group topology；Room拥有身份、成员、历史、执行和authority，浏览器不建第二份群聊数据库。
 - Room ID是conversation ID；`authority_gateway_id + authority_epoch`是live epoch；Room event seq是游标。日志轮询只投影Server事件，失败不制造终态。
 - Hermes v1 roster创建后冻结，因此支持2–6 Bot创建但不声明`groupMembership`修改能力；成员变化需要重建房间。
 - Composer补齐`agent/list`：成功时Hermes Agent的`modelIds`来自`model.options`；协商失败返回空Agent页，不得令联合查询抹掉独立成功的模型目录。
