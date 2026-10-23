@@ -22,7 +22,9 @@ const messages = defineMessages({
   create: { id: "goal.create", defaultMessage: "Set a goal" },
   viewComplete: { id: "goal.viewComplete", defaultMessage: "View completed goal" },
   replaceDescription: { id: "goal.replaceDescription", defaultMessage: "Setting a new goal replaces the completed goal for this conversation." },
-  finishedWhileEditing: { id: "goal.finishedWhileEditing", defaultMessage: "This goal is complete. Set a new goal to pursue another result." },
+  finishedWhileEditing: { id: "goal.finishedWhileEditing", defaultMessage: "This goal is complete. Save your changes to continue pursuing it." },
+  saveAndResume: { id: "goal.saveAndResume", defaultMessage: "Save and resume" },
+  revert: { id: "goal.revert", defaultMessage: "Revert" },
   editTitle: { id: "goal.editTitle", defaultMessage: "Edit goal" },
   edit: { id: "goal.edit", defaultMessage: "Edit" },
   pause: { id: "goal.pause", defaultMessage: "Pause" },
@@ -161,7 +163,7 @@ export function ThreadGoalSurface({ threadId, goals, draftScope, onCreateGoal, d
   };
   const save = () => {
     const objective = draft.trim();
-    if (busy || disabled || creatingRef.current || (editorMode === "edit" && goal?.status === "complete")) return;
+    if (busy || disabled || !capability.write || creatingRef.current || (editorMode === "edit" && snapshot.goal === null)) return;
     if (!objective) { setActionError("objectiveRequired"); return; }
     run(async () => {
       if (newGoal) {
@@ -176,7 +178,7 @@ export function ThreadGoalSurface({ threadId, goals, draftScope, onCreateGoal, d
         }
       } else if (threadId !== null) {
         if (editorMode === "create") await goals.create(threadId, objective);
-        else await goals.set(threadId, { objective });
+        else await goals.set(threadId, { objective, ...(goal?.status === "complete" ? { status: "active" as const } : {}) });
       }
       if (presentationScope === currentScope.current) setEditorMode(null);
     });
@@ -269,7 +271,13 @@ export function ThreadGoalSurface({ threadId, goals, draftScope, onCreateGoal, d
               await goals.clear(threadId);
               if (presentationScope === currentScope.current) setEditorMode(null);
             })}><Trash2 size={16} aria-hidden="true" />{intl.formatMessage(messages.remove)}</Button> : null}
-            <Button onClick={() => setEditorMode(null)} disabled={busy}>{intl.formatMessage(messages.close)}</Button>
+            {capability.write && snapshot.goal !== null && threadId !== null ? <>
+              <Button variant="ghost" disabled={busy || disabled} onClick={() => openEditor(editorReturnFocus.current, "edit")}><Pencil size={16} aria-hidden="true" />{intl.formatMessage(messages.edit)}</Button>
+              <Button disabled={busy || disabled} onClick={() => run(async () => {
+                await goals.set(threadId, { status: "active" });
+                if (presentationScope === currentScope.current) setEditorMode(null);
+              })}><Play size={16} aria-hidden="true" />{intl.formatMessage(messages.resume)}</Button>
+            </> : <Button onClick={() => setEditorMode(null)} disabled={busy}>{intl.formatMessage(messages.close)}</Button>}
           </div>
         </> : <>
           <p>{intl.formatMessage(newGoal ? messages.newDescription : editorMode === "create" && completed ? messages.replaceDescription : editorMode === "edit" && completed ? messages.finishedWhileEditing : messages.description)}</p>
@@ -277,7 +285,8 @@ export function ThreadGoalSurface({ threadId, goals, draftScope, onCreateGoal, d
           {actionError ? <p role="alert">{intl.formatMessage(messages[actionError])}</p> : null}
           <div className="thread-goal__editor-actions">
             <Button variant="ghost" onClick={() => setEditorMode(null)} disabled={busy}>{intl.formatMessage(messages.cancel)}</Button>
-            <Button onClick={save} disabled={disabled || busy || !draft.trim() || (editorMode === "edit" && completed)}><Check size={16} aria-hidden="true" />{intl.formatMessage(newGoal ? messages.start : messages.save)}</Button>
+            {editorMode === "edit" ? <Button variant="ghost" disabled={busy || draft === goal?.objective} onClick={() => { setDraft(goal?.objective ?? ""); setActionError(null); }}>{intl.formatMessage(messages.revert)}</Button> : null}
+            <Button onClick={save} disabled={disabled || busy || !capability.write || !draft.trim() || (editorMode === "edit" && snapshot.goal === null)}><Check size={16} aria-hidden="true" />{intl.formatMessage(newGoal ? messages.start : editorMode === "edit" && completed ? messages.saveAndResume : messages.save)}</Button>
           </div>
         </>}
       </div>
