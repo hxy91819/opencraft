@@ -163,3 +163,19 @@ Deployment directories and running installations are not moved by
 source rebranding. Mac builds now produce `OpenCraft.app`, and scripts use
 explicit `OPENCRAFT_MAC_*` settings. Builds must be deployed separately; source renaming
 does not replace the running production website or Mac application.
+
+## Browser metadata identity
+
+Page, tab and conversation-binding metadata now writes `opencraft.*` keys.
+The Workbench owns the exact former-key map shared by Renderer and Electron;
+resource IDs, metadata payloads and authenticated remote storage fields remain
+unchanged. Current values, including empty arrays, supersede historical input.
+Read-time recovery keeps its source when persistence fails. Closing a resource
+writes empty current metadata, so old rows cannot revive it on reload.
+
+Electron accepts only current keys for writes and normalizes exact historical
+keys when reading its private metadata file. The next write persists that
+canonical projection. Remote promotion runs only for an empty server-owned
+state, retains server-scoped conversation bindings and leaves populated server
+state authoritative. The Router writes `opencraft.application-route.v8`;
+the former v7 namespace is read-only historical input.

@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./window-metrics": "./src/window-metrics.ts",
+    "./browser-metadata-identity": "./src/browser-metadata-identity.ts",
     "./connectors/configuration": "./src/connectors/configuration.ts"
   },
   "scripts": {

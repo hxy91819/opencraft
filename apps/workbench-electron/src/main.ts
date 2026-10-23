@@ -30,6 +30,7 @@ import { DesktopConnectorConfigurationStore } from "./connector-configuration-st
 import { SqliteDocumentStore as DesktopExtensionDataStore } from "@opencraft/document-storage/sqlite";
 import { registerExtensionDataIpc } from "./extension-data-ipc.js";
 import { workbenchWindowMetrics } from "@opencraft/workbench-runtime/window-metrics";
+import { browserMetadataKeys as browserMetadataIdentity, normalizeBrowserMetadata } from "@opencraft/workbench-runtime/browser-metadata-identity";
 import { resolveCodexExecutable } from "./codex-executable.js";
 
 import {
@@ -265,13 +266,13 @@ function registerDesktopProtocol(): void {
   if (!registered) throw new Error("Could not register the desktop login callback. Please reopen the installed app.");
 }
 
-const browserMetadataKeys = new Set(["vela.browser-pages.v1", "vela.browser-tabs.v1", "opencraft.browser-storage.v1", "vela.conversation-bindings.v1", "opencraft.browser-retired-storage.v1"]);
+const browserMetadataKeys = new Set<string>(Object.values(browserMetadataIdentity));
 const readBrowserMetadata = (): Record<string, string> => {
   const raw = createFilePrivateStorage(join(app.getPath("userData"), "browser-metadata")).read("state");
   if (raw === null) return {};
   const parsed = JSON.parse(raw);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid browser metadata");
-  return Object.fromEntries(Object.entries(parsed).filter(([key, value]) => browserMetadataKeys.has(key) && typeof value === "string")) as Record<string, string>;
+  return normalizeBrowserMetadata(parsed);
 };
 ipcMain.handle("opencraft:browser-state-read", event => {
   if (!trustedLoginCaller(event)) throw new Error("Untrusted browser metadata caller");
