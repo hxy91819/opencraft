@@ -112,8 +112,11 @@ try {
   await reading.waitFor();
   const rawOutput = await reading.textContent();
   assert.match(rawOutput, /^Success\nNo output\n/);
-  await editor.fill("command draft"); await page.keyboard.press("End");
+  await editor.fill("command draft");
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await page.keyboard.press("End");
   await page.keyboard.down("Shift"); await page.keyboard.press("ArrowLeft"); await page.keyboard.press("ArrowLeft"); await page.keyboard.press("ArrowLeft"); await page.keyboard.up("Shift");
+  assert.equal(await page.evaluate(() => window.getSelection()?.toString()), "aft", "establish the selection before switching language");
   await reading.evaluate((node: HTMLElement) => { node.scrollTop = 120; node.scrollLeft = 80; });
   await page.waitForFunction(() => { const node = document.querySelector<HTMLElement>('[data-command-result="reading"] pre'); return node?.scrollTop === 120 && node.scrollLeft === 80; });
   await page.evaluate(() => { (window as any).__commandLog = document.querySelector('[data-command-result="reading"] pre'); (window as any).__commandEditor = document.querySelector('.ProseMirror'); });
