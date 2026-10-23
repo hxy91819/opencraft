@@ -48,6 +48,22 @@ unsubscribe does not mean its durable catalog row disappears. Active turns are
 never cancelled to refresh tools. Ephemeral inference threads cannot gain these
 capabilities.
 
+Refresh preparation is single-flight per thread and physical connection. Callers
+resolve the current provider configuration after waiting; they cannot reinstall
+an older captured value. The applied snapshot uses structural equality, so JSON
+key order alone does not trigger native work. Provider values are cloned before
+native awaits. Configuration is confirmed only after settings restoration;
+the previous confirmation is invalidated before native configuration changes;
+failed or retired preparations cannot publish success, send a turn, or continue
+native mutations into a later connection. A blocked thread does not serialize
+other threads. Both resume calls exclude turns and status reads exclude history.
+The first lightweight resume preserves native settings; the second applies the
+thread-local MCP override. The present native settings API has no thread-local
+MCP update field, so this change retains that boundary rather than substituting
+a daemon-wide reload. This is configuration preparation, not a second execution
+or history owner. Live native settings and provider authorization remain their
+existing authorities.
+
 A new Codex session may have no rollout until its first accepted turn. IM
 creation therefore installs a reserved MCP entry at `thread/start`, binds the
 returned ID and commits message admission before starting execution. This avoids
