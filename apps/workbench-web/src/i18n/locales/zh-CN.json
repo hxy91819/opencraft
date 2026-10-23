@@ -814,5 +814,8 @@
   "chat.question.offline": "连接后即可回答",
   "chat.question.failure": "回答未发送，选择已保留，请重试。",
   "chat.question.retry": "选择已保留，请重试",
-  "panel.sideChat": "新建侧边聊天"
+  "panel.sideChat": "新建侧边聊天",
+  "sidebar.browser.tabs": "{count} 个浏览器标签页",
+  "sidebar.browser.closeAll": "关闭全部浏览器标签页",
+  "sidebar.browser.failed": "未能更新浏览器标签页，请重试。"
 }

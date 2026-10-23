@@ -1878,3 +1878,8 @@ under its exclusive transport; active inventory always preserves the process. Th
 last explicit close releases a stale idle transport so the next open can upgrade.
 An unknown script identity preserves the owner. This is not native binary hot swap:
 existing live Tabs adopt native helper fixes after draining, not through DOM reload.
+
+## Conversation list resource management
+Conversation rows expose the logical tabs held by their canonical Host+Thread binding, including tabs retained without a visible presentation. The coordinator owns a stable, per-conversation subscribable metadata projection (tab identity, title and URL); reads do not create a binding, open a panel, prepare a surface or attach to a native page. Title/navigation updates reuse unchanged projections and notify only the affected conversation. Binding promotion also refreshes the directory.
+
+The row resource menu lists tab titles, opens an existing tab in its original scope, and offers explicit close-all for that conversation. It shares the Sidebar's exclusive menu owner. Leaving the conversation or dismissing this menu does not destroy tabs or take input control. Counts describe retained logical tabs, not measured CPU or memory, native liveness or viewer/controller ownership.

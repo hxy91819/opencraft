@@ -2374,6 +2374,17 @@ held contacts without resetting the video. Human gesture acquisition preserves
 local synchronous focus for system keyboards. Disconnect and park retain the
 tab; explicit logical close retires every viewer and the native page.
 
+### Conversation browser resources
+
+Conversation rows expose retained tab counts and a menu to reopen existing tabs
+or explicitly close all tabs owned by that Host/Thread scope. Reading the directory
+never initializes a page or surface; counts are logical resources rather than
+measured memory or process liveness. Resource menus share the sidebar menu owner
+with conversation actions and participant menus. Navigation, title, status and
+participant controls retain separate tracks on compact and touch rows. Closing a
+menu or leaving a conversation retains tabs; explicit close uses the existing
+resource retirement path.
+
 ### Browser backing layout and aperture
 
 Browser layout consumes the current content slot, while the Shell aperture clips
