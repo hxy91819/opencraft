@@ -14,7 +14,7 @@ import {CodexAccountsService} from '/plugins/builtin-agents/src/codex-accounts/s
 import {buildOpenCraftThemeCssProperties,opencraftNeutralThemePalette} from '/packages/design-system/src/theme-engine.ts';
 import '/apps/workbench-web/src/styles/app.scss';
 import '/apps/workbench-web/src/styles/settings-panel.scss';
-import '/apps/workbench-web/src/styles/codex-accounts.scss';
+import '/apps/workbench-web/src/styles/engine-accounts.scss';
 const mode=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
 document.documentElement.dataset.theme=mode;
 for(const [key,value] of Object.entries(buildOpenCraftThemeCssProperties(mode,opencraftNeutralThemePalette[mode]))) document.documentElement.style.setProperty(key,value);
@@ -56,18 +56,18 @@ try {
     page.on("pageerror", error => errors.push(error.message));
     await page.addInitScript("window.__name=value=>value;");
     await page.goto(url);
-    await page.locator(".codex-account__reset-credits strong").first().waitFor();
-    assert.deepEqual(await page.locator(".codex-account__reset-credits strong").allTextContents(), ["2 张", "0 张", "—"]);
-    await page.locator(".codex-account__disclosure").first().click();
+    await page.locator(".engine-account__reset-credits strong").first().waitFor();
+    assert.deepEqual(await page.locator(".engine-account__reset-credits strong").allTextContents(), ["2 张", "0 张", "—"]);
+    await page.locator(".engine-account__disclosure").first().click();
     await page.getByText("重置券最近确认", { exact: true }).waitFor();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    assert.equal(await page.locator(".codex-account__reset-credits").evaluateAll(elements => elements.every(element => {
+    assert.equal(await page.locator(".engine-account__reset-credits").evaluateAll(elements => elements.every(element => {
       const slot = element.getBoundingClientRect();
-      const row = element.closest(".codex-account__row")!.getBoundingClientRect();
+      const row = element.closest(".engine-account__row")!.getBoundingClientRect();
       return slot.left >= row.left && slot.right <= row.right && slot.right <= innerWidth;
     })), true, "every account's reset count stays inside its row");
     for (const address of ["two@example.test", "zero@example.test", "unknown@example.test"]) assert.equal((await page.locator("body").innerHTML()).includes(address), false, "default DOM and accessible labels must mask email");
-    assert.equal(await page.locator(".codex-account__details dd").first().textContent(), "***wo@e***.test");
+    assert.equal(await page.locator(".engine-account__details dd").first().textContent(), "***wo@e***.test");
     await page.getByRole("button", { name: "***wo@e***.test 的操作" }).click();
     await page.getByRole("menuitem", { name: "移除账户" }).click();
     const confirmation = page.getByRole("alertdialog");
@@ -80,13 +80,13 @@ try {
     await page.screenshot({ path: join(output, `${theme}-${width}.png`), fullPage: true });
     await page.getByRole("button", { name: "***wo@e***.test 的操作" }).click();
     await page.getByRole("menuitem", { name: "刷新用量" }).click();
-    await page.waitForFunction(() => document.querySelector(".codex-account__reset-credits strong")?.textContent === "4 张");
+    await page.waitForFunction(() => document.querySelector(".engine-account__reset-credits strong")?.textContent === "4 张");
     await page.locator('[role="menu"]').waitFor({ state: "detached" });
     await page.evaluate(() => { (window as any).failRefresh = true; });
     await page.getByRole("button", { name: "***wo@e***.test 的操作" }).click();
     await page.getByRole("menuitem", { name: "刷新用量" }).click();
     await page.getByRole("alert").getByText("合成刷新失败：***wo@e***.test", { exact: true }).first().waitFor();
-    assert.equal(await page.locator(".codex-account__reset-credits strong").first().textContent(), "4 张");
+    assert.equal(await page.locator(".engine-account__reset-credits strong").first().textContent(), "4 张");
     assert.equal((await page.locator("body").innerHTML()).includes("two@example.test"), false);
     const calls = await page.evaluate(() => (window as any).calls as string[]);
     assert.deepEqual(calls, ["opencraft/codex/accounts/list", "opencraft/codex/accounts/refresh", "opencraft/codex/accounts/refresh"]);

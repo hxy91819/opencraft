@@ -1201,7 +1201,7 @@ test("server-initiated approvals and questions remain pending until an exact typ
   await new Promise((resolve) => setTimeout(resolve, 0));
   const setupRoleRequestId = encodeServerRequestId("setup-role-rpc");
   await broker.respond(existingKey, {
-    type: "setup-codex-step",
+    type: "setup-step",
     requestId: setupRoleRequestId,
     step: "role",
     action: "submit",

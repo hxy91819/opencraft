@@ -1,5 +1,5 @@
 /** Additive recovery metadata; published metering v6 remains immutable. */
-export const CODEX_HOST_TOKEN_USAGE_RUNTIME = `
+export const OPENCRAFT_HOST_TOKEN_USAGE_RUNTIME = `
 ALTER TABLE token_usage_sources ADD COLUMN observed_ms INTEGER NOT NULL DEFAULT 0;
 CREATE TABLE token_usage_submissions (
   server_id TEXT NOT NULL, thread_id TEXT NOT NULL, input_id TEXT NOT NULL,

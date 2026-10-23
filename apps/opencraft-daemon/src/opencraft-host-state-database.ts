@@ -1,15 +1,15 @@
-import { CODEX_HOST_TOKEN_USAGE_FROZEN } from "./token-usage-frozen-schema.js";
-import { CODEX_HOST_TOKEN_USAGE_ACTORS } from "./token-usage-actor-schema.js";
-import { CODEX_HOST_TOKEN_USAGE_ATTEMPTS } from "./token-usage-attempt-schema.js";
-import { CODEX_HOST_TOKEN_USAGE_QUERY } from "./token-usage-query-schema.js";
-import { CODEX_HOST_TOKEN_USAGE_COUNTERS } from "./token-usage-counter-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_FROZEN } from "./token-usage-frozen-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_ACTORS } from "./token-usage-actor-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_ATTEMPTS } from "./token-usage-attempt-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_QUERY } from "./token-usage-query-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_COUNTERS } from "./token-usage-counter-schema.js";
 import { join } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { openManagedDatabase, createSchemaValidator, createMissingLegacyObjects, type DatabaseOutcome } from "@opencraft/sqlite-node";
-import { CODEX_HOST_TOKEN_USAGE } from "./token-usage-schema.js";
-import { CODEX_HOST_TOKEN_USAGE_RUNTIME } from "./token-usage-runtime-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE } from "./token-usage-schema.js";
+import { OPENCRAFT_HOST_TOKEN_USAGE_RUNTIME } from "./token-usage-runtime-schema.js";
 
-export const CODEX_HOST_STATE_BASELINE = `
+export const OPENCRAFT_HOST_STATE_BASELINE = `
 CREATE TABLE codex_host_queue (
         id TEXT PRIMARY KEY,
         thread_id TEXT NOT NULL,
@@ -39,7 +39,7 @@ CREATE TABLE ioa_message_presence (
 `;
 
 /** v2 is additive; the published v1 SQL above is intentionally unchanged. */
-export const CODEX_HOST_BOT_STATE = `
+export const OPENCRAFT_HOST_BOT_STATE = `
 CREATE TABLE codex_bot_rooms (
   thread_id TEXT PRIMARY KEY, created_ms INTEGER NOT NULL,
   cwd TEXT, draft INTEGER NOT NULL DEFAULT 0, native_thread_id TEXT
@@ -50,20 +50,20 @@ CREATE TABLE codex_bot_message_slots (
   native_id TEXT, PRIMARY KEY(room_id, turn_id, kind, ordinal), UNIQUE(room_id, turn_id, kind, native_id)
 );
 `;
-export const CODEX_HOST_IOA_CREATORS = `
+export const OPENCRAFT_HOST_IOA_CREATORS = `
 CREATE TABLE ioa_thread_creators (
   thread_id TEXT PRIMARY KEY, login_name TEXT
 ) STRICT;
 `;
 /** Provenance is independent of the preserved author of a copied message. */
-export const CODEX_HOST_SENDER_ORIGINS = `
+export const OPENCRAFT_HOST_SENDER_ORIGINS = `
 CREATE TABLE message_sender_origins (
   thread_id TEXT NOT NULL, client_message_id TEXT NOT NULL, source_thread_id TEXT NOT NULL,
   PRIMARY KEY(thread_id,client_message_id)
 ) STRICT;
 `;
-const LEGACY_SCHEMA = CODEX_HOST_STATE_BASELINE + CODEX_HOST_BOT_STATE;
-export const CODEX_HOST_CATALOG = `
+const LEGACY_SCHEMA = OPENCRAFT_HOST_STATE_BASELINE + OPENCRAFT_HOST_BOT_STATE;
+export const OPENCRAFT_HOST_CATALOG = `
 CREATE TABLE codex_thread_catalog (
   thread_id TEXT PRIMARY KEY, metadata_json TEXT NOT NULL,
   updated_at REAL NOT NULL, archived INTEGER NOT NULL CHECK(archived IN (0,1)),
@@ -80,8 +80,8 @@ CREATE TABLE ioa_presence_sync (
   thread_id TEXT PRIMARY KEY, reconciled_at_ms INTEGER NOT NULL
 ) STRICT;
 `;
-const PRE_TOKEN_USAGE_SCHEMA = LEGACY_SCHEMA + CODEX_HOST_IOA_CREATORS + CODEX_HOST_SENDER_ORIGINS + CODEX_HOST_CATALOG;
-const FULL_SCHEMA = PRE_TOKEN_USAGE_SCHEMA + CODEX_HOST_TOKEN_USAGE + CODEX_HOST_TOKEN_USAGE_RUNTIME + CODEX_HOST_TOKEN_USAGE_COUNTERS + CODEX_HOST_TOKEN_USAGE_QUERY + CODEX_HOST_TOKEN_USAGE_ATTEMPTS + CODEX_HOST_TOKEN_USAGE_ACTORS + CODEX_HOST_TOKEN_USAGE_FROZEN;
+const PRE_TOKEN_USAGE_SCHEMA = LEGACY_SCHEMA + OPENCRAFT_HOST_IOA_CREATORS + OPENCRAFT_HOST_SENDER_ORIGINS + OPENCRAFT_HOST_CATALOG;
+const FULL_SCHEMA = PRE_TOKEN_USAGE_SCHEMA + OPENCRAFT_HOST_TOKEN_USAGE + OPENCRAFT_HOST_TOKEN_USAGE_RUNTIME + OPENCRAFT_HOST_TOKEN_USAGE_COUNTERS + OPENCRAFT_HOST_TOKEN_USAGE_QUERY + OPENCRAFT_HOST_TOKEN_USAGE_ATTEMPTS + OPENCRAFT_HOST_TOKEN_USAGE_ACTORS + OPENCRAFT_HOST_TOKEN_USAGE_FROZEN;
 // The early surviving source and deployed CREATE/ALTER sequence prove these
 // room layouts. Only known objects/constraints are accepted; records are retained.
 const LEGACY_ROOM_COLUMNS = [
@@ -105,7 +105,7 @@ const legacyMigration = {
     const columns = database.prepare("PRAGMA table_info(codex_bot_rooms)").all().map(row => String(row.name));
     if (columns.length && columns.join(",") !== "thread_id,created_ms,cwd,draft,native_thread_id") {
       database.exec("ALTER TABLE codex_bot_rooms RENAME TO codex_bot_rooms_legacy");
-      database.exec(CODEX_HOST_BOT_STATE.slice(0, CODEX_HOST_BOT_STATE.indexOf("CREATE TABLE codex_bot_commands")));
+      database.exec(OPENCRAFT_HOST_BOT_STATE.slice(0, OPENCRAFT_HOST_BOT_STATE.indexOf("CREATE TABLE codex_bot_commands")));
       const existing = (name: string, fallback: string) => columns.includes(name) ? name : fallback;
       database.exec(`INSERT INTO codex_bot_rooms(thread_id,created_ms,cwd,draft,native_thread_id)
         SELECT thread_id,created_ms,${existing("cwd", "NULL")},${existing("draft", "0")},${existing("native_thread_id", "NULL")}
@@ -116,19 +116,19 @@ const legacyMigration = {
 };
 
 /** Queue and message provenance share the existing per-Host file and transaction owner. */
-export const CODEX_HOST_STATE_MIGRATIONS = [
-  { version: 1, name: "codex-host-state", sql: CODEX_HOST_STATE_BASELINE },
-  { version: 2, name: "codex-bot-state", sql: CODEX_HOST_BOT_STATE },
-  { version: 3, name: "ioa-thread-creators", sql: CODEX_HOST_IOA_CREATORS },
-  { version: 4, name: "message-sender-origins", sql: CODEX_HOST_SENDER_ORIGINS },
-  { version: 5, name: "durable-thread-catalog", sql: CODEX_HOST_CATALOG },
-  { version: 6, name: "token-usage-metering", sql: CODEX_HOST_TOKEN_USAGE },
-  { version: 7, name: "token-usage-recovery", sql: CODEX_HOST_TOKEN_USAGE_RUNTIME },
-  { version: 8, name: "token-usage-native-counters", sql: CODEX_HOST_TOKEN_USAGE_COUNTERS },
-  { version: 9, name: "token-usage-query-indexes", sql: CODEX_HOST_TOKEN_USAGE_QUERY },
-  { version: 10, name: "token-usage-delivery-attempts", sql: CODEX_HOST_TOKEN_USAGE_ATTEMPTS },
-  { version: 11, name: "token-usage-actor-projections", sql: CODEX_HOST_TOKEN_USAGE_ACTORS },
-  { version: 12, name: "token-usage-frozen-coverage", sql: CODEX_HOST_TOKEN_USAGE_FROZEN },
+export const OPENCRAFT_HOST_STATE_MIGRATIONS = [
+  { version: 1, name: "codex-host-state", sql: OPENCRAFT_HOST_STATE_BASELINE },
+  { version: 2, name: "codex-bot-state", sql: OPENCRAFT_HOST_BOT_STATE },
+  { version: 3, name: "ioa-thread-creators", sql: OPENCRAFT_HOST_IOA_CREATORS },
+  { version: 4, name: "message-sender-origins", sql: OPENCRAFT_HOST_SENDER_ORIGINS },
+  { version: 5, name: "durable-thread-catalog", sql: OPENCRAFT_HOST_CATALOG },
+  { version: 6, name: "token-usage-metering", sql: OPENCRAFT_HOST_TOKEN_USAGE },
+  { version: 7, name: "token-usage-recovery", sql: OPENCRAFT_HOST_TOKEN_USAGE_RUNTIME },
+  { version: 8, name: "token-usage-native-counters", sql: OPENCRAFT_HOST_TOKEN_USAGE_COUNTERS },
+  { version: 9, name: "token-usage-query-indexes", sql: OPENCRAFT_HOST_TOKEN_USAGE_QUERY },
+  { version: 10, name: "token-usage-delivery-attempts", sql: OPENCRAFT_HOST_TOKEN_USAGE_ATTEMPTS },
+  { version: 11, name: "token-usage-actor-projections", sql: OPENCRAFT_HOST_TOKEN_USAGE_ACTORS },
+  { version: 12, name: "token-usage-frozen-coverage", sql: OPENCRAFT_HOST_TOKEN_USAGE_FROZEN },
 ] as const;
 
 export class OpenCraftHostStateDatabase {
@@ -137,7 +137,7 @@ export class OpenCraftHostStateDatabase {
   constructor(directory: string) {
     const path = join(directory, "codex-host-queue.sqlite");
     const managed = openManagedDatabase({ path, legacyPolicy: "reject-unknown", validateSchema: createSchemaValidator(FULL_SCHEMA),
-      migrations: CODEX_HOST_STATE_MIGRATIONS, legacyMigration });
+      migrations: OPENCRAFT_HOST_STATE_MIGRATIONS, legacyMigration });
     this.database = managed.database;
     this.outcome = managed.outcome;
   }

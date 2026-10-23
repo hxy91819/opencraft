@@ -35,12 +35,12 @@ export interface ThreadHandoffStep {
   readonly status: ThreadHandoffStepStatus;
 }
 
-export interface CodexAppThreadNavigationTarget {
+export interface ThreadToolNavigationTarget {
   readonly threadId: string;
   readonly displayName: "Chat";
 }
 
-const CODEX_APP_THREAD_TOOL_NAMES = new Set([
+const THREAD_TOOL_NAMES = new Set([
   "fork_thread",
   "create_thread",
   "list_threads",
@@ -110,13 +110,13 @@ function dynamicResult(block: ToolCallTimelineBlock): Readonly<Record<string, un
 export function isCodexAppThreadTool(block: ToolCallTimelineBlock): boolean {
   return block.kind === "dynamic"
     && block.namespace === "codex_app"
-    && CODEX_APP_THREAD_TOOL_NAMES.has(block.name);
+    && THREAD_TOOL_NAMES.has(block.name);
 }
 
 /** `read_thread` and `send_message_to_thread` are direct navigation affordances. */
-export function codexAppThreadNavigationTarget(
+export function threadToolNavigationTarget(
   block: ToolCallTimelineBlock,
-): CodexAppThreadNavigationTarget | null {
+): ThreadToolNavigationTarget | null {
   if (!isCodexAppThreadTool(block)) return null;
   if (block.name !== "read_thread" && block.name !== "send_message_to_thread") return null;
   const input = object(block.input);

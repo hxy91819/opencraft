@@ -200,7 +200,7 @@ function FileGlyph() {
 
 export function createFileCitationRenderer(resources: ChatResourcePolicyService) {
   return function FileCitationRenderer({ node, context }: ChatNodeRendererProps) {
-    if (node.kind !== "directive" || node.name !== "codex-file-citation") return null;
+    if (node.kind !== "directive" || node.name !== "file-citation") return null;
     const presentation = chatFileCitationPresentation(node);
     if (presentation === null) return <>{node.raw}</>;
     const decision = resources.resolve(presentation.target, context);

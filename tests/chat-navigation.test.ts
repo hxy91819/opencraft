@@ -96,10 +96,10 @@ test("projection barrier resolves only the exact ThreadView commit and is aborta
     getSnapshot: () => ({
       revision: replicaRevision,
       storageKey: "test",
-      scope: "codex-thread:ssh:fixture:thread-one",
+      scope: "appserver-thread:ssh:fixture:thread-one",
       phase: "live",
       authoritative: true,
-      epoch: "codex-v3:ssh:fixture:7",
+      epoch: "appserver-v3:ssh:fixture:7",
       nextSeq: replicaRevision + 1,
       journalStartSeq: 1,
       entities: new Map(),
@@ -252,7 +252,7 @@ test("V3 source enumerates lightweight Turns and hydrates only the hovered Turn"
     turnKey: "turn-2",
     itemId: "turn-2:user",
     anchorId: "v3:turn-2:user:0",
-    generation: "codex-v3:ssh:fixture:7",
+    generation: "appserver-v3:ssh:fixture:7",
     projectionRevision: 23,
     targetVersion: '["turn-2","turn-2:user"]',
   });

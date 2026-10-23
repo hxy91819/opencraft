@@ -1,5 +1,5 @@
 
-export interface CodexUserMessageSemantics {
+export interface UserMessageSemantics {
   readonly message: string;
   readonly goal: boolean;
   readonly referencesPriorConversation: boolean;
@@ -8,6 +8,7 @@ export interface CodexUserMessageSemantics {
   readonly autoResolveSync: boolean;
 }
 
+/** Native prompt envelope markers; preserve their exact input spelling. */
 export const CODEX_USER_REQUEST_MARKER = /## My request(?: for Codex)?:/g;
 export const CODEX_REVIEW_MODE_HEADER = "## Code review guidelines:";
 export const CODEX_PULL_REQUEST_FIX_HEADER = "## Pull request fix:";
@@ -28,22 +29,22 @@ function requestBoundary(text: string): { first: number; end: number } | null {
   return end === -1 ? null : { first, end };
 }
 
-export function extractLastCodexUserRequest(promptContext: string): string {
+export function extractLastUserRequest(promptContext: string): string {
   const boundary = requestBoundary(promptContext);
   return boundary === null ? promptContext : promptContext.slice(boundary.end).trim();
 }
 
-export function stripCodexGoalDirective(message: string): string | null {
+export function stripGoalDirective(message: string): string | null {
   const candidate = message.trimStart();
   if (candidate === "/goal") return "";
   return candidate.startsWith("/goal ") ? candidate.slice(6).trimStart() : null;
 }
 
-export function deriveCodexUserMessageSemantics(rawMessage: string): CodexUserMessageSemantics {
+export function deriveUserMessageSemantics(rawMessage: string): UserMessageSemantics {
   const boundary = requestBoundary(rawMessage);
   const context = boundary === null ? rawMessage : rawMessage.slice(0, boundary.first);
   const request = boundary === null ? rawMessage : rawMessage.slice(boundary.end).trim();
-  const directive = stripCodexGoalDirective(request);
+  const directive = stripGoalDirective(request);
   const reviewMode = context.includes(CODEX_REVIEW_MODE_HEADER);
   const pullRequestFixMode = context.includes(CODEX_PULL_REQUEST_FIX_HEADER);
   return {

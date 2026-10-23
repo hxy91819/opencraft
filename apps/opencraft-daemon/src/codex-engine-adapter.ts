@@ -21,14 +21,14 @@ import { CodexTokenUsageRuntime } from "./token-usage-runtime.js";
 import { CodexThreadTitles } from "./codex-thread-titles.js";
 import { DurableThreadCatalog } from "./durable-thread-catalog.js";
 import { ThreadIdentity, assertSubmissionIdentity, readThreadMessageIds } from "./thread-identity.js";
-import { projectCodexMessageResult, projectCodexMessageNotification } from "./codex-message-projection.js";
+import { projectThreadMessageResult, projectThreadMessageNotification } from "./thread-message-projection.js";
 import { OpenCraftMessageAttachments } from "./opencraft-message-attachments.js";
 import { CodexThreadPins } from "./codex-thread-pins.js";
 import { CodexCoreBridge } from "./codex-core-bridge.js";
 import { CodexNativeCoreTransport } from "./codex-native-core-transport.js";
 import { TasksService, TasksFault } from "@opencraft/plugin-tasks/server";
 import { CODEX_NATIVE_SHARED_METHODS, discoverNativeCodexGoalCapability, projectSharedNativeCodexInitialize } from "./codex-native-surface.js";
-import { projectCodexAttachmentNotification, projectCodexAttachmentResult } from "./codex-message-attachment-projection.js";
+import { projectThreadAttachmentNotification, projectThreadAttachmentResult } from "./thread-message-attachment-projection.js";
 
 import type { DuplexTransport, TransportStatus, TransportSubmissionContext } from "@opencraft/appserver-client/transport";
 import { LOGICAL_CLIENT_FIELD } from "@opencraft/app-host-protocol";
@@ -1205,12 +1205,12 @@ export class CodexEngineAdapter implements DuplexTransport {
           outcome: "result" in message ? "succeeded" : "failed", pid: this.child?.pid ?? null,
         });
         if ("result" in message) this.observeMetadataResult(pending.method, pending.params, message.result, pending.metadataSender);
-        if (this.messageSenders && "result" in message) message = { ...message, result: projectCodexMessageResult(
+        if (this.messageSenders && "result" in message) message = { ...message, result: projectThreadMessageResult(
           this.projectSender, pending.method, pending.params, message.result) };
         if (this.validClientRequest(pending)) this.emit({
           ...message,
           ...(this.messageAttachments && "result" in message ? {
-            result: projectCodexAttachmentResult(this.messageAttachments, pending.method, pending.params, message.result),
+            result: projectThreadAttachmentResult(this.messageAttachments, pending.method, pending.params, message.result),
           } : {}),
           id: pending.originalId,
         }, pending.clientId);
@@ -1271,8 +1271,8 @@ export class CodexEngineAdapter implements DuplexTransport {
     if (message.method === "thread/goal/cleared" && threadId) this.noteGoal(threadId, null);
     try { this.threadMetadata?.observeNotification(message); }
     catch { this.diagnostic({ event: "thread-metadata-observation-failed" }); }
-    if (this.messageSenders) message = projectCodexMessageNotification(this.projectSender, message);
-    if (this.messageAttachments) message = projectCodexAttachmentNotification(this.messageAttachments, message);
+    if (this.messageSenders) message = projectThreadMessageNotification(this.projectSender, message);
+    if (this.messageAttachments) message = projectThreadAttachmentNotification(this.messageAttachments, message);
     const targets = threadId ? this.threadTargets(threadId) : [];
     if (threadId && targets.length === 0) return;
     if (targets.length === 0) this.emit(message);

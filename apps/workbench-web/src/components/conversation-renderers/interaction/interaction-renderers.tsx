@@ -436,12 +436,12 @@ function OptionPickerBlock({ block }: { block: Extract<TimelineBlock, { type: "o
   );
 }
 
-function SetupStepBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-codex-step" }> }) {
+function SetupStepBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-step" }> }) {
   if (block.step === "context") return <SetupContextPickerBlock block={block} />;
   return block.step === "role" ? <SetupRolePickerBlock block={block} /> : <SetupTaskPickerBlock block={block} />;
 }
 
-function SetupRolePickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-codex-step" }> }) {
+function SetupRolePickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-step" }> }) {
   const submission = useInteractionSubmission(block.requestId);
   const [selectedRoles, setSelectedRoles] = useInteractionDraftState<readonly string[]>("setupRoles", []);
   const reply = (action: "submit" | "skip" | "dismiss") => void submission.submit({
@@ -463,7 +463,7 @@ function SetupRolePickerBlock({ block }: { block: Extract<TimelineBlock, { type:
   </section>;
 }
 
-function SetupTaskPickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-codex-step" }> }) {
+function SetupTaskPickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-step" }> }) {
   const submission = useInteractionSubmission(block.requestId);
   const [selected, setSelected] = useInteractionDraftState<string | null>("setupTask", null);
   const [other, setOther] = useInteractionDraftState("setupTaskOther", "");
@@ -484,7 +484,7 @@ function SetupTaskPickerBlock({ block }: { block: Extract<TimelineBlock, { type:
   </section>;
 }
 
-function SetupContextPickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-codex-step" | "setup-context-picker" }> }) {
+function SetupContextPickerBlock({ block }: { block: Extract<TimelineBlock, { type: "setup-step" | "setup-context-picker" }> }) {
   const submission = useInteractionSubmission(block.requestId);
   const catalog = useContext(SetupContextCatalog);
   const [selected, setSelected] = useState<readonly string[]>(() => catalog.sources.filter((source) => source.connected).map((source) => source.id));
@@ -820,7 +820,7 @@ export function ConversationPendingInteractionPanel({
             ? <QuestionBlock block={block} />
             : block.type === "option-picker"
               ? <OptionPickerBlock block={block} />
-              : block.type === "setup-codex-step"
+              : block.type === "setup-step"
                 ? <SetupStepBlock block={block} />
                 : block.type === "setup-context-picker"
                   ? <SetupContextPickerBlock block={block} />
@@ -832,7 +832,7 @@ export function ConversationPendingInteractionPanel({
 }
 
 export function InteractionTimelineStatusBlock({ block }: { readonly block: AttachedInteractionTimelineBlock }): ReactNode {
-  if (block.type === "question" || block.type === "option-picker" || block.type === "setup-codex-step" || block.type === "setup-context-picker") return null;
+  if (block.type === "question" || block.type === "option-picker" || block.type === "setup-step" || block.type === "setup-context-picker") return null;
   if (block.state === "pending") {
     return (
       <div aria-live="polite" className="thread-awaiting-approval" data-interaction-kind={block.type}>

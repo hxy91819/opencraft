@@ -1,5 +1,5 @@
 /** v9: derived coverage flag and covering indexes; no token arithmetic in SQL. */
-export const CODEX_HOST_TOKEN_USAGE_QUERY = `
+export const OPENCRAFT_HOST_TOKEN_USAGE_QUERY = `
 ALTER TABLE token_usage_turns ADD COLUMN unknown_model INTEGER NOT NULL DEFAULT 0 CHECK(unknown_model IN (0,1));
 UPDATE token_usage_turns SET unknown_model=EXISTS(SELECT 1 FROM token_usage_buckets b
  WHERE b.server_id=token_usage_turns.server_id AND b.thread_id=token_usage_turns.thread_id

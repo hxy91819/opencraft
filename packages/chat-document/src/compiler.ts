@@ -152,7 +152,7 @@ function decoratedTextNodes(text: string, sourceStart: number): readonly ChatDoc
     } else {
       result.push({
         ...emptyBase("directive", sourceRange),
-        name: "codex-file-citation",
+        name: "file-citation",
         attributes: {
           path: decoration.citation!.path,
           line_range_start: decoration.citation!.lineRangeStart,

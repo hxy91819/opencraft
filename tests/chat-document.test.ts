@@ -391,7 +391,7 @@ test("Codex bracket file citations become typed navigable directives", () => {
   const citation = nodes.find((node) => node.kind === "directive");
   assert.equal(citation?.kind, "directive");
   if (citation?.kind !== "directive") return;
-  assert.equal(citation.name, "codex-file-citation");
+  assert.equal(citation.name, "file-citation");
   assert.deepEqual(citation.attributes, {
     path: "src/runtime.ts",
     line_range_start: "12",

@@ -7,7 +7,7 @@ import { createConversationKey, createDefaultTimelineProjectorRegistry, projectT
 import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database";
 import { OpenCraftHostQueue } from "../apps/opencraft-daemon/src/opencraft-host-queue";
 import { OpenCraftMessageSenders } from "../apps/opencraft-daemon/src/opencraft-message-senders";
-import { projectCodexMessageNotification, projectCodexMessageResult } from "../apps/opencraft-daemon/src/codex-message-projection";
+import { projectThreadMessageNotification, projectThreadMessageResult } from "../apps/opencraft-daemon/src/thread-message-projection";
 const a = { kind: "employee" as const, loginName: "employee.a" };
 const b = { kind: "employee" as const, loginName: "employee.b" };
 
@@ -54,17 +54,17 @@ test("live, paged and resumed messages preserve individual authors within one Tu
   const authors = new Map([["a", a], ["b", b]]);
   const project = (_thread: string, id: string, value: Record<string, unknown>) => ({ ...value, sender: authors.get(id) ?? null });
   const items = ["a", "b"].map(clientId => ({ type: "userMessage", clientId, content: [] }));
-  const live = projectCodexMessageNotification(project, { method: "item/completed", params: { threadId: "t", item: items[1] } }) as any;
+  const live = projectThreadMessageNotification(project, { method: "item/completed", params: { threadId: "t", item: items[1] } }) as any;
   assert.deepEqual(live.params.item.sender, b);
   const turn = { id: "turn", params: { clientUserMessageId: "a", input: [] }, items };
-  const page = projectCodexMessageResult(project, "thread/turns/list", { threadId: "t" }, { data: [turn] }) as any;
+  const page = projectThreadMessageResult(project, "thread/turns/list", { threadId: "t" }, { data: [turn] }) as any;
   assert.deepEqual(page.data[0].items.map((item: any) => item.sender), [a, b]);
   assert.deepEqual(page.data[0].params.sender, a);
-  const restored = projectCodexMessageResult(project, "thread/resume", {}, { thread: { id: "t", turns: [turn] } }) as any;
+  const restored = projectThreadMessageResult(project, "thread/resume", {}, { thread: { id: "t", turns: [turn] } }) as any;
   assert.deepEqual(restored.thread.turns[0].items.map((item: any) => item.sender), [a, b]);
-  const itemPage = projectCodexMessageResult(project, "thread/items/list", { threadId: "t" }, { data: [{ item: items[1] }] }) as any;
+  const itemPage = projectThreadMessageResult(project, "thread/items/list", { threadId: "t" }, { data: [{ item: items[1] }] }) as any;
   assert.deepEqual(itemPage.data[0].item.sender, b);
-  const old = projectCodexMessageNotification(project, { params: { threadId: "t", item: { type: "userMessage", id: "old" } } }) as any;
+  const old = projectThreadMessageNotification(project, { params: { threadId: "t", item: { type: "userMessage", id: "old" } } }) as any;
   assert.equal(old.params.item.sender, null);
 });
 

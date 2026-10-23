@@ -22,7 +22,7 @@ import {CodexAccountsService} from '/plugins/builtin-agents/src/codex-accounts/s
 import {buildOpenCraftThemeCssProperties,opencraftNeutralThemePalette} from '/packages/design-system/src/theme-engine.ts';
 import '/apps/workbench-web/src/styles/app.scss';
 import '/apps/workbench-web/src/styles/settings-panel.scss';
-import '/apps/workbench-web/src/styles/codex-accounts.scss';
+import '/apps/workbench-web/src/styles/engine-accounts.scss';
 const mode=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
 document.documentElement.dataset.theme=mode;
 for(const [key,value] of Object.entries(buildOpenCraftThemeCssProperties(mode,opencraftNeutralThemePalette[mode]))) document.documentElement.style.setProperty(key,value);
@@ -37,7 +37,7 @@ createRoot(document.getElementById('root')).render(<View/>);
 const vite = await createServer({ configFile: false, root: process.cwd(), logLevel: "error",
   resolve: { dedupe: ["react", "react-dom"] }, esbuild: { jsx: "automatic" },
   server: { host: "127.0.0.1", port: 0, hmr: false },
-  plugins: [{ name: "codex-device-login-fixture", resolveId: id => id === "/device-probe.tsx" ? id : null,
+  plugins: [{ name: "engine-device-login-fixture", resolveId: id => id === "/device-probe.tsx" ? id : null,
     load: id => id === "/device-probe.tsx" ? source : null,
     configureServer(server) { server.middlewares.use((request, response, next) => {
       if (request.url === "/fixture/rpc") {
@@ -118,9 +118,9 @@ try {
       Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
       (event === "visibilitychange" ? document : window).dispatchEvent(new Event(event));
     }, recovery);
-    await page.locator(".codex-account__row").waitFor();
+    await page.locator(".engine-account__row").waitFor();
     await page.getByRole("dialog").waitFor({ state: "hidden" });
-    assert.equal(await page.locator(".codex-account__reset-credits strong").textContent(), "2 张");
+    assert.equal(await page.locator(".engine-account__reset-credits strong").textContent(), "2 张");
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     assert.deepEqual(await page.evaluate(() => ({ local: localStorage.length, session: sessionStorage.length })), { local: 0, session: 0 });
     assert.deepEqual(errors, []);

@@ -33,7 +33,7 @@ export function findPendingInteraction(
       if (block.type === "approval" && block.state === "pending") return block;
       if (block.type === "question" && block.state === "pending") return block;
       if (block.type === "option-picker" && block.state === "pending") return block;
-      if (block.type === "setup-codex-step" && block.state === "pending") return block;
+      if (block.type === "setup-step" && block.state === "pending") return block;
       if (block.type === "setup-context-picker" && block.state === "pending") return block;
       if (block.type === "elicitation" && block.state === "pending") return block;
     }
@@ -113,7 +113,7 @@ export function indexAttachedInteractions(
     if (frame.type !== "interaction") continue;
     for (const block of frame.blocks) {
       if ((block.type !== "approval" && block.type !== "question" && block.type !== "option-picker"
-        && block.type !== "setup-codex-step" && block.type !== "setup-context-picker" && block.type !== "elicitation")
+        && block.type !== "setup-step" && block.type !== "setup-context-picker" && block.type !== "elicitation")
         || block.targetItemId === null) continue;
       const existing = mutable.get(block.targetItemId) ?? [];
       existing.push(block);

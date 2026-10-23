@@ -211,7 +211,7 @@ try {
     page.on("pageerror", error => { errors.push(error.message); console.error("fixture-pageerror", error.message); });
     await page.addInitScript("window.__name=value=>value");
     await page.goto(`http://127.0.0.1:${(vite.httpServer!.address() as { port: number }).port}/?theme=${theme}`);
-    const nativeSummary = page.locator(".thread-codex-app-tool-row .thread-activity-item__summary");
+    const nativeSummary = page.locator(".thread-tool-row .thread-activity-item__summary");
     // Group headers repeat the last activity title; inspect the actual status-bearing rows.
     const surfaceSummary = page.locator(".thread-activity-item[data-status] > .thread-activity-item__header .thread-activity-item__summary");
     await page.locator('[data-phase="inProgress"]').waitFor();
@@ -477,7 +477,7 @@ try {
         features.freshViewDefaults = true;
         await page.evaluate(() => (window as any).setPhase('empty'));
         await page.locator('[data-phase="empty"]').waitFor();
-        features.emptyHandoffSummaryOnly = await page.locator('.thread-handoff-steps').count() === 0 && await page.locator('.thread-codex-app-tool-row button[aria-expanded]').count() === 0;
+        features.emptyHandoffSummaryOnly = await page.locator('.thread-handoff-steps').count() === 0 && await page.locator('.thread-tool-row button[aria-expanded]').count() === 0;
         for (const phase of ['success', 'transport-failed']) {
           await page.goto(url + '&initial=' + phase + '&history=1');
           await page.locator('[data-phase="' + phase + '"]').waitFor();
@@ -513,7 +513,7 @@ try {
       if (mode !== "absent") await page.waitForFunction(mode => ['create', 'read', 'handoff', 'empty']
         .every(id => (window as any).hostRenderedModes[id] === mode), mode);
       const bodies = page.locator('[data-host-body]');
-      const builtins = page.locator('.thread-created-thread-card,.thread-codex-app-tool-row,.thread-handoff-steps');
+      const builtins = page.locator('.thread-created-thread-card,.thread-tool-row,.thread-handoff-steps');
       if (mode === "content") {
         assert.equal(await bodies.count(), 4, 'the hidden status poll does not create a fifth custom body');
         assert.equal(await builtins.count(), 0, 'the Host claim owns the tool body');

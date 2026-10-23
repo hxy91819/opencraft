@@ -863,7 +863,7 @@ test("AppServer V3 adapter emits adjacent View revisions and snapshots every con
     storage,
   });
   await replica.synchronize(source);
-  assert.equal(replica.getSnapshot().epoch, "codex-v3:local:1");
+  assert.equal(replica.getSnapshot().epoch, "appserver-v3:local:1");
   assert.equal(replica.getSnapshot().nextSeq, 6);
 
   current = { ...current, revision: 6, notificationRevision: 1 };
@@ -884,7 +884,7 @@ test("AppServer V3 adapter emits adjacent View revisions and snapshots every con
 
   current = { ...current, revision: 9, connectionGeneration: 2 };
   for (const listener of listeners) listener();
-  await waitFor(() => replica.getSnapshot().epoch === "codex-v3:local:2");
+  await waitFor(() => replica.getSnapshot().epoch === "appserver-v3:local:2");
   assert.equal(replica.getSnapshot().nextSeq, 10);
 });
 

@@ -573,7 +573,7 @@ async function runChatRuntime(environment: LabScenarioEnvironment): Promise<void
     requestTimeoutMs: environment.options.timeoutMs,
   });
   const replica = new ReplicaClient({
-    scope: `codex-thread:${environment.options.hostId}:${threadId}`,
+    scope: `appserver-thread:${environment.options.hostId}:${threadId}`,
     storageKey: `chat-runtime:${environment.options.hostId}:${threadId}`,
     storage: new MemoryReplicaStorage(),
   });

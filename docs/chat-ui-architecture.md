@@ -285,8 +285,9 @@ explicit distinction between implemented coordination and pending delivery guara
 
 ## Target
 
-OpenCraft uses the latest Codex AppServer `Thread -> Turn -> Item` protocol. The
-AppServer remains the business write authority. ChatUI consumes one normalized
+OpenCraft models conversations as `Thread -> Turn -> Item` across Host engines.
+The connected Authority owns business writes; native engine adapters translate
+their protocols into that shared model. ChatUI consumes one normalized
 Conversation Read Model: a V4 ReplicaClient for a V4-native Authority, or a
 snapshot-oriented compatibility projection for AppServer V3 Resume. Web and Native
 surfaces share identity, projection, runtime commands, Composer documents and

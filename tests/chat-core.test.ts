@@ -10,7 +10,7 @@ import {
   createAgentActivityContentUnits,
   createAssistantTurnPresentationPlan,
   createTimelineTurnPresentationPlan,
-  codexAppThreadNavigationTarget,
+  threadToolNavigationTarget,
   createConversationKey,
   createdThreadToolResult,
   createDefaultTimelineProjectorRegistry,
@@ -47,7 +47,7 @@ import {
   presentReasoning,
   normalizeMcpElicitationMetadata,
   normalizeMcpElicitationSchema,
-  normalizeCodexTurnUserMessages,
+  normalizeTurnUserMessages,
   projectTimeline,
   resolveAgentActivityDisclosure,
   resolveAgentActivityLayout,
@@ -488,7 +488,7 @@ test("Turn params own the canonical Composer message and acknowledge the matchin
       { id: "assistant-composer-owner", type: "agentMessage", payload: { text: "Acknowledged." } },
     ],
   };
-  const normalized = normalizeCodexTurnUserMessages(turn);
+  const normalized = normalizeTurnUserMessages(turn);
   assert.equal(normalized.items.length, 2);
   assert.equal(normalized.items[0]?.id, "server-composer-owner");
   assert.deepEqual((normalized.items[0]?.payload as { content?: unknown }).content, [
@@ -533,7 +533,7 @@ test("acknowledged Host-staged files render as attachments without exposing thei
       },
     }],
   };
-  const normalized = normalizeCodexTurnUserMessages(turn);
+  const normalized = normalizeTurnUserMessages(turn);
   assert.deepEqual((normalized.items[0]?.payload as { content?: unknown }).content,
     (turn.items[0]?.payload as { content?: unknown }).content);
   const snapshot = projectTimeline(source([turn]), createDefaultTimelineProjectorRegistry());
@@ -668,7 +668,7 @@ test("paginated history without Turn params promotes a later client UserMessage 
     ],
   };
 
-  const normalized = normalizeCodexTurnUserMessages(turn);
+  const normalized = normalizeTurnUserMessages(turn);
   assert.equal(normalized.items.length, 5);
   const firstSource = normalized.items[0]?.payload as { __opencraftMessageKind?: string };
   const steeringSource = normalized.items[3]?.payload as {
@@ -707,7 +707,7 @@ test("paginated history keeps an unidentifiable post-assistant UserMessage as a 
     ],
   };
 
-  const normalized = normalizeCodexTurnUserMessages(turn);
+  const normalized = normalizeTurnUserMessages(turn);
   assert.deepEqual(normalized.nonVisualItemIds, [
     "history-unidentified-steered",
     "history-explicit-steered",
@@ -738,7 +738,7 @@ test("an explicit steered marker closes the leading-user ownership segment even 
     ],
   };
 
-  const normalized = normalizeCodexTurnUserMessages(turn);
+  const normalized = normalizeTurnUserMessages(turn);
   assert.deepEqual(normalized.nonVisualItemIds, ["boundary-steered-marker"]);
   assert.deepEqual(normalized.items.map((item) => item.id), ["boundary-leading-user", "boundary-follow-up-user"]);
   const followUp = normalized.items[1]?.payload as {
@@ -845,7 +845,7 @@ test("a steering restore message owns its matching server UserMessage and both I
       { id: "assistant-after-steer", type: "agentMessage", payload: { text: "Checking mobile." } },
     ],
   };
-  const normalized = normalizeCodexTurnUserMessages(turn);
+  const normalized = normalizeTurnUserMessages(turn);
   assert.deepEqual(normalized.nonVisualItemIds, ["steered-marker"]);
   const snapshot = projectTimeline(source([turn]), createDefaultTimelineProjectorRegistry());
   assert.deepEqual(snapshot.frames.map((frame) => frame.type), ["assistant"]);
@@ -885,7 +885,7 @@ test("acknowledged steering file uses the server's staged-file span, not the loc
       } },
     ],
   };
-  const normalized = normalizeCodexTurnUserMessages(turn);
+  const normalized = normalizeTurnUserMessages(turn);
   assert.deepEqual((normalized.items[1]?.payload as { input?: unknown }).input,
     (turn.items[2]?.payload as { content?: unknown }).content);
   const snapshot = projectTimeline(source([turn]), createDefaultTimelineProjectorRegistry());
@@ -1937,13 +1937,13 @@ test("Native thread tools use explicit operation states and semantic disclosure"
     detail: null,
     canExpand: false,
     durationMs: null,
-    summaryKey: "codex_app:list_threads",
+    summaryKey: "thread-tool:list_threads",
     continuesLiveActivityBetweenCalls: true,
     summaryOnlyInConversationGroup: false,
   });
   assert.equal(presentToolActivity(handoff).summary, "Handoff thread · Completed");
   assert.equal(presentToolActivity(handoff).grouping, "standalone");
-  assert.equal(presentToolActivity(handoff).summaryKey, "codex_app:handoff_thread:thread-child:ssh:one");
+  assert.equal(presentToolActivity(handoff).summaryKey, "thread-tool:handoff_thread:thread-child:ssh:one");
 
   const worktree = projectTimeline(source([{
     id: "turn-worktree",
@@ -2000,8 +2000,8 @@ test("Native thread tools use explicit operation states and semantic disclosure"
   assert.equal(threadTargets[1]?.type, "tool-call");
   if (threadTargets[0]?.type !== "tool-call" || threadTargets[1]?.type !== "tool-call") throw new Error("Expected thread tool calls");
   assert.equal(isCodexAppThreadTool(threadTargets[0]), true);
-  assert.deepEqual(codexAppThreadNavigationTarget(threadTargets[0]), { threadId: "thread-read", displayName: "Chat" });
-  assert.deepEqual(codexAppThreadNavigationTarget(threadTargets[1]), { threadId: "thread-send", displayName: "Chat" });
+  assert.deepEqual(threadToolNavigationTarget(threadTargets[0]), { threadId: "thread-read", displayName: "Chat" });
+  assert.deepEqual(threadToolNavigationTarget(threadTargets[1]), { threadId: "thread-send", displayName: "Chat" });
 
   const handoffStatus = projectTimeline(source([{
     id: "turn-handoff-status",
@@ -2493,22 +2493,24 @@ test("request_option_picker is a distinct Composer-owned interaction", () => {
   assert.equal(indexAttachedInteractions(snapshot.frames).get("call-picker")?.[0]?.type, "option-picker");
 });
 
-test("Codex setup requests remain distinct Composer-owned interaction blocks", () => {
-  const snapshot = projectTimeline(source([{
-    id: "turn-setup",
-    status: "streaming",
-    items: [
-      { id: "role", type: "interaction:setup-codex-step", payload: { requestId: "rpc-role", method: "item/tool/call", itemId: "role-call", step: "role" } },
-      { id: "context", type: "interaction:setup-context-picker", payload: { requestId: "rpc-context", method: "item/tool/requestSetupCodexContextPicker", itemId: "context-call" } },
-    ],
-  }]), createDefaultTimelineProjectorRegistry());
-  const blocks = snapshot.frames.flatMap((frame) => frame.blocks);
-  assert.deepEqual(blocks.map((block) => block.type), ["setup-codex-step", "setup-context-picker"]);
-  const context = blocks[1];
-  assert.equal(context?.type, "setup-context-picker");
-  if (context?.type === "setup-context-picker") assert.equal(context.method, "item/tool/requestSetupCodexContextPicker");
-  assert.equal(findPendingInteraction(snapshot)?.requestId, "rpc-context");
-  assert.equal(indexAttachedInteractions(snapshot.frames).get("role-call")?.[0]?.type, "setup-codex-step");
+test("native and legacy setup requests project to owned interaction types", () => {
+  for (const inputType of ["interaction:setup-step", "interaction:setup-codex-step"]) {
+    const snapshot = projectTimeline(source([{
+      id: "turn-setup",
+      status: "streaming",
+      items: [
+        { id: "role", type: inputType, payload: { requestId: "rpc-role", method: "item/tool/call", itemId: "role-call", step: "role" } },
+        { id: "context", type: "interaction:setup-context-picker", payload: { requestId: "rpc-context", method: "item/tool/requestSetupCodexContextPicker", itemId: "context-call" } },
+      ],
+    }]), createDefaultTimelineProjectorRegistry());
+    const blocks = snapshot.frames.flatMap((frame) => frame.blocks);
+    assert.deepEqual(blocks.map((block) => block.type), ["setup-step", "setup-context-picker"]);
+    const context = blocks[1];
+    assert.equal(context?.type, "setup-context-picker");
+    if (context?.type === "setup-context-picker") assert.equal(context.method, "item/tool/requestSetupCodexContextPicker");
+    assert.equal(findPendingInteraction(snapshot)?.requestId, "rpc-context");
+    assert.equal(indexAttachedInteractions(snapshot.frames).get("role-call")?.[0]?.type, "setup-step");
+  }
 });
 
 test("request_user_input preserves every question and aggregates Codex-compatible answers", () => {

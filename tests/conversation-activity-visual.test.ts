@@ -12,7 +12,7 @@ test("activity visual metrics have one owner, including valid-but-wrong font rol
     '.thread-thinking-placeholder { @include typography.role(metadata); }',
     '.thread-subagent-activity__toggle {font:inherit}',
     '.thread-subagent-activity__status { @include typography.role(chat); }',
-    '.thread-codex-app-tool-row { @include typography.role(body); }',
+    '.thread-tool-row { @include typography.role(body); }',
     '.thread-activity-item__icon {width:12px}',
     '.thread-compaction {svg {stroke-width:2}}',
     '.thread-activity-item__icon > .lucide-brain {transform:scale(0.8)}',

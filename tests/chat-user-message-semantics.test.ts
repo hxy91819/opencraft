@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CODEX_USER_REQUEST_MARKER, deriveCodexUserMessageSemantics as derive,
-  extractLastCodexUserRequest as extract, stripCodexGoalDirective as goal } from "../packages/chat-core/src/user-message";
+import { CODEX_USER_REQUEST_MARKER, deriveUserMessageSemantics as derive,
+  extractLastUserRequest as extract, stripGoalDirective as goal } from "../packages/chat-core/src/user-message";
 
 test("last request supplies text while only pre-first-request context supplies flags", () => {
   const raw = "## Prior conversation with Codex: old\n## My request: first\n## Code review guidelines: ignored\n## My request for Codex:  /goal final  ";

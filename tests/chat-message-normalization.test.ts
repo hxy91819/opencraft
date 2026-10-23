@@ -1,18 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createConversationKey, createDefaultTimelineProjectorRegistry, projectTimeline } from "../packages/chat-core/src/index";
-import { codexUserMessageCompareKey, normalizeCodexTurnUserMessages } from "../packages/chat-core/src/turn-user-message-normalization";
+import { userMessageCompareKey, normalizeTurnUserMessages } from "../packages/chat-core/src/turn-user-message-normalization";
 import type { TimelineSourceItem, TimelineSourceTurn } from "../packages/chat-core/src/projection";
 
 const text = (value: string) => [{ type: "text", text: value }];
 const user = (id: string, content: unknown, props = {}): TimelineSourceItem => ({ id, type: "userMessage", payload: { content, ...props } });
 const steer = (id: string, input: unknown, props = {}): TimelineSourceItem => ({ id, type: "steeringUserMessage", payload: { input, ...props } });
-const normalize = (extra: Partial<TimelineSourceTurn>) => normalizeCodexTurnUserMessages({ id: "turn", status: "complete", items: [], ...extra });
+const normalize = (extra: Partial<TimelineSourceTurn>) => normalizeTurnUserMessages({ id: "turn", status: "complete", items: [], ...extra });
 const payload = (item: TimelineSourceItem | undefined) => item!.payload as Record<string, unknown>;
 
 test("comparison keys keep exact text and image counts without interpreting other parts", () => {
-  assert.deepEqual(codexUserMessageCompareKey(["a", "", { type: "text", text: " b " }, { type: "image" }, { type: "localImage" }, { type: "input_image" }, null]), { rawText: "a\n\n b ", imageCount: 2 });
-  assert.deepEqual(codexUserMessageCompareKey({ text: "hidden" }), { rawText: "", imageCount: 0 });
+  assert.deepEqual(userMessageCompareKey(["a", "", { type: "text", text: " b " }, { type: "image" }, { type: "localImage" }, { type: "input_image" }, null]), { rawText: "a\n\n b ", imageCount: 2 });
+  assert.deepEqual(userMessageCompareKey({ text: "hidden" }), { rawText: "", imageCount: 0 });
 });
 
 test("empty string params own a message; nullish and empty array input do not", () => {
@@ -110,7 +110,7 @@ test("normalization leaves caller-owned objects and unrelated Items untouched", 
   const work = { id: "work", type: "agentMessage", payload: { text: "working" } };
   const turn = freeze<TimelineSourceTurn>({ id: "turn", status: "streaming", params: { input: text("request"), clientUserMessageId: "c" }, items: [user("server", text("echo"), { clientId: "c" }), work] });
   const before = structuredClone(turn);
-  const result = normalizeCodexTurnUserMessages(turn);
+  const result = normalizeTurnUserMessages(turn);
   assert.deepEqual(turn, before);
   assert.equal(result.items[1], work);
   assert.deepEqual(payload(result.items[0]).content, text("request"));
@@ -256,9 +256,9 @@ test("singleton typed input compares exactly like a one-part array", () => {
     { type: "text", text: "Keep the draft" }, { type: "text", text: "" },
     { type: "image", url: "https://example.test/image.png" }, { type: "localImage", path: "/synthetic/image.png" },
     { type: "mention", name: "context", path: "/synthetic/context" }, { type: "input_text", text: "ignored" },
-  ]) assert.deepEqual(codexUserMessageCompareKey(part), codexUserMessageCompareKey([part]));
-  assert.notDeepEqual(codexUserMessageCompareKey({ type: "text", text: "one" }), codexUserMessageCompareKey({ type: "text", text: "two" }));
-  assert.notDeepEqual(codexUserMessageCompareKey({ type: "localImage", path: "/synthetic/image.png" }), codexUserMessageCompareKey({ type: "text", text: "" }));
+  ]) assert.deepEqual(userMessageCompareKey(part), userMessageCompareKey([part]));
+  assert.notDeepEqual(userMessageCompareKey({ type: "text", text: "one" }), userMessageCompareKey({ type: "text", text: "two" }));
+  assert.notDeepEqual(userMessageCompareKey({ type: "localImage", path: "/synthetic/image.png" }), userMessageCompareKey({ type: "text", text: "" }));
 });
 
 test("unrelated singleton steering and user messages keep both visible bodies", () => {

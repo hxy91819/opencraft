@@ -10,7 +10,7 @@ import type {
 } from "@opencraft/appserver-protocol/generated/v2";
 import {
   asTurnId,
-  codexUserMessageCompareKey,
+  userMessageCompareKey,
   createDefaultTimelineProjectorRegistry,
   projectTimeline,
   summarizeHookRuns,
@@ -593,7 +593,7 @@ function interactionPayload(interaction: PendingInteraction): {
       }
       if (tool === "setup_codex_step")
         return {
-          type: "interaction:setup-codex-step",
+          type: "interaction:setup-step",
           payload: {
             requestId: interaction.requestId,
             step: string(dynamicArguments.step),
@@ -929,8 +929,8 @@ function authoritativeUserMessageVisible(
 }
 
 function sameUserMessageInput(left: unknown, right: unknown): boolean {
-  const leftKey = codexUserMessageCompareKey(left);
-  const rightKey = codexUserMessageCompareKey(right);
+  const leftKey = userMessageCompareKey(left);
+  const rightKey = userMessageCompareKey(right);
   return leftKey.rawText === rightKey.rawText
     && leftKey.imageCount === rightKey.imageCount;
 }

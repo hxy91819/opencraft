@@ -1,7 +1,7 @@
 @use "@opencraft/design-system/interaction-mixins.web" as controls;
 @use "@opencraft/design-system/menu.web" as menu;
 
-.codex-accounts-page {
+.engine-accounts-page {
   width: min(760px, 100%);
   margin-inline: auto;
   padding-block: 28px 40px;
@@ -9,12 +9,12 @@
   > .settings-control-notice { margin-bottom: 18px; }
 }
 
-.codex-account-list {
+.engine-account-list {
   min-width: 0;
 }
 
-.codex-account-list__state,
-.codex-account-list__empty {
+.engine-account-list__state,
+.engine-account-list__empty {
   display: flex;
   min-height: 76px;
   align-items: center;
@@ -23,18 +23,18 @@
   color: var(--color-text-secondary);
 }
 
-.codex-account-list__state {
+.engine-account-list__state {
   justify-content: center;
 }
 
-.codex-account-list__empty {
+.engine-account-list__empty {
   > div { flex: 1; min-width: 0; }
   strong { display: block; margin-bottom: 2px; color: var(--color-text); font-weight: var(--typography-primary-action-weight); }
   p { margin: 0; font: var(--typography-metadata-font); text-wrap: pretty; letter-spacing: var(--typography-metadata-tracking); }
 }
 
-.codex-account-list__empty-icon,
-.codex-account-dialog__icon {
+.engine-account-list__empty-icon,
+.engine-account-dialog__icon {
   display: grid;
   width: 32px;
   height: 32px;
@@ -46,18 +46,18 @@
   color: var(--color-text-secondary);
 }
 
-.codex-account {
+.engine-account {
   min-width: 0;
 
-  &[data-enabled="false"] .codex-account__disclosure { opacity: 0.55; }
-  &[data-status="ready"] .codex-account__status-dot { background: var(--color-status-success); }
-  &[data-status="held"] .codex-account__status-dot,
-  &[data-status="exhausted"] .codex-account__status-dot { background: var(--color-text-warning); }
-  &[data-status="error"] .codex-account__status-dot { background: var(--color-text-danger); }
-  &[data-status="disabled"] .codex-account__status-dot { background: var(--color-text-tertiary); }
+  &[data-enabled="false"] .engine-account__disclosure { opacity: 0.55; }
+  &[data-status="ready"] .engine-account__status-dot { background: var(--color-status-success); }
+  &[data-status="held"] .engine-account__status-dot,
+  &[data-status="exhausted"] .engine-account__status-dot { background: var(--color-text-warning); }
+  &[data-status="error"] .engine-account__status-dot { background: var(--color-text-danger); }
+  &[data-status="disabled"] .engine-account__status-dot { background: var(--color-text-tertiary); }
 }
 
-.codex-account__row {
+.engine-account__row {
   display: flex;
   min-width: 0;
   min-height: 68px;
@@ -67,12 +67,12 @@
 
   @include controls.hover-capable {
     &:hover { background: var(--color-background-primary-ghost-hover); }
-    &:hover .codex-account__menu-trigger { opacity: 1; }
+    &:hover .engine-account__menu-trigger { opacity: 1; }
   }
-  &:focus-within .codex-account__menu-trigger { opacity: 1; }
+  &:focus-within .engine-account__menu-trigger { opacity: 1; }
 }
 
-.codex-account__disclosure {
+.engine-account__disclosure {
   display: grid;
   min-width: 0;
   min-height: 56px;
@@ -91,10 +91,10 @@
   cursor: pointer;
 
   &:focus-visible { @include controls.focus-indicator; }
-  &[aria-expanded="true"] .codex-account__chevron { transform: rotate(90deg); }
+  &[aria-expanded="true"] .engine-account__chevron { transform: rotate(90deg); }
 }
 
-.codex-account__status-dot {
+.engine-account__status-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -102,22 +102,22 @@
   box-shadow: 0 0 0 2px var(--color-background-panel, var(--color-background-surface));
 }
 
-.codex-account__identity {
+.engine-account__identity {
   display: flex;
   min-width: 0;
   flex-direction: column;
   gap: 2px;
 }
 
-.codex-account__name-line,
-.codex-account__status-copy {
+.engine-account__name-line,
+.engine-account__status-copy {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 7px;
 }
 
-.codex-account__name-line {
+.engine-account__name-line {
   > strong {
     overflow: hidden;
     font: var(--typography-control-compact-font);
@@ -127,7 +127,7 @@
   }
 }
 
-.codex-account__plan {
+.engine-account__plan {
   flex: 0 0 auto;
   padding: 1px 6px;
   border: 0.5px solid var(--color-border-default);
@@ -138,7 +138,7 @@
   letter-spacing: var(--typography-label-tracking);
 }
 
-.codex-account__status-copy {
+.engine-account__status-copy {
   overflow: hidden;
   color: var(--color-text-secondary);
   font: var(--typography-metadata-font);
@@ -147,14 +147,14 @@
   letter-spacing: var(--typography-metadata-tracking);
 }
 
-.codex-account__quotas {
+.engine-account__quotas {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
   gap: 4px;
 }
 
-.codex-account__quota {
+.engine-account__quota {
   display: grid;
   min-width: 96px;
   justify-items: end;
@@ -163,36 +163,36 @@
 
   small { color: var(--color-text-tertiary); text-transform: uppercase; font: var(--typography-metadata-font); letter-spacing: var(--typography-metadata-tracking); }
   strong { font: var(--typography-metadata-font); letter-spacing: var(--typography-metadata-tracking); }
-  .codex-account__reset { color: var(--color-text-tertiary); font: var(--typography-metadata-font); white-space: nowrap; letter-spacing: var(--typography-metadata-tracking); }
+  .engine-account__reset { color: var(--color-text-tertiary); font: var(--typography-metadata-font); white-space: nowrap; letter-spacing: var(--typography-metadata-tracking); }
   &[data-tone="unknown"] strong { color: var(--color-text-tertiary); }
   &[data-tone="warning"] strong { color: var(--color-text-warning); }
   &[data-tone="danger"] strong { color: var(--color-text-danger); }
 }
 
-.codex-account__chevron {
+.engine-account__chevron {
   flex: 0 0 auto;
   color: var(--color-text-tertiary);
   transition: transform var(--transition-duration-basic) var(--ease-standard);
 }
 
-.codex-account__reset-credits { min-width: 56px; }
+.engine-account__reset-credits { min-width: 56px; }
 
-.settings-icon-button.codex-account__menu-trigger {
+.settings-icon-button.engine-account__menu-trigger {
   opacity: 0;
 
   &[data-state="open"] { opacity: 1; background: var(--color-background-primary-ghost-hover); }
 }
 
-:root[data-touch-interaction] .settings-icon-button.codex-account__menu-trigger { opacity: 1; }
+:root[data-touch-interaction] .settings-icon-button.engine-account__menu-trigger { opacity: 1; }
 
-.codex-account__error {
+.engine-account__error {
   padding: 0 16px 10px 29px;
   color: var(--color-text-danger);
   font: var(--typography-metadata-font);
   letter-spacing: var(--typography-metadata-tracking);
 }
 
-.codex-account__details {
+.engine-account__details {
   padding: 0 16px 14px 29px;
 
   dl {
@@ -210,15 +210,15 @@
   dd { overflow: hidden; margin: 1px 0 0; color: var(--color-text-secondary); font: var(--typography-metadata-font); text-overflow: ellipsis; white-space: nowrap; letter-spacing: var(--typography-metadata-tracking); }
 }
 
-.codex-account-menu {
+.engine-account-menu {
   @include menu.surface;
   z-index: var(--layer-floating-control);
   width: 184px;
 }
 
-.codex-account-menu--add { width: 264px; }
+.engine-account-menu--add { width: 264px; }
 
-.codex-account-menu__item {
+.engine-account-menu__item {
   @include menu.item;
 
   &--danger { color: var(--color-text-danger); }
@@ -234,20 +234,20 @@
   }
 }
 
-.codex-account-menu__separator {
+.engine-account-menu__separator {
   height: 0.5px;
   margin: 4px;
   background: var(--color-border-default);
 }
 
-.codex-account-dialog__overlay {
+.engine-account-dialog__overlay {
   position: fixed;
   z-index: var(--layer-confirmation-modal);
   inset: 0;
   background: rgb(0 0 0 / 32%);
 }
 
-.codex-account-dialog {
+.engine-account-dialog {
   position: fixed;
   z-index: var(--layer-confirmation-modal);
   top: 50%;
@@ -270,14 +270,14 @@
   > footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 }
 
-.codex-account-dialog--compact {
+.engine-account-dialog--compact {
   width: min(400px, calc(100vw - 32px));
 
   > h2 { margin: 0; font: var(--typography-panel-title-font); letter-spacing: var(--typography-panel-title-tracking); }
   > p { margin: 8px 0 0; color: var(--color-text-secondary); font: var(--typography-metadata-font); letter-spacing: var(--typography-metadata-tracking); }
 }
 
-.codex-account-dialog__header {
+.engine-account-dialog__header {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
@@ -287,7 +287,7 @@
   p { margin: 2px 0 0; color: var(--color-text-secondary); font: var(--typography-label-font); letter-spacing: var(--typography-label-tracking); }
 }
 
-.codex-device-login {
+.engine-device-login {
   margin-top: 20px;
   padding: 16px;
   border: 0.5px solid var(--color-border-default);
@@ -297,13 +297,13 @@
   > p { margin: 8px 0 0; color: var(--color-text-tertiary); font: var(--typography-metadata-font); letter-spacing: var(--typography-metadata-tracking); }
 }
 
-.codex-device-login__eyebrow {
+.engine-device-login__eyebrow {
   color: var(--color-text-secondary);
   font: var(--typography-metadata-font);
   letter-spacing: var(--typography-metadata-tracking);
 }
 
-.codex-device-login__code {
+.engine-device-login__code {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -317,7 +317,7 @@
   .settings-copy-control__status { position: absolute; top: 100%; right: 0; white-space: nowrap; }
 }
 
-.codex-device-login__waiting {
+.engine-device-login__waiting {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -337,27 +337,27 @@
 }
 
 @container settings-panel (max-width: 560px) {
-  .codex-accounts-page { padding-block: 20px 28px; }
-  .codex-account__disclosure { grid-template-columns: auto minmax(0, 1fr) auto; }
-  .codex-account__quotas {
+  .engine-accounts-page { padding-block: 20px 28px; }
+  .engine-account__disclosure { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .engine-account__quotas {
     display: grid;
     grid-column: 1 / -1;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(44px, 0.6fr);
     justify-self: stretch;
     margin-left: 17px;
   }
-  .codex-account__quota { min-width: 0; }
-  .codex-account__quota .codex-account__reset { overflow: hidden; max-width: 100%; text-overflow: ellipsis; }
-  .codex-account__chevron { grid-column: 3; grid-row: 1; }
-  .codex-account__details dl { grid-template-columns: 1fr; }
-  .codex-account-list__empty { align-items: flex-start; flex-wrap: wrap; }
-  .codex-account-list__empty > .settings-control-button { margin-left: 44px; }
+  .engine-account__quota { min-width: 0; }
+  .engine-account__quota .engine-account__reset { overflow: hidden; max-width: 100%; text-overflow: ellipsis; }
+  .engine-account__chevron { grid-column: 3; grid-row: 1; }
+  .engine-account__details dl { grid-template-columns: 1fr; }
+  .engine-account-list__empty { align-items: flex-start; flex-wrap: wrap; }
+  .engine-account-list__empty > .settings-control-button { margin-left: 44px; }
 }
 
 @media (any-pointer: coarse), (hover: none) {
-  .settings-icon-button.codex-account__menu-trigger { opacity: 1; }
+  .settings-icon-button.engine-account__menu-trigger { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .codex-account__chevron { transition: none; }
+  .engine-account__chevron { transition: none; }
 }

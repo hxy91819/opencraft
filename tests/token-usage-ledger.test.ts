@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { OpenCraftHostStateDatabase, CODEX_HOST_STATE_MIGRATIONS } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { OpenCraftHostStateDatabase, OPENCRAFT_HOST_STATE_MIGRATIONS } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
 import { OpenCraftTokenUsageLedger, normalizeUsageCounts, type UsageSource } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { openManagedDatabase } from "../packages/sqlite-node/src/index.js";
 
@@ -133,7 +133,7 @@ test("persisted source gaps preserve known counts while preventing a complete se
 test("v6 metering sources survive the additive v7/v8 recovery upgrade with their published migration checksum",async()=>{
   const directory=await mkdtemp(join(tmpdir(),"oc-token-v6-upgrade-"));
   try {
-    const previous=openManagedDatabase({path:join(directory,"codex-host-queue.sqlite"),legacyPolicy:"reject",migrations:CODEX_HOST_STATE_MIGRATIONS.slice(0,6)});
+    const previous=openManagedDatabase({path:join(directory,"codex-host-queue.sqlite"),legacyPolicy:"reject",migrations:OPENCRAFT_HOST_STATE_MIGRATIONS.slice(0,6)});
     previous.database.prepare("INSERT INTO token_usage_sources VALUES(?,?,?,?,?,?,?,?,?,?)").run("server","thread","turn","native","response","response",0,null,null,JSON.stringify({totalTokens:"123"}));
     const checksum=previous.database.prepare("SELECT checksum FROM schema_migrations WHERE version=6").get()!.checksum;
     previous.database.close();
@@ -245,7 +245,7 @@ test("NF-11: upgrade from the published v5 preserves queue/sender data and rejec
   const root = await mkdtemp(join(tmpdir(), "oc-token-v5-"));
   try {
     const path = join(root, "codex-host-queue.sqlite");
-    const old = openManagedDatabase({ path, migrations: CODEX_HOST_STATE_MIGRATIONS.slice(0, 5) });
+    const old = openManagedDatabase({ path, migrations: OPENCRAFT_HOST_STATE_MIGRATIONS.slice(0, 5) });
     old.database.prepare("INSERT INTO message_senders VALUES(?,?,?,?)").run("old-thread", "old-input", '{"kind":"synthetic"}', 42);
     old.database.close();
     const upgraded = new OpenCraftHostStateDatabase(root);
@@ -262,7 +262,7 @@ test("the exact unledgered v5 layout accepted before metering remains upgradable
   const root = await mkdtemp(join(tmpdir(), "oc-token-legacy-v5-"));
   try {
     const old = new DatabaseSync(join(root, "codex-host-queue.sqlite"));
-    old.exec(CODEX_HOST_STATE_MIGRATIONS.slice(0, 5).map(m => m.sql).join("\n"));
+    old.exec(OPENCRAFT_HOST_STATE_MIGRATIONS.slice(0, 5).map(m => m.sql).join("\n"));
     old.prepare("INSERT INTO message_senders VALUES(?,?,?,?)").run("old-thread", "old-input", '{}', 42); old.close();
     const upgraded = new OpenCraftHostStateDatabase(root);
     assert.equal(upgraded.outcome.status, "migrated");
@@ -410,7 +410,7 @@ test("actor daily projection replaces corrections, distinct people and frozen co
 
 test("v10 upgrade resets only the rebuild cursor and adds actor summaries without duplicating day totals",async()=>{
  const directory=await mkdtemp(join(tmpdir(),"oc-usage-v10-upgrade-"));
- const previous=openManagedDatabase({path:join(directory,"codex-host-queue.sqlite"),legacyPolicy:"reject",migrations:CODEX_HOST_STATE_MIGRATIONS.slice(0,10)});
+ const previous=openManagedDatabase({path:join(directory,"codex-host-queue.sqlite"),legacyPolicy:"reject",migrations:OPENCRAFT_HOST_STATE_MIGRATIONS.slice(0,10)});
  const db=previous.database;
  db.prepare("INSERT INTO token_usage_scopes VALUES('server',1000,1,7)").run();
  db.prepare("INSERT INTO token_usage_turns VALUES('server','thread','turn',1000,'completed','human',1,1,1,0,'17','settled',1,0)").run();
@@ -434,7 +434,7 @@ test("v10 upgrade resets only the rebuild cursor and adds actor summaries withou
 
 test("v12 repairs formerly hidden frozen usage using preserved authoritative allocations",async()=>{
  const directory=await mkdtemp(join(tmpdir(),"oc-usage-v11-frozen-"));
- const previous=openManagedDatabase({path:join(directory,"codex-host-queue.sqlite"),legacyPolicy:"reject",migrations:CODEX_HOST_STATE_MIGRATIONS.slice(0,11)});
+ const previous=openManagedDatabase({path:join(directory,"codex-host-queue.sqlite"),legacyPolicy:"reject",migrations:OPENCRAFT_HOST_STATE_MIGRATIONS.slice(0,11)});
  const db=previous.database;
  db.prepare("INSERT INTO token_usage_scopes VALUES('server',1000,0,7)").run();
  db.prepare("INSERT INTO token_usage_turns VALUES('server','thread','turn',1000,'running','human',1,0,0,1,'17','provisional',1,0)").run();

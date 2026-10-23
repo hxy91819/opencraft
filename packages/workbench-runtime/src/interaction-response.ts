@@ -175,21 +175,21 @@ export function createInteractionResponse(
       if (interaction.params.tool === "setup_codex_step") {
         const step = args.step;
         if (step === "role" && action.type === "submit-setup-role") return {
-          type: "setup-codex-step",
+          type: "setup-step",
           requestId,
           step,
           action: action.action,
           selectedRoles: [...action.selectedRoles],
         };
         if (step === "task" && action.type === "submit-setup-task") return {
-          type: "setup-codex-step",
+          type: "setup-step",
           requestId,
           step,
           action: action.action,
           answers: Object.fromEntries(Object.entries(action.answers).map(([id, values]) => [id, { answers: [...values] }])),
         };
         if (step === "context" && action.type === "submit-setup-context") return {
-          type: "setup-codex-step",
+          type: "setup-step",
           requestId,
           step,
           action: action.action,

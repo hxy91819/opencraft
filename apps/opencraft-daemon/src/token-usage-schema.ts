@@ -1,5 +1,5 @@
-/** Additive v6 of the existing Codex Host state database. */
-export const CODEX_HOST_TOKEN_USAGE = `
+/** Additive v6 of the existing OpenCraft Host state database. */
+export const OPENCRAFT_HOST_TOKEN_USAGE = `
 CREATE TABLE token_usage_scopes (
   server_id TEXT PRIMARY KEY, enabled_at_ms INTEGER NOT NULL,
   enabled INTEGER NOT NULL CHECK(enabled IN (0,1)), revision INTEGER NOT NULL
