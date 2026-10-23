@@ -8,6 +8,8 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { connect } from 'node:net';
 import { once } from 'node:events';
+import { createServer } from 'node:http';
+import WebSocket from 'ws';
 import { connectBrowserOwner } from '../scripts/remote-browser-owner.mjs';
 import { RemoteBrowserService } from '../scripts/remote-browser-service.mjs';
 const { createBrowserOwner } = createRequire(import.meta.url)('../scripts/remote-browser/owner.cjs');
@@ -68,4 +70,25 @@ test('an incompatible owner handshake is rejected without replacing the live nat
   assert.equal(JSON.parse((await received)[0]).type, 'owner-incompatible');
   socket.destroy(); await new Promise(resolve => setTimeout(resolve, 20));
   const client = await connectBrowserOwner(f.socketPath); assert.equal(client.workerPid, f.owner.child.pid); client.kill();
+});
+
+
+test('an overlapping Gateway receives a retryable open failure while the prior owner transport remains intact', async t => {
+  const f = await fixture(t), first = f.service(); await first.start();
+  const second = f.service(), server = createServer();
+  server.on('upgrade', (req, socket, head) => second.upgrade(req, socket, head, { ownerId: 'synthetic-overlap' }));
+  server.listen(0, '127.0.0.1'); await once(server, 'listening');
+  const client = new WebSocket(`ws://127.0.0.1:${server.address().port}`); await once(client, 'open');
+  try {
+    const response = once(client, 'message');
+    client.send(JSON.stringify({ id: 'overlap', method: 'open', input: { lease: 'synthetic-overlapping-lease', multiView: true } }));
+    const message = JSON.parse((await response)[0]);
+    assert.equal(message.error?.code, 'BROWSER_UNAVAILABLE'); assert.equal(message.error?.retryable, true);
+    assert.equal(first.child.workerPid, f.owner.child.pid);
+    assert.deepEqual(await first.request(undefined, 'inventory'), []);
+  } finally {
+    client.terminate(); first.close(); second.close();
+    await first.persistence; await second.persistence;
+    await new Promise(resolve => server.close(resolve));
+  }
 });

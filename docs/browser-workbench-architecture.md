@@ -1808,3 +1808,8 @@ shared keyboard artwork. Localized accessible names and hint titles remain on
 the buttons. Unavailable controls stay absent, keyboard readiness still determines
 disabled state, and actions still call the existing surface owner without changing
 lease, focus or keyboard policy.
+
+Transient owner attachment failures, including a still-attached prior Gateway,
+are retryable browser-unavailable errors. Protocol incompatibility remains
+terminal without replacing live tabs. Rejected private sockets drain their short
+status reply and then close, without retaining unread attachment data.

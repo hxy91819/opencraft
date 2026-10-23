@@ -77,7 +77,7 @@ async function createBrowserOwner({ socketPath, spawnWorker, onFailure = () => {
   }
   const server = createServer(socket => {
     socket.on('error', () => socket.destroy());
-    if (peer || closing) { socket.end(JSON.stringify({ type: 'owner-busy' }) + '\n'); return; }
+    if (peer || closing) { socket.end(JSON.stringify({ type: 'owner-busy' }) + '\n', () => socket.destroy()); return; }
     peer = socket; let accepted = false, count = 0;
     const greeting = setTimeout(() => socket.destroy(), 5000); greeting.unref();
     readMessages(socket, 256 * 1024, message => {

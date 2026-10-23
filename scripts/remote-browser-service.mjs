@@ -239,7 +239,13 @@ export class RemoteBrowserService {
       if (!await this.available()) throw new Error('Bundled browser runtime unavailable');
       await mkdir(this.dataDirectory, { recursive: true, mode: 0o700 });
       if (this.ownerConnector) {
-        const child = await this.ownerConnector({ directory: this.directory, dataDirectory: this.dataDirectory });
+        let child;
+        try { child = await this.ownerConnector({ directory: this.directory, dataDirectory: this.dataDirectory }); }
+        catch (error) {
+          if (error.code === 'BROWSER_OWNER_INCOMPATIBLE') throw error;
+          this.diagnose('owner_attach_failed');
+          throw unavailable('Browser owner unavailable; reconnecting');
+        }
         if (this.closed) { child.kill(); throw new Error('Browser service closed'); }
         this.child = child; this.isolated = false;
         const retire = event => {
