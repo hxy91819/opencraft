@@ -531,11 +531,18 @@ def oidc_probe(args: argparse.Namespace) -> None:
         print("exchange verdict: no token issued; body withheld")
 
 
-# npm/cli v11.18.0 oidc.js logs these on GitHub mint and registry exchange.
-# Verbose HTTP lines include the method, URL, and status; the exchange
-# failure includes the registry body message. CLI exit 0 is not a verdict.
-OIDC_HTTP_LINE = re.compile(
-    r"^(?:npm http fetch|http fetch)\s+(GET|POST|PUT|DELETE)\s+(\S+)\s+(\d{3})\b",
+# npm/cli v11.18.0 logs two HTTP shapes:
+#   mint (oidc.js / make-fetch-happen):  http fetch METHOD URL STATUS ...
+#   exchange (npm-registry-fetch 19.1.1/lib/check-response.js):
+#     http fetch METHOD STATUS URL ...
+# A registry body message is not an HTTP status.
+OIDC_HTTP_PREFIX = r"^(?:npm http fetch|http fetch)\s+"
+OIDC_HTTP_METHOD_URL_STATUS = re.compile(
+    OIDC_HTTP_PREFIX + r"(GET|POST|PUT|DELETE)\s+(https?://\S+|/[\S]*)\s+(\d{3})\b",
+    re.MULTILINE | re.IGNORECASE,
+)
+OIDC_HTTP_METHOD_STATUS_URL = re.compile(
+    OIDC_HTTP_PREFIX + r"(GET|POST|PUT|DELETE)\s+(\d{3})\s+(\S+)",
     re.MULTILINE | re.IGNORECASE,
 )
 OIDC_EXCHANGE_FAIL = re.compile(
@@ -563,16 +570,27 @@ def _combined_cli_text(result: subprocess.CompletedProcess[str]) -> str:
 
 
 def _oidc_http_events(text: str) -> list[tuple[str, str, str]]:
-    events: list[tuple[str, str, str]] = []
-    for method, url, status in OIDC_HTTP_LINE.findall(text):
-        events.append((method.upper(), url, status))
-    return events
+    """Return (method, url, status) from either npm 11.18.0 HTTP log order."""
+    events: list[tuple[int, str, str, str]] = []
+    for match in OIDC_HTTP_METHOD_STATUS_URL.finditer(text):
+        method, status, url = match.groups()
+        events.append((match.start(), method.upper(), url, status))
+    occupied = {start for start, *_ in events}
+    for match in OIDC_HTTP_METHOD_URL_STATUS.finditer(text):
+        if match.start() in occupied:
+            continue
+        method, url, status = match.groups()
+        if url.isdigit():
+            continue
+        events.append((match.start(), method.upper(), url, status))
+    events.sort(key=lambda item: item[0])
+    return [(method, url, status) for _, method, url, status in events]
 
 
-def _exchange_status(text: str) -> str | None:
+def _exchange_status(text: str) -> str:
     statuses = [status for method, url, status in _oidc_http_events(text)
                 if method == "POST" and EXCHANGE_PATH_MARKER in url]
-    return statuses[-1] if statuses else None
+    return statuses[-1] if statuses else "unknown"
 
 
 def _redact_cli_allowlist(text: str) -> str:
@@ -650,8 +668,7 @@ def oidc_dry_run(args: argparse.Namespace) -> None:
                 path = urlsplit(url).path
             print(f"native npm http: {method} {path} {status}")
     exchange_status = _exchange_status(text)
-    if exchange_status:
-        print(f"native npm exchange HTTP status: {exchange_status}")
+    print(f"native npm exchange HTTP status: {exchange_status}")
     skipped = OIDC_SKIPPED.search(redacted)
     if skipped:
         print(f"native npm oidc skipped: {_redact_secrets_text(skipped.group(1).strip()[:300])}")
@@ -662,7 +679,7 @@ def oidc_dry_run(args: argparse.Namespace) -> None:
     if OIDC_EXCHANGE_OK.search(text):
         print("native npm exchange verdict: token issued (withheld)")
         return
-    if exchange_status and exchange_status != "201" and exchange_status != "200":
+    if exchange_status not in ("unknown", "201", "200"):
         print("native npm exchange verdict: no token issued; body withheld")
         raise ReleaseError(f"native npm OIDC exchange HTTP {exchange_status}")
     print("native npm exchange verdict: unproven; CLI produced no OIDC success or failure signal")
