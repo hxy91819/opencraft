@@ -156,8 +156,19 @@ copy, edit and card actions available on coarse devices and after hybrid touch.
 Neither helper changes the saved touch-density preference. Hover convergence must retain the startup resource budgets. Hover entry handlers
 must distinguish mouse pointers; touch and pen activate through explicit actions.
 Separate HTML documents bind their own input signal. `npm run check:hover`
-enforces these rules for first-party styles and hover entry handlers; product
-source roots can be passed as extra directory arguments.
+enforces these rules for first-party styles and hover entry handlers, including
+Relay and inline HTML styles. Each selector/media alternative must carry its
+own guard; mentioning a mouse comparison is insufficient unless it precedes
+all effects on non-mouse paths. Gesture movement retains its matching pointer
+owner, and portal dismissal cancellation retains continuity. Product source
+roots can be passed as extra directory arguments. The PR build runs the scan,
+negative policy tests and real Composer input smoke independently of build
+selection; downstream products include their own roots in post-deploy checks.
+
+The usage heatmap distinguishes mouse/keyboard preview from explicit cell
+selection. Touch and pen entry cannot create a preview; tap or keyboard activation
+toggles selection, which remains visible outside the hover gate. Outside-range
+cells are disabled, and the existing daily table retains the textual alternative.
 
 The persistent desktop titlebar rail has one disclosure rule: while the
 Sidebar is open, Start is the single new-task affordance; while it is hidden, a

@@ -27,6 +27,26 @@ jobs:
     with:
       full-matrix: ${{ github.event_name == 'workflow_dispatch' && (inputs.validation == 'full' || inputs.package_macos) }}
 
+  hover-policy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - id: dependencies
+        run: npm ci --no-audit --no-fund
+      - run: npm run check:hover
+      - run: npm run test:hover-policy
+        if: always() && steps.dependencies.outcome == 'success'
+      - id: browser
+        run: npx playwright install --with-deps chromium
+        if: always() && steps.dependencies.outcome == 'success'
+      - run: npm run smoke:touch-hover
+        if: always() && steps.browser.outcome == 'success'
+
   portable:
     needs: plan
     if: needs.plan.outputs.has-builds == 'true'
@@ -167,7 +187,7 @@ jobs:
 
   build-checks:
     if: always()
-    needs: [plan, portable, extensions, macos-native, macos-electron, linux-headless]
+    needs: [plan, portable, extensions, macos-native, macos-electron, linux-headless, hover-policy]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -175,6 +195,7 @@ jobs:
         env:
           EXTENSIONS_RESULT: ${{ needs.extensions.result }}
           EXTENSIONS_SELECTED: ${{ needs.plan.outputs.extensions }}
+          HOVER_RESULT: ${{ needs.hover-policy.result }}
           PLAN_RESULT: ${{ needs.plan.result }}
           BUILD_RESULT: ${{ needs.portable.result }}
           NATIVE_RESULT: ${{ needs.macos-native.result }}
@@ -186,6 +207,7 @@ jobs:
           HEADLESS_SELECTED: ${{ needs.plan.outputs.headless-tests }}
         run: |
           test "$PLAN_RESULT" = success
+          test "$HOVER_RESULT" = success
           require_selected() {
             if [ "$1" = true ]; then
               test "$2" = success

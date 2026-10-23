@@ -7,6 +7,8 @@ await mkdir(output,{recursive:true});
 const locale=process.env.OPENCRAFT_USAGE_SMOKE_LOCALE??"zh-CN";
 const source=`
 import React from 'react';
+import {bindTouchInteractionMode} from '/apps/workbench-web/src/runtime/pointer-modality.ts';
+bindTouchInteractionMode(document);
 import {createIntlTestRoot as createRoot} from '/tests/fixtures/intl-root.tsx';
 import {TokenUsageDashboardView} from '/apps/workbench-web/src/components/token-usage-dashboard.tsx';
 import {buildOpenCraftThemeCssProperties} from '/packages/design-system/src/theme-engine.ts';
@@ -28,7 +30,7 @@ const port={getSnapshot:()=>({...connection}),subscribe:()=>()=>{},request:async
  rows:params.view==='turns'?[{threadId:'thread-fixture',turnId:'turn-fixture',startedAt:Date.now(),executionState:'completed',allocationState:'settled',rawTokens:'2000',allocatedTokens:tokens,participantCount:2,revision:3,models:[]}]:window.expanded?Array.from({length:30},(_,n)=>({key:(params.cursor?'thread-page2-':'thread-page1-')+n,tokens,turns:1})):[{key:params.view==='actors'?'A':'thread-fixture',tokens,turns:1}],nextCursor:window.expanded&&!params.cursor?'fixture-page2':null};
 }};
 createRoot(document.getElementById('root')).render(<div className="settings-page__viewport" data-layout="document"><div className="settings-page__content"><TokenUsageDashboardView hostId="fixture" agentRuntimes={port} locale={${JSON.stringify(locale)}}/></div></div>);`;
-const vite=await createServer({configFile:false,root:process.cwd(),logLevel:"error",server:{host:"127.0.0.1",port:0},plugins:[{
+const vite=await createServer({configFile:false,root:process.cwd(),logLevel:"error",esbuild:{jsx:"automatic"},resolve:{dedupe:["react","react-dom"]},server:{host:"127.0.0.1",port:0},plugins:[{
  name:"usage-dashboard-smoke",resolveId:id=>id==="/probe.tsx"?id:null,load:id=>id==="/probe.tsx"?source:null,
  configureServer(server){server.middlewares.use((request,response,next)=>{if(request.url!=="/")return next();response.setHeader("content-type","text/html");response.end('<style>html,body,#root{height:100%;margin:0;overflow:hidden}</style><div id="root"></div><script type="module" src="/probe.tsx"></script>');});},
 }]});
@@ -37,6 +39,8 @@ try {
  await vite.listen();browser=await chromium.launch({headless:true,executablePath:process.env.OPENCRAFT_CHROMIUM_EXECUTABLE,args:["--no-sandbox"]});
  const page=await browser.newPage({viewport:{width:1440,height:900}}), errors:string[]=[];
  page.on("pageerror",(error:Error)=>errors.push(error.message));
+ page.setDefaultTimeout(60000);
+ await page.addInitScript("window.__name=value=>value");
  await page.goto(vite.resolvedUrls!.local[0]!);
  await page.getByRole("heading",{name:locale==="en-US"?"My allocated usage":"我的分摊用量"}).waitFor();
  await page.getByRole("heading",{name:locale==="en-US"?"Usage by model":"模型用量",exact:true}).waitFor();
@@ -68,6 +72,49 @@ try {
  await page.evaluate(()=>{(window as any).expanded=false;(window as any).pageDelay=20;});
  await page.getByRole("button",{name:locale==="en-US"?"First page":"回到第一页",exact:true}).click();
  await page.getByRole("button",{name:"thread-fixture",exact:true}).waitFor();
+ // Exercise actual component and styles with retained pseudo-hover and input changes.
+ const cell=page.locator('.token-usage__heatmap-cell:not(:disabled)').first();
+ const caption=page.locator('.token-usage__activity-caption');
+ const date=await cell.getAttribute('data-date');
+ const session=await page.context().newCDPSession(page);
+ await session.send('DOM.enable');await session.send('CSS.enable');
+ const {root}=await session.send('DOM.getDocument');
+ const {nodeId}=await session.send('DOM.querySelector',{nodeId:root.nodeId,selector:'.token-usage__heatmap-cell:not(:disabled)'});
+ await session.send('CSS.forcePseudoState',{nodeId,forcedPseudoClasses:['hover']});
+ for(const theme of ['light','dark']) {
+   await page.evaluate(theme=>(window as any).setTheme(theme),theme);
+   for(const pointerType of ['touch','pen']) {
+     await page.evaluate(pointerType=>document.dispatchEvent(new PointerEvent('pointerdown',{pointerType,bubbles:true})),pointerType);
+     await cell.dispatchEvent('pointerover',{pointerType});
+     assert.equal(await cell.evaluate(el=>getComputedStyle(el).outlineStyle),'none','retained hover is suppressed for '+pointerType);
+     assert.ok(!(await caption.innerText()).includes(date!),'contact entry does not preview');
+   }
+   await cell.dispatchEvent('pointerover',{pointerType:'mouse'});
+   await page.waitForFunction(date=>document.querySelector('.token-usage__activity-caption')?.textContent?.includes(date!),date);
+   await cell.dispatchEvent('pointerout',{pointerType:'mouse'});
+   await cell.focus();await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');
+   assert.equal(await cell.evaluate(el=>el===document.activeElement),true);
+   assert.equal(await cell.evaluate(el=>getComputedStyle(el).outlineStyle),'solid','keyboard focus survives touch');
+   await page.keyboard.press('Enter');
+   assert.equal(await cell.getAttribute('aria-pressed'),'true','keyboard activates explicit selection');
+   await page.evaluate(()=>document.dispatchEvent(new PointerEvent('pointerdown',{pointerType:'touch',bubbles:true})));
+   await cell.evaluate(el=>(el as HTMLElement).blur());
+   assert.equal(await cell.evaluate(el=>getComputedStyle(el).outlineStyle),'solid','selection survives touch');
+   await cell.click();
+   assert.equal(await cell.getAttribute('aria-pressed'),'false');
+   await cell.dispatchEvent('pointerout',{pointerType:'mouse'});
+ }
+ await session.detach();
+ // A real touch-capable context verifies native tap, not synthetic click alone.
+ const touchContext=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}});
+ const touchPage=await touchContext.newPage();touchPage.setDefaultTimeout(60000);
+ touchPage.on('pageerror',(error:Error)=>errors.push(error.message));
+ await touchPage.addInitScript("window.__name=value=>value");
+ await touchPage.goto(vite.resolvedUrls!.local[0]!);
+ const touchCell=touchPage.locator('.token-usage__heatmap-cell:not(:disabled)').first();
+ await touchCell.tap();assert.equal(await touchCell.getAttribute('aria-pressed'),'true');
+ await touchCell.tap();assert.equal(await touchCell.getAttribute('aria-pressed'),'false');
+ await touchContext.close();
  const diagnostics=page.getByText(locale==="en-US"?"View runtime diagnostics":"查看运行诊断",{exact:true});
  await diagnostics.focus();await page.keyboard.press("Enter");
  await page.getByText(locale==="en-US"?"Deduplicated":"去重",{exact:true}).waitFor();
@@ -83,5 +130,5 @@ try {
  await page.evaluate(()=>{(window as any).mode="unsupported";});await page.getByRole("button",{name:locale==="en-US"?"Refresh":"刷新",exact:true}).click();
  await page.getByText(locale==="en-US"?"This Host does not support token statistics.":"此执行服务暂不支持 Token 统计。",{exact:true}).waitFor();
  assert.deepEqual(errors,[]);
- console.log(JSON.stringify({passed:true,locale,realRenderer:true,syntheticQueryPort:true,widths:[320,390,1440],themes:["light","dark"],drilldown:true,keyboardDiagnostics:true,keyboardDrilldown:true,summaryCursorAndScrollRestored:true,pendingLayoutPreserved:true,revocationClearsData:true,unsupported:true,screenshots:output}));
+ console.log(JSON.stringify({passed:true,locale,realRenderer:true,syntheticQueryPort:true,widths:[320,390,1440],themes:["light","dark"],drilldown:true,keyboardDiagnostics:true,hoverInputMatrix:true,nativeTouchSelection:true,keyboardDrilldown:true,summaryCursorAndScrollRestored:true,pendingLayoutPreserved:true,revocationClearsData:true,unsupported:true,screenshots:output}));
 }finally{await browser?.close();await vite.close();}
