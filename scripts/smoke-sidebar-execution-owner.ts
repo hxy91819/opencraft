@@ -17,7 +17,7 @@ initializeAppearanceTheme();
 const storage={load:async()=>null,save:async(_,value)=>value};const layout=await SidebarLayoutStore.open(storage);
 const now=Date.now()/1000;
 const local=threadServerOrigin({serverId:'local-server',label:'Local'});
-const hermes=threadServerOrigin({serverId:'lightvela-hermes',label:'Hermes Cloud'});
+const hermes=threadServerOrigin({serverId:'remote-hermes',label:'Hermes Cloud'});
 const ssh=threadServerOrigin({serverId:'ssh-server:9.134.163.40',label:'Remote SSH'});
 const base={project:'opencraft',lineage:'root',time:'now',updatedAt:now,unread:false};
 const threads=[
