@@ -231,7 +231,7 @@ nor persisted provenance.
 Each queue entry displays its own submitter photo in a fixed 20px slot beside
 an independent drag handle, with a neutral fallback. The handle remains visible;
 hover, keyboard focus and dragging never overlay the grip on the photo or fade
-its contents. Pointer activation belongs only to the handle. Its desktop target
+its contents. Pointer activation belongs only to the handle. Its compact 24px desktop target
 and the coarse-pointer 44px target stay within their own column and row, without
 covering the photo or message text. Warning badges remain anchored to the sender.
 The shared Composer receives generic name/avatar URL values resolved by the
