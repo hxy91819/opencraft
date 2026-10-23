@@ -83,6 +83,13 @@ input.on("line", line => {
     send({ id: message.id, result: { thread: { id: message.params.threadId, path: loadedThreads.has(message.params.threadId) ? `/synthetic/${message.params.threadId}.jsonl` : null, createdAt: 123, name: threadNames.get(message.params.threadId) ?? null, status: { type, ...(active ? { activeFlags: [] } : {}) }, turns: message.params.includeTurns ? threadTurns.get(message.params.threadId) ?? [] : [] } } });
     return;
   }
+  if (message.method === "thread/turns/list") {
+    const rows = [...(threadTurns.get(message.params.threadId) ?? [])];
+    if (message.params.sortDirection !== "asc") rows.reverse();
+    const offset = Number(message.params.cursor ?? 0), limit = message.params.limit ?? 100;
+    send({ id: message.id, result: { data: rows.slice(offset, offset + limit).map(turn => ({ ...turn, items: [] })),
+      nextCursor: offset + limit < rows.length ? String(offset + limit) : null } }); return;
+  }
   if (message.method === "thread/items/list") {
     const items = (history.get(message.params.threadId) ?? []).filter(entry => !message.params.turnId || entry.turnId === message.params.turnId);
     const offset = message.params.cursor ? Number(message.params.cursor) : 0;

@@ -1910,9 +1910,8 @@ export class CodexEngineAdapter implements DuplexTransport {
           this.clearCapacityRetry(threadId);
           return;
         }
-        const response = record(await this.requestPhysical("thread/read", { threadId, includeTurns: true }));
-        const turns = record(response.thread).turns;
-        const latest = Array.isArray(turns) ? record(turns.at(-1)) : {};
+        const response = record(await this.requestPhysical("thread/turns/list", { threadId, limit: 1, sortDirection: "desc", itemsView: "notLoaded" }));
+        const latest = Array.isArray(response.data) ? record(response.data[0]) : {};
         if (latest.id !== failedTurnId || latest.status !== "failed"
           || record(latest.error).codexErrorInfo !== "serverOverloaded") {
           this.clearCapacityRetry(threadId);
@@ -2022,13 +2021,28 @@ export class CodexEngineAdapter implements DuplexTransport {
     if (row.state === "queued") { this.scheduleQueueMaintenance(run.threadId); return { state: "running" }; }
     const turnId = row.targetTurnId;
     if (!turnId || turnId === "unknown") return { state: "unknown" };
-    const response = record(await this.requestPhysical("thread/read", { threadId: run.threadId, includeTurns: true }));
-    const turns = record(response.thread).turns;
-    const turn = Array.isArray(turns) ? turns.map(record).find(value => value.id === turnId) : undefined;
+    const turn = await this.findScheduledTurn(run.threadId, turnId);
     if (!turn) return { state: "unknown" };
     if (turn.status === "completed") return { state: "completed" };
     if (turn.status === "failed" || turn.status === "interrupted" || turn.error) return { state: "failed" };
     return { state: "running" };
+  }
+
+  private async findScheduledTurn(threadId: string, turnId: string): Promise<RpcRecord | undefined> {
+    let cursor: string | undefined;
+    const seen = new Set<string>();
+    for (let page = 0; page < 100; page += 1) {
+      const response = record(await this.requestPhysical("thread/turns/list", {
+        threadId, limit: 100, sortDirection: "desc", itemsView: "notLoaded", ...(cursor ? { cursor } : {}),
+      }));
+      if (!Array.isArray(response.data)) throw new Error("Codex turn history has no page");
+      const turn = response.data.map(record).find(value => value.id === turnId);
+      if (turn) return turn;
+      if (response.nextCursor == null) return undefined;
+      if (typeof response.nextCursor !== "string" || seen.has(response.nextCursor)) throw new Error("Codex turn history did not advance");
+      cursor = response.nextCursor; seen.add(cursor);
+    }
+    return undefined; // Old/unobserved schedules stay unknown; never fetch the full transcript.
   }
 
   private async threadStatus(threadId: string): Promise<string> {
@@ -2049,7 +2063,7 @@ export class CodexEngineAdapter implements DuplexTransport {
     if (status === "notLoaded" || this.nativeCore && !this.nativeSubscribedThreads.has(threadId)) {
       // A core-kept active thread is loaded, but this new physical connection
       // still needs completion events for queue and Goal continuation.
-      await this.requestPhysical("thread/resume", { threadId });
+      await this.requestPhysical("thread/resume", { threadId, excludeTurns: true });
       status = await this.threadStatus(threadId);
     }
     return status === "idle";
