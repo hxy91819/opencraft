@@ -50,19 +50,19 @@ test("the Workbench core does not fabricate a fallback Host", () => {
 });
 
 test("named Web products cannot inherit another product's Host or Replica state", () => {
-  assert.equal(productStorageKey("opencraft", "vela.active-host-id"), "vela.active-host-id");
+  assert.equal(productStorageKey("opencraft", "opencraft.active-host-id"), "opencraft.active-host-id");
   assert.equal(
-    productStorageKey("lightvela-web", "vela.active-host-id"),
-    "lightvela-web:vela.active-host-id",
+    productStorageKey("fixture-product", "opencraft.active-host-id"),
+    "fixture-product:opencraft.active-host-id",
   );
-  assert.equal(productDatabaseName("opencraft", "vela-host-connections"), "vela-host-connections");
+  assert.equal(productDatabaseName("opencraft", "opencraft-host-connections"), "opencraft-host-connections");
   assert.equal(
-    productDatabaseName("lightvela-web", "vela-host-connections"),
-    "vela-host-connections-lightvela-web",
+    productDatabaseName("fixture-product", "opencraft-host-connections"),
+    "opencraft-host-connections-fixture-product",
   );
   assert.equal(
-    productDatabaseName("lightvela-web", "vela-workbench-replica"),
-    "vela-workbench-replica-lightvela-web",
+    productDatabaseName("fixture-product", "opencraft-workbench-replica"),
+    "opencraft-workbench-replica-fixture-product",
   );
 });
 
@@ -450,14 +450,14 @@ test("legacy website selections migrate additively without overwriting local pre
     ["vela.active-host-id", "hypernode"], ["vela.active-thread-id:hypernode", "thread-old"],
     ["vela.selected-project-id:hypernode", "project-old"], ["vela.selected-project-id:local", "project-local"],
   ]);
-  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value) } as Storage;
+  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => { values.delete(key); } } as Storage;
   restoreLegacyWebsiteSelection(storage);
-  assert.equal(values.get("vela.active-host-id"), "local");
-  assert.equal(values.get("vela.active-thread-id:local"), "thread-old");
-  assert.equal(values.get("vela.selected-project-id:local"), "project-local");
-  assert.equal(values.get("vela.active-thread-id:hypernode"), "thread-old");
+  assert.equal(values.get("opencraft.active-host-id"), "local");
+  assert.equal(values.get("opencraft.active-thread-id:local"), "thread-old");
+  assert.equal(values.get("opencraft.selected-project-id:local"), "project-local");
+  assert.equal(values.get("opencraft.active-thread-id:hypernode"), "thread-old");
   restoreLegacyWebsiteSelection(storage);
-  assert.equal(values.get("vela.active-thread-id:local"), "thread-old");
+  assert.equal(values.get("opencraft.active-thread-id:local"), "thread-old");
 });
 test("legacy thread and draft links retain resource identity on the canonical website Host", () => {
   assert.deepEqual(resolveLegacyWebsiteLocation({ kind: "thread", key: { hostId: "hypernode", threadId: "t" } } as never), {

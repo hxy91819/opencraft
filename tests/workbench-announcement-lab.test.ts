@@ -10,13 +10,13 @@ test("announcement media URLs become absolute against the renderer module", () =
     "http://127.0.0.1:4567/assets/announcement.svg",
   );
   assert.equal(
-    resolveAnnouncementMediaUrl("/assets/announcement.svg", "https://lightvela.ai/settings/laboratory"),
-    "https://lightvela.ai/assets/announcement.svg",
+    resolveAnnouncementMediaUrl("/assets/announcement.svg", "https://opencraft.example/settings/laboratory"),
+    "https://opencraft.example/assets/announcement.svg",
   );
-  assert.equal(resolveAnnouncementMediaUrl("blob:https://lightvela.ai/id", "https://lightvela.ai/app.js"),
-    "blob:https://lightvela.ai/id");
+  assert.equal(resolveAnnouncementMediaUrl("blob:https://opencraft.example/id", "https://opencraft.example/app.js"),
+    "blob:https://opencraft.example/id");
   assert.throws(
-    () => resolveAnnouncementMediaUrl("data:text/html,unsafe", "https://lightvela.ai/app.js"),
+    () => resolveAnnouncementMediaUrl("data:text/html,unsafe", "https://opencraft.example/app.js"),
     /HTTP\(S\) or blob/u,
   );
 });

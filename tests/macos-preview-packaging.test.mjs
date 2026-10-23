@@ -27,7 +27,7 @@ test("packaging rejects a bundle and installer with different identities", async
   const context = { arch: process.arch === "arm64" ? 3 : 1, electronPlatformName: process.platform,
     packager: { info: { appDir: root }, appInfo: { productName: "OpenCraft", id: "dev.opencraft.workbench" } } };
   await beforePack(context);
-  context.packager.appInfo.id = "ai.lightvela.vela";
+  context.packager.appInfo.id = "com.example.other-product";
   await assert.rejects(beforePack(context), /identity mismatch/u);
   await writeFile(join(root, "dist-host/main.cjs"), "different main");
   await assert.rejects(beforePack(context), /bundle differs/u);

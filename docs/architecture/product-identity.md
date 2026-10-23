@@ -150,6 +150,16 @@ The Bot payload version and domain schema remain unchanged. Generic
 `thread/*`, `turn/*`, and `bot/*` methods are
 unchanged. Native deep links now use `opencraft:`.
 
+## Conversation selection preferences
+
+The Workbench writes `opencraft.active-host-id`, `opencraft.active-thread-id`
+and Host-specific `opencraft.selected-project-id` keys. Reads copy forward only
+the corresponding former key in the same product/server partition and preserve
+opaque Host/account suffixes. Existing current values win; clearing a selection
+also removes its former alias so stale input cannot revive on reload. Failed
+copy-forward leaves historical input recoverable. This does not rename another
+owner's browser state, database, product ID or account identity.
+
 ## Service-provider ownership
 
 the downstream product remains a service-provider plugin. Its domains, OAuth callbacks,
@@ -163,6 +173,15 @@ Deployment directories and running installations are not moved by
 source rebranding. Mac builds now produce `OpenCraft.app`, and scripts use
 explicit `OPENCRAFT_MAC_*` settings. Builds must be deployed separately; source renaming
 does not replace the running production website or Mac application.
+
+## Native Replica identity
+
+Expo native Replica files use the owned `opencraft-*.db` names. Exact former
+files are snapshot inputs; existing current caches win, and a complete SQLite
+snapshot is installed without overwriting a competing destination. Old files
+remain recoverable and current cache clears do not revive them. See
+[native Replica migration](../native-replica-identity-migration.md) for the native
+owner, WAL, recovery and verification boundaries.
 
 ## Browser metadata identity
 
