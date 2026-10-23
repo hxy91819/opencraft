@@ -63,6 +63,25 @@ test('SQLite full does not count an existing duplicate as accepted or dropped',a
   }finally{store.close();await rm(directory,{recursive:true,force:true});}
 });
 
+test('SQLite full counts persisted and intra-batch duplicates that appear after the failure',async()=>{
+  const directory=await mkdtemp(join(tmpdir(),'opencraft-observe-full-asymmetric-'));
+  const store=new ObserveStore(join(directory,'observe.sqlite'));
+  try{
+    const existing=event({eventId:'asymmetric-existing'});
+    assert.equal(store.ingest([existing]).accepted,1);
+    const pages=store.db.prepare('PRAGMA page_count').get().page_count;
+    store.db.exec(`PRAGMA max_page_count=${pages+3}`);
+    const prefix=Array.from({length:64},(_,i)=>event({eventId:`asymmetric-new-${i}`,originClass:'interactive',visibility:'visible',measurementScope:'in_page',cache:'cold',engine:'codex',actorKind:'human',durationMs:10+i}));
+    const receipt=store.ingest([...prefix,existing,prefix[0]],'a'.repeat(64));
+    assert.equal(receipt.accepted,0);
+    assert.equal(receipt.duplicates,2);
+    assert.equal(receipt.dropped,64);
+    assert.equal(store.accepted,1);
+    assert.equal(store.dropped,64);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM events').get().n,1);
+  }finally{store.close();await rm(directory,{recursive:true,force:true});}
+});
+
 test('capacity receipt survives a secondary rollback failure without masking the full batch',async()=>{
   const directory=await mkdtemp(join(tmpdir(),'opencraft-observe-full-rollback-'));
   const store=new ObserveStore(join(directory,'observe.sqlite'));

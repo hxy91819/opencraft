@@ -56,6 +56,21 @@ export class ObserveStore {
       if (!event) { rejected++; continue; }
       events.push({event, body: JSON.stringify(event)});
     }
+    // Existing success-path identity: an event is a duplicate when its id is
+    // already persisted or appeared earlier in this valid batch; otherwise it
+    // would be accepted. Record that identity for the whole batch up front so
+    // a late capacity rollback cannot misclassify ids that were not reached.
+    const ids = [...new Set(events.map(({event}) => event.eventId))];
+    const known = new Set<string>();
+    if (ids.length) {
+      const rows = this.db.prepare(`SELECT event_id FROM events WHERE event_id IN (${ids.map(() => '?').join(',')})`).all(...ids);
+      for (const row of rows) known.add(row.event_id as string);
+    }
+    let plannedDuplicates = 0, plannedDropped = 0;
+    for (const {event} of events) {
+      if (known.has(event.eventId)) plannedDuplicates++;
+      else { known.add(event.eventId); plannedDropped++; }
+    }
     let transaction = false;
     try {
       this.db.exec('BEGIN'); transaction = true;
@@ -105,10 +120,9 @@ export class ObserveStore {
       // Attempt release only if needed, and never replace the original failure.
       if (transaction) { try { this.db.exec('ROLLBACK'); } catch {} }
       if (isCapacityError(error)) {
-        const lost = events.length - duplicates;
         this.rejected += rejected;
-        this.dropped += lost;
-        return {accepted: 0, rejected, duplicates, dropped: lost};
+        this.dropped += plannedDropped;
+        return {accepted: 0, rejected, duplicates: plannedDuplicates, dropped: plannedDropped};
       }
       throw error;
     }
