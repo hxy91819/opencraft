@@ -120,8 +120,9 @@ current provider is registered, preserving Host IDs, recipes and observations.
 Exact former first-party Settings/View bookmarks resolve through Router REPLACE.
 Third-party identities remain opaque. The optional first-party Paper palette
 also normalizes its exact former ID before preferences copy forward.
-`vela-bot:` resource URIs, database identities and product storage partitions
-remain with their storage owners; these registration changes do not implicitly
+`opencraft-bot:` resource URIs are produced by the Bot owner; exact former
+resource schemes remain readable for saved Views. Database identities and product
+storage partitions remain with their storage owners; these registration changes do not implicitly
 migrate or clear those separate contracts.
 
 Appearance preferences write the current `opencraft.appearance-theme` and
@@ -137,10 +138,11 @@ filesystem paths, directories, sockets, tokens, databases or logs. Published
 `ioa_*` table identities remain storage contracts and are not renamed by source
 cleanup. There is one schema and one reader rather than a compatibility fork.
 
-AppServer capability strings (`vela/agents`, `vela/bot-conversations`,
-`vela/browser-use`) and published browser tool names stay stable. The source
-constant names have changed to OPENCRAFT, but a product rename is not a wire
-protocol version change. Generic `thread/*`, `turn/*`, and `bot/*` methods are
+Bot capability declarations use `opencraft/bot-conversations`; clients read the
+exact former identifier only when the current declaration is absent. Other
+AppServer capability strings and published browser tool names still require
+their own owner migration. These identity changes keep the Bot payload version
+and domain schema unchanged. Generic `thread/*`, `turn/*`, and `bot/*` methods are
 unchanged. Native deep links now use `opencraft:`.
 
 ## Service-provider ownership

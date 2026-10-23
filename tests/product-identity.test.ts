@@ -92,11 +92,11 @@ test("web product identity is normalized once for product-owned policies", () =>
 });
 
 
-test("rebranding does not change conversation identity or external capability negotiation", () => {
+test("owned Bot names canonicalize while saved conversation identity remains readable", () => {
   const key = createConversationKey("velahermes0", "20260906_125907_f05d94");
   const uri = "vela-bot:conversation?hostId=velahermes0&conversationId=20260906_125907_f05d94";
-  assert.equal(botConversationResourceUri(key), uri);
+  assert.equal(botConversationResourceUri(key), uri.replace("vela-bot:", "opencraft-bot:"));
   assert.deepEqual(parseBotConversationViewResource(uri), { kind: "conversation", key });
-  assert.equal(OPENCRAFT_BOT_CONVERSATIONS_EXTENSION, "vela/bot-conversations");
+  assert.equal(OPENCRAFT_BOT_CONVERSATIONS_EXTENSION, "opencraft/bot-conversations");
   assert.doesNotMatch(read("apps/workbench-electron/src/daemon-client.ts"), /vela-daemon\.(?:sock|token)/u);
 });
