@@ -135,7 +135,7 @@ contains positive/negative examples; CI's `test:web-release` also runs the lint
 regressions. Node follows `.nvmrc`; the lint tooling remains development-only. The curated runtime shims above are
 renderer dependencies, separate from the static checker.
 
-Compatibility exceptions belong in `eslint.browser.config.mjs`, with a reason
+Compatibility exceptions belong in `config/eslint.browser.config.mjs`, with a reason
 and a tested fallback, rather than inline disables. The injected motion replay
 clock named `scheduler` has a file-local exception for a plugin false positive;
 it is not the experimental browser Scheduler API. Feature detection such as

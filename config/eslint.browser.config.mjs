@@ -2,16 +2,16 @@ import parser from "@typescript-eslint/parser";
 import compat from "eslint-plugin-compat";
 import esx from "eslint-plugin-es-x";
 import { fileURLToPath } from "node:url";
-import { browserTargets, browserEcmaVersion } from "./config/browser-compatibility.mjs";
+import { browserTargets, browserEcmaVersion } from "./browser-compatibility.mjs";
 
-const root = fileURLToPath(new URL(".", import.meta.url));
+const root = fileURLToPath(new URL("../", import.meta.url));
 export default [
   {
     files: ["**/*.{js,mjs,cjs,jsx,ts,mts,cts,tsx}"],
     languageOptions: { parser, parserOptions: {
       // The actual bundle selects files; this program supplies uniform browser
       // declarations even when a plugin is injected by a downstream build.
-      project: "./tsconfig.browser-compatibility.json", tsconfigRootDir: root,
+      project: "./config/tsconfig.browser-compatibility.json", tsconfigRootDir: root,
     } },
     plugins: { compat, "es-x": esx },
     settings: { browsers: browserTargets, lintAllEsApis: true },
