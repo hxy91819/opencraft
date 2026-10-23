@@ -1,6 +1,6 @@
 // Bound work before it enters WebSocket/native queues. Only unsent adjacent
 // samples merge; edges, modifiers, contact sets and wheel reversals are barriers.
-const signature = (input: any) => JSON.stringify([input.type, input.pointerType,
+const signature = (input: any) => JSON.stringify([input.type, input.pointerType, input.document,
   input.button, input.modifiers, input.touchPoints?.map((p: any) => p.id).sort((a: number, b: number) => a - b)]);
 export function mergeRemoteInput(previous: any, next: any): any | null {
   if (signature(previous) !== signature(next)) return null;
@@ -21,7 +21,8 @@ export class RemoteBrowserInputQueue {
   private exclusive = false;
   private generation = 0;
   private waiters: ((drained: boolean) => void)[] = [];
-  constructor(private readonly send: (input: any, current: () => boolean) => Promise<unknown>, private readonly overflow: () => void) {}
+  constructor(private readonly send: (input: any, current: () => boolean) => Promise<unknown>, private readonly overflow: () => void,
+    private readonly failed: (error: Error) => void = () => {}) {}
   get busy() { return this.active > 0 || this.queued.length > 0; }
   idle(): Promise<boolean> { return this.busy ? new Promise(resolve => this.waiters.push(resolve)) : Promise.resolve(true); }
   reset() {
@@ -55,7 +56,10 @@ export class RemoteBrowserInputQueue {
         if ('input' in job) return this.send(job.input, () => generation === this.generation);
         try { job.resolve(await job.run()); } catch (error) { job.reject(error as Error); }
       })
-        .catch(() => { /* Transport/control owner reports failures; never replay input. */ })
+        .catch(error => {
+          if (generation !== this.generation) return;
+          this.reset(); this.failed(error);
+        })
         .finally(() => {
           if (generation !== this.generation) return;
           --this.active; if ('run' in job) this.exclusive = false; this.pump();

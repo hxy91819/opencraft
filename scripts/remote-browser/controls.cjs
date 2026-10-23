@@ -3,16 +3,18 @@
 // A page has one ordered control stream. Only adjacent, not-yet-dispatched
 // pointer positions may replace one another; adjacent wheel deltas accumulate.
 // Gesture edges and editing never merge.
-function createControls(command) {
+function createControls(command, getDocument = () => undefined) {
   const tails = new Map(), moves = new Map(), epochs = new Map();
   const ordered = new Set(['input', 'text', 'ime', 'copy', 'viewport', 'visible', 'zoom', 'close', 'control']);
   const dispatch = message => {
     const page = message.page;
+    if (['input', 'text', 'ime'].includes(message.method))
+      message = { ...message, document: message.document ?? getDocument(page) };
     if (!epochs.has(page)) epochs.set(page, {});
     const epoch = epochs.get(page);
     const move = message.method === 'input' && ['mouseMove', 'touchMove'].includes(message.input?.type);
     const wheel = message.method === 'input' && message.input?.type === 'mouseWheel';
-    const signature = move || wheel ? JSON.stringify([wheel ? [message.input.x, message.input.y] : null, message.control, message.input.type, message.input.button, message.input.modifiers, message.input.pointerType, Array.isArray(message.input.touchPoints) ? message.input.touchPoints.map(p => p?.id).sort((a, b) => a - b) : null]) : null;
+    const signature = move || wheel ? JSON.stringify([wheel ? [message.input.x, message.input.y] : null, message.control, message.document, message.input.type, message.input.button, message.input.modifiers, message.input.pointerType, Array.isArray(message.input.touchPoints) ? message.input.touchPoints.map(p => p?.id).sort((a, b) => a - b) : null]) : null;
     const previous = moves.get(page);
     if ((move || wheel) && previous?.signature === signature) {
       const deltas = {};
@@ -33,6 +35,8 @@ function createControls(command) {
     const operation = (tails.get(page) ?? Promise.resolve()).then(() => {
       if (epochs.get(page) !== epoch)
         throw Object.assign(new Error('Browser renderer replaced'), { code: 'BROWSER_UNAVAILABLE', retryable: true });
+      if (message.document !== undefined && message.document !== getDocument(page))
+        throw Object.assign(new Error('Browser document changed'), { code: 'DOCUMENT_CHANGED', retryable: true });
       if (moves.get(page) === slot) moves.delete(page);
       return command(slot.message);
     });

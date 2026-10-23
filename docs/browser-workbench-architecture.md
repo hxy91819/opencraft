@@ -1780,3 +1780,38 @@ shared keyboard artwork. Localized accessible names and hint titles remain on
 the buttons. Unavailable controls stay absent, keyboard readiness still determines
 disabled state, and actions still call the existing surface owner without changing
 lease, focus or keyboard policy.
+
+### Remote input document and interaction fences
+
+Raw input and text operations now carry the remote document identity, distinct
+from the controller token and media epoch. The worker captures that identity at
+admission for older peers, checks it again when queued commands dispatch, and
+rechecks after viewport/reset/editing waits. Touch and wheel injection also check
+after their asynchronous native metrics read. New viewers negotiate document
+input and preserve the identity from event production through local coalescing,
+transport and native execution; missing or obsolete identities are rejected.
+Main-document replacement emits an input reset with its new identity, retires
+local queues/composition, and releases pressed native state before new input.
+Subresource loading alone cannot reset a document-aware viewer's editing state.
+Already dispatched native events cannot be retracted; rejected edits are never
+retried against another document.
+
+Human control requests capture the viewer's visibility generation. Hiding a
+viewer invalidates pending human requests even if it becomes visible before the
+native grant completes. The service rechecks that generation before and after
+the native acknowledgement; canceled grants clear their native token. This is
+independent of Agent control, which can operate without a visible viewer.
+
+IME navigation retirement follows the owned frame: main-document replacement
+or replacement of the frame holding the editor retires it; unrelated iframe
+and same-document navigation do not. Native target/document/focus checks remain
+authoritative, including destroyed descendant frames.
+
+The local input adapter interprets deletion and line-break intent by inputType
+on both cancelable beforeinput and noncancelable input paths. It suppresses a
+matching input after an already handled beforeinput, and commits fallback text
+only when it remains in the staging receiver, preventing duplicate composition
+commits. It does not mirror remote text or implement local autocorrection of
+remote selections. A failed input acknowledgement retires pending interaction
+work, cancels native pressed state and reports one current failure; obsolete
+connection/control/document errors stay retired, and no input is replayed.
