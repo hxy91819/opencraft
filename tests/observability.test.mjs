@@ -9,7 +9,7 @@ import { ObserveStore, observationSchemaV1 } from '../apps/observability-service
 import { mkdtemp, rm, readFile, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { sanitizeEvent, windowFor } from '../packages/observability-contract/index.mjs';
+import { limits, sanitizeEvent, windowFor } from '../packages/observability-contract/index.mjs';
 import { createEventQueue } from '../packages/observability-contract/queue.mjs';
 import { compare } from '../packages/observability-query/index.mjs';
 import { startObserve } from '../apps/observability-service/service.mjs';
@@ -132,6 +132,27 @@ test('heartbeat-shaped batch at capacity is a drop, not a process failure',async
     const result=await service.query('usage.activity24h');
     assert.equal(result.loss.dropped,32);assert.equal(result.query,'usage.activity24h');
   }finally{await service.close();await rm(directory,{recursive:true,force:true});}
+});
+
+test('configured database bytes raise the SQLite page cap without losing old rows',async()=>{
+  const directory=await mkdtemp(join(tmpdir(),'opencraft-observe-capacity-'));
+  const path=join(directory,'observe.sqlite');
+  let store=new ObserveStore(path,()=>now);
+  try{
+    assert.equal(store.ingest([event({eventId:'capacity-old'})]).accepted,1);
+    const pageSize=store.db.prepare('PRAGMA page_size').get().page_size;
+    const pages=store.db.prepare('PRAGMA page_count').get().page_count;
+    store.db.exec(`PRAGMA max_page_count=${pages}`);
+    assert.equal(store.ingest(Array.from({length:32},(_,i)=>event({eventId:`capacity-blocked-${i}`}))).accepted,0);
+    store.close();
+    const configured=(pages+64)*pageSize;
+    store=new ObserveStore(path,()=>now,configured);
+    assert.equal(store.db.prepare('PRAGMA max_page_count').get().max_page_count,pages+64);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM events').get().n,1,'old row must survive reopening');
+    assert.equal(store.ingest(Array.from({length:8},(_,i)=>event({eventId:`capacity-accepted-${i}`}))).accepted,8);
+    assert.equal(store.db.prepare('SELECT count(*) AS n FROM events').get().n,9);
+    assert.equal(limits.retentionMs,7*86400000);
+  }finally{store.close();await rm(directory,{recursive:true,force:true});}
 });
 
 test('real socket, domain dedup, immutable CLI output, unknown query and unavailable backend',async()=>{

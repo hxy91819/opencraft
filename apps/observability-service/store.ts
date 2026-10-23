@@ -37,15 +37,22 @@ function isCapacityError(error: unknown) {
   return /SQLITE_FULL|database or disk is full/i.test(String(value?.message ?? value?.cause?.message ?? ''));
 }
 
+const DEFAULT_MAX_PAGES = 110000;
+
 export class ObserveStore {
   db; outcome; accepted = 0; rejected = 0; dropped = 0;
   readonly now: () => number;
-  constructor(path: string, now: () => number = Date.now) {
+  constructor(path: string, now: () => number = Date.now, databaseBytes?: number) {
+    if (databaseBytes !== undefined && (!Number.isSafeInteger(databaseBytes) || databaseBytes < 4096)) throw new TypeError('Invalid Observe database capacity');
     this.now = now;
     const managed = openManagedDatabase({ path, legacyPolicy: 'reject', backup: {keep: 1},
       validateSchema: createSchemaValidator(observationSchemaV1+observationSchemaV2+observationSchemaV3+observationSchemaV4), migrations: [{version: 1, name: 'bounded-derived-observations', sql: observationSchemaV1},{version:2,name:'bounded-query-indexes-and-domain-rollups',sql:observationSchemaV2+backfill},{version:3,name:'execution-progress-and-queue-samples',sql:observationSchemaV3},{version:4,name:'latest-component-producer-index',sql:observationSchemaV4}] });
     this.db = managed.database; this.outcome = managed.outcome;
-    this.db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=50; PRAGMA max_page_count=110000; PRAGMA journal_size_limit=33554432;');
+    this.db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=50; PRAGMA journal_size_limit=33554432;');
+    const pageSize = Number(this.db.prepare('PRAGMA page_size').get().page_size);
+    const pageLimit = databaseBytes === undefined ? DEFAULT_MAX_PAGES : Math.floor(databaseBytes / pageSize);
+    if (!Number.isSafeInteger(pageLimit) || pageLimit < 1) throw new TypeError('Invalid Observe database capacity');
+    this.db.exec(`PRAGMA max_page_count=${pageLimit};`);
   }
   ingest(inputs: unknown[], actor: string | null = null) {
     let accepted = 0, rejected = 0, duplicates = 0, dropped = 0;
