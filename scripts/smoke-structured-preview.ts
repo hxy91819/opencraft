@@ -44,13 +44,13 @@ createIntlTestRoot(document.getElementById('root')).render(<QueryClientProvider 
 // Reuse production dependency ownership, without crawling generated Expo HTML.
 const workbenchConfig=await loadConfigFromFile({command:'serve',mode:'development'},resolve('apps/workbench-web/vite.config.ts'));
 if(!workbenchConfig)throw new Error('Workbench Vite configuration unavailable');
-const vite=await createServer({configFile:false,root:process.cwd(),cacheDir:join(output,'vite-cache'),logLevel:'error',resolve:{dedupe:['react','react-dom','react-intl']},esbuild:{jsx:'automatic'},optimizeDeps:{...workbenchConfig.config.optimizeDeps,entries:['/tree-fixture.tsx'],include:[...workbenchConfig.config.optimizeDeps?.include??[],'@extend-ai/react-xlsx','docx-preview','@aiden0z/pptx-renderer/browser','@excalidraw/excalidraw','dompurify','@tanstack/react-virtual']},server:{host:'127.0.0.1',port:0,hmr:false},plugins:[react(),optionalWebAssets(),{name:'file-tree-fixture',enforce:'pre',resolveId(id,importer){if(id.endsWith('/appserver-runtime-context')&&importer?.includes('/panels/'))return '/tree-runtime.ts';return ['/tree-runtime.ts','/tree-fixture.tsx'].includes(id)?id:null},load:id=>id==='/tree-runtime.ts'?runtime:id==='/tree-fixture.tsx'?source:null,configureServer(server){server.middlewares.use((req,res,next)=>{if(req.url!=='/')return next();res.setHeader('content-type','text/html');res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><div id="root"></div><script type="module" src="/tree-fixture.tsx"></script>')})}}]});
+const vite=await createServer({configFile:false,root:process.cwd(),cacheDir:join(output,'vite-cache'),logLevel:'error',resolve:{dedupe:['react','react-dom','react-intl']},esbuild:{jsx:'automatic'},optimizeDeps:{...workbenchConfig.config.optimizeDeps,entries:['/tree-fixture.tsx'],include:[...workbenchConfig.config.optimizeDeps?.include??[],'@extend-ai/react-xlsx','docx-preview','@aiden0z/pptx-renderer/browser','@excalidraw/excalidraw','dompurify','@tanstack/react-virtual']},server:{host:'127.0.0.1',port:0,hmr:false,cors:false},plugins:[react(),optionalWebAssets(),{name:'file-tree-fixture',enforce:'pre',resolveId(id,importer){if(id.endsWith('/appserver-runtime-context')&&importer?.includes('/panels/'))return '/tree-runtime.ts';return ['/tree-runtime.ts','/tree-fixture.tsx'].includes(id)?id:null},load:id=>id==='/tree-runtime.ts'?runtime:id==='/tree-fixture.tsx'?source:null,configureServer(server){server.middlewares.use((req,res,next)=>{if(req.url!=='/')return next();res.setHeader('content-type','text/html');res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><div id="root"></div><script type="module" src="/tree-fixture.tsx"></script>')})}}]});
 let browser:any;
 try{
 await vite.listen();const {chromium}=await import(process.env.OPENCRAFT_PLAYWRIGHT_MODULE??'playwright');browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const evidence=[];
 for(const width of [390,1280])for(const theme of ['light','dark']){
- const page=await browser.newPage({viewport:{width,height:900},hasTouch:width<700});const errors:string[]=[];const externalRequests:string[]=[];page.on('request',request=>{const url=new URL(request.url());if(url.protocol.startsWith('http')&&url.hostname!=='127.0.0.1')externalRequests.push(url.origin)});page.on('pageerror',(e:Error)=>{errors.push(e.message);console.log('PAGE ERROR',e.message)});page.on('console',m=>{if(m.type()==='error')console.log('browser:',m.text())});await page.addInitScript('window.__name=value=>value');
+ const page=await browser.newPage({viewport:{width,height:900},hasTouch:width<700});const errors:string[]=[];const externalRequests:string[]=[];const sandboxAssetRequests:string[]=[];page.on('request',request=>{const url=new URL(request.url());if(url.protocol.startsWith('http')&&url.hostname!=='127.0.0.1')externalRequests.push(url.origin);if(url.pathname.includes('viewer-static')&&request.frame()!==page.mainFrame())sandboxAssetRequests.push(request.url())});page.on('pageerror',(e:Error)=>{errors.push(e.message);console.log('PAGE ERROR',e.message)});page.on('console',m=>{if(m.type()==='error')console.log('browser:',m.text())});await page.addInitScript('window.__name=value=>value');
  await page.goto('http://127.0.0.1:'+(vite.httpServer!.address() as any).port);await page.waitForFunction(()=>Boolean((window as any).fixture));await page.evaluate(theme=>(window as any).fixture.setThemePreference(theme),theme);
  const open=async(path:string)=>page.evaluate(path=>(window as any).fixture.panels.open('scope','resource',{resource:path,preview:false}),path);
  const waitReady=async()=>{
@@ -79,6 +79,8 @@ for(const width of [390,1280])for(const theme of ['light','dark']){
    await page.locator('[data-diagram-ready="true"]').waitFor({timeout:60000});
    const iframe=page.frameLocator('.structured-preview__drawio');
    await iframe.getByText('Draw.io first page',{exact:true}).waitFor();
+   await iframe.getByTitle('Next Page',{exact:true}).click();await iframe.getByText('第二页 / Second page',{exact:true}).waitFor();
+   await iframe.getByTitle('Previous Page',{exact:true}).click();await iframe.getByText('Draw.io first page',{exact:true}).waitFor();
    assert.ok(await iframe.locator('svg').count()>0);
    await page.screenshot({path:join(output,ext+'-'+theme+'-'+width+'.png')});
   }else{
@@ -111,7 +113,7 @@ for(const width of [390,1280])for(const theme of ['light','dark']){
  await page.getByRole('button',{name:'Try again',exact:true}).waitFor();
  await page.evaluate(()=>{const f=(window as any).fixture;for(const t of f.state.right.tabs)f.panels.close('scope','right',t.id)});
  assert.equal(await page.evaluate(()=>(window as any).fixture.previews.pool.size),0,'closed tabs must release retained engines');
- assert.deepEqual(errors,[]);assert.deepEqual(externalRequests,[],'previews must not request external resources');evidence.push({width,theme,formats});await page.close();
+ assert.deepEqual(sandboxAssetRequests,[],'opaque sandbox must not fetch local assets');assert.deepEqual(errors,[]);assert.deepEqual(externalRequests,[],'previews must not request external resources');evidence.push({width,theme,formats});await page.close();
 }
 await writeFile(join(output,'result.json'),JSON.stringify({passed:true,evidence,output},null,2));console.log(JSON.stringify({passed:true,evidence,output}));
 }finally{await browser?.close();await vite.close();}
