@@ -18,6 +18,7 @@ The retained engine classes are reviewed separately in [class naming](class-nami
 | Message metadata | `projectThreadMessageResult` / `projectThreadMessageNotification` and `projectThreadAttachmentResult` / `projectThreadAttachmentNotification`; consumers import their canonical modules directly. |
 | Thread-tool presentation | `ThreadToolNavigationTarget`, `threadToolNavigationTarget` and `thread-tools.ts`; presenters use `thread-tools` / `settings-tools` names and `thread-tool:` summary keys. |
 | Storage source constants | `OPENCRAFT_HOST_*` and `OPENCRAFT_MESSAGE_ATTACHMENTS_BASELINE`; SQL contents and migration identity stay at the existing database owner. |
+| Inline image metadata | `inline-image-url` describes Web and Native Composer attachments carried as data URLs. The compiler selects image input from the MIME type and URI, independently of this diagnostic label. |
 
 The typography checker, browser selectors, fixtures, tests and documentation
 consume these same names. Host queue, Host state and message-metadata tests use
@@ -48,6 +49,9 @@ consume these same names. Host queue, Host state and message-metadata tests use
   attachment metadata remain compatible. A CSS class is not a route or storage
   key. Native-engine tests and operational documentation retain the engine name
   where it identifies what they exercise.
+- Previously saved inline-image transport labels remain readable without a
+  migration; the compiler does not use them to select an engine. Native uploaded
+  file IDs retain their existing metadata and protocol representation.
 
 Local V3 replica scopes/epochs are rebuilt by the in-process compatibility
 source; no native IDs or persisted V4 history are rewritten. Compiled document

@@ -143,7 +143,7 @@ export async function resolveBrowserAttachment(
       metadata: {
         ...pending.metadata,
         source: "browser-inline",
-        transport: "codex-image-url",
+        transport: "inline-image-url",
         originalBytes: file.size,
         compression: processed?.reason ?? "not-requested",
       },

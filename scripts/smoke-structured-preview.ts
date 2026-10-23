@@ -29,14 +29,15 @@ import {createWorkbenchPanelReactRuntime} from '@opencraft/workbench-panels-reac
 import {BuiltinWorkbenchPanelPlugin} from '/apps/workbench-web/src/panels/builtin-panel-plugin.tsx';
 import {AppShell} from '/apps/workbench-web/src/components/app-shell.tsx';
 import {RightPanel} from '/apps/workbench-web/src/components/right-panel.tsx';
+import {useUiPreferencesRuntime} from '/apps/workbench-web/src/runtime/ui-preferences-runtime';
 import {initializeAppearanceTheme,setThemePreference} from '/apps/workbench-web/src/appearance-theme.ts';
 import '/apps/workbench-web/src/styles/app.scss';
 initializeAppearanceTheme();
 const context=new Context();await context.plugin(BlobResourceService);window.fixtureBlobs=context.blobResources;
 const runtime=await createWorkbenchPanelReactRuntime({defaultRightPanelOpen:true});await runtime.install(BuiltinWorkbenchPanelPlugin);
 const panels=runtime.panels;panels.ensureOwner('scope');panels.dispatch('scope',{type:'set-region-open',region:'right',open:true,allowEmpty:true});if(innerWidth<700)panels.dispatch('scope',{type:'toggle-right-full-width'});const get=()=>panels.getOwnerSnapshot('scope'),subscribe=f=>panels.subscribeOwner('scope',f);
-function App(){const state=useSyncExternalStore(subscribe,get);const[cwd,setCwd]=useState('/fixture');
-window.fixture={panels,state,setCwd,setThemePreference,previews:runtime.context.filePreviews};
+function App(){const preferences=useUiPreferencesRuntime();const state=useSyncExternalStore(subscribe,get);const[cwd,setCwd]=useState('/fixture');
+window.fixture={panels,state,setLocale:locale=>preferences.set('locale.override',locale),setCwd,setThemePreference,previews:runtime.context.filePreviews};
 const panel=<RightPanel hostPresentationActive={innerWidth<700?true:undefined} state={state} presentationId='view' renderers={runtime.renderers.getSnapshot()} toolbarActions={panels.getToolbarActionSnapshot()} toolbarActionContext={{ownerId:'scope',resourceOwnerId:'scope',hostId:'tree-fixture',cwd}} onAction={a=>panels.dispatch('scope',a)} onCloseTab={t=>panels.close('scope',t.region,t.id)}/>;
 return <AppShell layoutScope='scope' header={<span>Workspace</span>} floatingSidebarHeader={()=>null} leftPanel={null} sidebarOpen={false} sidebarWidth={260} onSidebarCollapse={()=>{}} onSidebarExpand={()=>{}} onSidebarResizeEnd={()=>{}} windowChrome={{kind:'browser',platform:'linux',safeArea:{left:0,right:0}}} rightPanel={innerWidth<700?null:panel} rightPanelOpen={state.right.open} rightPanelFullWidth={state.rightPanelFullWidth} onRightPanelOpenChange={open=>panels.dispatch('scope',{type:'set-region-open',region:'right',open,allowEmpty:true})}>{innerWidth<700?panel:<p>Conversation</p>}</AppShell>
 }
@@ -44,13 +45,13 @@ createIntlTestRoot(document.getElementById('root')).render(<QueryClientProvider 
 // Reuse production dependency ownership, without crawling generated Expo HTML.
 const workbenchConfig=await loadConfigFromFile({command:'serve',mode:'development'},resolve('apps/workbench-web/vite.config.ts'));
 if(!workbenchConfig)throw new Error('Workbench Vite configuration unavailable');
-const vite=await createServer({configFile:false,root:process.cwd(),cacheDir:join(output,'vite-cache'),logLevel:'error',resolve:{dedupe:['react','react-dom','react-intl']},esbuild:{jsx:'automatic'},optimizeDeps:{...workbenchConfig.config.optimizeDeps,entries:['/tree-fixture.tsx'],include:[...workbenchConfig.config.optimizeDeps?.include??[],'@extend-ai/react-xlsx','docx-preview','@aiden0z/pptx-renderer/browser','@excalidraw/excalidraw','dompurify','@tanstack/react-virtual']},server:{host:'127.0.0.1',port:0,hmr:false},plugins:[react(),optionalWebAssets(),{name:'file-tree-fixture',enforce:'pre',resolveId(id,importer){if(id.endsWith('/appserver-runtime-context')&&importer?.includes('/panels/'))return '/tree-runtime.ts';return ['/tree-runtime.ts','/tree-fixture.tsx'].includes(id)?id:null},load:id=>id==='/tree-runtime.ts'?runtime:id==='/tree-fixture.tsx'?source:null,configureServer(server){server.middlewares.use((req,res,next)=>{if(req.url!=='/')return next();res.setHeader('content-type','text/html');res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><div id="root"></div><script type="module" src="/tree-fixture.tsx"></script>')})}}]});
+const vite=await createServer({configFile:false,root:process.cwd(),cacheDir:join(output,'vite-cache'),logLevel:'error',resolve:{dedupe:['react','react-dom','react-intl']},esbuild:{jsx:'automatic'},optimizeDeps:{...workbenchConfig.config.optimizeDeps,entries:['/tree-fixture.tsx'],include:[...workbenchConfig.config.optimizeDeps?.include??[],'@extend-ai/react-xlsx','docx-preview','@aiden0z/pptx-renderer/browser','@excalidraw/excalidraw','dompurify','@tanstack/react-virtual']},server:{host:'127.0.0.1',port:0,hmr:false,cors:false},plugins:[react(),optionalWebAssets(),{name:'file-tree-fixture',enforce:'pre',resolveId(id,importer){if(id.endsWith('/appserver-runtime-context')&&importer?.includes('/panels/'))return '/tree-runtime.ts';return ['/tree-runtime.ts','/tree-fixture.tsx'].includes(id)?id:null},load:id=>id==='/tree-runtime.ts'?runtime:id==='/tree-fixture.tsx'?source:null,configureServer(server){server.middlewares.use((req,res,next)=>{if(req.url!=='/')return next();res.setHeader('content-type','text/html');res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><div id="root"></div><script type="module" src="/tree-fixture.tsx"></script>')})}}]});
 let browser:any;
 try{
 await vite.listen();const {chromium}=await import(process.env.OPENCRAFT_PLAYWRIGHT_MODULE??'playwright');browser=await chromium.launch({headless:true,args:['--no-sandbox']});
 const evidence=[];
 for(const width of [390,1280])for(const theme of ['light','dark']){
- const page=await browser.newPage({viewport:{width,height:900},hasTouch:width<700});const errors:string[]=[];const externalRequests:string[]=[];page.on('request',request=>{const url=new URL(request.url());if(url.protocol.startsWith('http')&&url.hostname!=='127.0.0.1')externalRequests.push(url.origin)});page.on('pageerror',(e:Error)=>{errors.push(e.message);console.log('PAGE ERROR',e.message)});page.on('console',m=>{if(m.type()==='error')console.log('browser:',m.text())});await page.addInitScript('window.__name=value=>value');
+ const page=await browser.newPage({viewport:{width,height:900},hasTouch:width<700});const errors:string[]=[];const externalRequests:string[]=[];const sandboxAssetRequests:string[]=[];page.on('request',request=>{const url=new URL(request.url());if(url.protocol.startsWith('http')&&url.hostname!=='127.0.0.1')externalRequests.push(url.origin);if(url.pathname.includes('viewer-static')&&request.frame()!==page.mainFrame())sandboxAssetRequests.push(request.url())});page.on('pageerror',(e:Error)=>{errors.push(e.message);console.log('PAGE ERROR',e.message)});page.on('console',m=>{if(m.type()==='error')console.log('browser:',m.text())});await page.addInitScript('window.__name=value=>value');
  await page.goto('http://127.0.0.1:'+(vite.httpServer!.address() as any).port);await page.waitForFunction(()=>Boolean((window as any).fixture));await page.evaluate(theme=>(window as any).fixture.setThemePreference(theme),theme);
  const open=async(path:string)=>page.evaluate(path=>(window as any).fixture.panels.open('scope','resource',{resource:path,preview:false}),path);
  const waitReady=async()=>{
@@ -69,6 +70,15 @@ for(const width of [390,1280])for(const theme of ['light','dark']){
     await page.getByRole('button',{name:'Source',exact:true}).click();
     assert.match(await page.locator('.structured-preview__source').innerText(),/Line one\nLine two/);
     await page.getByRole('button',{name:'Table',exact:true}).click();
+    await page.evaluate(()=>{(window as any).localizedTable=document.querySelector('.structured-preview--table')});
+    await page.getByRole('button',{name:'Source',exact:true}).click();
+    await page.evaluate(()=>(window as any).fixture.setLocale('zh-CN'));
+    await page.getByRole('button',{name:'源码',exact:true}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'源码',exact:true}).getAttribute('aria-pressed'),'true');
+    assert.equal(await page.evaluate(()=>document.querySelector('.structured-preview--table')===(window as any).localizedTable),true,'locale must preserve table DOM and source selection');
+    await page.getByRole('button',{name:'表格',exact:true}).click();
+    await page.evaluate(()=>(window as any).fixture.setLocale('en-US'));
+    await page.getByRole('button',{name:'Table',exact:true}).waitFor();
    }
   }else if(ext==='xls'||ext==='xlsm'){
    await page.getByRole('tab',{name:'Summary',exact:true}).waitFor();
@@ -79,6 +89,8 @@ for(const width of [390,1280])for(const theme of ['light','dark']){
    await page.locator('[data-diagram-ready="true"]').waitFor({timeout:60000});
    const iframe=page.frameLocator('.structured-preview__drawio');
    await iframe.getByText('Draw.io first page',{exact:true}).waitFor();
+   await iframe.getByTitle('Next Page',{exact:true}).click();await iframe.getByText('第二页 / Second page',{exact:true}).waitFor();
+   await iframe.getByTitle('Previous Page',{exact:true}).click();await iframe.getByText('Draw.io first page',{exact:true}).waitFor();
    assert.ok(await iframe.locator('svg').count()>0);
    await page.screenshot({path:join(output,ext+'-'+theme+'-'+width+'.png')});
   }else{
@@ -111,7 +123,7 @@ for(const width of [390,1280])for(const theme of ['light','dark']){
  await page.getByRole('button',{name:'Try again',exact:true}).waitFor();
  await page.evaluate(()=>{const f=(window as any).fixture;for(const t of f.state.right.tabs)f.panels.close('scope','right',t.id)});
  assert.equal(await page.evaluate(()=>(window as any).fixture.previews.pool.size),0,'closed tabs must release retained engines');
- assert.deepEqual(errors,[]);assert.deepEqual(externalRequests,[],'previews must not request external resources');evidence.push({width,theme,formats});await page.close();
+ assert.deepEqual(sandboxAssetRequests,[],'opaque sandbox must not fetch local assets');assert.deepEqual(errors,[]);assert.deepEqual(externalRequests,[],'previews must not request external resources');evidence.push({width,theme,formats});await page.close();
 }
 await writeFile(join(output,'result.json'),JSON.stringify({passed:true,evidence,output},null,2));console.log(JSON.stringify({passed:true,evidence,output}));
 }finally{await browser?.close();await vite.close();}
