@@ -68,7 +68,7 @@ const hostFileUri = (path: string): string =>
   `file://${path.split("/").map((part) => encodeURIComponent(part)).join("/")}`;
 
 /**
- * Resolves a browser-owned File into Codex AppServer's native `image` input.
+ * Resolves a browser-owned File into an inline image or Host-staged attachment.
  * A blob URL is intentionally never returned: only this browser can dereference
  * one, while a data URL survives WebSocket and SSH transport unchanged.
  */

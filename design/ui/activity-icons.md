@@ -3,7 +3,8 @@
 This topic owns process-summary rendering in the conversation detail page:
 commands, read/search/edit tools, reasoning, image views, grouped tools and
 active/completed context compaction, collaboration process headers/status and
-Codex App thread-tool process rows. Its process glyphs use complete, quiet contours, rounded joins and restraineds use open contours, rounded joins and restrained detail.
+thread-tool process rows. Its process glyphs use complete, quiet contours,
+rounded joins and restrained detail.
 It does not apply one font or one glyph shape to prose, identity logos, cards,
 controls or returned documents.
 
@@ -12,7 +13,7 @@ controls or returned documents.
 - `ActivityDisclosure` supplies interactive summaries. Noninteractive process
   records use `ActivitySummaryRow`; compaction must use it too. Both use the
   body typography role (14px/20px, regular weight), independently of the chat reading preference.
-  Collaboration toggles and Codex App process rows consume the same header class
+  Collaboration toggles and thread-tool process rows consume the same header class
   and ActivityIcon rail; accompanying collaboration status uses this same owner.
   Their expanded content and agent identity chips are separate semantics.
   Expanded reasoning and returned documents retain chat/prose typography.
@@ -70,9 +71,9 @@ styles now cover that omission instead of adding another local font override.
 
 A passing compaction check did not prove every conversation process row was
 covered: collaboration headers still inherited the chat size and used Bot14,
-while Codex App rows chose their own metadata role. Keep the real timeline corpus
+while thread-tool rows chose their own metadata role. Keep the real timeline corpus
 representative of these production consumers. The static contract requires shared
-header/rail use in both collaboration renderers and Codex App thread-tool rows.
+header/rail use in both collaboration renderers and thread-tool rows.
 Screenshots wait for expanded prose geometry to settle; a computed-font assertion
 alone cannot catch an image taken before ResizeObserver/disclosure layout settles.
 

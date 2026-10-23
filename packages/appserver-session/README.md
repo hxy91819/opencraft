@@ -1,8 +1,8 @@
 # @opencraft/appserver-session
 
-Cordis-governed AppServer Resume semantics with a Codex V3 compatibility adapter. This package owns mounted
-Thread Views and hydration orchestration; it does not own the physical
-transport or the future Replica journal.
+Cordis-governed AppServer Resume semantics with a V3 compatibility adapter.
+This package owns mounted Thread Views and hydration orchestration; it does not
+own the physical transport or the future Replica journal.
 
 Public services:
 

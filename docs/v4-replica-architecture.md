@@ -1,8 +1,8 @@
 # V4 Replica architecture
 
-OpenCraft's V4 Replica is an ordered, replayable state protocol. It is not another
-name for Codex Resume pagination. `@opencraft/appserver-replica` owns the shared
-authority/client state machine; `@opencraft/appserver-replica-storage-node` is the
+OpenCraft's V4 Replica is an ordered, replayable state protocol with a durable
+server journal distinct from V3 Resume pagination.
+`@opencraft/appserver-replica` owns the shared authority/client state machine; `@opencraft/appserver-replica-storage-node` is the
 server adapter, while Web and Expo provide client caches.
 
 ```text

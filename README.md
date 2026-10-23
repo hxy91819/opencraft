@@ -143,7 +143,7 @@ The renderer is semantic React/TypeScript and SCSS. It shares the same renderer 
 - `apps/workbench-web`: React DOM + Vite renderer for browser and Electron.
 - `apps/workbench-electron`: Electron main/preload host without a second UI.
 - `apps/workbench-expo`: Expo Router host for native and Expo Web.
-- `packages/appserver-protocol`: host-aware Codex app-server transport types.
+- `packages/appserver-protocol`: Host-aware AppServer contracts and generated native Codex types.
 - `packages/chat-core`: typed `Turn -> DisplayItem` projection.
 - `packages/composer-core`: serializable cross-platform composer blocks.
 - `packages/composer-editor`: ProseMirror composer with IME-safe input,
