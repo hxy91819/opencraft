@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { createSshPasswordAgent, classifySshFailure, SshCodexConnectionError, SshCodexTransport, type SshCodexTransportOptions } from "./ssh-codex-transport.js";
+import { createSshPasswordAgent, classifySshFailure, SshConnectionError, SshCodexTransport, type SshCodexTransportOptions } from "./ssh-codex-transport.js";
 
 /** SFTP has its own quoting rules, distinct from a shell or JSON. */
 export function quoteSftpPath(path: string): string {
@@ -98,7 +98,7 @@ export class SshFileTransfer {
           if (code === 0) { finish(); return; }
           const classified = classifySshFailure(stderr, code);
           finish(classified.code === "SSH_LINK_LOST"
-            ? new SshCodexConnectionError("SSH_FILE_TRANSFER_FAILED", true, "Remote file transfer failed; retry the same attachment")
+            ? new SshConnectionError("SSH_FILE_TRANSFER_FAILED", true, "Remote file transfer failed; retry the same attachment")
             : classified);
         });
         this.lifetime.signal.addEventListener("abort", abort, { once: true });
