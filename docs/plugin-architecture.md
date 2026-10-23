@@ -254,8 +254,8 @@ PluginSummary = install/enabled/policy/availability/interface
 PluginInterface = metadata/capabilities/icons/screenshots/prompts
 ```
 
-因此 OpenCraft 不再发明一套与 Codex 冲突的 marketplace/install 协议。它增加的是客户端扩展
-manifest、贡献协议与执行宿主；上游目录通过 adapter 投影进统一的插件管理页面。
+原生插件的目录与安装由 AppServer 协议持有。OpenCraft 提供客户端扩展 manifest、贡献协议
+与执行宿主；原生插件目录通过 adapter 投影进统一的插件管理页面。
 
 ## 4. 第一性原理
 

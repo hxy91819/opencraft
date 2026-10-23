@@ -82,7 +82,7 @@ export class ThreadExecutionJournal {
   /**
    * A process restart cannot prove that an in-memory connection or Runtime is
    * still authoritative. Fence every non-terminal attempt from an older boot;
-   * DSH/Codex native recovery will independently close or resume its ledger.
+   * Engine-native recovery will independently close or resume its ledger.
    */
   fencePreviousBoot() {
     if (!this.available) return [];
@@ -216,7 +216,7 @@ export class ThreadExecutionTable {
     if (!execution || execution.connection !== connection) return null;
     if (epoch !== undefined && execution.epoch !== epoch) return null;
     if (typeof turnId === "string" && turnId) execution.turnId = turnId;
-    // Codex may publish turn/started before the turn/start RPC response. A
+    // A native turn/started notification may precede the turn/start RPC response. A
     // late response may fill the outer turn id, but can never move a native
     // running attempt backwards to dispatching.
     if (execution.state !== "running") execution.state = "dispatching";

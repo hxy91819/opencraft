@@ -10,7 +10,7 @@ import test from "node:test";
 import {
   AccountPoolStore,
   CodexSubscriptionService,
-  CodexCredentialRefreshManager,
+  AccountCredentialRefreshManager,
   CodexAccountPoolProxy,
   createCodexAccountPoolLaunch,
   startCodexAccountPoolServer,
@@ -34,7 +34,7 @@ test("shared auth references follow atomic owner rotation without copying or ref
     assert.equal(selected.secret.accessToken, "access-before");
     assert.equal(selected.secret.refreshToken, null);
     let refreshes = 0;
-    const refresh = new CodexCredentialRefreshManager({ store: pool, refresh: async () => { refreshes++; throw new Error("must not refresh external credentials"); } });
+    const refresh = new AccountCredentialRefreshManager({ store: pool, refresh: async () => { refreshes++; throw new Error("must not refresh external credentials"); } });
     await writeFile(path + ".new", auth("access-after")); await rename(path + ".new", path);
     assert.equal((await refresh.resolve(selected.account, selected.secret, "unauthorized")).accessToken, "access-after");
     const current = pool.readCredential("shared");
@@ -62,7 +62,7 @@ test("expired or malformed shared credentials fail closed without invoking manag
     const expired = `header.${Buffer.from(JSON.stringify({ exp: 1 })).toString("base64url")}.signature`;
     await writeFile(path, JSON.stringify({ tokens: { access_token: expired, account_id: "account" } }));
     pool.addAccount({ id: "shared", provider: "codex", label: "Shared", upstreamAccountId: "account", priority: 1, enabled: true }, reference);
-    const refresh = new CodexCredentialRefreshManager({ store: pool, refresh: async () => { assert.fail("external refresh must not run"); } });
+    const refresh = new AccountCredentialRefreshManager({ store: pool, refresh: async () => { assert.fail("external refresh must not run"); } });
     await assert.rejects(refresh.resolve(pool.getAccount("shared"), pool.readCredential("shared"), "expired"), /external owner/);
     await writeFile(path, '{"tokens":"private-invalid-payload"');
     assert.throws(() => readCodexAuthFile(reference), error => error instanceof Error && !error.message.includes("private-invalid-payload"));
@@ -81,7 +81,7 @@ test("the inference proxy rereads shared credentials for every request and never
     pool.addAccount({ id: "external", provider: "codex", label: "Shared", upstreamAccountId: "shared", priority: 1, enabled: true }, { kind: "codex-auth-file", path });
     const token = pool.issueHostToken("test"), seen: (string | null)[] = [];
     let rotateOnNext = false;
-    const refresh = new CodexCredentialRefreshManager({ store: pool, refresh: async () => { assert.fail("external owner refresh only"); } });
+    const refresh = new AccountCredentialRefreshManager({ store: pool, refresh: async () => { assert.fail("external owner refresh only"); } });
     const proxy = new CodexAccountPoolProxy({ store: pool, upstreamBaseUrl: "https://codex.example.test",
       resolveCredential: (account, secret, reason) => refresh.resolve(account, secret, reason), fetch: async (_url, init) => {
       seen.push(new Headers(init?.headers).get("authorization"));
@@ -1007,7 +1007,7 @@ test("expired Codex credentials refresh single-flight before concurrent requests
     const pool = new AccountPoolStore({ databasePath: join(root, "pool.sqlite"), secretsDirectory: join(root, "secrets"), now: () => 10_000 });
     const account = pool.addAccount({ id: "account-a", provider: "codex", label: "A", upstreamAccountId: "chatgpt-a", priority: 1, enabled: true },
       { accessToken: "access-old", refreshToken: "refresh-a", expiresAt: 9_000 });
-    const manager = new CodexCredentialRefreshManager({
+    const manager = new AccountCredentialRefreshManager({
       store: pool,
       now: () => 10_000,
       refresh: async () => {

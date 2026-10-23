@@ -300,13 +300,13 @@ test("detail mode controls command summaries without changing execution facts", 
       id: "read",
       type: "commandExecution",
       payload: {
-        command: "cat /root/.codex/skills/review/SKILL.md",
+        command: "cat /workspace/.agents/skills/review/SKILL.md",
         status: "inProgress",
         commandActions: [
           {
             type: "read",
             name: "SKILL.md",
-            path: "/root/.codex/skills/review/SKILL.md",
+            path: "/workspace/.agents/skills/review/SKILL.md",
           },
         ],
       },

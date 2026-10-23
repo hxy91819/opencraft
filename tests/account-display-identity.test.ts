@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { maskCodexAccountIdentity } from "../plugins/builtin-agents/src/codex-accounts/identity.js";
+import { maskAccountDisplayIdentity } from "../plugins/builtin-agents/src/codex-accounts/identity.js";
 
 test("account display masks mailbox and private domain in email-based labels", () => {
   for (const [input, expected] of [
     ["person@example.com", "p***on@e***.com"],
     ["a@b.co", "***a@***.co"],
-    ["staff+codex@private.example.org", "s***ex@p***.e***.org"],
+    ["staff+alias@private.example.org", "s***as@p***.e***.org"],
     ["Team <person@example.com>", "Team <p***on@e***.com>"],
     ["person@example.com / other@example.com", "p***on@e***.com / o***er@e***.com"],
     ["用户@企业.中国", "***用户@企***.中国"],
@@ -18,5 +18,5 @@ test("account display masks mailbox and private domain in email-based labels", (
     ["用户甲乙@example.com", "用***甲乙@e***.com"],
     ["Work account", "Work account"],
     ["", ""],
-  ]) assert.equal(maskCodexAccountIdentity(input!), expected);
+  ]) assert.equal(maskAccountDisplayIdentity(input!), expected);
 });

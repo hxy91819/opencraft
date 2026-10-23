@@ -1,5 +1,4 @@
 // Live desktop command recipes; never evaluated as local shell commands.
-// plugins/ssh-http-ingress/src/desktop-wire.ts
 const shellQuote = (value) => `'${value.replaceAll("'", "'\\''")}'`;
 const invoke = 'exec /bin/sh -c "$CODEX_REMOTE_PAYLOAD"';
 const home = 'CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"; export CODEX_HOME';
@@ -26,7 +25,6 @@ const desktopActions = {
 };
 const desktopCurrentEnsure = desktopActions.ensure.replace("'unix://'", "unix://").replace(") && SSH_AUTH_SOCK=", ") && { SSH_AUTH_SOCK=").replace("unix:// >", "unix:// </dev/null >") + " }";
 
-// plugins/ssh-http-ingress/src/codex-command.ts
 function codexCommandShape(command) {
   const prefix = `sh -c ${shellQuote(desktopWrapper)} sh `;
   if (command.startsWith(prefix)) command = command.slice(prefix.length).slice(1, -1).replaceAll("'\\''", "'");

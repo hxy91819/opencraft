@@ -5,7 +5,7 @@ import type {
   AccountPoolSecret,
   AccountPoolStore,
 } from "./store.js";
-import type { CodexCredentialRefreshReason } from "./oauth-refresh.js";
+import type { AccountCredentialRefreshReason } from "./oauth-refresh.js";
 import { CODEX_POOL_MAX_REQUEST_BYTES } from "./request-limits.js";
 import { Agent, fetch as undiciFetch } from "undici";
 
@@ -199,7 +199,7 @@ export class CodexAccountPoolProxy {
   private readonly resolveCredential?: (
     account: AccountPoolAccount,
     secret: AccountPoolSecret,
-    reason: CodexCredentialRefreshReason,
+    reason: AccountCredentialRefreshReason,
   ) => Promise<AccountPoolSecret>;
 
   constructor(options: {
@@ -210,7 +210,7 @@ export class CodexAccountPoolProxy {
     readonly resolveCredential?: (
       account: AccountPoolAccount,
       secret: AccountPoolSecret,
-      reason: CodexCredentialRefreshReason,
+      reason: AccountCredentialRefreshReason,
     ) => Promise<AccountPoolSecret>;
   }) {
     this.store = options.store;

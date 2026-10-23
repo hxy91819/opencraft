@@ -779,6 +779,11 @@ touch-down before `ScrollView` recognizes a drag, cancelling auto-scroll and
 pending layout restoration as the Web owner does on pointer-down. Only a
 recognized drag changes the origin of physical scroll events to user input.
 
+The shared resource classifier recognizes `app:`, `agent:` and `navigation:`
+routes, and retains `codex:` as a read-compatibility input for existing content.
+It preserves the original target. Classification does not register a deep link
+or grant navigation capability; the Host opener decides whether it is available.
+
 The Expo Workbench now supplies a Host opener for resolved workspace files and
 external URLs. It passes the active Thread's cwd and Host identity to ChatUI,
 reads file bytes through `fs/readFile`, and displays bounded UTF-8 text in a

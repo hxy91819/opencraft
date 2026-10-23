@@ -8,7 +8,7 @@ import type {
   AccountPoolSecret,
   AccountPoolStore,
 } from "./store.js";
-import type { CodexCredentialRefreshReason } from "./oauth-refresh.js";
+import type { AccountCredentialRefreshReason } from "./oauth-refresh.js";
 
 const CHATGPT_AUTH_CLAIM = "https://api.openai.com/auth";
 const CHATGPT_PROFILE_CLAIM = "https://api.openai.com/profile";
@@ -351,7 +351,7 @@ export function createManagedCodexRefresh(options: {
 }): (
   account: AccountPoolAccount,
   secret: AccountPoolSecret,
-  reason: CodexCredentialRefreshReason,
+  reason: AccountCredentialRefreshReason,
 ) => Promise<AccountPoolSecret> {
   const initializeOperation = rm(options.refreshRoot, { recursive: true, force: true })
     .then(() => mkdir(options.refreshRoot, { recursive: true, mode: 0o700 }));

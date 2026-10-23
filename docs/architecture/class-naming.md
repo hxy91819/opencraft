@@ -21,6 +21,12 @@ with their classes; no second implementation or old class-name alias remains.
 Message metadata consumers import the canonical thread projection helpers
 described in the [internal naming contract](internal-naming.md).
 
+The private account-pool workspace owns `AccountCredentialRefreshManager` and
+`AccountCredentialRefreshReason`: they coordinate expiry checks, single-flight
+refresh and credential replacement. Provider-specific renewal is injected by
+`createManagedCodexRefresh`. The pool currently supports Codex accounts only;
+this naming does not add another provider.
+
 ## Engine-specific classes retained
 
 | Class | Engine-specific responsibility |
@@ -40,7 +46,6 @@ described in the [internal naming contract](internal-naming.md).
 | `CodexSubscriptionService` | Reads Codex subscription and rate-limit provider responses. |
 | `CodexAccountService` | Owns Codex-specific account operations and credentials. |
 | `CodexCoreControlClient` | Sends control requests to the independent Codex core. |
-| `CodexCredentialRefreshManager` | Refreshes Codex OAuth credentials. |
 | `CodexAccountPoolProxy` | Proxies Codex provider requests and account quota/affinity policy. |
 
 ## Stable external and persisted identities

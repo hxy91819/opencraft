@@ -2,7 +2,7 @@ import { join } from "node:path";
 import type { CodexAccountView } from "@opencraft/appserver-protocol";
 import { AccountPoolStore } from "./store.js";
 import { CodexAccountPoolProxy } from "./codex-proxy.js";
-import { CodexCredentialRefreshManager } from "./oauth-refresh.js";
+import { AccountCredentialRefreshManager } from "./oauth-refresh.js";
 import { CodexDeviceLoginService, createManagedCodexRefresh, type CodexMaintenanceClientFactory } from "./codex-auth.js";
 import { CodexSubscriptionService } from "./codex-usage.js";
 import { createCodexMaintenanceClient } from "./codex-maintenance-client.js";
@@ -37,7 +37,7 @@ export class CodexAccountService {
     this.store = store;
     const createClient = options.createMaintenanceClient
       ?? (codexHome => createCodexMaintenanceClient({ executable: options.executable, codexHome }));
-    const refresh = new CodexCredentialRefreshManager({ store, refresh: createManagedCodexRefresh({
+    const refresh = new AccountCredentialRefreshManager({ store, refresh: createManagedCodexRefresh({
       refreshRoot: join(options.dataDirectory, "refresh"), createClient,
     }) });
     this.subscriptions = new CodexSubscriptionService({ store, fetch: options.fetch,

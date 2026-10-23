@@ -64,7 +64,7 @@ import {
 import {
   AccountPoolStore,
   CodexAccountPoolProxy,
-  CodexCredentialRefreshManager,
+  AccountCredentialRefreshManager,
   CodexDeviceLoginService,
   CodexSubscriptionService,
   createCodexAccountPoolLaunch,
@@ -291,7 +291,7 @@ export class CodexEngineAdapter implements DuplexTransport {
   private poolStore: AccountPoolStore | null = null;
   private poolServer: Awaited<ReturnType<typeof startCodexAccountPoolServer>> | null = null;
   private login: CodexDeviceLoginService | null = null;
-  private refresh: CodexCredentialRefreshManager | null = null;
+  private refresh: AccountCredentialRefreshManager | null = null;
   private subscriptions: CodexSubscriptionService | null = null;
   private poolAuth: ReturnType<typeof createCodexAccountPoolLaunch>["auth"] | null = null;
   private stderrTail = "";
@@ -502,7 +502,7 @@ export class CodexEngineAdapter implements DuplexTransport {
       refreshRoot: join(dataRoot, "refresh"),
       createClient: createMaintenanceClient,
     });
-    const refresh = new CodexCredentialRefreshManager({ store, refresh: managedRefresh });
+    const refresh = new AccountCredentialRefreshManager({ store, refresh: managedRefresh });
     this.refresh = refresh;
     const subscriptions = new CodexSubscriptionService({
       store,

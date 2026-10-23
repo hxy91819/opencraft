@@ -1,15 +1,16 @@
 import type { AccountPoolAccount, AccountPoolSecret, AccountPoolStore } from "./store.js";
 
-export type CodexCredentialRefreshReason = "expired" | "unauthorized";
+export type AccountCredentialRefreshReason = "expired" | "unauthorized";
 
-export class CodexCredentialRefreshManager {
+/** Coordinates account-pool refreshes; the injected callback owns provider-specific renewal. */
+export class AccountCredentialRefreshManager {
   private readonly flights = new Map<string, Promise<AccountPoolSecret>>();
   private readonly store: AccountPoolStore;
   private readonly now: () => number;
   private readonly refresh: (
     account: AccountPoolAccount,
     secret: AccountPoolSecret,
-    reason: CodexCredentialRefreshReason,
+    reason: AccountCredentialRefreshReason,
   ) => Promise<AccountPoolSecret>;
   private readonly refreshSkewMs: number;
 
@@ -20,7 +21,7 @@ export class CodexCredentialRefreshManager {
     readonly refresh: (
       account: AccountPoolAccount,
       secret: AccountPoolSecret,
-      reason: CodexCredentialRefreshReason,
+      reason: AccountCredentialRefreshReason,
     ) => Promise<AccountPoolSecret>;
   }) {
     this.store = options.store;
@@ -32,7 +33,7 @@ export class CodexCredentialRefreshManager {
   resolve(
     account: AccountPoolAccount,
     secret: AccountPoolSecret,
-    reason: CodexCredentialRefreshReason,
+    reason: AccountCredentialRefreshReason,
   ): Promise<AccountPoolSecret> {
     const current = this.store.readCredential(account.id);
     if (current.accessToken !== secret.accessToken) return Promise.resolve(current);
@@ -40,7 +41,7 @@ export class CodexCredentialRefreshManager {
       return Promise.resolve(current);
     }
     if (current.external) {
-      return Promise.reject(new Error("Shared Codex credentials need renewal by their external owner"));
+      return Promise.reject(new Error("Shared credentials need renewal by their external owner"));
     }
     const existing = this.flights.get(account.id);
     if (existing !== undefined) return existing;
