@@ -246,7 +246,7 @@ test("headless server refuses a generic Web artifact before claiming its data di
   const dataDirectory = join(root, "data");
   await assert.rejects(
     startHeadlessServer({ root, webRoot, dataDirectory, startAgentHost: async () => { throw new Error("must not start"); } }),
-    /requires a Web build with its Codex and opencraft-server Host entry enabled/u,
+    /requires a headless Web build with the opencraft-server Host entry enabled/u,
   );
   await assert.rejects(access(dataDirectory), { code: "ENOENT" });
 });
@@ -363,7 +363,7 @@ test("direct public gateway accepts proxy HTTPS Origin for static WebUI and WebS
 });
 
 test("browser AppHost bridge routes Codex frames through one leased Server transport", async (context) => {
-  const root = await mkdtemp(join(tmpdir(), "opencraft-headless-codex-"));
+  const root = await mkdtemp(join(tmpdir(), "opencraft-headless-server-"));
   context.after(() => rm(root, { recursive: true, force: true }));
   await writeFile(join(root, "index.html"), "<!doctype html><title>Codex bridge</title>");
   await writeHeadlessVersion(root);

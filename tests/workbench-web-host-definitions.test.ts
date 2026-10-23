@@ -252,7 +252,7 @@ test("headless server inherits the packaged Linux browse root instead of claimin
   const renderers = new PlatformViewRendererRegistry();
   const extensions = new ExtensionSupervisor({
     platform: "web",
-    createActivationId: () => "headless-codex-activation",
+    createActivationId: () => "server-connections-activation",
     internalContributions: {
       hostConnectionProvider: createHostConnectionProviderContributionAdapter(providers),
       [HOST_PROFILE_CONTRIBUTION_CHANNEL]: profiles.createAdapter(),
@@ -268,6 +268,8 @@ test("headless server inherits the packaged Linux browse root instead of claimin
     }));
     assert.deepEqual(profiles.list().find(({ hostId }) => hostId === "local-codex")?.workspaceBrowseRoots, ["/"]);
     const remote = profiles.list().find(({ hostId }) => hostId === "ssh:dev")!;
+    assert.equal(remote.providerId, "opencraft.server-connections");
+    assert.deepEqual(providers.getSnapshot().providers.map(provider => provider.id), ["opencraft.server-connections"]);
     assert.equal(remote.hostKind, "remote-ssh");
     assert.equal(remote.displayName, "Development");
     assert.deepEqual(remote.workspaceBrowseRoots, ["/remote/projects"]);

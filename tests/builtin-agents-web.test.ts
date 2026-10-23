@@ -106,7 +106,7 @@ test("a server deployment contributes exactly one Codex page beside model servic
     const pages = supervisor.contributions.getSnapshot().settingsPages.map(({ contribution }) => contribution);
     const accounts = pages.filter(page => page.titleMessage?.id === "settings.contributions.codexAccounts");
     assert.equal(accounts.length, 1);
-    assert.equal(accounts[0]!.id, "vela.headless-codex.accounts");
+    assert.equal(accounts[0]!.id, "opencraft.server-connections.codex-accounts");
     assert.equal(accounts[0]!.group, "Server");
     assert.equal(accounts[0]!.targetHostId, undefined);
     assert.ok(pages.some(page => page.id === "vela.headless-model-services" && page.group === accounts[0]!.group));
