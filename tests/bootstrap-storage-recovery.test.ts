@@ -103,3 +103,18 @@ test("evaluation errors and storage failures never trigger cache recovery", asyn
     assert.equal(f.navigations.length, 0);
   }
 });
+
+test("CSS preload failures recover the graph once and preserve persistent-failure retry", async () => {
+  const expression = "new Error('Unable to preload CSS for https://example.test/assets/style-AAAA1111.css')";
+  const first = fixture({ recoverySupported: true });
+  await vm.runInContext(`__opencraftRecoverRelease(${expression})`, first.context);
+  assert.equal(first.navigations.length, 1);
+  assert.equal(new URL(first.navigations[0]).pathname, "/local/thread");
+  assert.equal(new URL(first.navigations[0]).searchParams.get("keep"), "1");
+  const retry = fixture({ recoverySupported: true, recovered: true });
+  await vm.runInContext(`__opencraftRecoverRelease(${expression})`, retry.context);
+  assert.equal(retry.navigations.length, 0, "persistent CSS failures must not loop");
+  assert.equal(retry.field("[data-recovery-title]").textContent, "界面资源未能加载");
+  retry.field("button").onclick();
+  assert.equal(retry.navigations.length, 1, "explicit retry gets a fresh graph");
+});
