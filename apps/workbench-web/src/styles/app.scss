@@ -3641,6 +3641,10 @@ html[data-opencraft-window-type="browser"] .main-content-top-fade {
 .settings-control-actions--between { justify-content: space-between; }
 .settings-control-actions--end { justify-content: flex-end; }
 
+/* The update row can carry four independently sized actions. Wrap instead of
+   shrinking nowrap labels outside their buttons on narrow settings pages. */
+.settings-control-actions.web-updates-actions { flex-wrap: wrap; }
+
 .settings-control-actions__cluster {
   display: flex;
   align-items: center;
