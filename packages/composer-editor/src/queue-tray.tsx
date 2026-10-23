@@ -31,6 +31,8 @@ export interface ComposerQueueSender {
 
 export interface ComposerQueueTrayItem {
   readonly sender?: ComposerQueueSender | null;
+  /** Stable message identity across local admission and the server queue ID. */
+  readonly renderKey?: string;
   readonly id: string;
   readonly preview: string;
   readonly state: "submitting" | "queued" | "failed" | "unknown";
@@ -307,7 +309,7 @@ export function ComposerQueueTray({
           <div className="opencraft-composer-queue-tray__items">
             {items.map((item) => (
           <SortableQueueItem
-                key={item.id}
+                key={item.renderKey ?? item.id}
                 item={item}
                 isResponseInProgress={isResponseInProgress}
                 atomicSteer={atomicSteer}

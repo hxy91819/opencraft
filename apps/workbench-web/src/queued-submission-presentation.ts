@@ -42,6 +42,7 @@ export function queuedSubmissionPresentation(
   return {
     sender: queueSenderPresentation(submission.sender, avatars),
     id: submission.serverSubmissionId ?? submission.commandId,
+    renderKey: submission.clientMessageId,
     preview: submission.preview,
     state: submission.state,
     operation: submission.operation,

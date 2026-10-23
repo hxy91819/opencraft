@@ -2078,6 +2078,40 @@ test("explicit follow-up submission alone owns optimistic queue state", async ()
   runtime.dispose();
 });
 
+for (const lostAck of [false, true]) test(`late queue admission ${lostAck ? "failure" : "success"} does not resurrect an entry already observed and consumed`, async () => {
+  const key = createConversationKey("local", "thread-one");
+  let accept!: (receipt: SubmissionReceipt) => void;
+  let reject!: (error: Error) => void;
+  const runtime = createReplicaConversationRuntime({
+    key, replica: new FakeReplica(threadView()),
+    commands: commands({ submit: () => new Promise((resolve, fail) => { accept = resolve; reject = fail; }) }),
+    history: { async loadOlder() {} },
+  });
+  const composer = createComposerController({ type: "enqueue-follow-up", key }, { now: () => 100, createId: () => "late-queue" });
+  composer.dispatch({ type: "set-document", document: { version: 1, blocks: [
+    { type: "paragraph", children: [{ type: "text", text: "Next" }] },
+  ] } });
+  const intent = composer.createSubmitIntent();
+  const operation = runtime.submit(intent);
+  assert.equal(runtime.getSnapshot().queuedSubmissions.length, 1, "queue paints before the RPC resolves");
+  runtime.replaceQueuedSubmissions([{
+    id: "server-next", clientUserMessageId: intent.clientMessageId,
+    input: [{ type: "text", text: "Next", text_elements: [] }], createdAt: 101, pausedReason: null,
+  }]);
+  runtime.replaceQueuedSubmissions([]);
+  assert.equal(runtime.getSnapshot().queuedSubmissions.length, 0);
+  if (lostAck) {
+    reject(new SubmissionOutcomeUnknownError());
+    await assert.rejects(operation, SubmissionOutcomeUnknownError);
+  } else {
+    accept({ commandId: intent.commandId, clientMessageId: intent.clientMessageId,
+      hostId: "local", threadId: "thread-one", turnId: null, acceptedAt: 102, replayed: false });
+    await operation;
+  }
+  assert.equal(runtime.getSnapshot().queuedSubmissions.length, 0, "a late ACK cannot bring the consumed row back");
+  runtime.dispose();
+});
+
 test("deleting a failed local follow-up removes it without a Host queue request", async () => {
   const key = createConversationKey("local", "thread-one");
   let hostDeletes = 0;

@@ -2653,3 +2653,10 @@ through the shared coarse-pointer/no-hover/current-touch policy. Desktop pointer
 clocks remain hidden at rest and reveal on existing message hover/focus. Keep
 time metadata, slot geometry, history cache and action-button availability;
 elapsed work duration is separate.
+
+## Queue admission continuity
+
+A locally submitted follow-up paints immediately in the existing attached rail.
+The same client message retains its DOM and avatar across server queue admission;
+authoritative queue IDs still own actions. Superseded reads and late RPC receipts
+cannot clear or resurrect that row during handoff.

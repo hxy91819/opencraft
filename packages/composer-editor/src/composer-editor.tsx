@@ -687,6 +687,8 @@ export interface OpenCraftComposerHandle {
 
 export interface ComposerQueuedSubmissionPresentation {
   readonly sender?: ComposerQueueSender | null;
+  /** Stable message identity across local admission and the server queue ID. */
+  readonly renderKey?: string;
   readonly id: string;
   readonly preview: string;
   readonly state: "submitting" | "queued" | "failed" | "unknown";
