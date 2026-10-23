@@ -4,7 +4,7 @@
 # numeric field assertions (loaded/active/unknown/failedCode), <10s bound on immediate-failure cases.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-PROBE="$HERE/../../../build/idle-probe/preflight-cand.mjs"; FIXTURE="$HERE/fixture-fake-apphost-ingress.mjs"; LEGACY="$HERE/tests/legacy-v1-client.mjs"
+PROBE="$HERE/../../../build/idle-probe/preflight-cand.mjs"; FIXTURE="$HERE/fixture-fake-apphost-ingress.mjs"; LEGACY="$HERE/legacy-v1-client.mjs"
 LOG_ROOT="${TMPCHOICE_LOG_DIR:-$(mktemp -d)}"
 LOG="$LOG_ROOT/results-$(date +%Y%m%d-%H%M%S).log"; : > "$LOG"
 FAILS=0
