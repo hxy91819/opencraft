@@ -5,7 +5,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { cpus, arch, platform } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { scenarios, summarize, compare, candidate, markdown, annotations } from './report.mjs';
+import { scenarios, summarize, compare, candidate, markdown, annotations, sidebarEvidence } from './report.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const options = { output: path.join(root, '.local/performance', new Date().toISOString().replaceAll(':', '-')), baseline: path.join(root, 'config/performance-baseline.json') };
@@ -62,11 +62,7 @@ try {
   ]) {
     await run(id, ['--import', 'tsx', `scripts/${script}`], { [variable]: path.join(options.output, id) });
     const rows = JSON.parse(await readFile(path.join(options.output, id, filename), 'utf8'));
-    for (const row of rows) {
-      assert.ok([30, 200].includes(row.rows));
-      for (const sample of row.samples) { assert.equal(sample.rowsProcessed, 0); assert.equal(sample.projections, 0); }
-      report.evidence.push({ id: `${id}-${row.rows}`, samples: row.samples });
-    }
+    report.evidence.push(...sidebarEvidence(id, rows));
   }
   report.summary = summarize(report.evidence);
   if (options.record) {

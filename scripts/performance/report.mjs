@@ -37,6 +37,28 @@ export function candidate(summary, workload, environment) {
   return { schemaVersion: 1, workload, unit: 'ms', calibration: environment, scenarios: Object.fromEntries(Object.entries(summary).map(([id, row]) => [id,
     Object.fromEntries(Object.entries(row.metrics).map(([metric, quantiles]) => [metric, { ...quantiles, relativeTolerance: .30, absoluteToleranceMs: id.startsWith('sidebar-') ? 50 : id.startsWith('catalog-') && metric === 'completePaintMs' ? 150 : 100 }]))])) };
 }
+export function sidebarEvidence(id, rows) {
+  assert.ok(id === 'sidebar-update' || id === 'sidebar-menu', 'Unknown sidebar evidence kind');
+  assert.ok(Array.isArray(rows), 'Sidebar receipt must be an array');
+  const evidence = [];
+  for (const row of rows) {
+    if (!Array.isArray(row.samples)) {
+      assert.ok(id === 'sidebar-menu' && row.rows === undefined
+        && ['listContext', 'groupHeading', 'availability', 'titleOnly'].some(key => row[key] === true),
+      'Unknown sidebar behavior receipt');
+      continue;
+    }
+    assert.ok([30, 200].includes(row.rows), 'Unknown sidebar row count');
+    for (const sample of row.samples) {
+      assert.equal(sample.rowsProcessed, 0);
+      assert.equal(sample.projections, 0);
+    }
+    evidence.push({ id: `${id}-${row.rows}`, samples: row.samples });
+  }
+  assert.deepEqual(evidence.map(row => row.id).sort(), [`${id}-200`, `${id}-30`],
+    'Sidebar receipt requires exactly one 30-row and one 200-row measurement');
+  return evidence;
+}
 export function compare(summary, baseline, workload) {
   assert.equal(baseline.schemaVersion, 1, 'Unknown baseline schema');
   assert.equal(baseline.unit, 'ms', 'Baseline unit mismatch');
