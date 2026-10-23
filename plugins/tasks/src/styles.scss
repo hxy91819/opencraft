@@ -838,3 +838,13 @@
   .tasks-toolbar.tasks-toolbar--ai-follow-up { display: flex; }
   .tasks-toolbar--ai-follow-up .tasks-refresh { display: inline-flex; }
 }
+
+.tasks-view-beta {
+  @include type.role(caption, secondary);
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  background: var(--color-background-button-secondary);
+  white-space: nowrap;
+}

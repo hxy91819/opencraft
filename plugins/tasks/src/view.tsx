@@ -113,7 +113,7 @@ const words = {
   event_restored: ["恢复了事项", "Restored the item"],
   event_progress: ["记录了进展", "Reported progress"],
   tasks: ["看板", "Board"],
-  conversationOverview: ["协同会话统计", "Conversation stats"],
+  conversationOverview: ["任务统计", "Task stats"],
   searchTasks: ["搜索任务…", "Search tasks…"],
   assignee: ["负责人", "Assignee"],
   unassigned: ["未分配", "Unassigned"],
@@ -1554,7 +1554,7 @@ export function createTasksView(
                 { value: "board", label: <><Columns3 className="tasks-compact-only" size={18} aria-hidden="true" /><span className="tasks-view-label">{t("board")}</span></> },
                 { value: "list", label: <><List className="tasks-compact-only" size={18} aria-hidden="true" /><span className="tasks-view-label">{t("list")}</span></> },
                 { value: "ai", label: <><MessageSquare className="tasks-compact-only" size={18} aria-hidden="true" /><span className="tasks-view-label">{t("aiFollowUp")}</span></> },
-                ...(ports.conversationOverview ? [{ value: "overview", label: <><ChartNoAxesCombined className="tasks-compact-only" size={18} aria-hidden="true" /><span className="tasks-view-label">{t("conversationOverview")}</span></> }] : []),
+                ...(ports.conversationOverview ? [{ value: "overview", label: <><ChartNoAxesCombined className="tasks-compact-only" size={18} aria-hidden="true" /><span className="tasks-view-label">{t("conversationOverview")}</span><small className="tasks-view-beta">Beta</small></> }] : []),
               ]}
             />
             {draft.mode !== "ai" || overviewOpen ? <>
