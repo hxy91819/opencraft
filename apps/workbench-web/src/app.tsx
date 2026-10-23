@@ -1,3 +1,6 @@
+import { ConversationSummaryButton, ConversationSummarySurface, useConversationSummary, useSummaryGoal } from "./components/conversation-summary";
+import { ConversationToolbarSizing } from "./components/toolbar-dock-state";
+import { conversationToolbarActionIds } from "./components/toolbar-dock-model";
 import { useConversationDisplay } from "./runtime/use-conversation-display";
 import { displayTimingCounts } from "./runtime/display-timing-diagnostics";
 import { reportDisplayEvent } from "./runtime/recovery-diagnostics";
@@ -5,8 +8,6 @@ import { serverFetch } from "./runtime/server-context";
 import { ConversationReferenceSurface } from "./components/conversation-reference-surface";
 import { copyConversationReference } from "./runtime/conversation-reference-actions";
 import { useAsyncNotices } from "./components/async-notices";
-import { ConversationToolbarSizing } from "./components/toolbar-dock-state";
-import { conversationToolbarActionIds } from "./components/toolbar-dock-model";
 import { useObservedReadiness } from './runtime/observability-react';
 import { executionEngineExtension } from "@opencraft/appserver-client";
 import { ScheduledTaskCatalogContext } from "./runtime/scheduled-task-catalog-context";
@@ -44,12 +45,10 @@ import {
   type ComposerFollowUpAction,
   type SubmitIntent,
 } from "@opencraft/composer-core";
-import {
   compileSubmitIntent,
   restoreQueuedInput,
 } from "@opencraft/composer-appserver";
 import { queuedSubmissionPresentation, queueSenderPresentation, visibleQueuedSubmissions } from "./queued-submission-presentation";
-import {
   OpenCraftComposer,
   type ComposerSelectionCatalog,
 } from "@opencraft/composer-editor";
@@ -67,7 +66,6 @@ import { readCachedThreadName, writeCachedThreadName } from "./runtime/thread-ti
 import { archiveThread } from "./runtime/thread-archive";
 import { forkAndOpenThread } from "./runtime/thread-fork-navigation";
 import { formatDocumentTitle } from "./runtime/document-title";
-import {
   canInvokeHostPanelCommand,
   type PanelAction,
   type PanelTabDescriptor,
@@ -76,7 +74,6 @@ import {
   type PanelToolbarActionContext,
 } from "@opencraft/workbench-panels";
 import { createPortal } from "react-dom";
-import {
   createInteractionResponse,
   createWorkbenchThreadLocation,
   draftSubmissionOwnsNavigation,
@@ -85,7 +82,6 @@ import {
   projectComposerModelChoices,
 } from "@opencraft/workbench-runtime";
 import { OPENCRAFT_THREAD_QUEUE_EXTENSION, OPENCRAFT_PERMISSION_MODES_EXTENSION, supportsAtomicQueuedSteer, supportsUnconfirmedSteerDiscard, type OpenCraftPermissionProfile } from "@opencraft/appserver-protocol";
-import {
   lazy,
   Suspense,
   useCallback,
@@ -97,28 +93,22 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import {
   useBrowserWorkbench,
 } from "./browser/browser-runtime-context";
-import {
   AppShell,
 } from "./components/app-shell";
-import {
   AppShellHeader,
   AppShellNavigationControls,
 } from "./components/app-shell-header";
-import {
   AppShellRouteRegionsProvider,
   appShellPlatformViewRegions,
   useAppShellRouteHeader,
 } from "./components/app-shell-route-regions";
-import {
   Conversation,
   type ConversationInteractionAction,
   type ConversationRestoreSnapshot,
   type ConversationScrollApi,
 } from "./components/conversation";
-import {
   ConversationRecoveryNotice,
   ConversationRecoveryEmptyState,
   conversationRecoveryPresentation,
@@ -138,7 +128,6 @@ import { isWorkbenchToolPage } from "./runtime/workbench-tool-pages";
 import { WorkbenchToolNavigation, useWorkbenchToolActions } from "./components/workbench-tool-navigation";
 import { InternalDeveloperModeGate } from "./components/internal-developer-mode-gate";
 import { useInternalDeveloperMode } from "./internal-developer-mode";
-import {
   ManagementSettingsContent,
   ModalHost,
   showAnnouncementLab,
@@ -152,7 +141,6 @@ import { WorkspaceDirectoryPicker } from "./components/workspace-directory-picke
 import { useWorkbenchPresentationRoot } from "./components/workbench-presentation-root";
 import { useResponsiveSidebarDock } from "./components/use-responsive-sidebar-dock";
 import { usePersistedSidebarWidth } from "./components/use-persisted-sidebar-width";
-import {
   selectedProjectStorageKey,
   useActiveAppServerThread,
   useAppServerHosts,
@@ -172,7 +160,6 @@ import {
   useMultiHostThreadCatalog,
   useThreadPinWriter,
 } from "./runtime/appserver-runtime-context";
-import {
   setAppearanceThemeId,
   setThemePreference,
   useAppearanceTheme,
@@ -180,12 +167,10 @@ import {
 import { resolveBrowserAttachment } from "./runtime/browser-attachment-resolver";
 import { createAppServerMediaSourceLoader } from "./runtime/appserver-media-loader";
 import { useBlobResources, useImageProcessing } from "./runtime/appserver-runtime-context";
-import {
   buildDraftWorkspaceOptions,
   resolveDraftDirectorySelection,
 } from "./runtime/draft-workspace-model";
 
-import {
   usePanelRendererSnapshot,
   usePanelToolbarActions,
   useConversationPanelState,
@@ -197,7 +182,6 @@ import { ComposerExtensionActions } from "./runtime/composer-action-renderers";
 import { useConnectorPresentation } from "./components/connectors/connector-panel";
 import { useExtensionWorkbenchProjection } from "./runtime/extension-workbench-projection";
 import { useAuthenticationPresentation } from "./runtime/use-authentication-presentation";
-import {
   FULL_WORKBENCH_PRESENTATION,
   type WorkbenchPresentationPolicy,
 } from "./workbench-presentation-policy";
@@ -1749,15 +1733,20 @@ export function App({
     verifyConversation: async () => { await hostCatalog.agentRuntimes.request(snapshot.hostId, "thread/read", { threadId: headerThreadId, includeTurns: false }); },
     onOpenTasks: () => workbenchNavigation.openExtensionView("opencraft.tasks.board"),
   };
-  const conversationActionSizing = <ConversationToolbarSizing scope={displayScope} actionIds={conversationToolbarActionIds(conversationToolbarProps)} />;
+  const summaryScopeKey = JSON.stringify([displayScope, displayHostId, displayThreadId]);
+  const summary = useConversationSummary(summaryScopeKey, conversationSurfaceVisible && draft === null && displayThreadId !== null);
+  const summaryGoal = useSummaryGoal(runtime.resources.goals, displayHostId === snapshot.hostId && displayThreadId === activeThreadId ? displayThreadId : null);
+  const summaryCurrent = !showingDisplayCache && snapshot.phase === "ready" && visibleTimeline?.authoritative === true;
+  const conversationMenuSizing = <ConversationToolbarSizing scope={displayScope} actionIds={conversationToolbarActionIds(conversationToolbarProps)} />;
+  const conversationActionSizing = <span className="conversation-header-actions">{summary.enabled ? <span className="chrome-button" /> : null}{conversationMenuSizing}</span>;
   const header = (
     <AppShellHeader
       conversationHeader={conversationSurfaceVisible}
       subtitle={conversationContribution?.subtitle}
       navigationBrand={embedded === undefined && extensionPlatform === "web" ? <ApplicationBrand branding={branding} onHome={workbenchNavigation.openChat} /> : undefined}
       headerActionSizing={conversationActionSizing}
-      headerAction={conversationMenuAvailable ? (
-        <Suspense fallback={conversationActionSizing}>
+      headerAction={<span className="conversation-header-actions"><ConversationSummaryButton controller={summary} />{conversationMenuAvailable ? (
+        <Suspense fallback={conversationMenuSizing}>
           <ConversationTaskMenu
             key={JSON.stringify([displayScope, snapshot.hostId, activeThreadId])}
             im={settingsContributionSnapshot.settingsPages.some(page => page.contribution.id === "opencraft.im.channels") ? {
@@ -1766,7 +1755,7 @@ export function App({
             {...conversationToolbarProps}
           />
         </Suspense>
-      ) : null}
+      ) : null}</span>}
       titleContent={conversationSurfaceVisible && draft === null && activeThread !== undefined && hostCatalog.threadManagement.capabilities(snapshot.hostId, activeThreadId ?? undefined).rename ? (
         <EditableThreadTitle
           key={JSON.stringify([snapshot.hostId, activeThread.id])}
@@ -2065,6 +2054,8 @@ export function App({
           />
         ) : (
           <div className="local-conversation-page">
+            <div ref={summary.layoutRef} className="conversation-summary-layout" data-summary-open={summary.wide && summary.open}>
+            <div className="conversation-summary-reading">
                 <Conversation
                   scrollPolicy="natural"
                   onAddSelectionToChat={conversationRouteOpen && activeThreadId !== null ? (text) => {
@@ -2268,6 +2259,12 @@ export function App({
                     </ThreadComposerPresentation>
                   }
                 />
+            </div>
+            <ConversationSummarySurface controller={summary} context={{ scopeKey: summaryScopeKey, timeline: visibleTimeline, goal: summaryGoal, current: summaryCurrent,
+              onOpenResource: path => { if (summaryCurrent) panelRuntime.panels.open(panelOwnerId, "resource", { resource: path }); },
+              onOpenThread: threadId => { if (summaryCurrent && displayHostId) hostCatalog.navigate(createWorkbenchThreadLocation(displayHostId, threadId)); },
+            }} />
+            </div>
           </div>
         )}
           </div>

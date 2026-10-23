@@ -795,5 +795,22 @@
   "settings.tokenUsage": "การใช้โทเคน",
   "sidebar.browser.tabs": "แท็บเบราว์เซอร์ {count} แท็บ",
   "sidebar.browser.closeAll": "ปิดแท็บเบราว์เซอร์ทั้งหมด",
-  "sidebar.browser.failed": "ไม่สามารถอัปเดตแท็บเบราว์เซอร์ได้ โปรดลองอีกครั้ง"
+  "sidebar.browser.failed": "ไม่สามารถอัปเดตแท็บเบราว์เซอร์ได้ โปรดลองอีกครั้ง",
+  "threadSummary.title": "ข้อมูลงาน",
+  "threadSummary.goal": "เป้าหมาย",
+  "threadSummary.plan": "แผน",
+  "threadSummary.files": "ไฟล์ที่เปลี่ยนแปลง",
+  "threadSummary.activity": "กิจกรรม",
+  "threadSummary.waiting": "กำลังรอ",
+  "threadSummary.working": "กำลังทำงาน",
+  "threadSummary.complete": "เสร็จแล้ว",
+  "threadSummary.failed": "ล้มเหลว",
+  "threadSummary.stopped": "หยุดแล้ว",
+  "threadSummary.recent": "กิจกรรมล่าสุด",
+  "threadSummary.added": "เพิ่มแล้ว",
+  "threadSummary.deleted": "ลบแล้ว",
+  "threadSummary.modified": "แก้ไขแล้ว",
+  "threadSummary.emptyTitle": "ภาพรวมของงาน",
+  "threadSummary.empty": "แผน การเปลี่ยนแปลงไฟล์ และกิจกรรมจะแสดงที่นี่เมื่องานคืบหน้า",
+  "threadSummary.history": "จากประวัติการสนทนาที่โหลดแล้ว"
 }

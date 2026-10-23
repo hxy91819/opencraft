@@ -39,6 +39,7 @@ async function scan(directory) {
 await scan(join(root, "apps/workbench-web/src"));
 await scan(join(root, "packages/composer-editor/src"));
 await scan(join(root, "plugins/cloud-desktop/src"));
+await scan(join(root, "plugins/thread-summary/src"));
 await scan(join(root, "plugins/builtin-agents/src"));
 await scan(join(root, "plugins/voice-input/src"));
 await scan(join(root, "packages/file-preview-web/src"));

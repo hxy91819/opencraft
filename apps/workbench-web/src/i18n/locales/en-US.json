@@ -793,5 +793,22 @@
   "panel.sideChat": "New side chat",
   "sidebar.browser.tabs": "{count, plural, one {# browser tab} other {# browser tabs}}",
   "sidebar.browser.closeAll": "Close all browser tabs",
-  "sidebar.browser.failed": "Could not update browser tabs. Try again."
+  "sidebar.browser.failed": "Could not update browser tabs. Try again.",
+  "threadSummary.title": "Task info",
+  "threadSummary.goal": "Goal",
+  "threadSummary.plan": "Plan",
+  "threadSummary.files": "Changed files",
+  "threadSummary.activity": "Activity",
+  "threadSummary.waiting": "Waiting",
+  "threadSummary.working": "Working",
+  "threadSummary.complete": "Complete",
+  "threadSummary.failed": "Failed",
+  "threadSummary.stopped": "Stopped",
+  "threadSummary.recent": "Recent activity",
+  "threadSummary.added": "Added",
+  "threadSummary.deleted": "Deleted",
+  "threadSummary.modified": "Modified",
+  "threadSummary.emptyTitle": "The task at a glance",
+  "threadSummary.empty": "Plans, changed files and activity will appear here as work progresses.",
+  "threadSummary.history": "From loaded conversation history"
 }

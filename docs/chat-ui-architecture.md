@@ -3438,3 +3438,18 @@ measured rows. The same observations resume when the viewport is measurable;
 visible measurements remain synchronous and explicit scroll-to-bottom intent
 keeps its existing owner. Unmounting a parked View serializes the retained
 checkpoint for the replacement View.
+
+## Optional conversation summary
+
+`packages/workbench-panels-react` provides `ConversationSummaryService`, a single trusted
+renderer contribution with fiber-scoped registration/disposal. The built-in
+`plugins/thread-summary` consumes its public readonly context rather than application internals.
+`createWebWorkbenchApplication({threadSummary: false})` omits this module and its entry point.
+The host projects the displayed timeline and the existing goal resource, scopes view state by
+account/Host/thread, and supplies guarded semantic open-resource/open-thread callbacks.
+It owns actual-container layout, the toolbar and existing Radix ModalSurface; the plugin owns
+section content and typography. No additional subscription, summary model service, execution
+owner, persistence store or inference request is introduced. History may be partial; only
+structured plan/file records and explicit agent states contribute. Terminal completion never
+implies completion of a background process. Desktop and narrow presentation reuse the same
+controlled disclosure/scroll state while the conversation DOM stays mounted.

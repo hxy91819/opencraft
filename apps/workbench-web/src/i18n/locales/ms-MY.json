@@ -795,5 +795,22 @@
   "settings.tokenUsage": "Penggunaan token",
   "sidebar.browser.tabs": "{count} tab pelayar",
   "sidebar.browser.closeAll": "Tutup semua tab pelayar",
-  "sidebar.browser.failed": "Tidak dapat mengemas kini tab pelayar. Cuba lagi."
+  "sidebar.browser.failed": "Tidak dapat mengemas kini tab pelayar. Cuba lagi.",
+  "threadSummary.title": "Maklumat tugas",
+  "threadSummary.goal": "Matlamat",
+  "threadSummary.plan": "Pelan",
+  "threadSummary.files": "Fail yang diubah",
+  "threadSummary.activity": "Aktiviti",
+  "threadSummary.waiting": "Menunggu",
+  "threadSummary.working": "Sedang berjalan",
+  "threadSummary.complete": "Selesai",
+  "threadSummary.failed": "Gagal",
+  "threadSummary.stopped": "Dihentikan",
+  "threadSummary.recent": "Aktiviti terkini",
+  "threadSummary.added": "Ditambah",
+  "threadSummary.deleted": "Dipadam",
+  "threadSummary.modified": "Diubah",
+  "threadSummary.emptyTitle": "Gambaran tugas",
+  "threadSummary.empty": "Pelan, perubahan fail dan aktiviti akan dipaparkan semasa tugas berjalan.",
+  "threadSummary.history": "Daripada sejarah perbualan yang dimuatkan"
 }

@@ -2686,3 +2686,19 @@ The task-link action uses two interlocking rounded links in its shared semantic 
 The Tasks application uses “看板” (English: “Board”) for its navigation label,
 collapsed rail tooltip and main page heading. Board, list and follow-up remain
 views within the same application; task actions keep their task terminology.
+
+### Conversation task summary
+
+The optional `thread-summary` trusted plugin owns a read-only projection of structured plans,
+file changes and agent/command activity. `ConversationSummaryService` owns one revocable
+contribution, while the Workbench owns placement, focus, modality and semantic navigation.
+Unloading the plugin never ends execution, releases a conversation lease or changes history.
+The existing project/working-directory information dialog remains a separate action.
+
+A conversation-container query owns the room needed by the reading column and the 300px
+summary surface. Wide containers show one quiet rounded surface beside the reading column;
+narrow containers expose an explicit toolbar action and the shared adaptive modal/sheet.
+Switching presentation preserves section disclosure/scroll state and never reparents the
+conversation, composer or file viewer. View state resets on account/Host/thread scope changes.
+Cached history remains readable, but cannot authorize resource or agent navigation. The panel
+labels its history coverage; a completed spawn tool is never treated as agent completion.

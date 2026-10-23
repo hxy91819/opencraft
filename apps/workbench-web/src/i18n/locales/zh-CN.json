@@ -817,5 +817,22 @@
   "panel.sideChat": "新建侧边聊天",
   "sidebar.browser.tabs": "{count} 个浏览器标签页",
   "sidebar.browser.closeAll": "关闭全部浏览器标签页",
-  "sidebar.browser.failed": "未能更新浏览器标签页，请重试。"
+  "sidebar.browser.failed": "未能更新浏览器标签页，请重试。",
+  "threadSummary.title": "任务信息",
+  "threadSummary.goal": "目标",
+  "threadSummary.plan": "计划",
+  "threadSummary.files": "更改的文件",
+  "threadSummary.activity": "活动",
+  "threadSummary.waiting": "等待中",
+  "threadSummary.working": "进行中",
+  "threadSummary.complete": "已完成",
+  "threadSummary.failed": "失败",
+  "threadSummary.stopped": "已停止",
+  "threadSummary.recent": "最近活动",
+  "threadSummary.added": "已添加",
+  "threadSummary.deleted": "已删除",
+  "threadSummary.modified": "已修改",
+  "threadSummary.emptyTitle": "任务进展，一目了然",
+  "threadSummary.empty": "计划、文件更改和活动会随任务进展显示在这里。",
+  "threadSummary.history": "根据已加载的会话记录整理"
 }
