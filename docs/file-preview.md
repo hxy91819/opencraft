@@ -124,3 +124,5 @@ opening timeout and encrypted legacy Word failures use fixed, localized action
 messages rather than raw parser diagnostics.
 
 DOC and DOCX share a retained paper viewport with zoom and fit-width controls. The scroll container and scaled page frame remain local to the preview; changing application locale does not recreate the renderer or reset zoom.
+
+PPTX previews reveal the current slide in the thumbnail rail when it is reopened or its retained tab is reactivated. This scroll is confined to the preview rail.

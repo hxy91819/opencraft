@@ -124,7 +124,7 @@ export async function openPresentation(buffer: ArrayBuffer, signal: AbortSignal)
     const shown = element.dataset.thumbnails !== "hidden";
     rail.hidden = !shown; toggle.setAttribute("aria-expanded", String(shown));
     if (!shown) for (const index of thumbnails.keys()) releaseThumbnail(index);
-    else refreshThumbnails();
+    else { refreshThumbnails(); queueMicrotask(() => go(current)); }
   };
   const refreshThumbnails = () => {
     if (disposed) return;
@@ -181,7 +181,7 @@ export async function openPresentation(buffer: ArrayBuffer, signal: AbortSignal)
     signal.addEventListener("abort", dispose, { once: true }); signal.throwIfAborted();
     showSlide(); if (failure) throw failure.error;
     return { element, dispose, setIntl(value) { intl = value; updateLabels(); }, setOpenLink: open => { openLink = open; },
-      setActive(value) { active = value; element.inert = !value; if (value) scaleSlide(); refreshThumbnails(); },
+      setActive(value) { active = value; element.inert = !value; if (value) { scaleSlide(); queueMicrotask(() => go(current)); } refreshThumbnails(); },
       subscribeFailure(listener) { if (failure) listener(failure.error); else if (!disposed) listeners.add(listener); return () => listeners.delete(listener); } };
   } catch (error) { dispose(); throw error; }
 }

@@ -113,6 +113,14 @@ for(const width of [320,390,1280])for(const theme of ['light','dark']){
  assert.equal(await page.evaluate(()=>document.querySelector('.office-preview--docx')===(window as any).retainedDocument),true,'switch restores retained engine');
  await open('/fixture/sample.pptx');await ppt.waitFor();assert.equal(await page.evaluate(()=>document.querySelector('.office-preview--pptx')===(window as any).retainedPresentation),true);
  assert.equal(await input.inputValue(),'3');await ppt.getByText('125%',{exact:true}).waitFor();
+ // An off-screen current slide must be revealed when reopening the rail or tab.
+ await input.fill('19');await input.press('Enter');
+ if(narrow)await ppt.getByRole('button',{name:'Slide thumbnails',exact:true}).tap();
+ const currentThumbnailVisible=()=>page.waitForFunction(()=>{const rail=document.querySelector('.office-preview__thumbnails')!,current=rail.querySelector('[aria-current=page]')!;const r=rail.getBoundingClientRect(),c=current.getBoundingClientRect();return r.height>0&&c.top>=r.top&&c.bottom<=r.bottom});
+ await currentThumbnailVisible();
+ await open('/fixture/sample.docx');await page.locator('.office-preview--docx').waitFor();
+ await open('/fixture/sample.pptx');await ppt.waitFor();assert.equal(await input.inputValue(),'19');await currentThumbnailVisible();
+ if(narrow)await ppt.getByRole('button',{name:'Slide thumbnails',exact:true}).tap();
  await ppt.getByRole('button',{name:'Fit slide',exact:true}).click();await ppt.getByText('100%',{exact:true}).waitFor();
  await open('/fixture/sample.xlsx');await page.locator('[data-file-preview-phase]:not([data-file-preview-phase="opening"])').waitFor({state:'attached',timeout:60000}).catch(async error=>{console.log('BODY',await page.locator('body').innerText());console.log('READS',await page.evaluate(()=>(window as any).fixtureReads));await page.screenshot({path:join(output,'failure.png')});throw error}); assert.equal(await page.locator('[data-file-preview-phase]').getAttribute('data-file-preview-phase'),'ready');
  await page.getByRole('tab',{name:'Summary',exact:true}).waitFor();await page.getByRole('tab',{name:'Details',exact:true}).click();
