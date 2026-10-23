@@ -709,6 +709,11 @@ controls remain visible with 44px targets. Existing source fallback, stable
 loading geometry and reading-surface width limits remain authoritative.
 `scripts/smoke-mermaid-display.ts` checks full SVG bounds, hidden source, toolbar
 separation, resizing, source replacement and preview on real WebChatDocument.
+Appending prose after a complete fence and finishing the Turn preserve the SVG.
+Measurement delivery reads the latest committed document callback and generation
+without becoming an input to the diagram's render lifecycle. Source or theme
+changes still invalidate the diagram; resize measurements still reach the
+current document owner.
 
 Bounds checks measure the actual scrollport, initial resource link and table
 actions against the reading surface, and verify the final column is reachable.
