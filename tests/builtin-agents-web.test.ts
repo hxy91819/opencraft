@@ -34,6 +34,7 @@ test("Web can activate built-in model and Codex settings without desktop Host re
       "opencraft.builtin-agents.model-services",
     ]);
     assert.ok(pages.every(({ platforms }) => platforms?.includes("web")));
+    assert.ok(pages.every(page => page.modelConfiguration === true));
     assert.deepEqual(Object.fromEntries(pages.map(({ id, targetHostId }) => [id, targetHostId])), {
       "opencraft.builtin-agents.model-services": "local",
       "opencraft.builtin-agents.codex-accounts": "local-codex",
@@ -76,6 +77,7 @@ test("Electron retains daemon Host registration and explicit configuration owner
     const pages = supervisor.contributions.getSnapshot().settingsPages.map(({ contribution }) => contribution);
     assert.equal(pages.length, 2);
     assert.ok(pages.every(({ platforms }) => platforms?.includes("electron")));
+    assert.ok(pages.every(page => page.modelConfiguration === true));
     assert.deepEqual(Object.fromEntries(pages.map(({ id, targetHostId }) => [id, targetHostId])), {
       "opencraft.builtin-agents.model-services": "local",
       "opencraft.builtin-agents.codex-accounts": "local-codex",

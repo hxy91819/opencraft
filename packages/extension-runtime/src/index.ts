@@ -10,3 +10,4 @@ export * from "./runtime";
 export * from "./settings-store";
 export * from "./persistence";
 export * from "./persistent-extension-stores";
+export * from "./host-model-settings";

@@ -145,9 +145,8 @@ export function SettingsNavigation({
   const internalDeveloperMode = useInternalDeveloperMode();
   const [managementQuery, setManagementQuery] = useState("");
   const extensionPages = useSettingsExtensionPages(extensionContributions, currentPlatform());
-  const runPages = ["opencraft.builtin-agents.model-services", "opencraft.builtin-agents.codex-accounts"]
-    .flatMap(id => extensionPages.filter(page => page.id === id && page.targetHostId !== undefined
-      && profiles.some(profile => profile.enabled && profile.hostId === page.targetHostId)));
+  const runPages = extensionPages.filter(page => page.management === undefined && page.targetHostId !== undefined
+    && profiles.some(profile => profile.enabled && profile.hostId === page.targetHostId));
   const selectedRunPage = runPages.some(page => page.id === section);
   const selectedPage = extensionPages.find((page) => page.id === section) ?? null;
   const managementFamilyId = selectedPage?.management?.familyId ?? null;

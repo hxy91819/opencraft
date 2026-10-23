@@ -123,3 +123,13 @@ When proposing a new contribution point:
 The architecture's isolated ExtensionHosts, publisher distribution, full
 resolver and richer permissions remain proposals, tracked separately from this
 implemented path. See [remaining ecosystem work](plugin-architecture.md#142-尚未完成的生态边界).
+
+### Host model configuration destinations
+
+A Settings page may declare `targetHostId` and `modelConfiguration: true` to provide
+that Host's model-menu Manage destination. The client uses the declaration,
+platform and audience, without guessing engine or page IDs. Lower `order` wins;
+equal orders use page ID order. Pages without this declaration remain ordinary
+Settings pages. A declaration without a target Host is rejected atomically.
+Run navigation lists enabled Hosts' declared configuration pages in their normal
+page order. The extension remains responsible for its page and model credentials.
