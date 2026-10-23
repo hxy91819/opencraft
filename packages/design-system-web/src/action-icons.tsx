@@ -3,6 +3,7 @@ import { progressIndicatorGeometry } from "@opencraft/design-system/progress";
 import { ActionGlyph, BrainArtwork, PencilArtwork, TerminalArtwork, RoundedPage, type ActionIconProps } from "./icon-glyph";
 export type { ActionIconProps } from "./icon-glyph";
 export * from "./interface-icons";
+export * from "./image-edit-icons";
 export * from "./activity-icons";
 export * from "./retained-layout-icons";
 
