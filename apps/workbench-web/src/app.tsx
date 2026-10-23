@@ -782,6 +782,15 @@ export function App({
     runtime: snapshot.phase,
     transport: snapshot.transport,
   });
+  const conversationRecovering = activeThreadId !== null
+    && conversationRecoveryIsPending(recoveryPresentation, recoveryDiagnostic, recoveryRequiresUpdate);
+  const connectionRecovering = snapshot.phase === "connecting" || snapshot.phase === "reconnecting"
+    || (snapshot.phase === "error" && conversationRecoveryIsPending("cold-error", recoveryDiagnostic, recoveryRequiresUpdate));
+  const recoveryPlaceholder = connectionRecovering
+    ? intl.formatMessage({ id: "chat.composer.reconnecting", defaultMessage: "Reconnecting…" })
+    : conversationRecovering
+      ? intl.formatMessage({ id: "chat.composer.loading", defaultMessage: "Loading…" })
+      : undefined;
   useEffect(() => {
     if (recoveryPresentation !== "cold-error" && recoveryPresentation !== "warm-error") return;
     console.info("[conversation-recovery] failed", {
@@ -2001,10 +2010,10 @@ export function App({
               id: "chat.companionHeading",
               defaultMessage: "What would you like to do together today?",
             }) : undefined}
-            placeholder={embedded ? intl.formatMessage({
+            placeholder={recoveryPlaceholder ?? (embedded ? intl.formatMessage({
               id: "chat.companionPlaceholder",
               defaultMessage: "Share your thoughts, or ask me to help with something",
-            }) : undefined}
+            }) : undefined)}
             selectionCatalog={composerSelectionCatalog}
             catalog={composerSuggestionCatalog}
             effectiveSelections={modelSelectionPolicy === "session" ? undefined : composerCatalog.newThreadDefaults ?? undefined}
@@ -2184,8 +2193,7 @@ export function App({
                           : (["steer", "queue"] as const).filter(action => followUpCapability?.[action] !== false && runtime.resources.host.canRequest?.(action === "queue" ? "thread/queue/add" : "turn/steer") !== false)}
                         portalContainer={portalContainer}
                         isUnstable={activeThreadId !== null && recoveryPresentation !== "none"}
-                        isRecovering={activeThreadId !== null
-                          && conversationRecoveryIsPending(recoveryPresentation, recoveryDiagnostic, recoveryRequiresUpdate)}
+                        isRecovering={conversationRecovering}
                         isStreaming={draft === null && isStreaming}
                         isStopping={snapshot.conversation?.activeTurn?.status === "interrupting"}
                         awaitSubmission
@@ -2225,10 +2233,10 @@ export function App({
                         entryActions={composerDesktopEntry}
                         endActions={composerEndActions}
                         modelSelectionPolicy={modelSelectionPolicy}
-                        placeholder={embedded ? intl.formatMessage({
+                        placeholder={recoveryPlaceholder ?? (embedded ? intl.formatMessage({
                           id: "chat.companionFollowupPlaceholder",
                           defaultMessage: "Tell me what you'd like to do next",
-                        }) : undefined}
+                        }) : undefined)}
                         selectionCatalog={composerSelectionCatalog}
                         catalog={composerSuggestionCatalog}
                         mentionSuggestionsEnabled={false}

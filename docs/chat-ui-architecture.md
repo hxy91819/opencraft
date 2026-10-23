@@ -2565,8 +2565,13 @@ projection is independent of Turn streaming and does not authorize commands. It
 appears after 600ms, fades out in 350ms, uses theme colors, intercepts no input and
 preserves the mounted editor, draft, focus and selection. Reduced motion retains
 a static faint edge. Cold history uses the same Composer feedback instead of a
-central spinner; activation failures retain their retry action. Loading copy is
-screen-reader-only. No syncing/reconnecting notice is inserted into the transcript.
+central spinner; activation failures retain their retry action. The empty Composer placeholder shows “Reconnecting…” while its Host connects or
+retries, and “Loading…” while the connected conversation is being restored. The
+existing recovery owner decides whether work is pending; stopped recovery and
+required updates keep their existing actions. The editor owns emptiness, so a
+draft (including transient IME text) hides this placeholder. Changing the
+placeholder preserves the same editor, focus, selection and draft; readiness
+restores the normal prompt. The border scan also retains its screen-reader label. No syncing/reconnecting notice is inserted into the transcript.
 Only a stopped/blocked recovery or required client update presents
 an actionable instruction in normal flow above the Composer, never over the
 transcript. Its diagnostic report stays collapsed. Elapsed time, attempts, retry

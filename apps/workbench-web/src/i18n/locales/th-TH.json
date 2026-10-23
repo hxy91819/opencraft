@@ -1,4 +1,6 @@
 {
+  "chat.composer.reconnecting": "กำลังเชื่อมต่ออีกครั้ง…",
+  "chat.composer.loading": "กำลังโหลด…",
   "chat.recovery.progress.connecting": "กำลังเชื่อมต่อเซิร์ฟเวอร์",
   "chat.recovery.progress.initializing": "กำลังเริ่มต้นการเชื่อมต่อ",
   "chat.recovery.progress.backoff": "กำลังรอลองอีกครั้ง",
