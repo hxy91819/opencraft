@@ -178,7 +178,7 @@ Client ApplicationSupervisor
 │        ├─ Runtime readiness / connection generation
 │        ├─ Domain resources (Threads, Projects, Files, Catalog, Terminal)
 │        ├─ @opencraft/appserver-client
-│        │  └─ @opencraft/appserver-protocol ── Codex app-server protocol
+│        │  └─ @opencraft/appserver-protocol ── Host-aware AppServer contracts
 │        ├─ Resume / Replica / Thread projections
 │        └─ DuplexTransport
 │           ├─ WebSocket (browser/RN)
@@ -1426,7 +1426,7 @@ protocol adaptations are tracked there rather than implied by a successful build
 | `chat-core` | host-aware identity and Turn → Frame → Block projection | none |
 | `chat-runtime` | Replica-derived Timeline snapshots and command/history ports | none |
 | `composer-core` | portable document, target-scoped draft, SubmitIntent and controller | none |
-| `composer-appserver` | lossless document compiler and native Codex command port | none |
+| `composer-appserver` | lossless document compiler and AppServer command port | none |
 | `timeline-virtualizer` | Turn window, restore, anchors, follow and spacer policy | none |
 | `workbench-runtime` | HostRuntime registry; per-Host client ownership, Thread catalog and Replica/Session orchestration | none |
 | `workbench-resources` (proposed) | renderer-neutral resource identity, durable route and presentation contracts | none |

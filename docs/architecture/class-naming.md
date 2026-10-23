@@ -6,20 +6,20 @@ rename does not introduce support for another engine or migrate stored data.
 
 ## OpenCraft-owned classes
 
-| Previous name | Current owner | Reason |
-| --- | --- | --- |
-| `CodexHostQueue` | [OpenCraftHostQueue](../../apps/opencraft-daemon/src/opencraft-host-queue.ts) | OpenCraft owns durable input admission, ordering, delivery state and recovery. Its explicit native-queue importer still reads the legacy Codex format. |
-| `CodexHostStateDatabase` | [OpenCraftHostStateDatabase](../../apps/opencraft-daemon/src/opencraft-host-state-database.ts) | OpenCraft owns migration and transactions for queue, sender provenance, Bot metadata and the durable catalog. |
-| `CodexMessageAttachments` | [OpenCraftMessageAttachments](../../apps/opencraft-daemon/src/opencraft-message-attachments.ts) | OpenCraft stores display references separately from native engine input. |
-| `CodexTokenUsageLedger` | [OpenCraftTokenUsageLedger](../../apps/opencraft-daemon/src/token-usage-ledger.ts) | OpenCraft owns metering facts, allocation, recovery checkpoints and query authority; engine collectors supply verified source facts. Native-counter and rollout state remain explicit source records. |
-| `CodexQueueRpcError` | [OpenCraftQueueRpcError](../../apps/opencraft-daemon/src/codex-engine-adapter.ts) | This local error carries OpenCraft queue admission and dispatch failures. |
-| `CodexMessageSenders` (alias) | [OpenCraftMessageSenders](../../apps/opencraft-daemon/src/opencraft-message-senders.ts) | The old alias wrapped the shared `ThreadMessageSenders` implementation. All internal consumers now use one OpenCraft class directly. |
+| Class | Responsibility |
+| --- | --- |
+| [OpenCraftHostQueue](../../apps/opencraft-daemon/src/opencraft-host-queue.ts) | OpenCraft owns durable input admission, ordering, delivery state and recovery. Its explicit native-queue importer still reads the legacy Codex format. |
+| [OpenCraftHostStateDatabase](../../apps/opencraft-daemon/src/opencraft-host-state-database.ts) | OpenCraft owns migration and transactions for queue, sender provenance, Bot metadata and the durable catalog. |
+| [OpenCraftMessageAttachments](../../apps/opencraft-daemon/src/opencraft-message-attachments.ts) | OpenCraft stores display references separately from native engine input. |
+| [OpenCraftTokenUsageLedger](../../apps/opencraft-daemon/src/token-usage-ledger.ts) | OpenCraft owns metering facts, allocation, recovery checkpoints and query authority; engine collectors supply verified source facts. Native-counter and rollout state remain explicit source records. |
+| [OpenCraftQueueRpcError](../../apps/opencraft-daemon/src/codex-engine-adapter.ts) | This local error carries OpenCraft queue admission and dispatch failures. |
+| [OpenCraftMessageSenders](../../apps/opencraft-daemon/src/opencraft-message-senders.ts) | OpenCraft owns sender provenance; all internal consumers use this shared implementation directly. |
 
 The daemon workspace is private. These source files are internal implementation
 entries, not Extension API V1. All in-repository imports, scripts and tests move
 with their classes; no second implementation or old class-name alias remains.
-The message projector's separate compatibility functions are outside this class
-rename and continue to read their existing AppServer envelope.
+Message metadata consumers import the canonical thread projection helpers
+described in the [internal naming contract](internal-naming.md).
 
 ## Engine-specific classes retained
 
