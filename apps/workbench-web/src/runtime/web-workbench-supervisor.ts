@@ -350,6 +350,7 @@ export async function createWebWorkbenchApplicationSupervisor(
         const { createTasksExtension } = await import("@opencraft/plugin-tasks");
         signal?.throwIfAborted();
         return createTasksExtension({
+          followUpDwellSince: Number(import.meta.env.VITE_TASKS_DWELL_SINCE ?? 0),
           conversationOverview: {
             async read(...args) {
               const { createConversationOverviewPort } = await import("./conversation-overview");

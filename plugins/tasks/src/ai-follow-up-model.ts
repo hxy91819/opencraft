@@ -1,5 +1,5 @@
 import { TASKS, type TaskDetail, type TaskEvent, type TasksRequestPort } from "@opencraft/appserver-protocol";
-import { researchHandoff } from "./research-handoff";
+import { parseResearchHandoff, researchHandoff } from "./research-handoff";
 
 export const AI_FOLLOW_UP_PREFIX = "AI_FOLLOW_UP_V1\n";
 export const FOLLOW_UP_LANES = ["todo", "working", "needs", "review", "ready"] as const;
@@ -18,6 +18,8 @@ export interface FollowUpProjection {
   readonly lane: FollowUpLane;
   readonly report: FollowUpReport | null;
   readonly readyAt: number | null;
+  /** Server-derived entry into the visible lane; independent of decision rounds. */
+  readonly enteredAt: number | null;
   readonly decision: string | null;
   readonly updatedAt: number;
 }
@@ -42,29 +44,57 @@ export function followUpProjection(task: TaskDetail, events: readonly TaskEvent[
   let current: Current | null = null;
   const readyTime = (previous: Current | null, report: FollowUpReport, at: number) => report.lane !== "needs" ? null
     : previous?.report.lane === "needs" && previous.report.roundId === report.roundId ? previous.readyAt : at;
-  for (const event of [...events].sort((a, b) => a.seq - b.seq)) {
-    // Status changes close structured rounds. Writers move first, then publish the fact.
-    if (["created", "deleted", "restored", "status_changed"].includes(event.type)) current = null;
-    if (event.type !== "progress") continue;
-    const report = parseFollowUpReport(event.payload.text);
-    if (report) current = { report, at: event.createdAt, readyAt: readyTime(current, report, event.createdAt) };
+  const ordered = [...events].sort((a, b) => a.seq - b.seq);
+  const initialStatus = ordered.find(e => e.type === "created")?.payload.status
+    ?? ordered.find(e => e.type === "status_changed")?.payload.from ?? task.status;
+  let status: unknown = initialStatus;
+  let legacyAt: number | null = null, reviewAt: number | null = null;
+  const compatibleStatus = (lane: FollowUpLane, value: unknown) => lane === "todo" ? value === "backlog" || value === "todo"
+    : lane === "working" ? value === "in_progress" : value === "in_review";
+  const laneNow = (): FollowUpLane => current && compatibleStatus(current.report.lane, status) ? current.report.lane
+    : !current && status === "in_review" && legacyAt !== null && reviewAt !== null ? "needs"
+    : status === "backlog" || status === "todo" ? "todo" : status === "in_review" ? "review" : "working";
+  let lane = laneNow();
+  let enteredAt = Number.isFinite(task.createdAt) ? task.createdAt : null;
+  for (const event of ordered) {
+    const boundary = ["created", "deleted", "restored"].includes(event.type);
+    if (boundary || event.type === "status_changed") current = null;
+    if (event.type === "created") status = event.payload.status ?? status;
+    if (event.type === "status_changed") status = event.payload.to;
+    if (boundary || event.type === "status_changed" && status !== "in_review") { legacyAt = null; reviewAt = null; }
+    if ((event.type === "created" || event.type === "status_changed") && status === "in_review") reviewAt = event.createdAt;
+    if (event.type === "progress") {
+      if (parseResearchHandoff(event.payload.text) && legacyAt === null) legacyAt = event.createdAt;
+      const report = parseFollowUpReport(event.payload.text);
+      if (report) current = { report, at: event.createdAt, readyAt: readyTime(current, report, event.createdAt) };
+    }
+    const nextLane = laneNow();
+    if (boundary || nextLane !== lane) enteredAt = event.createdAt;
+    lane = nextLane;
   }
   const compatible = (lane: FollowUpLane) => lane === "todo" ? ["backlog", "todo"].includes(task.status)
     : lane === "working" ? task.status === "in_progress" : task.status === "in_review";
-  if (current && compatible(current.report.lane)) return { lane: current.report.lane, report: current.report, readyAt: current.readyAt, decision: current.report.decision ?? null, updatedAt: current.at };
+  if (current && compatible(current.report.lane)) return { lane: current.report.lane, report: current.report, enteredAt: lane === current.report.lane ? enteredAt : null, readyAt: current.readyAt, decision: current.report.decision ?? null, updatedAt: current.at };
   const legacy = !current && task.status === "in_review" ? researchHandoff(events) : null;
   return { lane: legacy ? "needs" : ["todo", "backlog"].includes(task.status) ? "todo" : task.status === "in_review" ? "review" : "working",
+    enteredAt: lane === (legacy ? "needs" : ["todo", "backlog"].includes(task.status) ? "todo" : task.status === "in_review" ? "review" : "working") ? enteredAt : null,
     report: null, readyAt: legacy?.readyAt ?? null, decision: legacy?.decision ?? null,
     updatedAt: task.latestProgress?.createdAt ?? task.updatedAt };
 }
-/** Current-cycle reads are bounded. A truncated history never supplies a waiting clock. */
+/** Owner gates lane dwell, not decision judge/round. Product policy may set a fixed rollout floor. */
+export function followUpDwellStart(task: TaskDetail, projection: FollowUpProjection, since = 0): number | null {
+  return task.assigneeId && activeFollowUpTask(task) && ["todo", "needs", "ready"].includes(projection.lane)
+    && projection.enteredAt !== null && Number.isFinite(projection.enteredAt) && Number.isFinite(since)
+    ? Math.max(since, projection.enteredAt) : null;
+}
+/** Lifecycle reads are bounded. A truncated history never supplies a clock. */
 export async function readFollowUpEvents(port: TasksRequestPort, taskId: string): Promise<readonly TaskEvent[]> {
   const events: TaskEvent[] = [];
   let beforeSeq: number | undefined;
   for (let i = 0; i < 50; i++) {
     const page = await port.request(TASKS.events, { taskId, limit: 100, ...(beforeSeq === undefined ? {} : { beforeSeq }) });
     events.push(...page.events);
-    if (page.events.some(e => ["created", "deleted", "restored"].includes(e.type) || e.type === "status_changed" && e.payload.to !== "in_review") || page.nextBeforeSeq === null) return events;
+    if (page.events.some(e => ["created", "deleted", "restored"].includes(e.type)) || page.nextBeforeSeq === null) return events;
     if (beforeSeq !== undefined && page.nextBeforeSeq >= beforeSeq) throw new Error("Invalid follow-up activity cursor");
     beforeSeq = page.nextBeforeSeq;
   }
