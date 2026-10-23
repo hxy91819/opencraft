@@ -251,7 +251,11 @@ export class ConversationSchedules {
         const observed = this.observed(run);
         if (run.state === "running" && observed) run = { ...run, ...observed };
       } else {
-        const result = this.observed(run) ?? await this.port.inspect(run);
+        let result: Awaited<ReturnType<ScheduleExecutionPort["inspect"]>> | undefined = this.observed(run);
+        if (!result) {
+          try { result = await this.port.inspect(run); }
+          catch (error) { result = this.observed(run); if (!result) throw error; }
+        }
         run = { ...run, state: result.state, updatedAt: this.now() };
       }
       // A native completion can arrive while inspection is awaiting its reply.
@@ -273,8 +277,9 @@ export class ConversationSchedules {
       if (run.state === "waiting" || run.state === "running") this.retries.set(run.id, this.now() + (run.state === "waiting" ? 5000 : this.port.subscribe ? 60000 : 15000));
       else { this.retries.delete(run.id); this.observations.delete(run.id); }
     } catch {
-      if (this.observed(run)) this.retries.delete(run.id);
-      else this.retries.set(run.id, this.now() + 30000);
+      // Native completion can resolve a failed query above, but cannot turn a
+      // failed durable write into an immediate event/tick retry loop.
+      this.retries.set(run.id, this.now() + 30000);
       this.diagnostic({ event: "schedule-execution-check-failed", scheduleId: plan.id });
     }
   }

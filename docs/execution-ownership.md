@@ -550,3 +550,8 @@ The boundaries isolate requests; they do not separate tenant data or Core CPU.
 Pi declares verified permission-mode presentation for its one Full access profile,
 so Composer and schedule editors share the same supported catalog. Its managed
 schedule database opening outcome is exposed through the provider to Host health.
+
+A native completion may resolve a failed or late inspection, but cannot substitute
+for a successful durable write. Failed occurrence writes retain the observation
+and use the normal 30-second failure backoff; slot release cannot spin an immediate
+retry loop. Recovery persists the same occurrence without resending its input.

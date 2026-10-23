@@ -81,3 +81,21 @@ test("a held admission cannot block peer completion or later peer work", async t
     for (const id of ["c", "d", "e", "f", "g"]) assert.equal(f.service.read(id).runs[0]?.state, "running");
   } finally { gate.resolve(); await held; }
 });
+
+test("failure to persist native completion backs off without spinning or resubmitting", async t => {
+  const f = await fixture(t); await f.save(); await f.service.tick();
+  const service = f.service as any, write = service.writeRun.bind(service); let failures = 0, fail = true;
+  service.writeRun = (run: any) => {
+    if (run.state === "completed" && fail) {
+      failures++;
+      if (failures > 1) void f.service.close(); // Bound a failing baseline's microtask loop.
+      throw new Error("Synthetic durable write failure");
+    }
+    return write(run);
+  };
+  f.event({ threadId: "a", turnId: "turn:a", state: "completed" }); await f.service.tick();
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(failures, 1); assert.equal(f.service.read("a").runs[0]?.state, "running");
+  fail = false; f.advance(30001); await f.service.tick();
+  assert.equal(f.service.read("a").runs[0]?.state, "completed"); assert.equal(f.sends, 1); assert.equal(f.inspections, 0);
+});
