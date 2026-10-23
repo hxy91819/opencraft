@@ -137,10 +137,13 @@ filesystem paths, directories, sockets, tokens, databases or logs. Published
 `ioa_*` table identities remain storage contracts and are not renamed by source
 cleanup. There is one schema and one reader rather than a compatibility fork.
 
-AppServer capability strings (`vela/agents`, `vela/bot-conversations`,
-`vela/browser-use`) and published browser tool names stay stable. The source
-constant names have changed to OPENCRAFT, but a product rename is not a wire
-protocol version change. Generic `thread/*`, `turn/*`, and `bot/*` methods are
+Browser capability advertisement uses `opencraft/browser-use`. New browser tool
+specs advertise `opencraft_app.open_in_opencraft` and `opencraft_browser`.
+The handler accepts exact former tool pairs for already-issued calls, without
+advertising them or accepting mixed former/current namespace/function pairs.
+This supersedes the former blanket name-stability rule for these first-party
+browser identities. Other capability owners (`vela/agents` and
+`vela/bot-conversations`) still require their own producer/reader migration. Generic `thread/*`, `turn/*`, and `bot/*` methods are
 unchanged. Native deep links now use `opencraft:`.
 
 ## Service-provider ownership

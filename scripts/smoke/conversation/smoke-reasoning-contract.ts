@@ -34,7 +34,7 @@ const endpoint=createServer(async(req,res)=>{
    if(messages.includes('panelTabId')&&messages.includes('opened'))browserToolResultSeen=true;
    browserToolStep++;
    if(browserToolStep>4)browserInspected=messages.includes('revision')&&messages.includes('DSH browser bridge verified');
-   const tool=browserToolStep===1?'open_in_vela':browserToolStep<=4?'browser_use':null;
+   const tool=browserToolStep===1?'opencraft_app__open_in_opencraft':browserToolStep<=4?'opencraft_browser__browser_use':null;
    if(tool)assert.ok(body.tools.some((entry:any)=>entry.function?.name===tool),tool+' advertised to actual model');
    const tab=findBrowserTab(body.messages);
    const args=browserToolStep===1?{url:`http://127.0.0.1:${(endpoint.address() as {port:number}).port}/browser-fixture`,placement:'right'}

@@ -36,7 +36,7 @@ sockets.on("connection", socket => {
     const message = JSON.parse(String(raw));
     if (message.method === "initialize") socket.send(JSON.stringify({ id: message.id, result: { codexHome: "/tmp/fixture", platformFamily: "unix", platformOs: "linux", userAgent: "fixture" } }));
     else if (message.method === "fixture/start") {
-      socket.send(JSON.stringify({ id: 11, method: "item/tool/call", params: { namespace: "vela_browser", tool: "browser_use", arguments: { action: "wait", text: "fixture" }, threadId: "old-thread", turnId: "u", callId: "c" } }));
+      socket.send(JSON.stringify({ id: 11, method: "item/tool/call", params: { namespace: "opencraft_browser", tool: "browser_use", arguments: { action: "wait", text: "fixture" }, threadId: "old-thread", turnId: "u", callId: "c" } }));
       socket.send(JSON.stringify({ method: "serverRequest/resolved", params: { requestId: 7, threadId: "old-thread" } }));
       socket.send(JSON.stringify({ id: message.id, result: null }));
     } else if (message.method === "fixture/reuse") {

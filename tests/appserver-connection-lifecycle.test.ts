@@ -237,7 +237,7 @@ test("real WebSocket and browser interceptor discard an old physical connection'
   }, { hostId: "browser-fixture" });
   try {
     await client.connect(params);
-    sockets[0]!.send(encodeJsonRpcMessage({ id: 11, method: "item/tool/call", params: { namespace: "vela_browser", tool: "browser_use", arguments: { action: "wait", text: "fixture" }, threadId: "t", turnId: "u", callId: "c" } }));
+    sockets[0]!.send(encodeJsonRpcMessage({ id: 11, method: "item/tool/call", params: { namespace: "opencraft_browser", tool: "browser_use", arguments: { action: "wait", text: "fixture" }, threadId: "t", turnId: "u", callId: "c" } }));
     await started.promise;
     const disconnected = deferred<void>(); const off = client.subscribeStatus(s => { if (s.state === "closed") disconnected.resolve(); });
     sockets[0]!.close(); await disconnected.promise; off(); await client.connect(params);

@@ -25,14 +25,16 @@ OpenCraft 是多端 Agent Workbench 核心，包含 Chat Runtime、Web Workbench
 ## 核心不变量
 
 - GitHub 是目标核心上游，下游产品持有私有装配并消费固定版本；状态见 [迁移状态](upstream-transition.md)，不建立两套可写核心。
-- `opencraft/` 保持独立 npm workspace 和锁文件，`frontend/` 保持独立 pnpm workspace 和锁文件。
+- 仓库根目录是独立 npm workspace，持有自己的 `package-lock.json`；公开核心的安装与检查不依赖父目录或私有产品工作区。
 - AppServer 事件游标、投影状态和 durable history 的生命周期必须一致；Hermes 转译遵循 Hermes Desktop 语义，Chat Runtime 统一 Turn、queue、steer、工具活动和滚动所有权，各引擎适配保留其原生协议与能力边界。
 - Web、Expo 与 Electron 共享领域模型和设计 token，但平台能力通过显式 adapter/port 接入，不能用平台条件分支破坏核心状态机。
 - 下游产品工作区中的机械生成过渡兼容层由该产品持有，源码所有权在其前端服务；生成目录禁止手改。
 
 ## 变更边界
 
-下游产品可以消费 `frontend/` 中显式列入同步闭包的 UI、domain、repository 和 locale 实现。新增跨服务复用优先提取稳定 workspace package；在包边界完成前，必须同步生成物并通过 drift check。OpenCraft 的 CI 只做安装、校验和构建，不发布 frontend、不修改 GitOps，也不推进任何生产环境。
+共享核心能力通过本仓库的正常 PR 演进；下游产品消费固定源码版本，并持有自己的身份、品牌、企业服务和部署装配。产品工作区中的生成兼容层由产品维护，在产品仓库执行生成与漂移检查；不是公开核心的前置依赖。边界与升级要求见 [上游与下游消费](upstream-transition.md)。
+
+贡献 PR 执行安装、校验和构建，不部署下游产品。公共包发布走独立的 [精确制品发布流程](web-deployment.md#公共-npm-发布流程)；构建通过不代表已经发布。
 
 ## 验证
 
@@ -45,7 +47,7 @@ npm run gate
 
 下游产品工作区的 Console 同步与原探针在产品目录运行显式命令，不是独立核心的前置依赖。
 
-只改局部包时可以先跑相邻类型检查和聚焦测试，但跨包、共享前端、协议、构建矩阵或平台入口变更必须完成全门禁。发布需要单独、明确授权，构建通过不代表已经发布。
+按实际改动选择相邻类型检查、聚焦测试及受影响的两端验证，具体范围见 [贡献指南](../CONTRIBUTING.md#develop-and-validate) 与 [构建矩阵](build-matrix.md)。客户端行为变化还需相关平台的真实运行证据；不以单元测试替代完整平台验收。
 # 任务工作区设计
 
 OpenCraft 工作区的所有权、呈现策略、不变量及验证账本见 [design/](../design/README.md)。
