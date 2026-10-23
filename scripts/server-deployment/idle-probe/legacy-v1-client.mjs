@@ -1,7 +1,7 @@
 // Standalone OLD-protocol client (protocolVersion=1, rendererId 'cutover-readonly', no attempt param) —
 // the pre-2026-10-22 preflight behavior replica, used ONLY as the legacy negative control against v2 fixtures.
 import { createRequire } from "node:module";
-const require_ = createRequire(new URL("../.deps/node_modules/", import.meta.url));
+const require_ = createRequire(new URL("../../../package.json", import.meta.url)); // this checkout's pinned install
 const WebSocket = require_("ws");
 const url = process.env.PREFLIGHT_ENDPOINT ?? "ws://127.0.0.1/apphost";
 const origin = new URL(url); const host = origin.host;

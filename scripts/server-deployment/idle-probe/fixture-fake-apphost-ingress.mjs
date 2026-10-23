@@ -9,7 +9,7 @@
 import { createRequire } from "node:module";
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
-const require_ = createRequire(new URL("../.deps/node_modules/", import.meta.url));
+const require_ = createRequire(new URL("../../../package.json", import.meta.url)); // this checkout's pinned install
 const { WebSocketServer } = require_("ws");
 
 const SCENARIO = process.argv[2] ?? "idle";
