@@ -65,9 +65,59 @@ try {
         (window as any).__reasoningSmokeAction = action;
         (window as any).update(action, engine);
       }, [action, engine]);
-      await page.locator(`[data-revision="${before + 1}"]`).waitFor();
+      await page.locator(`[data-revision="${before + 1}"]`).waitFor({ state: process.argv.includes("--command-hidden-only") ? "attached" : "visible" });
     };
     const activate = (target: any) => touch ? target.tap() : target.click();
+    if (process.argv.includes("--command-hidden-only")) {
+      await update("command-view-reset");
+      const viewport = page.locator('.thread-shell-output__output pre');
+      for (let index = 0; index < 8 && !await viewport.count(); index++) {
+        const closed = page.locator('.thread-agent-activity__group button[aria-expanded="false"], .thread-activity-item__hit-target[aria-expanded="false"]');
+        assert.ok(await closed.count()); await activate(closed.first());
+      }
+      await viewport.waitFor();
+      const position = () => viewport.evaluate(element => [element.scrollTop, element.scrollLeft]);
+      const readManually = async () => {
+        await viewport.evaluate(element => { element.scrollTop = 180; element.scrollLeft = 90; });
+        await page.waitForFunction(() => {
+          const element = document.querySelector('.thread-shell-output__output pre');
+          return element?.scrollTop === 180 && element.scrollLeft === 90;
+        });
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      };
+      const restoreHidden = async () => {
+        const original = await viewport.elementHandle(); await update("restore");
+        await page.waitForFunction(element => !element.isConnected, original);
+        await viewport.waitFor({ state: "attached" });
+      };
+      await readManually();
+      const original = await viewport.elementHandle();
+      await update("command-view-hide"); await update("command-view-append");
+      await update("command-view-show"); await viewport.waitFor();
+      assert.equal(await original!.evaluate(element => element.isConnected), true, "parking retains the same log DOM");
+      assert.deepEqual(await position(), [180, 90], "hidden output cannot reset manual reading in the mounted View");
+      await update("command-view-hide"); await update("command-view-grow"); await restoreHidden();
+      await update("command-view-show"); await viewport.waitFor();
+      assert.deepEqual(await position(), [180, 90], "hidden View replacement keeps both log reading axes");
+      await viewport.evaluate(element => { element.scrollTop = element.scrollHeight; });
+      await page.waitForFunction(() => {
+        const element = document.querySelector('.thread-shell-output__output pre')!;
+        return element.scrollHeight - element.clientHeight - element.scrollTop <= 2;
+      });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await update("command-view-hide"); await update("command-view-append"); await restoreHidden();
+      await update("command-view-show"); await viewport.waitFor();
+      assert.ok(await viewport.evaluate(element => element.scrollHeight - element.clientHeight - element.scrollTop <= 2),
+        "a following reader resumes at the current tail after hidden output and replacement");
+      assert.equal(await viewport.evaluate(element => element.scrollLeft), 90, "following does not discard horizontal reading");
+      await page.screenshot({ path: join(output, `command-hidden-${touch ? 'touch' : 'mouse'}-${theme}.png`) });
+      await update("command-view-reset");
+      assert.equal(await page.locator('.thread-shell-output').count(), 0, "a fresh View keeps the original collapsed default");
+      assert.deepEqual(errors, []);
+      assert.deepEqual(await page.evaluate(() => (window as any).resizeFeedback), []);
+      results.push({touch, theme, hiddenMountedReading:true, hiddenRemountReading:true, followRestored:true, horizontalReading:true, freshViewIsolated:true});
+      await page.close(); continue;
+    }
     if (process.argv.includes("--plan-preview-only")) {
       await update("plan-preview-reset");
       const plan = page.locator('.thread-plan');

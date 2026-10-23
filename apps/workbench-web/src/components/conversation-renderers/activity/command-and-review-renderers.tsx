@@ -159,6 +159,7 @@ function TerminalCopyButton({ value, label }: { readonly value: string; readonly
 function CommandOutput({ block, running }: { readonly block: Extract<TimelineBlock, { type: "command-execution" }>; readonly running: boolean }) {
   const intl = useIntl();
   const views = useContext(CommandViewStateContext);
+  const presentationActive = useWorkbenchPresentationActive();
   const output = normalizeTerminalOutput(block.output ?? "");
   const outputViewport = useRef<HTMLPreElement>(null);
   const followOutput = useRef(views?.get(block.id)?.followOutput ?? true);
@@ -169,7 +170,12 @@ function CommandOutput({ block, running }: { readonly block: Extract<TimelineBlo
   };
   useLayoutEffect(() => {
     const viewport = outputViewport.current;
-    if (!viewport) return;
+    // Hidden routes have zero geometry. Keep the View snapshot until the
+    // original presentation owner resumes a measurable log.
+    if (!presentationActive || !viewport?.clientHeight) {
+      restoredReading.current = false;
+      return;
+    }
     if (!restoredReading.current) {
       const saved = views?.get(block.id);
       viewport.scrollLeft = saved?.scrollLeft ?? 0;
@@ -178,12 +184,12 @@ function CommandOutput({ block, running }: { readonly block: Extract<TimelineBlo
     }
     if (followOutput.current) viewport.scrollTop = viewport.scrollHeight;
     rememberReading(viewport);
-  }, [output]);
+  }, [presentationActive, output]);
   useLayoutEffect(() => () => {
     // A route change can unmount before the browser dispatches its queued
     // scroll event. Save the live reading position before refs are detached.
     const viewport = outputViewport.current;
-    if (!viewport) return;
+    if (!viewport?.clientHeight) return;
     followOutput.current = viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop <= 2;
     rememberReading(viewport);
   }, [views, block.id]);
@@ -194,6 +200,7 @@ function CommandOutput({ block, running }: { readonly block: Extract<TimelineBlo
     </div>
     <div className="thread-shell-output__output"><pre ref={outputViewport} onScroll={event => {
       const viewport = event.currentTarget;
+      if (!presentationActive || !viewport.clientHeight) return;
       followOutput.current = viewport.scrollHeight - viewport.clientHeight - viewport.scrollTop <= 2;
       rememberReading(viewport);
     }}><code><AnsiTerminalText>{displayOutput}</AnsiTerminalText></code></pre>

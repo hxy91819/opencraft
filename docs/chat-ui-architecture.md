@@ -3127,6 +3127,10 @@ scroll axes and the reader's follow-output intent, keyed by source block identit
 Virtual row remounts and returns to that same View restore the state before paint.
 Layout teardown captures the actual log coordinates before refs detach, including
 a final scroll whose browser event is still queued when the View leaves.
+Hidden routes retain that snapshot: background output, layout-generated scroll
+events and hidden teardown cannot replace it with zero geometry. The existing
+presentation lifecycle restores both axes before paint when the log resumes;
+a following reader then catches up to the current tail.
 New output follows only when the reader was already following; manual reading
 keeps its position. Explicitly reopening starts at latest output. A fresh View
 starts with the normal collapsed command default. These memory-only numbers and
