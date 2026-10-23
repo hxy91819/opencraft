@@ -114,7 +114,7 @@ function normalizeError(event: BrowserSpeechRecognitionErrorEvent): SpeechInputE
 
 /** Chromium/WebKit provider. Permission and audio-device ownership stay in the platform. */
 export class BrowserSpeechInputProvider implements SpeechInputProvider {
-  readonly id = "vela.browser-speech-recognition";
+  readonly id = "opencraft.browser-speech-recognition";
 
   isAvailable(): boolean {
     return recognitionConstructor() !== null;

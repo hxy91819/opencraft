@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.17
+
+- Correct leftover architecture text that still said sending clocks were hidden at rest on both desktop and touch, matching the dedicated footer-clock contract.
+- Point the formal performance workload identity at the current disclosure and navigation receipts without changing numeric budgets.
+
 ## v0.1.16
 
 - Keep conversation reading position, retained tool/image/plan/subagent choices, and command/diff views when a Conversation View is hidden or remounts; localize command result and empty output labels.

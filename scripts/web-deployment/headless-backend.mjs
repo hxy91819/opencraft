@@ -2,10 +2,19 @@ import { request as httpRequest } from 'node:http';
 import { createConnection } from 'node:net';
 
 /** Only Headless-owned API routes. Static files and update authority stay in Web. */
-export function isHeadlessBackendPath(pathname, upgrade = false) {
-  if (upgrade) return ['/__opencraft_browser/stream', '/appserver', '/apphost', '/ssh-apphost', '/desktop/connect', '/__opencraft_hub/control', '/__opencraft_hub/data'].includes(pathname);
-  return ['/appserver', '/apphost', '/ssh-apphost', '/desktop/connect', '/__opencraft_health', '/health', '/__opencraft_ssh_servers', '/__opencraft_apphost_diagnostic'].includes(pathname)
-    || ['/__opencraft_observe', '/__opencraft_browser', '/__opencraft_hub', '/__opencraft_auth', '/__opencraft_actors', '/__opencraft_connectors', '/__opencraft_im', '/__opencraft_access', '/__opencraft_ssh', '/__opencraft_enterprise_identity', '/__opencraft_speech', '/__opencraft_apphost'].some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
+export const headlessBackendRoutes = Object.freeze({
+  http: ['/appserver', '/apphost', '/ssh-apphost', '/desktop/connect', '/__opencraft_health', '/health', '/__opencraft_ssh_servers', '/__opencraft_apphost_diagnostic'],
+  prefixes: ['/__opencraft_observe', '/__opencraft_browser', '/__opencraft_hub', '/__opencraft_auth', '/__opencraft_actors', '/__opencraft_connectors', '/__opencraft_im', '/__opencraft_access', '/__opencraft_ssh', '/__opencraft_enterprise_identity', '/__opencraft_speech', '/__opencraft_apphost'],
+  upgrade: ['/__opencraft_browser/stream', '/appserver', '/apphost', '/ssh-apphost', '/desktop/connect', '/__opencraft_hub/control', '/__opencraft_hub/data'],
+});
+export function validHeadlessBackendRoutes(value) {
+  return !!value && ['http', 'prefixes', 'upgrade'].every(key => Array.isArray(value[key]) && value[key].length <= 64
+    && value[key].every(path => typeof path === 'string' && path.length <= 128 && /^\/[A-Za-z0-9/_-]+$/u.test(path)
+      && !path.startsWith('//') && !path.split('/').includes('..')));
+}
+export function isHeadlessBackendPath(pathname, upgrade = false, routes = headlessBackendRoutes) {
+  return upgrade ? routes.upgrade.includes(pathname) : routes.http.includes(pathname)
+    || routes.prefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'));
 }
 export function createHeadlessBackendProxy(target) {
   if (!target) return null;
@@ -19,8 +28,11 @@ export function createHeadlessBackendProxy(target) {
     // Direct legacy deployments retain their per-navigation policy.
     admitDocument(request, response) {
       return new Promise(resolve => {
+        const headers = { ...request.headers };
+        const connectionTokens = String(headers.connection ?? '').toLowerCase().split(',').map(value => value.trim());
+        for (const name of ['content-length', 'transfer-encoding', 'content-type', 'expect', 'connection', 'upgrade', 'keep-alive', 'proxy-authorization', 'proxy-authenticate', 'te', 'trailer', ...connectionTokens]) delete headers[name];
         const probe = httpRequest({ hostname: '127.0.0.1', port, method: 'GET',
-          path: '/__opencraft_access/admission', headers: { ...request.headers, accept: 'text/html',
+          path: '/__opencraft_access/admission', headers: { ...headers, accept: 'text/html',
             'x-opencraft-relay-probe-method': request.method, 'x-opencraft-relay-probe-path': request.url } }, result => {
           if (result.statusCode === 204) { result.resume(); resolve(true); return; }
           response.writeHead(result.statusCode === 401 || result.statusCode === 403 ? result.statusCode : 503,

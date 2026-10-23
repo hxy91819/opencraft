@@ -1,3 +1,5 @@
+import { SERVER_CONNECTIONS_ID, migrateServerConnectionProfiles } from "@opencraft/plugin-builtin-agents/server-connection-identity";
+import { resolveServerConnectionRoute } from "./server-connection-compatibility";
 import { BrowserHeadlessConnectors, connectorApprovals as createConnectorApprovals } from "./headless-connectors";
 import { installClientObservation } from "./observability";
 import { tokenUsageBuiltin } from "./token-usage-builtin";
@@ -475,7 +477,7 @@ export async function createWebWorkbenchApplicationSupervisor(
           getClient: hostId => appServerRegistry.clients.get(hostId) ?? undefined,
         }));
       }
-      await extensions.loadOptional("vela.headless-codex", async () => {
+      await extensions.loadOptional(SERVER_CONNECTIONS_ID, async () => {
         const { readSshServerCatalog } = await import("./ssh-server-catalog");
         // Only this headless product queries its backend catalog. Credentials,
         // host-key trust and remote commands never enter a Renderer profile.
@@ -554,6 +556,7 @@ export async function createWebWorkbenchApplicationSupervisor(
     const routerOptions = {
       presentation: options.presentation,
       mode: options.navigationMode,
+      ...(headlessAppHost === null ? {} : { resolveApplicationRoute: resolveServerConnectionRoute }),
       // The containing page owns its URL. Embedded Workbench starts at Home.
       ...(options.navigationMode === "memory" ? { initialEntries: ["/"] } : {}),
     };
@@ -576,12 +579,18 @@ export async function createWebWorkbenchApplicationSupervisor(
     ],
   });
   const storedHostProfiles = hostProfileBootstrap.store;
+  if (headlessAppHost !== null) try {
+    await migrateServerConnectionProfiles(storedHostProfiles);
+  } catch (error) {
+    storedHostProfiles.close();
+    throw error;
+  }
   const configuredHostProfiles = sshManagement && sshManagement.getSnapshot().available !== false
     ? new ServerManagedProfileStore(storedHostProfiles, sshManagement, () => [
       ...sshManagement!.getSnapshot().items,
       ...sshManagement!.getSnapshot().legacyServers.map(server => ({ ...server, enabled: true, revision: 1 })),
     ].map(server => ({
-        hostId: server.serverId, displayName: server.displayName, providerId: "vela.headless-codex", providerConfig: {}, providerConfigVersion: 1,
+        hostId: server.serverId, displayName: server.displayName, providerId: SERVER_CONNECTIONS_ID, providerConfig: {}, providerConfigVersion: 1,
         hostKind: "remote-ssh", enabled: server.enabled, autoConnect: false, includeInSidebar: true, credentialRef: null,
         transportEndpoint: null, executionLocation: server.displayName, workspaceBrowseRoots: server.workspaceBrowseRoots, revision: server.revision,
       })))

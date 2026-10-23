@@ -83,7 +83,7 @@ export async function createWorkbenchStaticServer({ root }) {
   const runtimeReports = [];
   const server = createServer(async (request, response) => {
     try {
-      const url = new URL(request.url || "/", "http://vela.invalid");
+      const url = new URL(request.url || "/", "http://opencraft.invalid");
       if (url.pathname === "/__opencraft_health") {
         sendJson(response, 200, { ok: true, staticRoot });
         return;

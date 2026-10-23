@@ -7,6 +7,7 @@ import type {
 import {
   browserUrlDisplayValue,
 } from "@opencraft/browser-core";
+import { BrowserResourcesButton } from './browser-resources-button';
 import { BrowserControlButton } from './browser-control-button';
 import { BrowserKeyboardButton } from './browser-keyboard-button';
 import { BrowserDeviceToolbar, BrowserDeviceHandles } from "./browser-device-toolbar";
@@ -167,6 +168,7 @@ function BrowserPanel({ tab: panelTab, presentationId }: PanelRendererProps) {
           onClick={()=>workbench.setViewportMode(tab.id,tab.viewportMode.type==="responsive"?FIT_VIEWPORT:{type:"responsive"})}>
           <MonitorSmartphone size={15}/>
         </button>
+        <BrowserResourcesButton surfaces={browserRuntime?.surfaces} workbench={workbench} ownerId={tab.ownerId} />
         <BrowserControlButton surfaces={browserRuntime?.surfaces} pageId={pageId} />
         <BrowserKeyboardButton surfaces={browserRuntime?.surfaces} pageId={pageId} />
         <FloatingComposerToggle activeTabId={panelTab.id} />
@@ -239,7 +241,7 @@ export function createBrowserWorkbenchPanelPlugin(
       }),
       ctx.workbenchPanelRenderers.register({ kind: "browser", Component: BrowserPanel }),
       ctx.workbenchPanels.registerToolbarAction({
-        id: "vela.browser.new-tab",
+        id: "opencraft.browser.new-tab",
         region: "right",
         order: 100,
         label: "New browser tab",

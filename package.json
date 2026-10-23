@@ -115,7 +115,7 @@
     "smoke:dsh-continuity": "tsx scripts/smoke-independent-dsh-host.ts",
     "smoke:im-dsh": "tsx scripts/smoke-im-dsh.ts",
     "smoke:skills-refresh": "tsx scripts/smoke-skills-refresh.ts",
-    "test:connectors": "tsx --test tests/platform-connectors*.test.ts",
+    "test:connectors": "tsx --test tests/platform-connectors*.test.ts tests/headless-connectors*.test.ts",
     "test:extension-storage": "tsx --test tests/extension-persistence.test.ts tests/extension-storage-api.test.ts tests/extension-settings.test.ts tests/extension-installations.test.ts",
     "test:host-storage": "tsx --test tests/host-document-service.test.ts tests/host-document-client.test.ts",
     "smoke:host-storage": "tsx scripts/smoke-host-document-persistence.ts",

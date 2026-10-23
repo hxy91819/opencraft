@@ -9,7 +9,7 @@ export interface HeadlessConnectorState extends ConnectorHostSnapshot {
 }
 export interface ConnectorManagementClient {
   readonly hostId: string;
-  requestRaw<T = unknown>(method: string, params: unknown): Promise<T>;
+  requestRaw<T = unknown>(method: string, params: unknown, options?: { signal?: AbortSignal }): Promise<T>;
   subscribeNotification(listener: (event: { method: string; params?: unknown }) => void): () => void;
 }
 /** Negotiated ownership is stable even when authentication or the network fails.

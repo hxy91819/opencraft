@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "workload": {
-    "version": 2,
-    "sha256": "21d7e0ec942cd1924bea2ba45979dcebbc42f4af939f7730e2e4d40073973151",
+    "version": 3,
+    "sha256": "87a35e1f9d630b373e0ecc4f204484be27014142932ece6fd9927084d9c3e133",
     "scenarios": {
       "catalog-desktop": [
         "firstPaintMs",
@@ -56,6 +56,7 @@
     "samples": 10,
     "warmupWorkbench": 1,
     "navigation": {
+      "workloadVersion": 5,
       "rpcDelayMs": 40,
       "cachedResources": "cold",
       "initialize": "held-until-cached-paint",
