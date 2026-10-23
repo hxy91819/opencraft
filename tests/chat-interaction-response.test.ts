@@ -89,7 +89,7 @@ test("permission approval grants only requested capabilities and preserves scope
   });
 });
 
-test("persistent approval is explicit provider scope, never an implicit Codex grant", () => {
+test("persistent approval requires an explicitly offered provider scope", () => {
   const command = { ...identity, method: "item/commandExecution/requestApproval" as const,
     params: { kind: "command" as const, threadId: "thread", turnId: "turn", itemId: "item", startedAtMs: 0, environmentId: null } };
   assert.throws(() => createInteractionResponse(command, { type: "approve-always" }), /not offered/);
