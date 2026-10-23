@@ -294,10 +294,12 @@ export async function startHeadlessServer(options = {}, composition = {}) {
     hubController = await createHubController(join(dataDirectory, 'hub-network-controller.json'), join(dataDirectory, 'hub-network.json'));
     if (options.accessControl || options.accessMemberProviders?.length || relayConfiguration || hubController.node?.store.state.origin)
       membership = new MembershipStore(join(dataDirectory, 'memberships.sqlite'));
+    const machineIdentity = await readDaemonMachineIdentity(dataDirectory, options.machineName);
     if (composition.createIdentity) {
       identity = await composition.createIdentity({ dataDirectory, membership, relayConfiguration,
         hubAuthority: hubController.node?.store.state.authority ?? null,
-        resolveIdentity: request => instanceAccess?.authenticate(request) ?? null });
+        resolveIdentity: request => instanceAccess?.authenticate(request) ?? null,
+        getInstanceAccess: () => instanceAccess, machineIdentity });
       validateHeadlessIdentity(identity);
     }
     if (options.accessMemberProviders?.length && !identity?.providers.length && !relayConfiguration && !humanConfiguration && !hubController.node?.store.state.authority)
@@ -323,7 +325,7 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       humanAuth = new HumanAuth(humanAccounts, actorStore, humanConfiguration, humanLoginPage, externalHuman);
     }
     const providers = [...(humanAuth ? [humanAuth] : []), ...externalProviders];
-    if (membership) instanceAccess = new InstanceAccess(membership, providers, actorStore, options.accessMemberProviders ?? []);
+    if (membership) instanceAccess = new InstanceAccess(membership, providers, actorStore, options.accessMemberProviders ?? [], identity?.admissionPolicy);
     const authenticateHuman = request => {
       if (instanceAccess) return instanceAccess.authenticate(request);
       const identities = providers.map(provider => provider.authenticate(request)).filter(Boolean);
@@ -344,7 +346,6 @@ export async function startHeadlessServer(options = {}, composition = {}) {
       administrator: principal => instanceAccess?.role(principal) === 'admin',
       trustedOrigin: request => instanceAccess?.trustedOrigin(request) ?? humanAuth?.trustedOrigin(request) ?? null,
     });
-    const machineIdentity = await readDaemonMachineIdentity(dataDirectory, options.machineName);
     actorCollaboration = new Collaboration(join(dataDirectory, 'actor-collaboration.sqlite'), actorStore,
       createConversationExecution(() => appHostServer, {serverId: `server:${machineIdentity.machineId}:codex`}), Date.now, actorId => !instanceAccess || instanceAccess.admitsActor(actorId));
     actorCollaborationApi = new CollaborationHttpApi(actorCollaboration, actorAccess);

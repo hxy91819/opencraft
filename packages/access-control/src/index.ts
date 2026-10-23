@@ -10,6 +10,12 @@ CREATE TABLE access_imports (source TEXT PRIMARY KEY NOT NULL) STRICT;`;
 const ACTOR_MEMBERSHIPS = `CREATE TABLE actor_members (actor_id TEXT PRIMARY KEY NOT NULL,
  role TEXT NOT NULL CHECK(role IN ('admin','member')), enabled INTEGER NOT NULL CHECK(enabled IN (0,1))) STRICT;`;
 export type MemberRole = "admin" | "member";
+/** Optional trusted provider policy. Cached decisions never authenticate a request. */
+export interface InstanceAdmissionPolicy {
+  prepare(identity: Principal): Promise<void>;
+  allows(identity: Principal): boolean;
+  allowsBinding(binding: Pick<Principal, 'provider' | 'subject'>): boolean;
+}
 export class MembershipStore {
   readonly #db: DatabaseSync;
   readonly outcome: DatabaseOutcome;
@@ -105,7 +111,7 @@ export class InstanceAccess {
   readonly #sources = new WeakMap<Principal, IdentityProvider>();
   private readonly authenticatedMemberProviders: ReadonlySet<string>;
   constructor(readonly store: MembershipStore, readonly providers: readonly IdentityProvider[], readonly actors?: ActorStore,
-    authenticatedMemberProviders: readonly string[] = []) {
+    authenticatedMemberProviders: readonly string[] = [], readonly admissionPolicy?: InstanceAdmissionPolicy) {
     if (authenticatedMemberProviders.some(provider => !/^[a-z][a-z0-9._-]{0,127}$/u.test(provider))) throw new Error('Invalid authenticated member provider');
     this.authenticatedMemberProviders = new Set(authenticatedMemberProviders);
   }
@@ -123,7 +129,7 @@ export class InstanceAccess {
     this.#cache.set(request, result); return result;
   }
   role(identity: Principal): MemberRole | null {
-    if (!this.isCurrent(identity)) return null;
+    if (!this.isCurrent(identity) || this.admissionPolicy?.allows(identity) === false) return null;
     const entry = this.store.membership(identity);
     const legacy = entry?.enabled ? entry.role : null;
     // An explicit stable-subject revocation wins over the provider default.
@@ -150,6 +156,7 @@ export class InstanceAccess {
     if (!actor?.enabled) return false;
     if (actor.kind === 'session') return true;
     const bindings = this.actors!.bindings(actorId);
+    if (bindings.some(binding => this.admissionPolicy?.allowsBinding(binding) === false)) return false;
     // Durable work has no live login to choose between aliases. An explicit
     // binding revocation therefore fences it until an operator resolves access.
     if (bindings.some(binding => this.store.membership(binding)?.enabled === false)) return false;
@@ -164,6 +171,12 @@ export class InstanceAccess {
   admissionStatus(request: IdentityRequest): 204 | 401 | 403 {
     const identity = this.authenticate(request);
     return !identity || identity.expiresAt <= Date.now() ? 401 : this.role(identity) ? 204 : 403;
+  }
+  /** Called before both ordinary and Actor HTTP/WS interfaces. */
+  async prepare(request: IdentityRequest): Promise<void> {
+    if (!this.admissionPolicy) return;
+    const identity = this.authenticate(request);
+    if (identity && this.isCurrent(identity)) await this.admissionPolicy.prepare(identity);
   }
   trustedOrigin(request: IdentityRequest): string | null {
     const identity = this.authenticate(request);

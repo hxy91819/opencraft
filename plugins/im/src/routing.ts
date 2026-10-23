@@ -1,4 +1,4 @@
-import { javascript } from "@opencraft/javascript-runtime";
+import { javascript, jsonFunctionSource } from "@opencraft/javascript-runtime";
 import { parseConversationRef } from "@opencraft/appserver-protocol/collaboration";
 
 export interface RouteEvent {
@@ -28,7 +28,7 @@ export function routeSource(value: unknown): string {
   return value;
 }
 const invocation = (source: string) =>
-  `(function freeze(v) { if(v && typeof v === 'object') { Object.values(v).forEach(freeze); Object.freeze(v); } })(args);\n${routeSource(source)}\nif (typeof route !== 'function') throw Error();\nreturn route(args);`;
+  jsonFunctionSource(routeSource(source), 'route');
 export async function compileRoute(source: string): Promise<void> {
   await javascript({ compile: true, sources: [invocation(source)] });
 }
