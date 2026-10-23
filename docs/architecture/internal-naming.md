@@ -41,10 +41,12 @@ consume these same names. Host queue, Host state and message-metadata tests use
 - Generated protocol files, native error/approval metadata, `CODEX_HOME`, native
   executable and provider IDs, credential formats, transport options and actual
   engine-facing services retain accurate integration names.
-- Existing SQLite paths, tables and published migration names/SQL retain their
-  compatibility identities. Renaming a TypeScript schema constant does not
-  migrate or recreate storage. Any future storage rename needs its own verified
-  data migration; published migration text must never be rewritten.
+- Live Host queue/catalog and attachment tables use owned names through appended
+  migrations; published migration names/SQL and historical upgrade inputs remain
+  immutable. Fresh files use owned names and existing file paths remain readable.
+  [Offline file maintenance](../sqlite-lifecycle.md#两个-host-自有文件的离线改名)
+  moves existing names with recovery evidence; installing the code does not move
+  a deployment's data. Renaming a TypeScript constant never migrates storage.
 - Existing Settings contribution IDs, Host IDs, saved theme aliases and native
   attachment metadata remain compatible. A CSS class is not a route or storage
   key. Native-engine tests and operational documentation retain the engine name

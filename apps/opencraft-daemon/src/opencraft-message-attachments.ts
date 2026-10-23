@@ -1,4 +1,5 @@
 import { ownedDatabasePath } from "./owned-database-path.js";
+import { acquireOwnedStorageLease } from "./owned-storage-lease.js";
 import type { DatabaseSync } from "node:sqlite";
 import { openManagedDatabase, createSchemaValidator, createMissingLegacyObjects, type DatabaseOutcome } from "@opencraft/sqlite-node";
 
@@ -36,16 +37,21 @@ export class OpenCraftMessageAttachments {
   private readonly db: DatabaseSync;
   readonly outcome: DatabaseOutcome;
   readonly path: string;
+  private readonly releaseLease: () => void;
 
   constructor(dataDirectory: string) {
-    const path = this.path = ownedDatabasePath(dataDirectory, "opencraft-message-attachments.sqlite", "codex-message-attachments.sqlite");
-    const managed = openManagedDatabase({ path, legacyPolicy: "reject-unknown", validateSchema: createSchemaValidator(FULL_SCHEMA), migrations: OPENCRAFT_MESSAGE_ATTACHMENTS_MIGRATIONS,
-      legacyMigration: { accepts: legacy.accepts, migrate(database) { legacy.migrate(database); database.exec(OPENCRAFT_MESSAGE_ATTACHMENTS_OWNED_NAMES); } } });
-    this.db = managed.database;
-    this.outcome = managed.outcome;
+    ownedDatabasePath(dataDirectory, "opencraft-message-attachments.sqlite", "codex-message-attachments.sqlite");
+    this.releaseLease = acquireOwnedStorageLease(dataDirectory);
+    try {
+      const path = this.path = ownedDatabasePath(dataDirectory, "opencraft-message-attachments.sqlite", "codex-message-attachments.sqlite");
+      const managed = openManagedDatabase({ path, legacyPolicy: "reject-unknown", validateSchema: createSchemaValidator(FULL_SCHEMA), migrations: OPENCRAFT_MESSAGE_ATTACHMENTS_MIGRATIONS,
+        legacyMigration: { accepts: legacy.accepts, migrate(database) { legacy.migrate(database); database.exec(OPENCRAFT_MESSAGE_ATTACHMENTS_OWNED_NAMES); } } });
+      this.db = managed.database;
+      this.outcome = managed.outcome;
+    } catch (error) { this.releaseLease(); throw error; }
   }
 
-  close(): void { this.db.close(); }
+  close(): void { try { this.db.close(); } finally { this.releaseLease(); } }
 
   /** Record before dispatch. A retry may repeat the same identity, never replace it. */
   record(threadId: string, clientMessageId: string, refs: readonly AttachmentRef[]): void {
