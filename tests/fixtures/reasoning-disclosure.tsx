@@ -68,6 +68,7 @@ function Demo() {
   const [mounted, setMounted] = useState(true);
   const [revision, setRevision] = useState(0);
   const [presentationActive, setPresentationActive] = useState(true);
+  const [presentationHidden, setPresentationHidden] = useState(false);
   const [turn, setTurn] = useState<TimelineSourceTurn>({ id: "turn", status: "streaming", items: [reasoning("codex")] });
   probe.update = (action: string, selectedEngine = engine) => {
     setRevision(value => value + 1);
@@ -171,12 +172,16 @@ function Demo() {
       };
       setTurn({ id: "turn", status: running ? "streaming" : "complete", items: [{ id: item.id, type: item.type, payload: item }] }); return;
     }
+    if (action === "command-view-hide" || action === "command-view-show") {
+      const visible = action === "command-view-show";
+      setPresentationHidden(!visible); setPresentationActive(visible); return;
+    }
     if (action.startsWith("command-view-")) {
       const reset = action === "command-view-reset";
       if (reset) { restore = null; setGeneration(value => value + 1); }
       setTurn({ id: "turn", status: "streaming", items: [{ id: "view-command", type: "commandExecution", payload: {
         command: "audit-log-display-only", status: "inProgress", exitCode: null,
-        aggregatedOutput: Array.from({ length: reset ? 190 : 210 }, (_, index) => `Line ${index + 1} ${"output column ".repeat(8)}`).join("\n"),
+        aggregatedOutput: Array.from({ length: reset ? 190 : action === "command-view-grow" ? 230 : 210 }, (_, index) => `Line ${index + 1} ${"output column ".repeat(8)}`).join("\n"),
       } }] }); return;
     }
     if (action.startsWith("command-completion-")) {
@@ -361,7 +366,7 @@ function Demo() {
   useEffect(() => { if (!mounted) { setGeneration(value => value + 1); setMounted(true); } }, [mounted]);
   const timeline = projectTimeline({ key: createConversationKey(engine, "thread"), revision, authoritative: true,
     phase: "live", turns: [turn] }, registry);
-  return <div data-revision={revision} style={{ width: "100vw", height: "100dvh" }}>
+  return <div data-revision={revision} hidden={presentationHidden} style={{ width: "100vw", height: "100dvh" }}>
     <WorkbenchPresentationActivityProvider active={presentationActive}>
     <TimelineBlockRendererProvider registry={ctx.timelineBlockRenderers}>
       {mounted ? <Conversation key={generation} timeline={timeline} scrollPolicy="natural" initialRestoreSnapshot={restore}
