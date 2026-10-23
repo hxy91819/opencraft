@@ -10,6 +10,7 @@ import { CONVERSATION_SCHEDULES, CONVERSATION_SCHEDULES_EXTENSION, type Conversa
 import type { DatabaseOutcome } from "@opencraft/sqlite-node";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { createInterface, type Interface as ReadLineInterface } from "node:readline";
@@ -1779,7 +1780,7 @@ export class CodexEngineAdapter implements DuplexTransport {
     if (method === "thread/start") {
       const configuration = record(params.config)["mcp_servers.opencraft_session"];
       const threadId = string(record(record(result).thread).id);
-      if (configuration && threadId) this.sessionMcpConfigurations.set(threadId, JSON.stringify(configuration));
+      if (configuration && threadId) this.sessionMcpConfigurations.set(threadId, structuredClone(configuration));
     }
     this.threadTitles?.observeResult(method, params, result);
     this.durableCatalog?.observe(method, params, result);
@@ -2308,14 +2309,45 @@ export class CodexEngineAdapter implements DuplexTransport {
     }
   }
 
-  private readonly sessionMcpConfigurations = new Map<string, string>();
+  // Confirmed configuration belongs to this physical connection. The in-flight
+  // map only coalesces preparation; neither map is a configuration authority.
+  private readonly sessionMcpConfigurations = new Map<string, unknown>();
+  private readonly sessionMcpRefreshes = new Map<string, Promise<void>>();
+  private sessionMcpGeneration = 0;
   private async prepareSessionMcp(threadId: string): Promise<void> {
     if (!threadId || !this.options.sessionMcp) return;
-    const configuration = await this.options.sessionMcp(threadId);
-    const revision = JSON.stringify(configuration);
+    for (;;) {
+      const pending = this.sessionMcpRefreshes.get(threadId);
+      if (pending) {
+        await pending;
+        // The provider may have changed while this caller waited. Resolve its
+        // current value rather than applying a captured, possibly older value.
+        continue;
+      }
+      const generation = this.sessionMcpGeneration;
+      const operation = Promise.resolve().then(() => this.refreshSessionMcp(threadId, generation)).finally(() => {
+        if (this.sessionMcpRefreshes.get(threadId) === operation) this.sessionMcpRefreshes.delete(threadId);
+      });
+      this.sessionMcpRefreshes.set(threadId, operation);
+      return operation;
+    }
+  }
+
+  private async refreshSessionMcp(threadId: string, generation: number): Promise<void> {
+    const current = () => {
+      if (generation !== this.sessionMcpGeneration) throw new Error("Session tool preparation belongs to an expired connection");
+    };
+    const configuration = structuredClone(await this.options.sessionMcp!(threadId));
+    current();
     const previous = this.sessionMcpConfigurations.get(threadId);
-    if (previous === revision || (configuration === null && previous === undefined)) return;
-    const read = record(await this.requestPhysical("thread/read", { threadId, includeTurns: false }));
+    if (isDeepStrictEqual(previous, configuration) || (configuration === null && previous === undefined)) return;
+    const request = async (method: string, params: RpcRecord): Promise<unknown> => {
+      current();
+      const result = await this.requestPhysical(method, params);
+      current();
+      return result;
+    };
+    const read = record(await request("thread/read", { threadId, includeTurns: false }));
     const thread = record(read.thread);
     if (thread.ephemeral === true) {
       if (configuration) throw new Error("Session capabilities require a durable Codex thread");
@@ -2324,7 +2356,7 @@ export class CodexEngineAdapter implements DuplexTransport {
     const status = string(record(thread.status).type);
     if (!["idle", "notLoaded"].includes(status)) throw new Error("Wait until the Codex thread is idle before changing its tools");
     this.cancelNativeRelease(threadId);
-    const live = status === "notLoaded" ? {} : record(await this.requestPhysical("thread/resume", { threadId, excludeTurns: true }));
+    const live = status === "notLoaded" ? {} : record(await request("thread/resume", { threadId, excludeTurns: true }));
     const resume: RpcRecord = {};
     for (const key of ["model", "modelProvider", "serviceTier", "cwd", "runtimeWorkspaceRoots", "approvalPolicy", "approvalsReviewer"])
       if (live[key] !== undefined) resume[key] = live[key];
@@ -2335,13 +2367,16 @@ export class CodexEngineAdapter implements DuplexTransport {
       if (sandbox.type && !modes[string(sandbox.type)]) throw new Error("Cannot preserve this Codex sandbox while refreshing tools");
       if (sandbox.type) resume.sandbox = modes[string(sandbox.type)];
     }
+    // Once native configuration can change, the old confirmation is no longer
+    // valid either. A partial failure must not make a later rollback look applied.
+    this.sessionMcpConfigurations.delete(threadId);
     if (status !== "notLoaded") {
-      await this.requestPhysical("thread/unsubscribe", { threadId });
+      await request("thread/unsubscribe", { threadId });
       // Native keeps durable threads in its catalog after unsubscribe. The
       // idle resume boundary rebuilds the session configuration without relying
       // on thread/read or loaded/list as an unloading acknowledgement.
     }
-    await this.requestPhysical("thread/resume", { ...resume, threadId, config: {
+    await request("thread/resume", { ...resume, threadId, excludeTurns: true, config: {
       "mcp_servers.opencraft_session": configuration ?? { enabled: false, url: "http://127.0.0.1:1/mcp" },
     } });
     if (Object.keys(live).length) {
@@ -2351,9 +2386,9 @@ export class CodexEngineAdapter implements DuplexTransport {
       for (const key of ["approvalPolicy", "approvalsReviewer", "model", "serviceTier", "collaborationMode"])
         if (live[key] !== undefined && live[key] !== null) settings[key] = live[key];
       if (live.reasoningEffort) settings.effort = live.reasoningEffort;
-      await this.requestPhysical("thread/settings/update", settings);
+      await request("thread/settings/update", settings);
     }
-    this.sessionMcpConfigurations.set(threadId, revision);
+    this.sessionMcpConfigurations.set(threadId, configuration);
   }
   private async writePhysical(message: RpcRecord): Promise<void> {
     if (message.method === "turn/start") await this.prepareSessionMcp(string(record(message.params).threadId));
@@ -2401,7 +2436,12 @@ export class CodexEngineAdapter implements DuplexTransport {
 
   private publishStatus(status: TransportStatus): void {
     this.statusValue = status;
-    if (["failed", "closing", "closed"].includes(status.state)) { this.threadTitles?.reset(); this.sessionMcpConfigurations.clear(); }
+    if (["failed", "closing", "closed"].includes(status.state)) {
+      this.threadTitles?.reset();
+      this.sessionMcpGeneration += 1;
+      this.sessionMcpConfigurations.clear();
+      this.sessionMcpRefreshes.clear();
+    }
     for (const listener of this.statusListeners) listener(status);
   }
 }
