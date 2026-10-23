@@ -12,7 +12,7 @@ ApplicationSupervisor
           │
           ├── HostConnectionProfileStore (durable configuration)
           ├── HostConnectionProviderRegistry (Cordis contributions + leases)
-          │         └── vela.websocket / future Electron or Expo providers
+          │         └── opencraft.websocket / future Electron or Expo providers
           │
           ▼
 HostRuntimeRegistry

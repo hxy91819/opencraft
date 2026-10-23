@@ -13,7 +13,7 @@ export async function assertHeadlessWebRelease(webRoot) {
     || typeof release.buildId !== "string"
     || release.headlessServer !== true
     || release.headlessHostId !== "opencraft-server") {
-    throw new Error("Headless server requires a Web build with its Codex and opencraft-server Host entry enabled");
+    throw new Error("Headless server requires a headless Web build with the opencraft-server Host entry enabled");
   }
   return release;
 }

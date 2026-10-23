@@ -18,7 +18,7 @@ import {IndexedDbHostConnectionProfileStore} from '/apps/workbench-web/src/runti
 import {RuntimeErrorBoundary} from '/apps/workbench-web/src/components/runtime-error-boundary.tsx';
 import '/apps/workbench-web/src/styles/app.scss';
 const name='storage-recovery-fixture';
-const profile={hostId:'saved',displayName:'Saved server',providerId:'vela.websocket',providerConfig:{url:'wss://saved.invalid/appserver'},providerConfigVersion:1,hostKind:'durable',enabled:true,autoConnect:false,includeInSidebar:true,credentialRef:null,transportEndpoint:null,executionLocation:'Saved server',workspaceBrowseRoots:['/workspace'],revision:4,machineIdentity:null,agent:null};
+const profile={hostId:'saved',displayName:'Saved server',providerId:'opencraft.websocket',providerConfig:{url:'wss://saved.invalid/appserver'},providerConfigVersion:1,hostKind:'durable',enabled:true,autoConnect:false,includeInSidebar:true,credentialRef:null,transportEndpoint:null,executionLocation:'Saved server',workspaceBrowseRoots:['/workspace'],revision:4,machineIdentity:null,agent:null};
 if(location.pathname==='/legacy'){
  const req=indexedDB.open(name,1);
  req.onupgradeneeded=()=>req.result.createObjectStore('profiles',{keyPath:'hostId'});

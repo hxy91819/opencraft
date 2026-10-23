@@ -208,7 +208,7 @@ export function hostDefinitionProfile(host: WebHostDefinition): HostConnectionPr
   return {
     hostId: host.hostId,
     displayName: host.label,
-    providerId: "vela.websocket",
+    providerId: "opencraft.websocket",
     providerConfig: { url: host.url },
     providerConfigVersion: 1,
     hostKind: host.kind,
@@ -234,7 +234,7 @@ export async function refreshBundledHostProfiles(
       && !Array.isArray(current.providerConfig)
       ? (current.providerConfig as { readonly url?: unknown }).url
       : null;
-    if (current === undefined || current.providerId !== "vela.websocket") continue;
+    if (current === undefined || current.providerId !== "opencraft.websocket") continue;
     const refreshEndpoint = typeof providerUrl === "string" && serverEndpointNeedsRefresh(providerUrl, definition.url);
     if (providerUrl !== definition.url && !refreshEndpoint) continue;
     const refreshRoots = current.workspaceBrowseRoots.length === 0 && definition.workspaceBrowseRoots.length > 0;
@@ -590,7 +590,7 @@ export function provisionWebSocketHost(
   const parsedUrl = new URL(url);
   return provisionHost({
     displayName: host.displayName,
-    providerId: "vela.websocket",
+    providerId: "opencraft.websocket",
     providerConfig: { url },
     hostKind: "remote-control",
     transportEndpoint: endpointLabel(url),

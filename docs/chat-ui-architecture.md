@@ -1185,10 +1185,11 @@ animation, active clock, tool output or interaction is replayed. Slow storage
 coalesces pending observations to the latest snapshot while memory updates
 synchronously. A fresh authoritative baseline replaces the snapshot as usual.
 User and assistant message timestamps and terminal work clocks/durations are retained
-with the text. Web timestamp metadata and layout slots exist with the first message
-paint while the Host reconnects. Sending clocks remain visible at rest on touch
-and use the existing message hover/focus disclosure on desktop; the static worked-for
-label remains visible. Live work clocks are never restored from this
+with the text. Footer sending clocks keep their metadata and slot geometry through
+reload, independently of whether desktop pointer disclosure currently paints them;
+touch input paints those clocks at rest, including before the first touch. A reload
+therefore restores the date together with its message while the Host reconnects.
+Live work clocks are never restored from this
 cache. Legacy text-only entries remain readable with unknown clocks until the
 next authoritative observation refreshes them. Timing-only changes update the
 projection even when message text is unchanged. A retained terminal work clock
@@ -1701,7 +1702,7 @@ in-place streaming, completion, prepended history and View restoration. The
 browser fixture uses synthetic engine text; it does not claim paid-provider
 execution, hidden reasoning availability or iPhone OS acceptance.
 
-The embedded canvas permits the existing `vela.voice-input.toggle` Composer
+The embedded canvas permits the existing `opencraft.voice-input.toggle` Composer
 action. Dictation uses the platform speech provider and the same transient input
 transaction as the full Workbench; no microphone starts until user interaction.
 Unsupported browsers retain the provider's disabled-state explanation.
@@ -2968,7 +2969,7 @@ the original row cannot dismiss its menu or select the conversation underneath.
 The pointer modality is captured by the existing row trigger; mouse context menus
 retain nonmodal behavior and the same scoped close/focus ownership.
 
-Message footer sending clocks are visible at rest on touch. On desktop, existing message hover/focus reveals user and assistant clocks while retaining their slots and time metadata. Touch action controls remain available; elapsed work duration is a separate status.
+User and assistant message footer clocks are visible at rest for touch input through the shared coarse-pointer/no-hover/current-touch policy. Desktop pointer clocks remain hidden at rest and reveal on existing message hover/focus. Keep time metadata, slot geometry, history cache and action-button availability; elapsed work duration is separate.
 
 
 ## Delayed command completion placement

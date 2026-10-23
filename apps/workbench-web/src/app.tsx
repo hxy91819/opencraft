@@ -1,3 +1,4 @@
+import { resolveHostModelSettingsPage } from "@opencraft/extension-runtime";
 import { ConversationSummaryButton, ConversationSummarySurface, useConversationSummary, useSummaryGoal } from "./components/conversation-summary";
 import { ConversationToolbarSizing } from "./components/toolbar-dock-state";
 import { conversationToolbarActionIds } from "./components/toolbar-dock-model";
@@ -670,7 +671,7 @@ export function App({
   const allPanelToolbarActions = usePanelToolbarActions();
   const panelToolbarActions = allPanelToolbarActions
     .filter(action => presentation.panelActions === "all" || presentation.panelActions.includes(action.id))
-    .map(action => action.id === "vela.browser.new-tab" ? { ...action,
+    .map(action => action.id === "opencraft.browser.new-tab" ? { ...action,
       label: intl.formatMessage({ id: "panel.newBrowser", defaultMessage: "New browser tab" }),
       creationLabel: intl.formatMessage({ id: "panel.browser", defaultMessage: "Browser" }),
     } : action.id === "opencraft.cloud-desktop.open" ? { ...action,
@@ -1309,8 +1310,10 @@ export function App({
           await hostCatalog.selectHost(group.hostId, group.hostId === snapshot.hostId ? undefined : { model: model.value, effort: model.defaultEffort, serviceTier });
           if (group.hostId !== snapshot.hostId) composerCatalog.rememberModelDefaults?.({ model: model.value, effort: model.defaultEffort, serviceTier }, group.hostId);
         },
-        manage: hostCatalog.extensionContributions.getSnapshot().settingsPages.some(page => page.contribution.targetHostId === group.hostId && page.contribution.id === (group.hostId === "local" ? "vela.builtin-agents.model-services" : "vela.builtin-agents.codex-accounts"))
-          ? () => hostCatalog.navigation.openSettings(group.hostId === "local" ? "vela.builtin-agents.model-services" : "vela.builtin-agents.codex-accounts") : undefined,
+        manage: (() => {
+          const page = resolveHostModelSettingsPage(settingsContributionSnapshot.settingsPages.map(({ contribution }) => contribution), group.hostId, extensionPlatform, internalDeveloperMode);
+          return page ? () => hostCatalog.navigation.openSettings(page.id) : undefined;
+        })(),
       })),
       retryModels: composerCatalog.retryModels,
       permissionProfileError:
@@ -1318,6 +1321,7 @@ export function App({
     }),
     [
       modelSelectionPolicy, embedded?.onConfigureModels, presentation.executionSelection, engineCatalog, draft, hostCatalog, snapshot.hostId,
+      settingsContributionSnapshot, extensionPlatform, internalDeveloperMode,
       composerCatalog.isFetching,
       composerCatalog.modelError,
       composerCatalog.onModelMenuOpen,

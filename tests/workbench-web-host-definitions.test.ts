@@ -202,13 +202,13 @@ test(`built-in WebSocket provider is owned and retired by one ${platform} extens
   });
   await extensions.activate(BuiltinWebSocketHostConnectionExtension);
   assert.deepEqual(providers.getSnapshot().providers.map(({ id, ownerId }) => ({ id, ownerId })), [{
-    id: "vela.websocket",
+    id: "opencraft.websocket",
     ownerId: "websocket-activation",
   }]);
 
-  const lease = providers.acquire("vela.websocket", platform);
+  const lease = providers.acquire("opencraft.websocket", platform);
   let retired = false;
-  const retirement = extensions.deactivate("vela.websocket-host").then(() => { retired = true; });
+  const retirement = extensions.deactivate("opencraft.websocket-host").then(() => { retired = true; });
   for (let index = 0; index < 10 && providers.getSnapshot().providers.length > 0; index += 1) {
     await new Promise<void>((resolve) => setImmediate(resolve));
   }
@@ -234,12 +234,12 @@ test("HyperNode owns both its transport provider and ephemeral Host profile", as
     },
   });
   await extensions.activate(createHyperNodeExtension({ url: "wss://node.example/appserver" }));
-  assert.deepEqual(providers.getSnapshot().providers.map(({ id }) => id), ["vela.hypernode"]);
+  assert.deepEqual(providers.getSnapshot().providers.map(({ id }) => id), ["opencraft.hypernode"]);
   assert.deepEqual(profiles.list().map(({ hostId, providerId }) => ({ hostId, providerId })), [{
     hostId: "hypernode",
-    providerId: "vela.hypernode",
+    providerId: "opencraft.hypernode",
   }]);
-  await extensions.deactivate("vela.hypernode");
+  await extensions.deactivate("opencraft.hypernode");
   assert.deepEqual(providers.getSnapshot().providers, []);
   assert.deepEqual(profiles.list(), []);
   await extensions.dispose();
@@ -252,7 +252,7 @@ test("headless server inherits the packaged Linux browse root instead of claimin
   const renderers = new PlatformViewRendererRegistry();
   const extensions = new ExtensionSupervisor({
     platform: "web",
-    createActivationId: () => "headless-codex-activation",
+    createActivationId: () => "server-connections-activation",
     internalContributions: {
       hostConnectionProvider: createHostConnectionProviderContributionAdapter(providers),
       [HOST_PROFILE_CONTRIBUTION_CHANNEL]: profiles.createAdapter(),
@@ -268,6 +268,8 @@ test("headless server inherits the packaged Linux browse root instead of claimin
     }));
     assert.deepEqual(profiles.list().find(({ hostId }) => hostId === "local-codex")?.workspaceBrowseRoots, ["/"]);
     const remote = profiles.list().find(({ hostId }) => hostId === "ssh:dev")!;
+    assert.equal(remote.providerId, "opencraft.server-connections");
+    assert.deepEqual(providers.getSnapshot().providers.map(provider => provider.id), ["opencraft.server-connections"]);
     assert.equal(remote.hostKind, "remote-ssh");
     assert.equal(remote.displayName, "Development");
     assert.deepEqual(remote.workspaceBrowseRoots, ["/remote/projects"]);
@@ -290,7 +292,7 @@ test("an older bundled Host gains its Linux root without overwriting user profil
   const oldProfile: HostConnectionProfile = {
     hostId: definition!.hostId,
     displayName: "My Linux node",
-    providerId: "vela.websocket",
+    providerId: "opencraft.websocket",
     providerConfig: { url: definition!.url },
     providerConfigVersion: 1,
     hostKind: "durable",
@@ -327,7 +329,7 @@ test("Host profiles add missing deployment seeds without overwriting saved prefe
   const seed: HostConnectionProfile = {
     hostId: "host:seed",
     displayName: "Seed",
-    providerId: "vela.websocket",
+    providerId: "opencraft.websocket",
     providerConfig: { url: "wss://seed.example/appserver" },
     providerConfigVersion: 1,
     hostKind: "remote-control",
@@ -383,7 +385,7 @@ test("activation-owned Host profiles are visible without becoming durable config
   const ephemeral: HostConnectionProfile = {
     hostId: "hypernode",
     displayName: "HyperNode",
-    providerId: "vela.hypernode",
+    providerId: "opencraft.hypernode",
     providerConfig: { url: "wss://node.example/appserver" },
     providerConfigVersion: 1,
     hostKind: "remote-control",

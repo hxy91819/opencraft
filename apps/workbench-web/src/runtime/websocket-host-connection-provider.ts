@@ -67,7 +67,7 @@ function validateConfig(config: HostConnectionJson): WebSocketHostConnectionConf
 const WEBSOCKET_HOST_PLATFORMS = ["web", "electron"] as const;
 
 export const WebSocketHostConnectionProvider: HostConnectionProvider = {
-  id: "vela.websocket",
+  id: "opencraft.websocket",
   label: "WebSocket",
   targets: WEBSOCKET_HOST_PLATFORMS,
   configVersion: 1,
@@ -112,7 +112,7 @@ export function createHostConnectionProviderContributionAdapter(
 export const BuiltinWebSocketHostConnectionExtension: TrustedExtensionDefinition = {
   manifest: {
     manifestVersion: 1,
-    id: "vela.websocket-host",
+    id: "opencraft.websocket-host",
     name: "WebSocket Host",
     description: "Connects browser and Electron workbenches to an AppServer WebSocket endpoint.",
     version: "1.0.0",

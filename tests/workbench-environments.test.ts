@@ -36,9 +36,9 @@ test("legacy Environment URLs migrate to Settings without reviving the removed r
     kind: "settings",
     slug: "appearance",
   });
-  assert.deepEqual(parseApplicationRouteUrl(new URL("https://app.test/environments?environment=local&section=vela.builtin-agents.model-services")), {
+  assert.deepEqual(parseApplicationRouteUrl(new URL("https://app.test/environments?environment=local&section=opencraft.builtin-agents.model-services")), {
     kind: "settings",
-    slug: "vela.builtin-agents.model-services",
+    slug: "opencraft.builtin-agents.model-services",
   });
 });
 
@@ -52,16 +52,16 @@ test("navigation normalizes a legacy Environment URL to its Settings replacement
     back() {}, forward() {}, go() {},
   };
   Object.defineProperty(globalThis, "window", { configurable: true, value: {
-    location: { href: "https://app.test/environments?environment=local&section=vela.builtin-agents.model-services" },
+    location: { href: "https://app.test/environments?environment=local&section=opencraft.builtin-agents.model-services" },
     history, addEventListener() {}, removeEventListener() {},
   } });
   const navigation = createApplicationNavigation(createWorkbenchDraftLocation("local", "draft"));
   try {
     assert.deepEqual(navigation.getSnapshot().applicationRoute, {
       kind: "settings",
-      slug: "vela.builtin-agents.model-services",
+      slug: "opencraft.builtin-agents.model-services",
     });
-    assert.equal(navigation.getSnapshot().url, "/settings/vela.builtin-agents.model-services");
+    assert.equal(navigation.getSnapshot().url, "/settings/opencraft.builtin-agents.model-services");
   } finally {
     navigation.dispose();
     if (previous) Object.defineProperty(globalThis, "window", previous);

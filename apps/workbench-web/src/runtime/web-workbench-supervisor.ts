@@ -1,3 +1,5 @@
+import { SERVER_CONNECTIONS_ID, migrateServerConnectionProfiles } from "@opencraft/plugin-builtin-agents/server-connection-identity";
+import { migrateBuiltinConnectionProfiles, resolveBuiltinConnectionRoute } from "./builtin-connection-compatibility";
 import { BrowserHeadlessConnectors, connectorApprovals as createConnectorApprovals } from "./headless-connectors";
 import { installClientObservation } from "./observability";
 import { tokenUsageBuiltin } from "./token-usage-builtin";
@@ -127,7 +129,7 @@ import {
   OPENCRAFT_WORKBENCH_DYNAMIC_TOOLS,
 } from "./workbench-dynamic-tools";
 import { createWorkbenchEntryResolver, resolveRetainedWorkbenchLocation } from "./workbench-location-restoration";
-import { createApplicationNavigation, createRouteScopeId, parseApplicationRouteUrl, readWorkbenchBootstrapLocation } from "./workbench-navigation";
+import { type ApplicationRoute, createApplicationNavigation, createRouteScopeId, parseApplicationRouteUrl, readWorkbenchBootstrapLocation } from "./workbench-navigation";
 
 import { BuiltinThemePackExtension } from "./builtin-theme-extension";
 import { createComposerActionRendererContributionAdapter } from "./composer-action-renderers";
@@ -423,7 +425,7 @@ export async function createWebWorkbenchApplicationSupervisor(
       signal?.throwIfAborted();
       return createImageEditorExtension();
     });
-    await loadPresentationExtension("vela.voice-input", async signal => {
+    await loadPresentationExtension("opencraft.voice-input", async signal => {
       const createVoiceInputExtension = (
         await import("@opencraft/plugin-voice-input/runtime-entry")
       ).default;
@@ -433,7 +435,7 @@ export async function createWebWorkbenchApplicationSupervisor(
     });
     if (import.meta.env.VITE_INCLUDE_BUILTIN_AGENTS_PLUGIN === "true"
       && (platform === "electron" || deployment.builtinAgents)) {
-      await extensions.loadOptional("vela.builtin-agents", async () => {
+      await extensions.loadOptional("opencraft.builtin-agents", async () => {
         const { createBuiltinAgentsExtension } = await import("@opencraft/plugin-builtin-agents");
         const requestHost: Parameters<typeof createBuiltinAgentsExtension>[0]["requestHost"] = async (hostId, method, params) => {
           const result = await agentRuntimes.request(hostId, method, params);
@@ -456,7 +458,7 @@ export async function createWebWorkbenchApplicationSupervisor(
       });
     }
     if (import.meta.env.VITE_INCLUDE_HEADLESS_MODEL_SERVICES === "true") {
-      await extensions.loadOptional("vela.headless-model-services", async () => {
+      await extensions.loadOptional("opencraft.headless-model-services", async () => {
         const { createHeadlessModelServicesExtension } = await import("@opencraft/plugin-builtin-agents");
         return createHeadlessModelServicesExtension({
           hostId: "opencraft-server",
@@ -475,7 +477,7 @@ export async function createWebWorkbenchApplicationSupervisor(
           getClient: hostId => appServerRegistry.clients.get(hostId) ?? undefined,
         }));
       }
-      await extensions.loadOptional("vela.headless-codex", async () => {
+      await extensions.loadOptional(SERVER_CONNECTIONS_ID, async () => {
         const { readSshServerCatalog } = await import("./ssh-server-catalog");
         // Only this headless product queries its backend catalog. Credentials,
         // host-key trust and remote commands never enter a Renderer profile.
@@ -493,7 +495,7 @@ export async function createWebWorkbenchApplicationSupervisor(
     // Keep this expression direct: Vite can erase the entire dynamic-import
     // edge from product builds instead of merely disabling it at runtime.
     if (import.meta.env.VITE_INCLUDE_HYPERNODE_PLUGIN !== "false" && deployment.hypernode) {
-      await extensions.loadOptional("vela.hypernode", async () => {
+      await extensions.loadOptional("opencraft.hypernode", async () => {
         const { createHyperNodeExtension } = await import("@opencraft/plugin-hypernode");
         return createHyperNodeExtension({ url: appServerUrl() });
       });
@@ -506,7 +508,7 @@ export async function createWebWorkbenchApplicationSupervisor(
     await clientProduct?.preflight?.();
     const botSource = new AppServerBotConversationSource(botConversations.service);
     startupRollback.push(() => botSource.dispose());
-    await loadPresentationExtension("vela.bot-chat", async signal => {
+    await loadPresentationExtension("opencraft.bot-chat", async signal => {
       const createBotChatExtension = (
         await import("@opencraft/plugin-bot-chat/runtime-entry")
       ).default;
@@ -519,7 +521,7 @@ export async function createWebWorkbenchApplicationSupervisor(
       });
     });
     let connectBotHost: (hostId: string) => Promise<void> = async () => { throw new Error("暂无可连接的实例。"); };
-    await loadPresentationExtension("vela.bot-management", async signal => {
+    await loadPresentationExtension("opencraft.bot-management", async signal => {
       const { createBotManagementExtension } = await import("./bot-management-extension");
       signal?.throwIfAborted();
       return createBotManagementExtension(botDirectory, botConversations.service, hostId => connectBotHost(hostId), clientProduct?.botManagement);
@@ -554,6 +556,7 @@ export async function createWebWorkbenchApplicationSupervisor(
     const routerOptions = {
       presentation: options.presentation,
       mode: options.navigationMode,
+      resolveApplicationRoute: (route: ApplicationRoute) => resolveBuiltinConnectionRoute(route, headlessAppHost !== null),
       // The containing page owns its URL. Embedded Workbench starts at Home.
       ...(options.navigationMode === "memory" ? { initialEntries: ["/"] } : {}),
     };
@@ -576,12 +579,24 @@ export async function createWebWorkbenchApplicationSupervisor(
     ],
   });
   const storedHostProfiles = hostProfileBootstrap.store;
+  if (headlessAppHost !== null) try {
+    await migrateServerConnectionProfiles(storedHostProfiles);
+  } catch (error) {
+    storedHostProfiles.close();
+    throw error;
+  }
+  if (!fixedPresentation) try {
+    await migrateBuiltinConnectionProfiles(storedHostProfiles, connectionProviders.providers.getSnapshot().providers.map(provider => provider.id));
+  } catch (error) {
+    storedHostProfiles.close();
+    throw error;
+  }
   const configuredHostProfiles = sshManagement && sshManagement.getSnapshot().available !== false
     ? new ServerManagedProfileStore(storedHostProfiles, sshManagement, () => [
       ...sshManagement!.getSnapshot().items,
       ...sshManagement!.getSnapshot().legacyServers.map(server => ({ ...server, enabled: true, revision: 1 })),
     ].map(server => ({
-        hostId: server.serverId, displayName: server.displayName, providerId: "vela.headless-codex", providerConfig: {}, providerConfigVersion: 1,
+        hostId: server.serverId, displayName: server.displayName, providerId: SERVER_CONNECTIONS_ID, providerConfig: {}, providerConfigVersion: 1,
         hostKind: "remote-ssh", enabled: server.enabled, autoConnect: false, includeInSidebar: true, credentialRef: null,
         transportEndpoint: null, executionLocation: server.displayName, workspaceBrowseRoots: server.workspaceBrowseRoots, revision: server.revision,
       })))
@@ -596,7 +611,7 @@ export async function createWebWorkbenchApplicationSupervisor(
     && !import.meta.env.VITE_APPSERVER_WS_URL?.trim()
     && !deployment.hypernode
     && configuredHostProfiles.getSnapshot().profiles.some(profile => profile.hostId === "local" && profile.enabled
-      && profile.providerId === "vela.websocket" && profile.providerConfig !== null
+      && profile.providerId === "opencraft.websocket" && profile.providerConfig !== null
       && typeof profile.providerConfig === "object" && !Array.isArray(profile.providerConfig)
       && "url" in profile.providerConfig
       && profile.providerConfig.url === bootstrapDefinitions.find(host => host.hostId === "local")?.url)

@@ -73,3 +73,23 @@ Local V3 replica scopes/epochs are rebuilt by the in-process compatibility
 source; no native IDs or persisted V4 history are rewritten. Compiled document
 nodes and activity summary keys are also derived presentation state. A full
 client reload recreates them from source content.
+
+## Server connection identities
+
+The generic headless connection extension/provider is `opencraft.server-connections`.
+New server/SSH profiles and settings registrations use that identity. Its native
+account settings page remains explicitly `codex-accounts`. Existing
+`vela.headless-codex` profile providers are rewritten on hosted Web startup with
+an incremented profile revision; Host IDs, recipes and machine observations stay
+intact. Exact former settings and View bookmarks are read-only aliases supplied
+by the Web composition and replaced through the application Router, including
+hostless startup and POP. Unrelated extension IDs are never prefix-rewritten.
+The old literals live only in that compatibility reader and its negative/recovery
+tests; they are not current registrations or defaults.
+
+Current built-in agents, WebSocket, HyperNode, voice input, Bot views and the
+optional theme pack register under `opencraft.*`. Their exact old provider and
+bookmark IDs are migration inputs in the Web composition. Availability gates
+provider rewrites; disabled plugins do not acquire a transport or change Host
+identity during migration. The first-party Paper palette has one exact theme
+alias; opaque third-party theme IDs are still preserved.

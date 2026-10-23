@@ -23,6 +23,12 @@ export type ApplicationRoute =
       readonly resourceUri: string | null;
     };
 
+function equalApplicationRoute(left: ApplicationRoute, right: ApplicationRoute): boolean {
+  if (left.kind === "settings" && right.kind === "settings") return left.slug === right.slug;
+  if (left.kind === "extension-view" && right.kind === "extension-view") return left.viewId === right.viewId && left.resourceUri === right.resourceUri;
+  return left.kind === "conversation" && right.kind === "conversation";
+}
+
 const CONVERSATION_ROUTE: ApplicationRoute = { kind: "conversation" };
 
 interface WorkbenchHistoryState {
@@ -189,6 +195,8 @@ export function createRouteScopeId(): RouteScopeId {
 }
 
 export interface ApplicationRouterOptions {
+  /** The composition may idempotently canonicalize its own historical Settings/View IDs. */
+  readonly resolveApplicationRoute?: (route: ApplicationRoute) => ApplicationRoute;
   /** Deployment compatibility applied to URLs and remembered POP locations. */
   readonly resolveLocation?: (location: WorkbenchLocation | null) => WorkbenchLocation | null;
   readonly mode?: "memory" | "browser";
@@ -297,10 +305,12 @@ export function createApplicationNavigation<TLocation extends WorkbenchLocation 
   };
   let snapshot = read("initial");
   const resolveEntry = (target: ApplicationNavigationSnapshot<TLocation>) => {
-    if (target.location === null || !options.resolveRestoredEntry) return target;
+    const applicationRoute = options.resolveApplicationRoute?.(target.applicationRoute) ?? target.applicationRoute;
+    const routed = equalApplicationRoute(applicationRoute, target.applicationRoute) ? target : { ...target, applicationRoute };
+    if (target.location === null || !options.resolveRestoredEntry) return routed;
     const resolved = options.resolveRestoredEntry({ location: target.location, routeScopeId: target.routeScopeId });
-    if (equalWorkbenchLocation(target.location, resolved.location) && target.routeScopeId === resolved.routeScopeId) return target;
-    return { ...target, location: resolved.location as TLocation, routeScopeId: resolved.routeScopeId };
+    if (equalWorkbenchLocation(target.location, resolved.location) && target.routeScopeId === resolved.routeScopeId) return routed;
+    return { ...routed, location: resolved.location as TLocation, routeScopeId: resolved.routeScopeId };
   };
   const unsubscribe = router.subscribe(state => {
     if (disposed || state.location === lastRouterLocation) return;
@@ -321,8 +331,8 @@ export function createApplicationNavigation<TLocation extends WorkbenchLocation 
     const next = read(state.historyAction.toLowerCase() as ApplicationNavigationSnapshot["action"]);
     const resolved = resolveEntry(next);
     if (resolved !== next) {
-      // Preserve Settings/Extension destinations while correcting their Chat
-      // return reference. Never publish an invalid resource identity to Views.
+      // Canonicalize owned bookmarks and their Chat return reference through
+      // Router REPLACE, retaining the entry's scope and history position.
       restore(resolved);
       return;
     }
@@ -339,7 +349,7 @@ export function createApplicationNavigation<TLocation extends WorkbenchLocation 
     if (disposed) throw new Error("Workbench navigation is disposed");
     // No loaders/actions are attached to the application router: route commits
     // are synchronous. Conversation hydration is a separate cancellable consumer.
-    void router.navigate(pathFor(location, route), { replace, state: entry(location, scope) });
+    void router.navigate(pathFor(location, options.resolveApplicationRoute?.(route) ?? route), { replace, state: entry(location, scope) });
   };
   const sameLocation = (left: TLocation, right: TLocation) =>
     left === null || right === null ? left === right : equalWorkbenchLocation(left, right);
@@ -369,13 +379,16 @@ export function createApplicationNavigation<TLocation extends WorkbenchLocation 
     },
     openChat,
     openSettings(slug = "appearance", mode = "push") {
-      if (snapshot.applicationRoute.kind === "settings" && snapshot.applicationRoute.slug === slug) return;
-      navigate(snapshot.location, { kind: "settings", slug }, mode === "replace", snapshot.routeScopeId);
+      const input: ApplicationRoute = { kind: "settings", slug };
+      const route = options.resolveApplicationRoute?.(input) ?? input;
+      if (equalApplicationRoute(snapshot.applicationRoute, route)) return;
+      navigate(snapshot.location, route, mode === "replace", snapshot.routeScopeId);
     },
     closeSettings: openChat,
     openExtensionView(viewId, resourceUri = null) {
       if (!viewId.trim()) throw new RangeError("Extension View ID must not be empty");
-      const route: ApplicationRoute = { kind: "extension-view", viewId: viewId.trim(), resourceUri: resourceUri?.trim() || null };
+      const input: ApplicationRoute = { kind: "extension-view", viewId: viewId.trim(), resourceUri: resourceUri?.trim() || null };
+      const route = options.resolveApplicationRoute?.(input) ?? input;
       if (pathFor(snapshot.location, route) === pathFor(snapshot.location, snapshot.applicationRoute)) return;
       navigate(snapshot.location, route, false, snapshot.routeScopeId);
     },

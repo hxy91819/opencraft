@@ -31,7 +31,7 @@ export function createVoiceInputExtension(
   return {
     manifest: {
       manifestVersion: 1,
-      id: "vela.voice-input",
+      id: "opencraft.voice-input",
       name: "OpenCraft Voice Input",
       description: "Adds platform voice dictation to the Composer.",
       version: "0.1.0",
@@ -44,18 +44,18 @@ export function createVoiceInputExtension(
       if (service && cloud && options.webSpeech) {
         void service.refresh();
         api.subscriptions.add(() => { cloud.close(); service.close(); });
-        api.views.register({ id: "vela.voice-input.web-settings-view", title: "语音输入", viewType: "vela.voice-input.web-settings", platforms: ["web"] });
-        api.settings.registerPage({ id: "vela.voice-input.web-settings", title: "Voice input", titleMessage: { id: "settings.contributions.voiceInput", defaultMessage: "Voice input" }, viewId: "vela.voice-input.web-settings-view", group: "General", groupMessage: { id: "settings.groups.general", defaultMessage: "General" }, icon: "sliders", platforms: ["web"], order: 40 });
-        api.internal.register("platformViewRenderer", { viewType: "vela.voice-input.web-settings", Component: createWebVoiceSettings(service, options.webSpeech.usePreferences) });
+        api.views.register({ id: "opencraft.voice-input.web-settings-view", title: "语音输入", viewType: "opencraft.voice-input.web-settings", platforms: ["web"] });
+        api.settings.registerPage({ id: "opencraft.voice-input.web-settings", title: "Voice input", titleMessage: { id: "settings.contributions.voiceInput", defaultMessage: "Voice input" }, viewId: "opencraft.voice-input.web-settings-view", group: "General", groupMessage: { id: "settings.groups.general", defaultMessage: "General" }, icon: "sliders", platforms: ["web"], order: 40 });
+        api.internal.register("platformViewRenderer", { viewType: "opencraft.voice-input.web-settings", Component: createWebVoiceSettings(service, options.webSpeech.usePreferences) });
       }
       const native = nativeSpeechPort();
       if (native) {
-        api.views.register({ id: "vela.voice-input.settings-view", title: "语音输入", viewType: "vela.voice-input.settings", platforms: ["electron"] });
-        api.settings.registerPage({ id: "vela.voice-input.settings", title: "Voice input", titleMessage: { id: "settings.contributions.voiceInput", defaultMessage: "Voice input" }, viewId: "vela.voice-input.settings-view", group: "General", groupMessage: { id: "settings.groups.general", defaultMessage: "General" }, icon: "microphone", platforms: ["electron"], order: 40 });
-        api.internal.register("platformViewRenderer", { viewType: "vela.voice-input.settings", Component: createVoiceSettingsView(native) });
+        api.views.register({ id: "opencraft.voice-input.settings-view", title: "语音输入", viewType: "opencraft.voice-input.settings", platforms: ["electron"] });
+        api.settings.registerPage({ id: "opencraft.voice-input.settings", title: "Voice input", titleMessage: { id: "settings.contributions.voiceInput", defaultMessage: "Voice input" }, viewId: "opencraft.voice-input.settings-view", group: "General", groupMessage: { id: "settings.groups.general", defaultMessage: "General" }, icon: "microphone", platforms: ["electron"], order: 40 });
+        api.internal.register("platformViewRenderer", { viewType: "opencraft.voice-input.settings", Component: createVoiceSettingsView(native) });
       }
       api.internal.register("composerActionRenderer", {
-        id: "vela.voice-input.toggle",
+        id: "opencraft.voice-input.toggle",
         order: 100,
         Component: VoiceInputAction,
       });

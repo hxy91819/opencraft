@@ -65,6 +65,7 @@ try {
       await showSidebar();
     };
     page.on("pageerror", (error: Error) => errors.push(error.message));
+    // An existing bookmark is canonicalized by the actual Shell/Router.
     await page.goto(`${origin}/settings/vela.headless-codex.ssh`);
     if (!sharedAccess) {
       await page.getByLabel("访问密钥", { exact: true }).waitFor({ timeout: 30000 });
@@ -72,6 +73,7 @@ try {
       await page.getByRole("button", { name: "解锁", exact: true }).click();
     }
     await page.getByRole("button", { name: "添加", exact: true }).waitFor();
+    assert.equal(new URL(page.url()).pathname, "/settings/opencraft.server-connections.ssh");
     if (sharedAccess) {
       assert.equal(await page.getByLabel("访问密钥", { exact: true }).count(), 0);
       assert.equal(await page.getByRole("button", { name: "锁定管理", exact: true }).count(), 0);
@@ -187,7 +189,7 @@ try {
     }
     await page.unroute("**/__opencraft_ssh/connections");
     page.off("request", countConnect);
-    await page.goto(`${origin}/settings/vela.headless-codex.ssh`);
+    await page.goto(`${origin}/settings/opencraft.server-connections.ssh`);
     await menu.waitFor({ timeout: 30000 });
     await menu.click();
     await page.getByRole("menuitem", { name: "重新连接", exact: true }).click();
@@ -228,7 +230,7 @@ try {
     await page.locator(".new-thread-host-menu").getByRole("menuitem").filter({ hasText: `${name} renamed` }).click();
     await page.waitForFunction(name => document.querySelector('[aria-label="Work in"]')?.textContent?.includes(`${name} renamed`) && document.querySelector('[aria-label="Work in"] .workbench-connection-status')?.getAttribute("data-phase") === "ready", name, { timeout: 30000 });
     assert.match(await target.innerText(), new RegExp(name));
-    await page.goto(`${origin}/settings/vela.headless-codex.ssh`);
+    await page.goto(`${origin}/settings/opencraft.server-connections.ssh`);
     const renamed = page.getByRole("button", { name: `连接操作：${name} renamed`, exact: true }); await renamed.waitFor({ timeout: 30000 });
     await renamed.click(); await page.getByRole("menuitem", { name: "重新连接", exact: true }).click();
     await page.waitForFunction(() => document.querySelector('.ssh-connections [role="menu"]') === null);

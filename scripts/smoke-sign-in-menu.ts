@@ -17,7 +17,7 @@ ctx.authentication.register('fixture',{id:'test',getSession:()=>session,subscrib
 signIn:optionId=>new Promise((resolve,reject)=>attempts.push({optionId,resolve,reject})),cancelSignIn:async()=>{cancellations++}});
 const subscribe=fn=>{listeners.add(fn);return()=>listeners.delete(fn)};
 function App(){const[open,setOpen]=useState(true);const accountSnapshot=useSyncExternalStore(subscribe,()=>snapshot,()=>snapshot);
-const projection={provider:{authenticationProviderId:'test',signInOptions:[{id:'cn',label:'国内账号登录',description:'lightvela.com'},{id:'intl',label:'国际账号登录',description:'lightvela.ai'}]},snapshot:accountSnapshot};
+const projection={provider:{authenticationProviderId:'test',signInOptions:[{id:'cn',label:'国内账号登录',description:'region-one.example'},{id:'intl',label:'国际账号登录',description:'region-two.example'}]},snapshot:accountSnapshot};
 const presentation=useAuthenticationPresentation(ctx.authenticationFlows,projection,'chat');
 window.fixture={setOpen,setThemePreference,attempts:()=>attempts.map(a=>a.optionId),cancellations:()=>cancellations,
 complete:index=>{session={status:'authenticated',epoch:session.epoch+1};update();attempts[index].resolve({status:'authenticated',epoch:session.epoch})},

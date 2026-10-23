@@ -15,7 +15,7 @@ export function useConnectorPresentation(manager: ConnectorManager, approvals: C
   const [selectionPending, setSelectionPending] = useState<ReadonlySet<string>>(new Set());
   const [selectionErrors, setSelectionErrors] = useState<ReadonlyMap<string, string>>(new Map());
   const operationOwner = useMemo(() => `connector-scope:${scope.hostId}:${scope.scopeId}:${crypto.randomUUID()}`, [scope.hostId, scope.scopeId]);
-  useEffect(() => { void manager.managed.load(scope.hostId); }, [manager, scope.hostId]);
+  useEffect(() => manager.managed.observe(scope.hostId), [manager, scope.hostId]);
   // Connection and authorization belong to the conversation scope, not to an
   // open Popover. Closing a quick picker must never cancel in-flight work.
   useEffect(() => () => manager.cancelOwner(operationOwner), [manager, operationOwner]);
