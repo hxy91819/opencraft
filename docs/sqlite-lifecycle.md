@@ -406,6 +406,13 @@ native facts may clear only the existing replayable gap categories.
 
 The dedicated `token-usage.sqlite` owner appends migration 2, `token-usage-thread-query-index`, to index `(server_id, thread_id, started_ms, turn_id)` for per-thread date queries. The published isolated v1 and former Host migrations retain their SQL/name/checksum. Managed upgrades back up v1, preserve facts/allocation/recovery state, validate the complete v2 schema, and reject historical checksum mismatch before creating the index; the inactive legacy import remains read-only. No runtime DDL or schema downgrade is introduced.
 
+Generic metering tests, crash/replay fixtures and the synthetic benchmark/load
+scripts use the dedicated owner and file. The real CLI usage probe also replays
+into that owner. Tests of published Host migrations, legacy import and retained
+queue data keep the former database path explicitly. Historical benchmark
+results from the combined store do not establish dedicated-store performance;
+regenerate synthetic data in a fresh benchmark directory before measuring it.
+
 ### Model identity backfill CLI
 
 `scripts/backfill-token-usage-models.ts` targets an existing `token-usage.sqlite`

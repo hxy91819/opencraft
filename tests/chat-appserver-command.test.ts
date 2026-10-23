@@ -88,7 +88,7 @@ function intent(
   };
 }
 
-test("a ready staged Markdown file can be the whole Codex submission", () => {
+test("a ready staged Markdown file can be the whole AppServer submission", () => {
   const compiled = compileSubmitIntent(intent(
     { type: "existing-thread", key: existingKey },
     {
@@ -100,6 +100,25 @@ test("a ready staged Markdown file can be the whole Codex submission", () => {
     },
   ));
   assert.deepEqual(compiled.input, [{ type: "mention", name: "notes.md", path: "/host/attachments/notes/content-notes.md" }]);
+});
+
+test("current, legacy and unlabelled inline images compile to the same wire input", () => {
+  const uri = "data:image/png;base64,AQID";
+  for (const transport of ["inline-image-url", "codex-image-url", undefined]) {
+    const compiled = compileSubmitIntent(intent(
+      { type: "existing-thread", key: existingKey },
+      {
+        document: { version: 1, blocks: [] },
+        attachments: [{
+          id: "inline-image", name: "paste.png", mimeType: "image/png", size: 3,
+          uri, lifecycle: "ready", error: null,
+          ...(transport === undefined ? {} : { metadata: { transport } }),
+        }],
+      },
+    ));
+    assert.deepEqual(compiled.input, [{ type: "image", url: uri }]);
+    assert.deepEqual(compiled.diagnostics, []);
+  }
 });
 
 test("rich Composer documents compile into ordered native Codex UserInput entries", () => {

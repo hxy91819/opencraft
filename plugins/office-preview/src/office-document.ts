@@ -6,9 +6,13 @@ export async function openOfficeDocument(input: { blob: Blob; name: string; sign
   const buffer = await input.blob.arrayBuffer();
   input.signal.throwIfAborted();
   const kind = input.name.split(".").at(-1)!.toLowerCase();
-  validateOfficeArchive(buffer, kind);
+  if (kind === "xls") {
+    const bytes = new Uint8Array(buffer);
+    const signature = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+    if (!signature.every((value, index) => bytes[index] === value)) throw new Error("Not a legacy Excel workbook");
+  } else validateOfficeArchive(buffer, kind);
   input.signal.throwIfAborted();
-  if (kind === "xlsx") {
+  if (kind === "xlsx" || kind === "xls" || kind === "xlsm") {
     const { openSpreadsheet } = await import("./spreadsheet");
     input.signal.throwIfAborted();
     return openSpreadsheet(buffer, input.name, input.signal);

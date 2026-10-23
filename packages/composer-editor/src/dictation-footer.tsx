@@ -1,3 +1,4 @@
+import { useIntl } from "@opencraft/i18n/react";
 import { CloseIcon as X } from "@opencraft/design-system-web/action-icons";
 import { LoadingRingIcon, ResetIcon } from "@opencraft/design-system-web/action-icons";
 import { ArrowUpIcon as ArrowUp, SquareIcon as Square } from "@opencraft/design-system-web/action-icons";
@@ -98,28 +99,29 @@ export function DictationFooter({ interaction, canSend, onSend, onCancel }: {
   onSend(): void;
   onCancel(): void;
 }) {
+  const intl = useIntl();
   const duration = useRecordingDuration(interaction);
   const phase = interaction.phase;
   const status = {
-    starting: "正在准备录音",
-    listening: "正在听写",
-    transcribing: "正在完成语音识别",
-    failed: "转写失败",
+    starting: intl.formatMessage({ id: "chat.dictation.starting", defaultMessage: "Preparing to record" }),
+    listening: intl.formatMessage({ id: "chat.dictation.listening", defaultMessage: "Listening" }),
+    transcribing: intl.formatMessage({ id: "chat.dictation.transcribing", defaultMessage: "Transcribing audio" }),
+    failed: intl.formatMessage({ id: "chat.dictation.failed", defaultMessage: "Transcription failed" }),
   }[phase];
 
   const finishControl = phase === "failed"
-    ? <button type="button" className="opencraft-composer-icon-button" aria-label="重试语音识别"
+    ? <button type="button" className="opencraft-composer-icon-button" aria-label={intl.formatMessage({ id: "chat.dictation.retry", defaultMessage: "Retry transcription" })}
         title={interaction.message} onClick={() => interaction.retry()}>
         <ResetIcon size={14} aria-hidden="true" />
       </button>
-    : <button type="button" className="opencraft-composer-icon-button" aria-label="停止并写入文字"
-        title="停止并写入文字" disabled={phase !== "listening"} onClick={() => { void interaction.finish(); }}>
+    : <button type="button" className="opencraft-composer-icon-button" aria-label={intl.formatMessage({ id: "chat.dictation.finish", defaultMessage: "Stop and insert text" })}
+        title={intl.formatMessage({ id: "chat.dictation.finish", defaultMessage: "Stop and insert text" })} disabled={phase !== "listening"} onClick={() => { void interaction.finish(); }}>
         <Square size={14} fill="currentColor" aria-hidden="true" />
       </button>;
 
-  return <div className="opencraft-composer-voice-footer" data-voice-phase={phase} aria-label="语音输入控制">
-    <button type="button" className="opencraft-composer-icon-button" aria-label="取消语音输入"
-      title="取消语音输入 · Esc" onClick={onCancel}><X size={16} aria-hidden="true" /></button>
+  return <div className="opencraft-composer-voice-footer" data-voice-phase={phase} aria-label={intl.formatMessage({ id: "chat.dictation.controls", defaultMessage: "Voice input controls" })}>
+    <button type="button" className="opencraft-composer-icon-button" aria-label={intl.formatMessage({ id: "chat.dictation.cancel", defaultMessage: "Cancel voice input" })}
+      title={intl.formatMessage({ id: "chat.dictation.cancelShortcut", defaultMessage: "Cancel voice input · Esc" })} onClick={onCancel}><X size={16} aria-hidden="true" /></button>
     <div className="opencraft-composer-voice-footer__signal">
       {phase === "listening" ? <AudioSignal levels={interaction.audioLevels} />
         : <span className="opencraft-composer-voice-footer__status" title={phase === "failed" ? interaction.message : undefined}>
@@ -128,10 +130,10 @@ export function DictationFooter({ interaction, canSend, onSend, onCancel }: {
         </span>}
       <span className="sr-only" role="status">{status}</span>
     </div>
-    <span className="opencraft-composer-voice-footer__duration" aria-label="录音时长">{duration.minutes}:{duration.seconds}</span>
+    <span className="opencraft-composer-voice-footer__duration" aria-label={intl.formatMessage({ id: "chat.dictation.duration", defaultMessage: "Recording duration" })}>{duration.minutes}:{duration.seconds}</span>
     {finishControl}
-    <button type="button" className="opencraft-composer-submit" aria-label="识别完成后发送"
-      title="识别完成后发送" disabled={!canSend || phase !== "listening"} onClick={onSend}>
+    <button type="button" className="opencraft-composer-submit" aria-label={intl.formatMessage({ id: "chat.dictation.send", defaultMessage: "Send after transcription" })}
+      title={intl.formatMessage({ id: "chat.dictation.send", defaultMessage: "Send after transcription" })} disabled={!canSend || phase !== "listening"} onClick={onSend}>
       <ArrowUp size={17} aria-hidden="true" />
     </button>
   </div>;

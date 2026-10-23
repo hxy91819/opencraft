@@ -46,7 +46,7 @@
     "smoke:sidebar-execution-owner": "tsx scripts/smoke-sidebar-execution-owner.ts",
     "smoke:sent-image-preview": "tsx scripts/smoke-sent-image-preview.ts",
     "check:i18n": "node scripts/check-i18n.mjs",
-    "test:i18n": "tsx --test tests/i18n-runtime.test.ts tests/i18n-controller.test.ts tests/settings-menu-messages.test.ts tests/web-voice-settings-i18n.test.tsx",
+    "test:i18n": "node --test tests/i18n-source.test.mjs && tsx --test tests/i18n-runtime.test.ts tests/i18n-controller.test.ts tests/settings-menu-messages.test.ts tests/web-voice-settings-i18n.test.tsx",
     "smoke:i18n": "tsx scripts/smoke-i18n.ts",
     "postinstall": "node scripts/patch-expo-modules-jsi.mjs && node scripts/patch-novnc-desktop-events.mjs && node scripts/patch-heroui-menu-measurement.mjs",
     "protocol:refresh": "node scripts/refresh-codex-protocol.mjs",
@@ -239,7 +239,7 @@
     "test:hub-network": "tsx --test tests/hub-network.test.ts",
     "smoke:hub-network": "tsx scripts/smoke-hub-network.ts",
     "smoke:hub-network-settings": "tsx scripts/smoke-hub-network-settings.ts",
-    "test:file-preview": "tsx --test tests/file-preview-core.test.ts",
+    "test:file-preview": "tsx --test tests/file-preview-core.test.ts tests/structured-preview.test.ts",
     "smoke:office-preview": "tsx scripts/smoke-office-preview.ts",
     "smoke:office-resources": "tsx scripts/smoke-office-resources.ts",
     "test:identity-storage": "tsx --test tests/account-model-defaults.test.ts tests/unified-thread-identity.test.ts tests/opencraft-message-senders.test.ts",
@@ -253,7 +253,8 @@
     "generate:control-icons": "tsx scripts/generate-native-control-icons.tsx",
     "test:pi-engine": "tsx --test tests/pi-durable-engine.test.ts tests/pi-model-configuration.test.ts tests/pi-runtime-packaging.test.mjs",
     "test:im": "tsx --test tests/im-switchboard.test.ts tests/im-programmable.test.ts tests/im-tool-reply.test.ts tests/session-capabilities.test.ts tests/wecom-plugin.test.ts",
-    "test:session-capabilities": "tsx --test tests/session-capabilities.test.ts"
+    "test:session-capabilities": "tsx --test tests/session-capabilities.test.ts",
+    "smoke:structured-preview": "tsx scripts/smoke-structured-preview.ts"
   },
   "dependencies": {
     "react": "19.3.1",

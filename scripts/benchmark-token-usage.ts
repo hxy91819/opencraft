@@ -3,12 +3,12 @@ import {mkdtemp,writeFile} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir,cpus,totalmem} from "node:os";
 import {performance} from "node:perf_hooks";
-import {OpenCraftHostStateDatabase} from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import {TokenUsageStateDatabase} from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import {OpenCraftTokenUsageLedger} from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import {TokenUsageQueryService} from "../apps/opencraft-daemon/src/token-usage-query-service.js";
 const directory=process.env.OPENCRAFT_USAGE_BENCH_DIRECTORY??await mkdtemp(join(tmpdir(),"oc-usage-bench-"));
 const at=Date.parse("2026-07-23T16:00:00Z"),now=Date.parse("2026-10-21T12:00:00Z");
-const state=new OpenCraftHostStateDatabase(directory),db=state.database;
+const state=new TokenUsageStateDatabase(directory),db=state.database;
 const ledger=new OpenCraftTokenUsageLedger(state,"benchmark",()=>at);
 const existing=Number(db.prepare("SELECT count(*) AS n FROM token_usage_turns").get()!.n);
 if(!existing){
@@ -55,7 +55,7 @@ while(!ledger.backfillProjectionBatch(100))await new Promise<void>(resolve=>setI
 db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
 const workerEntry=join(directory,"query-worker.mjs");
 await build({entryPoints:[new URL("../apps/opencraft-daemon/src/token-usage-query-worker.ts",import.meta.url).pathname],outfile:workerEntry,bundle:true,platform:"node",format:"esm",target:"node26",logLevel:"silent"});
-const service=new TokenUsageQueryService({entry:workerEntry,databasePath:join(directory,"codex-host-queue.sqlite"),serverId:"benchmark"});
+const service=new TokenUsageQueryService({entry:workerEntry,databasePath:join(directory,"token-usage.sqlite"),serverId:"benchmark"});
 const administrator=()=>({actorId:"administrator",administrator:true});
 const samples=[];
 try{

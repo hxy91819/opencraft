@@ -1,48 +1,26 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import ts from "typescript";
 import { parse, TYPE } from "@formatjs/icu-messageformat-parser";
 
+import { scanProject, compareCopy } from "./i18n-source.mjs";
+
 const root = fileURLToPath(new URL("../", import.meta.url));
-const descriptors = new Map();
+
+const inventory = await scanProject(root);
 const errors = [];
-async function scan(directory) {
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) { if (entry.name !== "locales") await scan(path); continue; }
-    if (!/\.tsx?$/.test(path)) continue;
-    const source = ts.createSourceFile(path, await readFile(path, "utf8"), ts.ScriptTarget.Latest, true);
-    const literal = node => node && (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) ? node.text : undefined;
-    function record(id, defaultMessage, description) {
-      if (!id || !defaultMessage) return;
-      const previous = descriptors.get(id);
-      if (previous && previous.defaultMessage !== defaultMessage) errors.push(`Conflicting defaultMessage for ${id}`);
-      descriptors.set(id, { defaultMessage, ...(description ? { description } : {}), source: relative(root, path) });
-    }
-    function visit(node) {
-      if (ts.isObjectLiteralExpression(node)) {
-        const fields = Object.fromEntries(node.properties.filter(ts.isPropertyAssignment).map(p => [p.name.getText(source), literal(p.initializer)]));
-        record(fields.id, fields.defaultMessage, fields.description);
-      }
-      if ((ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) && node.tagName.getText(source) === "FormattedMessage") {
-        const fields = Object.fromEntries(node.attributes.properties.filter(ts.isJsxAttribute).map(p => [p.name.getText(source), literal(p.initializer)]));
-        record(fields.id, fields.defaultMessage, fields.description);
-      }
-      ts.forEachChild(node, visit);
-    }
-    visit(source);
-  }
+const descriptors = new Map();
+const desktopDescriptors = new Map();
+for (const { id, ...descriptor } of inventory.messages) {
+  // Native Main has its own application runtime/catalog, not Web's languages.
+  const catalog = descriptor.source.startsWith("apps/workbench-electron/") ? desktopDescriptors : descriptors;
+  const previous = catalog.get(id);
+  if (previous && previous.defaultMessage !== descriptor.defaultMessage) errors.push(`Conflicting defaultMessage for ${id}`);
+  catalog.set(id, descriptor);
 }
-// These are the application-owned catalogs. Vendored feature translations have
-// their own extraction authority and must not be silently imported here.
-await scan(join(root, "apps/workbench-web/src"));
-await scan(join(root, "packages/composer-editor/src"));
-await scan(join(root, "plugins/cloud-desktop/src"));
-await scan(join(root, "plugins/thread-summary/src"));
-await scan(join(root, "plugins/builtin-agents/src"));
-await scan(join(root, "plugins/voice-input/src"));
-await scan(join(root, "packages/file-preview-web/src"));
+const baseline = JSON.parse(await readFile(join(root, "config/i18n-copy-baseline.json"), "utf8"));
+if (baseline.version !== 1 || !Array.isArray(baseline.entries)) throw new Error("Unsupported i18n copy baseline");
+errors.push(...compareCopy(inventory.copy, baseline));
 function parameters(message) {
   const found = new Set();
   function visit(elements) {
@@ -55,21 +33,30 @@ function parameters(message) {
   visit(parse(message));
   return [...found].sort().join(",");
 }
-const localeDirectory = join(root, "apps/workbench-web/src/i18n/locales");
-for (const file of await readdir(localeDirectory)) {
-  if (!file.endsWith(".json")) continue;
-  const messages = JSON.parse(await readFile(join(localeDirectory, file), "utf8"));
-  for (const [id, descriptor] of descriptors) {
-    try {
-      const expected = parameters(descriptor.defaultMessage);
-      if (typeof messages[id] !== "string") errors.push(`${file}: missing ${id}`);
-      else if (file === "en-US.json" && messages[id] !== descriptor.defaultMessage) errors.push(`${file}: derived English copy differs from source for ${id}`);
-      else if (parameters(messages[id]) !== expected) errors.push(`${file}: ICU parameter mismatch for ${id}`);
-    } catch (error) { errors.push(`${file}: invalid ICU for ${id}: ${error.message}`); }
+async function checkCatalogs(directory, messages) {
+  for (const file of await readdir(directory)) {
+    if (!file.endsWith(".json")) continue;
+    const translations = JSON.parse(await readFile(join(directory, file), "utf8"));
+    for (const [id, descriptor] of messages) {
+      try {
+        const expected = parameters(descriptor.defaultMessage);
+        if (typeof translations[id] !== "string") errors.push(`${relative(root, directory)}/${file}: missing ${id}`);
+        else if (file === "en-US.json" && translations[id] !== descriptor.defaultMessage) errors.push(`${file}: derived English copy differs from source for ${id}`);
+        else if (parameters(translations[id]) !== expected) errors.push(`${file}: ICU parameter mismatch for ${id}`);
+      } catch (error) { errors.push(`${file}: invalid ICU for ${id}: ${error.message}`); }
+    }
   }
 }
+await checkCatalogs(join(root, "apps/workbench-web/src/i18n/locales"), descriptors);
+await checkCatalogs(join(root, "apps/workbench-electron/src/locales"), desktopDescriptors);
 if (errors.length) { console.error(errors.join("\n")); process.exitCode = 1; }
-else console.log(`i18n: ${descriptors.size} source messages, unique IDs, valid ICU and translation parameters verified.`);
+else console.log(`i18n: ${inventory.files.length} first-party files; ${descriptors.size} Web/shared and ${desktopDescriptors.size} native messages verified. ${inventory.copy.length} legacy literal occurrences remain explicitly recorded (not translated).`);
+const reportIndex = process.argv.indexOf("--report");
+if (reportIndex >= 0) {
+  const output = process.argv[reportIndex + 1];
+  if (!output) throw new Error("--report requires an output path");
+  await writeFile(output, JSON.stringify({ filesScanned: inventory.files.length, legacyCandidates: inventory.copy, limitations: ["Indirect identifier/object/helper data flow and imperative notifications require owner review.", "Literal candidates include intentional names, units and technical examples; this is not a confirmed-defect count."] }, null, 2) + "\n");
+}
 // A reviewable translation handoff, not a second runtime English catalog.
 const outputIndex = process.argv.indexOf("--extract");
 if (outputIndex >= 0) {

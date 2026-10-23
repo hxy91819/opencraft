@@ -59,10 +59,9 @@ export class DshExecutionRecord {
           return super.processSessionEvent(worker, active, message);
         }
 
-        // Codex models final_answer as an optional Item. A Turn whose visible
-        // commentary/tool activity is already settled may complete without
-        // manufacturing an answer. Truly empty completions continue through
-        // the imported fail-closed invariant.
+        // A Turn whose visible commentary/tool activity is already settled
+        // may complete without manufacturing a final-answer Item. Truly empty
+        // completions continue through the imported fail-closed invariant.
         this.ctx.dshAppServerProjection?.settle(worker, active);
         this.completeWorkerTurn(worker);
       }

@@ -2,12 +2,16 @@ import "./preview.web.scss";
 import { Service, type Context } from "@deepseek-ai/cordis";
 import { PreviewSessionPool, type PreviewLease } from "@opencraft/file-preview-core";
 import { createContext, useContext, useEffect, useState, useRef, useSyncExternalStore, useCallback, useMemo, type ReactNode } from "react";
+import type { IntlShape } from "@opencraft/i18n";
 import { useIntl } from "@opencraft/i18n/react";
+
+export type FilePreviewIntl = Pick<IntlShape, "formatMessage" | "formatNumber">;
 
 export interface WebPreviewDocument {
   readonly element: HTMLElement;
   setActive?(active: boolean): void;
   setTheme?(dark: boolean): void;
+  setIntl?(intl: FilePreviewIntl): void;
   subscribeFailure?(listener: (error: unknown) => void): () => void;
   dispose(): void;
 }
@@ -23,9 +27,13 @@ export interface FilePreviewInput {
   readonly blob: Blob;
   readonly name: string;
 }
-export function officeFileKind(name: string): "docx" | "pptx" | "xlsx" | null {
+export function filePreviewExtension(name: string): string | null {
   const extension = /\.([a-z0-9]+)$/iu.exec(name)?.[1]?.toLowerCase();
-  return extension === "docx" || extension === "pptx" || extension === "xlsx" ? extension : null;
+  return extension ?? null;
+}
+export function officeFileKind(name: string): "docx" | "pptx" | "xlsx" | "xls" | "xlsm" | null {
+  const extension = filePreviewExtension(name);
+  return extension === "docx" || extension === "pptx" || extension === "xlsx" || extension === "xls" || extension === "xlsm" ? extension : null;
 }
 declare module "@deepseek-ai/cordis" { interface Context { filePreviews: FilePreviewService } }
 
@@ -36,22 +44,35 @@ export class FilePreviewService extends Service {
   private nextRevision = 0;
   private adapters = new Map<string, { adapter: FilePreviewAdapter; generation: number }>();
   private nextAdapter = 0;
+  private readonly adapterListeners = new Set<() => void>();
+  private adapterRevision = 0;
+  readonly subscribeAdapters = (listener: () => void): (() => void) => {
+    this.adapterListeners.add(listener);
+    return () => this.adapterListeners.delete(listener);
+  };
+  readonly getAdapterRevision = (): number => this.adapterRevision;
+  private notifyAdapters(): void {
+    this.adapterRevision++;
+    for (const listener of this.adapterListeners) listener();
+  }
   constructor(ctx: Context) {
     super(ctx, "filePreviews");
-    ctx.effect(() => () => { this.pool.dispose(); this.adapters.clear(); });
+    ctx.effect(() => () => { this.pool.dispose(); this.adapters.clear(); this.notifyAdapters(); this.adapterListeners.clear(); });
   }
   register(adapter: FilePreviewAdapter): () => void {
     if (this.adapters.has(adapter.id)) throw new Error("Preview adapter already registered");
     const registration = { adapter, generation: ++this.nextAdapter };
     this.adapters.set(adapter.id, registration);
+    this.notifyAdapters();
     return () => {
       if (this.adapters.get(adapter.id) !== registration) return;
       this.adapters.delete(adapter.id);
       this.pool.releaseAdapter(`${adapter.id}:${registration.generation}`);
+      this.notifyAdapters();
     };
   }
   acquire(input: FilePreviewInput, attempt = 0): PreviewLease<WebPreviewDocument> {
-    const extension = officeFileKind(input.name);
+    const extension = filePreviewExtension(input.name);
     const match = [...this.adapters.values()].find(({ adapter }) => extension && adapter.extensions.includes(extension));
     if (!match) throw new Error("Preview adapter unavailable");
     if (input.blob.size > 25 * 1024 * 1024) throw new Error("File exceeds preview limit");
@@ -62,9 +83,20 @@ export class FilePreviewService extends Service {
     signal => match.adapter.open({ blob: input.blob, name: input.name, signal }));
   }
   releaseTab(ownerId: string, tabId: string): void { this.pool.releaseTab(ownerId, tabId); }
+  supports(name: string): boolean {
+    const extension = filePreviewExtension(name);
+    return extension !== null && [...this.adapters.values()].some(({ adapter }) => adapter.extensions.includes(extension));
+  }
 }
 
 const PreviewContext = createContext<FilePreviewService | null>(null);
+const noSubscribe = (): (() => void) => () => undefined;
+const noRevision = (): number => 0;
+export function useFilePreviewAvailable(name: string): boolean {
+  const service = useContext(PreviewContext);
+  useSyncExternalStore(service?.subscribeAdapters ?? noSubscribe, service?.getAdapterRevision ?? noRevision, noRevision);
+  return service?.supports(name) ?? false;
+}
 export function FilePreviewProvider({ service, children }: { service: FilePreviewService | null; children: ReactNode }) {
   return <PreviewContext.Provider value={service}>{children}</PreviewContext.Provider>;
 }
@@ -103,6 +135,7 @@ export function FilePreviewView(props: FilePreviewInput & { active?: boolean; da
   }, [document]);
   useEffect(() => { document?.setActive?.(props.active !== false); }, [document, props.active]);
   useEffect(() => { document?.setTheme?.(props.dark); }, [document, props.dark]);
+  useEffect(() => { document?.setIntl?.(intl); }, [document, intl]);
   const error = failed || snapshot?.phase === "failed" || snapshot?.phase === "released";
   return <div className="file-preview" data-file-preview-phase={document ? "ready" : error ? "failed" : "opening"}>
     <div ref={root} className="file-preview__document" hidden={!document} />

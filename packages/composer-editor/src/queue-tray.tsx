@@ -138,16 +138,16 @@ function SortableQueueItem({
   const busy = item.operation !== "idle";
   const awaitingNativeReconciliation = item.pausedReason === "restored-after-host-restart";
   const dragDisabled = blockedByUnconfirmedDelivery || item.reorderable === false || !item.actionable || busy || item.editing;
-  const dragTooltip = item.reorderable === false ? item.error ?? item.pausedReason ?? "Queued message" : reorderLabel;
+  const dragTooltip = item.reorderable === false ? item.error ?? item.pausedReason ?? intl.formatMessage({ id: "chat.queue.message", defaultMessage: "Queued message" }) : reorderLabel;
   const steerDisabled = !canSteerQueueItem(item, isResponseInProgress, atomicSteer, blockedByUnconfirmedDelivery);
   const deleteDisabled = (!item.actionable && !item.dismissible) || busy;
   const steerTooltip = blockedByUnconfirmedDelivery
-    ? "An earlier message has unconfirmed delivery; review it before sending another message"
+    ? intl.formatMessage({ id: "chat.queue.blockedUnconfirmed", defaultMessage: "An earlier message has unconfirmed delivery; review it before sending another message" })
     : awaitingNativeReconciliation
-      ? "This queued message is awaiting native reconciliation before it can be sent"
+      ? intl.formatMessage({ id: "chat.queue.awaitingReconciliation", defaultMessage: "This queued message is awaiting native reconciliation before it can be sent" })
       : isResponseInProgress && !atomicSteer
-        ? "This Host cannot steer a queued message; it will remain queued until the turn finishes"
-        : isResponseInProgress ? steerLabel : "Start queued message";
+        ? intl.formatMessage({ id: "chat.queue.awaitingTurn", defaultMessage: "This Host cannot steer a queued message; it will remain queued until the turn finishes" })
+        : isResponseInProgress ? steerLabel : intl.formatMessage({ id: "chat.queue.start", defaultMessage: "Start queued message" });
   const sortable = useSortable({
     id: item.id,
     disabled: dragDisabled,
@@ -172,7 +172,7 @@ function SortableQueueItem({
           ref={sortable.setActivatorNodeRef}
           className="opencraft-composer-queue-item__drag"
           type="button"
-          aria-label={item.reorderable === false ? "Queued message" : reorderLabel}
+          aria-label={item.reorderable === false ? intl.formatMessage({ id: "chat.queue.message", defaultMessage: "Queued message" }) : reorderLabel}
           disabled={dragDisabled}
           {...sortable.attributes}
           {...sortable.listeners}
@@ -181,7 +181,7 @@ function SortableQueueItem({
         </button>
       </QueueTooltip>
 
-      <QueueTooltip label={item.sender?.name ?? "Queued message"} portalContainer={portalContainer}>
+      <QueueTooltip label={item.sender?.name ?? intl.formatMessage({ id: "chat.queue.message", defaultMessage: "Queued message" })} portalContainer={portalContainer}>
         <span className="opencraft-composer-queue-item__sender">
           <span className="opencraft-composer-queue-item__avatar" role={item.sender ? "img" : undefined} aria-label={item.sender?.name} aria-hidden={item.sender ? undefined : true}>
             <AvatarImage src={item.sender?.avatarUrl ?? null} fallback={<User size={13} aria-hidden="true" />} />
@@ -198,9 +198,9 @@ function SortableQueueItem({
 
       <div className="opencraft-composer-queue-item__actions">
         {item.unconfirmedTargetTurnId ? (
-          <QueueTooltip label="Review & discard" portalContainer={portalContainer}>
+          <QueueTooltip label={intl.formatMessage({ id: "chat.queue.reviewDiscard", defaultMessage: "Review & discard" })} portalContainer={portalContainer}>
             <button type="button" className="is-labelled" onClick={() => ignoreRejected(onDiscardUnconfirmed?.(item.id, item.unconfirmedTargetTurnId!))}>
-              <Trash2 size={12} /><span>Review &amp; discard</span>
+              <Trash2 size={12} /><span>{intl.formatMessage({ id: "chat.queue.reviewDiscard", defaultMessage: "Review & discard" })}</span>
             </button>
           </QueueTooltip>
         ) : item.editing ? (
@@ -215,12 +215,12 @@ function SortableQueueItem({
               <button
                 className={isResponseInProgress ? "is-labelled is-steer" : "is-labelled"}
                 type="button"
-                aria-label={isResponseInProgress ? steerLabel : "Start queued message"}
+                aria-label={isResponseInProgress ? steerLabel : intl.formatMessage({ id: "chat.queue.start", defaultMessage: "Start queued message" })}
                 disabled={steerDisabled}
                 onClick={() => ignoreRejected(onSteer?.(item.id))}
               >
                 {isResponseInProgress ? <CornerDownRight size={12} /> : <Play size={12} />}
-                <span>{isResponseInProgress ? "Steer" : "Send"}</span>
+                <span>{isResponseInProgress ? intl.formatMessage({ id: "chat.queue.steerAction", defaultMessage: "Steer" }) : intl.formatMessage({ id: "chat.queue.sendAction", defaultMessage: "Send" })}</span>
               </button>
             </QueueTooltip>
             <QueueTooltip label={editLabel} portalContainer={portalContainer} disabled={!item.actionable || busy}>
@@ -253,6 +253,7 @@ export function ComposerQueueTray({
   onResume,
   portalContainer,
 }: ComposerQueueTrayProps) {
+  const intl = useIntl();
   const [discardCandidate, setDiscardCandidate] = useState<{ id: string; turnId: string } | null>(null);
   const [discardBusy, setDiscardBusy] = useState(false);
   const [discardError, setDiscardError] = useState<string | null>(null);
@@ -283,7 +284,7 @@ export function ComposerQueueTray({
     <div
       className="opencraft-composer-queue-tray"
       data-queue-size={items.length}
-      aria-label="Queued follow-ups"
+      aria-label={intl.formatMessage({ id: "chat.queue.followUps", defaultMessage: "Queued follow-ups" })}
     >
       {pausedReason !== null ? (
         <div className="opencraft-composer-queue-tray__heading">
@@ -295,7 +296,7 @@ export function ComposerQueueTray({
               type="button"
               onClick={() => ignoreRejected(onResume?.())}
             >
-              <Play size={11} /> Resume
+              <Play size={11} /> {intl.formatMessage({ id: "chat.queue.resume", defaultMessage: "Resume" })}
             </button>
           )}
         </div>
@@ -336,20 +337,20 @@ export function ComposerQueueTray({
         <AlertDialog.Overlay className="modal-surface__scrim" data-layer="confirmation" data-appearance="utility" />
         <AlertDialog.Content className="modal-surface modal-confirmation opencraft-composer-steer-discard-dialog" data-size="compact" data-layer="confirmation" data-appearance="utility">
           <div className="opencraft-composer-steer-discard-dialog__body">
-            <AlertDialog.Title>Discard message with unconfirmed delivery?</AlertDialog.Title>
-            <AlertDialog.Description>Delivery may already have happened. Review the conversation before discarding. This only removes the unresolved claim; it will not resend the message.</AlertDialog.Description>
+            <AlertDialog.Title>{intl.formatMessage({ id: "chat.queue.discardTitle", defaultMessage: "Discard message with unconfirmed delivery?" })}</AlertDialog.Title>
+            <AlertDialog.Description>{intl.formatMessage({ id: "chat.queue.discardDescription", defaultMessage: "Delivery may already have happened. Review the conversation before discarding. This only removes the unresolved claim; it will not resend the message." })}</AlertDialog.Description>
             {discardError ? <p role="alert">{discardError}</p> : null}
           </div>
           <div className="modal-confirmation__actions">
-            <AlertDialog.Cancel className="ui-button" data-variant="secondary" data-size="sm" disabled={discardBusy}>Cancel</AlertDialog.Cancel>
+            <AlertDialog.Cancel className="ui-button" data-variant="secondary" data-size="sm" disabled={discardBusy}>{intl.formatMessage({ id: "chat.queue.cancelDiscard", defaultMessage: "Cancel" })}</AlertDialog.Cancel>
             <button className="ui-button" data-variant="primary" data-size="sm" type="button" disabled={discardBusy} onClick={() => {
               if (discardCandidate === null) return;
               setDiscardBusy(true);
-              void (onDiscardUnconfirmed?.(discardCandidate.id, discardCandidate.turnId) ?? Promise.reject(new Error("Discard is unavailable on this Host")))
+              void (onDiscardUnconfirmed?.(discardCandidate.id, discardCandidate.turnId) ?? Promise.reject(new Error(intl.formatMessage({ id: "chat.queue.discardUnavailable", defaultMessage: "Discard is unavailable on this Host" }))))
                 .then(() => { setDiscardCandidate(null); setDiscardError(null); })
                 .catch((error: unknown) => setDiscardError(error instanceof Error ? error.message : String(error)))
                 .finally(() => setDiscardBusy(false));
-            }}>{discardBusy ? "Discarding…" : "Discard claim"}</button>
+            }}>{discardBusy ? intl.formatMessage({ id: "chat.queue.discarding", defaultMessage: "Discarding…" }) : intl.formatMessage({ id: "chat.queue.discard", defaultMessage: "Discard claim" })}</button>
           </div>
         </AlertDialog.Content>
       </AlertDialog.Portal>

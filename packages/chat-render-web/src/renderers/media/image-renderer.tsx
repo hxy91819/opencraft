@@ -1,3 +1,4 @@
+import { useIntl } from "@opencraft/i18n/react";
 import { CloseIcon as SharedCloseIcon, ChevronLeftIcon as SharedChevronLeftIcon, ChevronRightIcon as SharedChevronRightIcon } from "@opencraft/design-system-web/action-icons";
 import { chatMediaPresentationKey, type ChatNodeRendererProps, type ChatResourcePolicyService } from "@opencraft/chat-render-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -20,6 +21,7 @@ interface ImageGalleryState {
 
 export function createImageRenderer(resources: ChatResourcePolicyService) {
   return function ImageRenderer({ node, context }: ChatNodeRendererProps) {
+    const intl = useIntl();
     const [gallery, setGallery] = useState<ImageGalleryState | null>(null);
     const [mediaState, setMediaState] = useState<{
       readonly key: string;
@@ -109,13 +111,13 @@ export function createImageRenderer(resources: ChatResourcePolicyService) {
       node.src,
     ]);
     if (!decision.allowed || decision.target === null) {
-      return <span className="chat-markdown-media-unavailable" role="img" title={decision.reason}>{node.alt || "Image unavailable"}</span>;
+      return <span className="chat-markdown-media-unavailable" role="img" title={decision.reason}>{node.alt || intl.formatMessage({ id: "chat.image.unavailable", defaultMessage: "Image unavailable" })}</span>;
     }
     if (effectiveState.status === "loading") {
-      return <span aria-label={node.alt || "Image loading"} className="chat-markdown-media-placeholder" data-state="loading" role="img" />;
+      return <span aria-label={node.alt || intl.formatMessage({ id: "chat.image.loading", defaultMessage: "Loading image…" })} className="chat-markdown-media-placeholder" data-state="loading" role="img" />;
     }
     if (effectiveState.status === "unavailable" || effectiveState.source === null) {
-      return <span className="chat-markdown-media-unavailable" role="img">{node.alt || "Image unavailable"}</span>;
+      return <span className="chat-markdown-media-unavailable" role="img">{node.alt || intl.formatMessage({ id: "chat.image.unavailable", defaultMessage: "Image unavailable" })}</span>;
     }
     const imageSource = effectiveState.source;
     const close = () => setGallery(null);
@@ -140,7 +142,7 @@ export function createImageRenderer(resources: ChatResourcePolicyService) {
     const showNext = activeGallery !== null && activeGallery.index + 1 < activeGallery.items.length;
     return (
       <>
-        <button aria-label={node.alt || "Preview image"} className="chat-markdown-image-button" data-markdown-image-preview-trigger="true" onClick={(event) => { previewFocus.recordOpen(event); openGallery(event.currentTarget); }} onKeyDown={previewFocus.onTriggerKeyDown} onPointerCancel={previewFocus.onTriggerPointerCancel} onPointerDown={previewFocus.onTriggerPointerDown} type="button">
+        <button aria-label={node.alt || intl.formatMessage({ id: "chat.image.openPreview", defaultMessage: "Preview image" })} className="chat-markdown-image-button" data-markdown-image-preview-trigger="true" onClick={(event) => { previewFocus.recordOpen(event); openGallery(event.currentTarget); }} onKeyDown={previewFocus.onTriggerKeyDown} onPointerCancel={previewFocus.onTriggerPointerCancel} onPointerDown={previewFocus.onTriggerPointerDown} type="button">
           <img
             alt={node.alt}
             className="chat-markdown-image"
@@ -151,16 +153,16 @@ export function createImageRenderer(resources: ChatResourcePolicyService) {
             title={node.title ?? undefined}
           />
         </button>
-        <dialog aria-label={currentImage.alt || "Image preview"} className="chat-markdown-image-preview" data-opened-by-pointer={previewFocus.openedByPointer || undefined} onCancel={(event) => { event.preventDefault(); close(); }} onClose={close} onKeyDown={(event) => {
+        <dialog aria-label={currentImage.alt || intl.formatMessage({ id: "chat.image.preview", defaultMessage: "Image preview" })} className="chat-markdown-image-preview" data-opened-by-pointer={previewFocus.openedByPointer || undefined} onCancel={(event) => { event.preventDefault(); close(); }} onClose={close} onKeyDown={(event) => {
           previewFocus.onPreviewKeyDown(event);
           if (activeGallery === null) return;
           if (event.key === "ArrowLeft" && showPrevious) setGallery({ ...activeGallery, index: activeGallery.index - 1 });
           if (event.key === "ArrowRight" && showNext) setGallery({ ...activeGallery, index: activeGallery.index + 1 });
         }} ref={dialogRef}>
-          <button aria-label="Close image preview" className="chat-markdown-image-preview__close" onClick={close} type="button"><CloseGlyph /></button>
-          {showPrevious ? <button aria-label="Previous image" className="chat-markdown-image-preview__previous" onClick={() => setGallery((current) => current?.key !== loadKey ? null : { ...current, index: current.index - 1 })} type="button"><PreviousGlyph /></button> : null}
+          <button aria-label={intl.formatMessage({ id: "chat.image.close", defaultMessage: "Close image preview" })} className="chat-markdown-image-preview__close" onClick={close} type="button"><CloseGlyph /></button>
+          {showPrevious ? <button aria-label={intl.formatMessage({ id: "chat.image.previous", defaultMessage: "Previous image" })} className="chat-markdown-image-preview__previous" onClick={() => setGallery((current) => current?.key !== loadKey ? null : { ...current, index: current.index - 1 })} type="button"><PreviousGlyph /></button> : null}
           <ZoomableImage onBackgroundClick={close} key={`${activeGallery !== null}:${activeGallery?.index}`} alt={currentImage.alt} src={currentImage.source} title={node.title ?? undefined} />
-          {showNext ? <button aria-label="Next image" className="chat-markdown-image-preview__next" onClick={() => setGallery((current) => current?.key !== loadKey ? null : { ...current, index: current.index + 1 })} type="button"><NextGlyph /></button> : null}
+          {showNext ? <button aria-label={intl.formatMessage({ id: "chat.image.next", defaultMessage: "Next image" })} className="chat-markdown-image-preview__next" onClick={() => setGallery((current) => current?.key !== loadKey ? null : { ...current, index: current.index + 1 })} type="button"><NextGlyph /></button> : null}
         </dialog>
       </>
     );

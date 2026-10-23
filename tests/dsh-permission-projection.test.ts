@@ -17,7 +17,7 @@ test("portable modes require a verified native binding", () => {
   });
   assert.equal(permissionModeProfileId("accept-edits"), "opencraft:permission-mode:accept-edits");
 });
-test("effective DSH policy does not claim Codex workspace sandbox enforcement", () => {
+test("effective DSH policy reports file enforcement without claiming OS process isolation", () => {
   const scoped = projectDshPermissions({ sandbox: { mode: "workspace-write", workspaceRoot: "/work" }, approval: "ask", preset: "workspace-write", networkPolicy: "not-managed-by-file-sandbox" });
   assert.deepEqual(scoped.sandbox, { type: "externalSandbox", networkAccess: "enabled" });
   assert.equal(scoped.approvalPolicy, "on-request");

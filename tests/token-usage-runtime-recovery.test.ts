@@ -3,12 +3,12 @@ import test from "node:test";
 import {mkdtemp,writeFile,rm,symlink} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
-import {OpenCraftHostStateDatabase} from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import {TokenUsageStateDatabase} from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import {OpenCraftTokenUsageLedger} from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import {CodexTokenUsageRuntime} from "../apps/opencraft-daemon/src/token-usage-runtime.js";
 const nativeId=(n:number)=>`00000000-03e8-7000-8000-${n.toString().padStart(12,"0")}`;
 test("Host recovery reaches an older unfinished turn through bounded native metadata pages and persists progress",async()=>{
- const path=await mkdtemp(join(tmpdir(),"oc-usage-runtime-")),state=new OpenCraftHostStateDatabase(path),file=join(path,"rollout.jsonl");
+ const path=await mkdtemp(join(tmpdir(),"oc-usage-runtime-")),state=new TokenUsageStateDatabase(path),file=join(path,"rollout.jsonl");
  const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000),key={threadId:"thread",turnId:nativeId(999)};
  await writeFile(file,"");
  ledger.startTurn(key,1000,"human",true);ledger.recordInput(key,{inputId:"start",actorId:"A",actorKind:"human",mode:"start",admission:"confirmed"});
@@ -30,7 +30,7 @@ test("Host recovery reaches an older unfinished turn through bounded native meta
 });
 
 test("a completed thread retries its acquisition gap after its source returns without a Host restart",async()=>{
- const path=await mkdtemp(join(tmpdir(),"oc-usage-source-return-")),state=new OpenCraftHostStateDatabase(path),file=join(path,"rollout.jsonl");
+ const path=await mkdtemp(join(tmpdir(),"oc-usage-source-return-")),state=new TokenUsageStateDatabase(path),file=join(path,"rollout.jsonl");
  const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000),key={threadId:"thread",turnId:nativeId(999)};
  ledger.startTurn(key,1000,"human",true);ledger.recordInput(key,{inputId:"start",actorId:"A",actorKind:"human",mode:"start",admission:"confirmed"});
  ledger.recordSource({...key,lineage:"native",sourceId:"native-turn",kind:"turn-snapshot",version:1,provider:null,model:null,counts:{totalTokens:"1000"}});ledger.recordNativeTerminal(key);
@@ -53,7 +53,7 @@ test("a completed thread retries its acquisition gap after its source returns wi
 });
 
 test("symlink path discrepancy is repaired in place and preserves rollout cursor",async()=>{
- const path=await mkdtemp(join(tmpdir(),"oc-usage-symlink-")),state=new OpenCraftHostStateDatabase(path);
+ const path=await mkdtemp(join(tmpdir(),"oc-usage-symlink-")),state=new TokenUsageStateDatabase(path);
  const realFile=join(path,"rollout.jsonl"),linkFile=join(path,"rollout-link.jsonl");
  await writeFile(realFile,"x".repeat(42)+"incomplete");
  await symlink(realFile,linkFile);
@@ -84,7 +84,7 @@ test("symlink path discrepancy is repaired in place and preserves rollout cursor
 });
 
 test("gap restart deduplication restores open gaps and does not insert duplicate rows",async()=>{
- const path=await mkdtemp(join(tmpdir(),"oc-usage-gap-dedup-")),state=new OpenCraftHostStateDatabase(path);
+ const path=await mkdtemp(join(tmpdir(),"oc-usage-gap-dedup-")),state=new TokenUsageStateDatabase(path);
  const missingFile=join(path,"nonexistent.jsonl");
  const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000),key={threadId:"thread",turnId:nativeId(999)};
  ledger.startTurn(key,1000,"human",true);ledger.recordInput(key,{inputId:"start",actorId:"A",actorKind:"human",mode:"start",admission:"confirmed"});
