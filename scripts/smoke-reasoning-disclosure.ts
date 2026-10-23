@@ -68,6 +68,40 @@ try {
       await page.locator(`[data-revision="${before + 1}"]`).waitFor();
     };
     const activate = (target: any) => touch ? target.tap() : target.click();
+    if (process.argv.includes("--late-body-only")) {
+      await update("late-body-reset");
+      // Mount the file row while no diff exists, before the late body arrives.
+      const group = page.locator('.thread-agent-activity__group-disclosure > .thread-activity-item__header button[aria-expanded="false"]');
+      if (await group.count()) await activate(group.first());
+      const row = page.locator('.thread-patch-activities > .thread-activity-item');
+      await row.waitFor();
+      const original = await row.elementHandle();
+      assert.equal(await row.locator('.thread-activity-item__body-clip').count(), 0);
+      for (const action of ["late-body-append", "late-body-remove", "late-body-return"]) {
+        await update(action);
+        assert.equal(await original!.evaluate(element => element.isConnected), true, "the same file row owns incoming details");
+        if (action === "late-body-remove") {
+          assert.equal(await row.locator('.thread-activity-item__body-clip').count(), 0);
+          continue;
+        }
+        const clip = row.locator('.thread-activity-item__body-clip');
+        await page.waitForFunction(() => {
+          const row = document.querySelector('.thread-patch-activities > .thread-activity-item');
+          const clip = row?.querySelector('.thread-activity-item__body-clip');
+          const body = row?.querySelector('.thread-activity-item__body');
+          return !!clip && !!body && body.scrollHeight > 0
+            && Math.abs(clip.getBoundingClientRect().height - body.scrollHeight) <= 1;
+        }, null, { timeout: 5000 });
+        const height = await clip.evaluate(element => element.getBoundingClientRect().height);
+        assert.ok(height > 0, `${action}: arriving diff gets natural height`);
+        assert.equal(await row.locator('.thread-unified-diff').isVisible(), true);
+      }
+      await page.screenshot({ path: join(output, `late-body-${touch ? 'touch' : 'mouse'}-${theme}.png`) });
+      assert.deepEqual(errors, []);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+      results.push({ touch, theme, lateBodyMeasured: true, removedBodyReleased: true, returningBodyMeasured: true, rowRetained: true });
+      await page.close(); continue;
+    }
     if (process.argv.includes("--reading-panels-only") || !process.argv.some(value => value.endsWith("-only"))) {
       const restoreView = async () => {
         const scroll = await page.locator('.thread-scroll').elementHandle();
