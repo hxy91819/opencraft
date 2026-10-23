@@ -163,3 +163,15 @@ Deployment directories and running installations are not moved by
 source rebranding. Mac builds now produce `OpenCraft.app`, and scripts use
 explicit `OPENCRAFT_MAC_*` settings. Builds must be deployed separately; source renaming
 does not replace the running production website or Mac application.
+
+## IndexedDB identity
+
+Current owned Web databases use `opencraft-*` names. Each owner passes its exact
+former name within the same product/server partition to the shared migration
+adapter. Existing current state wins, and failed copies retain their source.
+The former versioned writer is retired before a transactional snapshot/copy;
+blocked windows produce a visible retry boundary. Scope IDs, recipes, extension
+revisions, sidebar ownership and Replica cursors remain intact. See
+[database identity migration](../indexeddb-identity-migration.md) for archive,
+recovery and platform boundaries. Split legacy extension settings/installations
+remain read-only import sources; Expo native SQLite is a separate owner.
