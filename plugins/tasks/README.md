@@ -1,5 +1,7 @@
 # Tasks
 
+The sidebar Board entry uses its localized title and columns icon without a promotional badge, including expanded mobile navigation.
+
 Built-in Web/Electron extension, opened from **任务** in the primary sidebar.
 Tasks are business records; Board and List display the same rows. Six fixed
 statuses are shared by both views. Drag a handle or choose a

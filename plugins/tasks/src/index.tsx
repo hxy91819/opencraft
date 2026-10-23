@@ -63,7 +63,6 @@ export function createTasksExtension(
         title: "看板",
         titleMessage: { id: "sidebar.rail.tasks", defaultMessage: "Board" },
         shortTitleMessage: { id: "sidebar.rail.tasks.short", defaultMessage: "Board" },
-        badgeMessage: { id: "navigation.tryIt", defaultMessage: "Try it" },
         surface: "sidebar-primary",
         target: { kind: "view", viewId: TASKS_VIEW_ID },
         icon: "columns",
