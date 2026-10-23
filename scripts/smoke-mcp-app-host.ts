@@ -137,6 +137,8 @@ try {
       assert.equal(await app.locator("#disclosure-draft").inputValue(), "Keep this App input");
     }
     await app.locator("#disclosure-draft").evaluate(element => element.remove());
+    // Let the scheduled iframe measurement reach the parent before sampling.
+    await app.locator("body").evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     const initialHeight = await page.locator("iframe").evaluate(element=>element.getBoundingClientRect().height);
     await app.locator("body").evaluate(element=>{const extra=document.createElement("div");extra.id="size-probe";extra.style.height="500px";element.append(extra)});
     await page.waitForFunction(height=>document.querySelector("iframe").getBoundingClientRect().height>height+400,initialHeight);
