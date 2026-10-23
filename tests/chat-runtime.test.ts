@@ -308,13 +308,13 @@ test("pending command approval derives one provisional Activity and authority re
           startedAtMs: 400,
           environmentId: null,
           reason: "Inspect the workspace",
-          cwd: "/vela",
+          cwd: "/opencraft",
           commandActions: [
             {
               type: "read",
               command: "cat package.json",
               name: "package.json",
-              path: "/vela/package.json",
+              path: "/opencraft/package.json",
             },
             {
               type: "search",
@@ -350,7 +350,7 @@ test("pending command approval derives one provisional Activity and authority re
           type: "read",
           command: "cat package.json",
           name: "package.json",
-          path: "/vela/package.json",
+          path: "/opencraft/package.json",
         },
       ]);
       assert.equal(provisional.status, "running");
@@ -367,7 +367,7 @@ test("pending command approval derives one provisional Activity and authority re
                 id: "compound-command",
                 type: "commandExecution",
                 command: "cat package.json && rg vite src",
-                cwd: "/vela",
+                cwd: "/opencraft",
                 processId: null,
                 status: "completed",
                 commandActions: [
@@ -375,7 +375,7 @@ test("pending command approval derives one provisional Activity and authority re
                     type: "read",
                     command: "cat package.json",
                     name: "package.json",
-                    path: "/vela/package.json",
+                    path: "/opencraft/package.json",
                   },
                   {
                     type: "search",
@@ -441,7 +441,7 @@ test("file-change and permission approvals never invent provisional tool Activit
             turnId: "turn-one",
             itemId: "patch-missing",
             reason: "Write files",
-            grantRoot: "/vela",
+            grantRoot: "/opencraft",
           },
         },
         {
@@ -725,20 +725,20 @@ test("commandExecution commandActions become stable activity rows sharing source
               id: "compound-command",
               type: "commandExecution",
               command: "cat package.json && rg vite src",
-              cwd: "/vela",
+              cwd: "/opencraft",
               status: "completed",
               commandActions: [
                 {
                   type: "read",
                   command: "cat package.json",
                   name: "package.json",
-                  path: "/vela/package.json",
+                  path: "/opencraft/package.json",
                 },
                 {
                   type: "search",
                   command: "rg vite src",
                   query: "vite",
-                  path: "/vela/src",
+                  path: "/opencraft/src",
                 },
               ],
               aggregatedOutput: "match",
@@ -763,7 +763,7 @@ test("commandExecution commandActions become stable activity rows sharing source
             type: "command",
             source: "shell",
             command: "cat package.json && rg vite src",
-            cwd: "/vela",
+            cwd: "/opencraft",
           },
           decisionSource: "agent",
         },
