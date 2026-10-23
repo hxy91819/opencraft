@@ -52,7 +52,7 @@ HTML preview entry: completed inline-code `.html` / `.htm` paths use that same r
 
 国内嵌入聊天采用 compact 右栏初始宽度：既有默认宽度的 2/3，并继续遵守面板最小宽度和聊天内容保留宽度；拖拽调整由原 Shell owner 负责，独立工作台保持 standard 默认。
 
-国内桌面嵌入聊天由控制台占满侧栏右侧的内容列，去除设置页外围 gutter 和宽度上限；宿主通过 `--lightvela-console-header-height` 对齐 68px 导航表头。嵌入根将其投影到 toolbar token（缺省 46px），消息正文保留内部间距；移动端与旧聊天入口沿用原布局。
+国内桌面嵌入聊天由控制台占满侧栏右侧的内容列，去除设置页外围 gutter 和宽度上限；宿主通过下游嵌入适配器对齐 68px 导航表头。嵌入根将表头高度投影到 toolbar token（缺省 46px），具体产品装配由下游持有，消息正文保留内部间距；移动端与旧聊天入口沿用原布局。
 
 只读 Markdown 文件预览的“源码”直接呈现转义后的原文，可选择复制和键盘滚动，不依赖按需加载的编辑器模块；可编辑工作台继续由 CodeMirror 持有草稿。
 

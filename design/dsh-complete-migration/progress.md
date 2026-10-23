@@ -151,7 +151,7 @@ heading is visible. Screenshot /tmp/opencraft-dsh-actual-browser.png inspected.
 Existing conversation resume, subsequent sends and page reload also pass.
 No paid requests or real credentials. Full goal remains incomplete.
 
-Real-browser acceptance now drives open_in_vela and browser_use through actual
+Real-browser acceptance drove the browser-opening and browser-use tools through actual
 DSH and Workbench handlers. It uncovered two genuine gaps: resumed threads did
 not re-register dynamicTools (added capability-negotiated registration after
 hydration), and browser JSON Schema anyOf/range constraints are outside DSH's

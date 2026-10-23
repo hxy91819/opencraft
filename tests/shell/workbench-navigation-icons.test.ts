@@ -6,8 +6,8 @@ import { resolveWorkbenchPresentation } from "../../apps/workbench-web/src/workb
 import { WorkbenchPresentationContext } from "../../apps/workbench-web/src/workbench-product";
 import { NavigationIcon } from "../../apps/workbench-web/src/components/shell-navigation/navigation-action";
 
-const render = (name: string, selected = false, product = "opencraft") => renderToStaticMarkup(
-  createElement(WorkbenchPresentationContext.Provider, {value:resolveWorkbenchPresentation({iconStyle: product === "lightvela-web" ? "classic" : "standard"})}, createElement(NavigationIcon, { name, selected })),
+const render = (name: string, selected = false, iconStyle: "standard" | "classic" = "standard") => renderToStaticMarkup(
+  createElement(WorkbenchPresentationContext.Provider, {value:resolveWorkbenchPresentation({iconStyle})}, createElement(NavigationIcon, { name, selected })),
 );
 
 test("navigation glyph state is projected without changing the semantic name or SVG box", () => {
@@ -27,12 +27,12 @@ test("navigation glyph state is projected without changing the semantic name or 
 
 test("Downstream navigation retains its existing silhouette and detailed selected state", () => {
   for (const name of ["chat", "message-circle", "cloud", "folder", "applications"]) {
-    assert.match(render(name, false, "lightvela-web"), /fill="none"/);
-    assert.match(render(name, true, "lightvela-web"), /fill="currentColor"/);
+    assert.match(render(name, false, "classic"), /fill="none"/);
+    assert.match(render(name, true, "classic"), /fill="currentColor"/);
   }
   for (const name of ["bot", "database", "hard-drive", "server"]) {
-    assert.match(render(name, true, "lightvela-web"), /fill="none"/);
-    assert.match(render(name, true, "lightvela-web"), /stroke-width="2.5"/);
+    assert.match(render(name, true, "classic"), /fill="none"/);
+    assert.match(render(name, true, "classic"), /stroke-width="2.5"/);
   }
   assert.match(render("message-circle"), /data-action-glyph="chat"/);
 });

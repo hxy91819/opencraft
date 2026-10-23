@@ -17,7 +17,7 @@ import '/apps/workbench-web/src/styles/app.scss';
 initializeAppearanceTheme();
 const layout=await SidebarLayoutStore.open({load:async()=>null,save:async(_scope,doc)=>doc});
 const threads=['Short conversation','A deliberately long synthetic conversation title that must truncate','Review result'].map((title,i)=>({id:'thread-'+i,title,project:i===1?'long-synthetic-project':'workspace',status:i===1?'running':'ready',updatedAt:Date.now()/1000-i*86400,connectionHostId:'fixture',connectionHostLabel:'Synthetic server',...legacyDirectServerProjectionFromHost({hostId:'fixture',hostKind:'remote-ssh',label:'Synthetic server'})}));
-const snapshot={settingsPages:[{contribution:{id:'lightvela.hermes.skills',title:'Skills',icon:'sparkles',viewId:'skills'}}]};
+const snapshot={settingsPages:[{contribution:{id:'example.tools.skills',title:'Skills',icon:'sparkles',viewId:'skills'}}]};
 const contributions={subscribe:()=>()=>{},getSnapshot:()=>snapshot};
 const renames=[],deletes=[],forks=[];const threadActions={onRename:async(_target,title)=>{renames.push(title);},onFork:()=>new Promise(resolve=>{forks.push(resolve);}),onArchive:async()=>{},onDelete:async(target)=>{deletes.push(target.threadId);window.fixture.remove(target.threadId);},onSetPinned:async()=>{}};
 function Demo(){const [open,setOpen]=useState(true),[selected,setSelected]=useState('thread-0'),[actionsAvailable,setActionsAvailable]=useState(true),[visibleThreads,setThreads]=useState(threads);window.fixture={resetThreads:()=>setThreads(threads),setThemePreference,setActionsAvailable,setThreads,setSelected,renames,deletes,forks,remove:id=>setThreads(rows=>rows.filter(row=>row.id!==id)),setStatus:(id,status)=>setThreads(rows=>rows.map(row=>row.id===id?{...row,status}:row))};

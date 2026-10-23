@@ -51,7 +51,7 @@
 管理API仍为本地边界替身验收，未对真实云端资源执行写入；独立预览未登录。
 
 最终Mac深路由reload发现真实白屏：Electron base='./'导致/views/assets资源404。此前无reload的管理交互通过不覆盖此场景。
-修正Vite base为服务origin根'/'，与生产loopback static server一致；需重新构建包并实机验证/views/vela.bot-management.view刷新。
+修正Vite base为服务origin根'/'，与生产loopback static server一致；当时需要重新构建包并实机验证管理 View 刷新（现行路由为 `/views/opencraft.bot-management.view`）。
 
 最终：完整gate通过；14项管理聚焦测试、真实Radix管理控件/API替身验收通过。最终签名Mac包457个renderer文件逐一匹配当前构建。
 SCSS同步导入导致Node Host测试失败已通过动态加载修复，10项Host入口测试通过；客户端已打开Bots页。

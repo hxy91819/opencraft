@@ -167,10 +167,10 @@ test("WebSocket connection provider enforces the browser security boundary", () 
   const context = { platform: "web" as const, hostId: "host:test", profileRevision: 0 };
   assert.deepEqual(
     WebSocketHostConnectionProvider.validate(
-      { url: "wss://node.example/appserver", protocols: ["vela.v1"] },
+      { url: "wss://node.example/appserver", protocols: ["example.v1"] },
       context,
     ),
-    { url: "wss://node.example/appserver", protocols: ["vela.v1"] },
+    { url: "wss://node.example/appserver", protocols: ["example.v1"] },
   );
   assert.throws(
     () => WebSocketHostConnectionProvider.validate({ url: "ws://node.example/appserver" }, context),
@@ -471,12 +471,12 @@ test("legacy thread and draft links retain resource identity on the canonical we
 
 
 test("fixed embedded Thread memory is account/Profile scoped and never borrows unbound legacy selection", () => {
-  const hostId="lightvela-embed:ins-fixture:profile:sales";
+  const hostId="embedded-host:ins-fixture:profile:sales";
   const values=new Map([[activeThreadStorageKey(hostId),"unbound-old-thread"],[activeThreadStorageKey(hostId,"cn:account-a"),"account-a-thread"]]);
   const storage={getItem:(key:string)=>values.get(key)??null};
   assert.equal(rememberedThreadId(storage,hostId,"configured","cn:account-a"),"account-a-thread");
   assert.equal(rememberedThreadId(storage,hostId,"configured","cn:account-b"),null);
-  assert.equal(rememberedThreadId(storage,"lightvela-embed:ins-fixture:profile:support","configured","cn:account-a"),null);
+  assert.equal(rememberedThreadId(storage,"embedded-host:ins-fixture:profile:support","configured","cn:account-a"),null);
   assert.equal(values.get(activeThreadStorageKey(hostId)),"unbound-old-thread","old history/selection is not deleted or reassigned");
 });
 
