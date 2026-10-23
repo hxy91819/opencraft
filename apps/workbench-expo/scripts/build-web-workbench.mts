@@ -14,7 +14,7 @@ const appRoot = path.join(root, "apps/workbench-expo");
 process.env.OPENCRAFT_BUILD_TARGET = "mobile";
 const config = createWorkbenchWebConfig({ mode: "production", command: "build" }, { pluginBranding: false });
 const plugins = (config.plugins ?? []).flat().filter(plugin => plugin && !(typeof plugin === "object" && "name" in plugin
-  && ["opencraft-startup-resources", "opencraft-optional-web-assets", "vela-preview-bridge-asset", "opencraft-release-metadata"].includes(plugin.name)));
+  && ["opencraft-startup-resources", "opencraft-optional-web-assets", "opencraft-preview-bridge-asset", "opencraft-release-metadata"].includes(plugin.name)));
 const endpoint = process.env.EXPO_PUBLIC_APPSERVER_WS_URL?.trim();
 if (endpoint) {
   const url = new URL(endpoint);

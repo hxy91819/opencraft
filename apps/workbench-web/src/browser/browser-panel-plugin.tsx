@@ -241,7 +241,7 @@ export function createBrowserWorkbenchPanelPlugin(
       }),
       ctx.workbenchPanelRenderers.register({ kind: "browser", Component: BrowserPanel }),
       ctx.workbenchPanels.registerToolbarAction({
-        id: "vela.browser.new-tab",
+        id: "opencraft.browser.new-tab",
         region: "right",
         order: 100,
         label: "New browser tab",

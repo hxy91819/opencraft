@@ -3,7 +3,7 @@ import type { SpeechInputObserver, SpeechInputProvider, SpeechInputSession, Spee
 import { DictationTranscriptLedger } from "./dictation-transcript-ledger";
 
 export class NativeSpeechInputProvider implements SpeechInputProvider {
-  readonly id = "vela.macos-speech";
+  readonly id = "opencraft.macos-speech";
   private tail: Promise<void> = Promise.resolve();
   constructor(private readonly port: NativeSpeechPort, private readonly options: { createId?(): string } = {}) {}
   isAvailable(): boolean { return true; }

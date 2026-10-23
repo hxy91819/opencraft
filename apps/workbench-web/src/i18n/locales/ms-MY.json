@@ -185,7 +185,7 @@
   "account.signInIncomplete": "Log masuk tidak lengkap",
   "account.signIn": "Log masuk",
   "account.title": "Akaun",
-  "account.signInLightVela": "Log masuk",
+  "account.signIn": "Log masuk",
   "account.usage": "Penggunaan",
   "account.remaining": "{remaining, number, percent} tinggal",
   "account.signingOut": "Sedang log keluar…",

@@ -453,7 +453,7 @@ export async function createWorkbenchWebServer({
         sendJson(response, 403, { ok: false, error: "Matching origin required" });
         return;
       }
-      const url = new URL(request.url || "/", "http://vela.invalid");
+      const url = new URL(request.url || "/", "http://opencraft.invalid");
       const local = !!localAccess?.origin(request);
       if (!local && !["/health", "/__opencraft_health"].includes(url.pathname)) await accessService?.prepare?.(request);
       // Login/callback endpoints must remain reachable before instance admission.
@@ -695,7 +695,7 @@ export async function createWorkbenchWebServer({
     if (hubService?.node?.handleUpgrade(request, socket, head)) return;
     let url;
     try {
-      url = new URL(request.url || "/", "http://vela.invalid");
+      url = new URL(request.url || "/", "http://opencraft.invalid");
     } catch {
       socket.destroy();
       return;

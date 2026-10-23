@@ -664,7 +664,7 @@ export function App({
   const allPanelToolbarActions = usePanelToolbarActions();
   const panelToolbarActions = allPanelToolbarActions
     .filter(action => presentation.panelActions === "all" || presentation.panelActions.includes(action.id))
-    .map(action => action.id === "vela.browser.new-tab" ? { ...action,
+    .map(action => action.id === "opencraft.browser.new-tab" ? { ...action,
       label: intl.formatMessage({ id: "panel.newBrowser", defaultMessage: "New browser tab" }),
       creationLabel: intl.formatMessage({ id: "panel.browser", defaultMessage: "Browser" }),
     } : action.id === "opencraft.cloud-desktop.open" ? { ...action,

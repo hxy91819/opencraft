@@ -109,7 +109,7 @@ function AccountContent({ config, compact, onInvoke }: {
   if (isAnonymousShellAccount(account)) {
     return <div className="shell-navigation__items">
       <button type="button" onClick={() => onInvoke(account.onOpen)}>
-        <LogIn size={16} /><span>{account.snapshot.anonymousLabel ?? <FormattedMessage id="account.signInLightVela" defaultMessage="Sign in" />}</span>
+        <LogIn size={16} /><span>{account.snapshot.anonymousLabel ?? <FormattedMessage id="account.signIn" defaultMessage="Sign in" />}</span>
       </button>
     </div>;
   }
