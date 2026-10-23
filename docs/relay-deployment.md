@@ -462,3 +462,19 @@ actual error to distinguish provider quota from connection failure.
 ### Nested application documents
 
 HTML rewriting preserves a root-relative application `<base href>` within the selected installation prefix. This keeps relative script and stylesheet requests under a nested application's own resource directory. Documents without a usable local base retain the installation root; external or escaping bases do not retarget relay admission. This only scopes HTML resource resolution and does not change request identity, cookies or membership checks.
+
+
+## Optional provider admission policy
+
+A trusted Headless identity adapter may supply `admissionPolicy` with asynchronous
+`prepare(principal)` and synchronous `allows(principal)` / `allowsBinding(binding)`.
+The gateway prepares verified identities before ordinary HTTP/WS and human Actor
+interfaces. InstanceAccess applies the same policy to role checks, existing
+connection watchers and durable human-Actor admission. The port never verifies
+identity, grants a role, removes an explicit revocation or changes Session bearer
+permissions. Omitting it preserves current behavior. Provider-specific settings,
+verified attributes, storage and execution belong to the adapter. Policies must
+fail closed, fence stale asynchronous completions and retain trusted binding
+facts needed for durable admission after restart. Publication invalidates old
+policy decisions. Local recovery and machine-to-machine Hub authentication keep
+their separate existing contracts.

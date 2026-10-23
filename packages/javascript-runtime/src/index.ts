@@ -27,6 +27,12 @@ const { parentPort, workerData } = require('node:worker_threads');
  } finally { vm.dispose(); rt.dispose(); }
 })().catch(() => parentPort.postMessage({ok:false}));`;
 let running = 0;
+/** Pure bounded JSON functions shared by trusted policy adapters. */
+export function jsonFunctionSource(source: unknown, name: string): string {
+  if (typeof source !== 'string' || !source.trim() || Buffer.byteLength(source) > 16_384
+    || !/^[a-zA-Z_$][a-zA-Z0-9_$]*$/u.test(name)) throw new Error('invalid_function');
+  return `(function freeze(v) { if(v && typeof v === 'object') { Object.values(v).forEach(freeze); Object.freeze(v); } })(args);\n${source}\nif (typeof ${name} !== 'function') throw Error();\nreturn ${name}(args);`;
+}
 export async function javascript(
   input:
     | { compile: true; sources: string[] }
