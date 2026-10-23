@@ -84,7 +84,7 @@ Web preferences、Connector configuration 与插件文档继续使用各自 Inde
 
 ### 下游额外 owner 的兼容与目标校验
 
-- Codex state 的 queue、sender、企业身份 四张表属于同一个物理库；consumer 不再自行 CREATE。旧完整库 `adopted`，旧构造器支持的已知缺对象通过 `createMissingLegacyObjects` 备份后原子补齐；dispatching 恢复为 unknown 等队列恢复仍在业务 owner，不进入迁移。metadata plugin 只借用连接，不能升级或关闭它。
+- OpenCraft Host state 的 queue、sender、企业身份 四张表属于同一个物理库；consumer 不再自行 CREATE。旧完整库 `adopted`，旧构造器支持的已知缺对象通过 `createMissingLegacyObjects` 备份后原子补齐；dispatching 恢复为 unknown 等队列恢复仍在业务 owner，不进入迁移。metadata plugin 只借用连接，不能升级或关闭它。
 - attachments 沿用原表/索引和记录身份，允许原构造器支持的缺索引；不迁移或改写 attachment payload。
 - Tasks 沿用已发布 v1 账本，拒绝非空无账本库；默认固定 Local Agent authority 预开，私有 Codex Tasks 仍在用户实际发现/使用功能时打开，capabilities 成功回执之前必须完成迁移。未使用它不创建第二份 Tasks 文件或阻止 Codex 连接。
 - SSH 保留原 v1 SQL/name/hash、私有路径/key/密文，v2 只投影旧 reader 的 user_version。已有 v1 及新建后中断于 v1 的受证结构可重试；未知基线、新版/错误账本、失去 key 都拒绝，不替换 credentials。
@@ -198,7 +198,7 @@ user_version。原未修改旧入口不能直接作为升级后的回退。固�
 而非只证明某张库可读；见[受管Headless历史恢复](managed-headless.md#固定旧部署的历史恢复工具)。
 
 
-## Codex Host v5：持久会话目录与参与关系完成状态
+## OpenCraft Host state v5：持久会话目录与参与关系完成状态
 
 `OpenCraftHostStateDatabase` 在原 v1–v4 后追加 `durable-thread-catalog` v5；原迁移
 SQL、名称与 checksum 保持。迁移新增 `codex_thread_catalog`（受控元数据、归档/删除
@@ -222,7 +222,7 @@ verification is configured. Managed v1 creates the sender, origin, creator and
 derived 企业身份 tables through migrations; plugin consumers only borrow its connection.
 It uses strict schema validation and rejects unknown legacy files, newer versions
 and changed checksum history without replacing data. Future changes append v2;
-existing Codex v1–v5 migrations and all native DSH databases are untouched.
+existing OpenCraft Host state v1–v5 migrations and all native DSH databases are untouched.
 
 The Headless installation lock scopes the owner by stable Server; shutdown retires
 proxy sessions, metadata work and the read-only native client before closing this
@@ -231,7 +231,7 @@ connection. Startup failure releases resources and refuses readiness. Health lis
 [Unified identity tests](../tests/unified-thread-identity.test.ts) cover fresh/reopen
 ledger and data retention, checksum/newer-schema rejection, shared Codex/DSH
 semantics, real WebSocket ingress and automatic Headless wiring across restart.
-This new owner has no prior schema to upgrade; existing Codex upgrade fixtures
+This new owner has no prior schema to upgrade; existing OpenCraft Host state upgrade fixtures
 continue to validate v4→v5 preservation. Old DSH messages have no trusted employee
 records and remain unknown; opening metadata never relabels them as the viewer.
 
@@ -240,7 +240,7 @@ records and remain unknown; opening metadata never relabels them as the viewer.
 AccountPool owner 的 v2 迁移只向 pool_accounts 追加可空重置券数量与确认时间，保留v1 SQL与校验和。已知无账本旧结构转换到同一目标；凭据、账号、亲和性和已有用量不重建。数量未知不写0；推理header观测不改券元数据。升级后不使用仅认识v1的旧owner打开v2库；回退优先前向修复或兼容迁移版本，不以旧备份覆盖后续业务数据。
 
 
-## Codex Host v6: token metering foundations
+## OpenCraft Host state v6: token metering foundations
 
 The existing `OpenCraftHostStateDatabase` appends migration v6 without changing the
 published v1–v5 SQL or checksums. Its connection and transaction owner also owns

@@ -484,8 +484,8 @@ test("process-owned Host keeps an admitted Turn alive across a lost Renderer and
   const firstConnection = server.accept(firstPorts.host, "mobile-before-sleep");
   const firstClient = new MessagePortAppHostClient(firstPorts.browser, "mobile-before-sleep");
   await firstClient.waitUntilReady();
-  const first = await firstClient.connectHost("local-codex", "before-sleep");
-  await firstClient.sendHostFrame("local-codex", "before-sleep", first.generation,
+  const first = await firstClient.connectHost("process-host", "before-sleep");
+  await firstClient.sendHostFrame("process-host", "before-sleep", first.generation,
     JSON.stringify({ jsonrpc: "2.0", id: 1, method: "turn/start", params: { threadId: "thread-1" } }));
 
   firstConnection.close();
@@ -497,14 +497,14 @@ test("process-owned Host keeps an admitted Turn alive across a lost Renderer and
   const secondConnection = server.accept(secondPorts.host, "mobile-after-wake");
   const secondClient = new MessagePortAppHostClient(secondPorts.browser, "mobile-after-wake");
   await secondClient.waitUntilReady();
-  const second = await secondClient.connectHost("local-codex", "after-wake");
+  const second = await secondClient.connectHost("process-host", "after-wake");
   assert.equal(second.generation, first.generation);
   assert.equal(createCount, 1);
-  await secondClient.sendHostFrame("local-codex", "after-wake", second.generation,
+  await secondClient.sendHostFrame("process-host", "after-wake", second.generation,
     JSON.stringify({ jsonrpc: "2.0", id: 2, method: "thread/resume", params: { threadId: "thread-1" } }));
   assert.ok(physical.sent.some(frame => JSON.parse(frame).method === "thread/resume"));
 
-  await secondClient.disconnectHost("local-codex", "after-wake", second.generation);
+  await secondClient.disconnectHost("process-host", "after-wake", second.generation);
   assert.equal(physical.closeCount, 0);
   secondConnection.close();
   secondClient.close();
@@ -521,9 +521,9 @@ test("closing a Renderer does not disconnect a logical client still active on an
   const secondConnection = server.accept(secondPorts.host, "second-renderer");
   const firstClient = new MessagePortAppHostClient(firstPorts.browser, "first-renderer");
   await firstClient.waitUntilReady();
-  await firstClient.connectHost("local-codex", "shared-lease");
-  const key = [...(server as unknown as { slots: Map<string, { claims: Map<string, unknown> }> }).slots.get("local-codex")!.claims.keys()][0]!;
-  secondConnection.rememberLogicalClient(key, "local-codex");
+  await firstClient.connectHost("process-host", "shared-lease");
+  const key = [...(server as unknown as { slots: Map<string, { claims: Map<string, unknown> }> }).slots.get("process-host")!.claims.keys()][0]!;
+  secondConnection.rememberLogicalClient(key, "process-host");
   try {
     firstConnection.close();
     await new Promise(resolve => setImmediate(resolve));
@@ -552,11 +552,11 @@ test("a failed explicit logical disconnect is retried when its Renderer WebSocke
   const ports = createPortPair(), connection = server.accept(ports.host, "disconnect-retry");
   const client = new MessagePortAppHostClient(ports.browser, "disconnect-retry");
   await client.waitUntilReady();
-  const host = await client.connectHost("local-codex", "retry-lease");
+  const host = await client.connectHost("process-host", "retry-lease");
   try {
-    await assert.rejects(client.disconnectHost("local-codex", "retry-lease", host.generation), /synthetic logical disconnect failure/);
+    await assert.rejects(client.disconnectHost("process-host", "retry-lease", host.generation), /synthetic logical disconnect failure/);
     assert.equal(physical.attempts, 1);
-    const slot = (server as unknown as { slots: Map<string, { claims: Map<string, unknown> }> }).slots.get("local-codex");
+    const slot = (server as unknown as { slots: Map<string, { claims: Map<string, unknown> }> }).slots.get("process-host");
     assert.equal(slot?.claims.size, 0, "the local claim is released even when notification fails");
     connection.close();
     await new Promise(resolve => setImmediate(resolve));

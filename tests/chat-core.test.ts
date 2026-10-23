@@ -3089,7 +3089,7 @@ test("only current-response trailing reasoning may replace Thinking, never histo
   assert.equal(reasoningUnits(complete.assistant)[0]?.presentation.header, "First");
 });
 
-test("Codex commentary remains inside Agent Activity while final_answer is a separate unit", () => {
+test("commentary remains inside Agent Activity while final_answer is a separate unit", () => {
   const snapshot = projectTimeline(source([{
     id: "turn-activity",
     status: "streaming",

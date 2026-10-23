@@ -1117,7 +1117,7 @@ in their original Host catalog, but never retarget a replacement draft.
 The thirteen Node SQLite storage kinds use the shared sqlite-node lifecycle;
 physical paths and exclusive owners stay separate. A configured Local Agent opens
 its five foundational stores plus the existing Tasks file before listening. Its
-failure releases handles and rejects startup. Codex state opens queue, sender and
+failure releases handles and rejects startup. OpenCraft Host state opens queue, sender and
 enterprise identity tables through one connection/migration owner; attachments have their own file.
 Codex-private Tasks remain lazy and validate storage before capability success.
 SSH management opens only for the configured feature. Private Host failures cannot

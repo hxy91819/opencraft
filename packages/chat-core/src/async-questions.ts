@@ -2,7 +2,7 @@ import type { AsyncQuestion, TimelineSnapshot } from "./timeline";
 
 export type AsyncQuestionState = "pending" | "sending" | "unconfirmed" | "answered" | "dismissed";
 
-/** Codex's stable identity: JSON.stringify([tool name, AgentMessage item ID, index]). */
+/** Stable question identity: JSON.stringify([tool name, AgentMessage item ID, index]). */
 export function projectAsyncQuestions(messageId: string, value: unknown): readonly AsyncQuestion[] {
   if (!Array.isArray(value)) return [];
   return value.slice(0, 16).flatMap((entry, index): readonly AsyncQuestion[] => {

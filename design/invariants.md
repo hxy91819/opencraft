@@ -988,7 +988,7 @@ Sidebar Server 来源以 metadata 项目名前的7px实心圆点呈现，仅 rem
 ### 回迁后的固定嵌入与业务 SQLite
 
 - Thread 记忆按现有 product/Host/Profile 加当前 account/region 作用域；未知账号归属的旧 selection 不转给新账号，不删原历史。账号撤销、路由/草稿代次及 Application 释放共同隔离晚到结果；隐藏/重新显示与重连不重建草稿或机器 authority。
-- Node SQLite 一个物理文件只能有一个迁移/连接 owner；Codex queue、sender、企业身份 presence/state 同库，metadata consumer 不再 CREATE 或独自关闭。Tasks/SSH 已发布 SQL/hash 不变，未知账本拒绝，已知旧记录在备份/原子转换中保留；没有空列表替代已知旧库数据。
+- Node SQLite 一个物理文件只能有一个迁移/连接 owner；OpenCraft Host queue、sender、企业身份 presence/state 同库，metadata consumer 不再 CREATE 或独自关闭。Tasks/SSH 已发布 SQL/hash 不变，未知账本拒绝，已知旧记录在备份/原子转换中保留；没有空列表替代已知旧库数据。
 - Local Agent 配置目录的 Tasks 属于启动 gate；可选 Codex Tasks/SSH 私有 owner 按功能真实使用打开，能力成功回执先验证数据。迁移 outcome 不代表全部可选引擎已初始化，不把失败库误报 ready。
 - 验证：`tests/downstream-sqlite-lifecycle.test.ts`、`tests/workbench-product-icons.test.tsx`、`tests/work-in-draft.test.ts`、下游 `products/<product>/tooling/smoke-product-isolation.mjs`。真实三面 release DOM、企业服务/RFC6455/AppServer bridge、浅深×DPR1/2 的外部边界为本地合成账号/Host；完整 gate、真实企业账号/推理/SSH/发布仍留后续阶段。
 

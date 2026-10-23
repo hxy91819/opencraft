@@ -93,7 +93,7 @@ function displayStatusFor(block: SubagentTimelineBlock, status: SubagentTaskStat
   return status === "waiting" || status === "working" ? "active" : "done";
 }
 
-/** Renderer-neutral projection of Codex collaboration calls and task states. */
+/** Renderer-neutral projection of collaboration calls and task states. */
 export function deriveSubagentActivityPresentation(block: SubagentTimelineBlock): SubagentActivityPresentation {
   const states = record(block.agentStates) ?? {};
   const pathName = nameFromPath(block.agentPath);

@@ -1,4 +1,3 @@
-// scripts/ssh-codex-control.mjs
 import { access, constants } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
