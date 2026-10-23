@@ -53,13 +53,20 @@ function longEmptyResponse(engine: string, withClock: boolean): TimelineSourceTu
     { ...reasoning(engine, "", true), id: `long-empty-reason-${cycle}` },
   ]);
   items.push({ id: "long-answer", type: "agentMessage", payload: {
-    text: "Long response final answer", phase: "final_answer", completed: true,
+    text: params.has("longHistory") ? Array.from({ length: 100 }, (_, index) =>
+      `Long response paragraph ${index}: Keep content below the visible disclosure.`).join("\n\n") : "Long response final answer", phase: "final_answer", completed: true,
   } });
   return { id: "turn", status: "complete", items, ...(withClock ? {
     startedAtMs: 1_000, firstTurnWorkItemStartedAtMs: 1_050,
     finalAssistantStartedAtMs: 5_000, completedAtMs: 5_100, durationMs: 4_100,
   } : {}) };
 }
+
+const historyTurns: TimelineSourceTurn[] = params.has("longHistory")
+  ? Array.from({ length: 24 }, (_, index) => ({ id: `history-${index}`, status: "complete", items: [
+    { id: `history-answer-${index}`, type: "agentMessage", payload: { phase: "final_answer", completed: true,
+      text: Array.from({ length: 12 }, (_, paragraph) => `History ${index} paragraph ${paragraph}: Preserve the visible reading anchor.`).join("\n\n") } },
+  ] })) : [];
 
 function Demo() {
   const [turnEntry, setTurnEntry] = useState(false);
@@ -365,7 +372,7 @@ function Demo() {
   // route return does. This is not a timer or a separate preference store.
   useEffect(() => { if (!mounted) { setGeneration(value => value + 1); setMounted(true); } }, [mounted]);
   const timeline = projectTimeline({ key: createConversationKey(engine, "thread"), revision, authoritative: true,
-    phase: "live", turns: [turn] }, registry);
+    phase: "live", turns: [...historyTurns, turn] }, registry);
   return <div data-revision={revision} hidden={presentationHidden} style={{ width: "100vw", height: "100dvh" }}>
     <WorkbenchPresentationActivityProvider active={presentationActive}>
     <TimelineBlockRendererProvider registry={ctx.timelineBlockRenderers}>

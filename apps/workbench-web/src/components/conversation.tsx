@@ -837,11 +837,16 @@ export function Conversation({
     viewportOwner.captureReflowAnchor(event.target);
   }, [viewportOwner]);
   const virtualizerApiRef = useRef<WebVirtualizedTurnListApi | null>(null);
-  const virtualizerRestoreStateRef = useRef(initialRestoreSnapshot?.virtualizedTurnList ?? null);
+  const virtualizerRestoreSnapshotRef = useRef<ReturnType<WebVirtualizedTurnListApi["captureRestoreSnapshot"]> | null>(
+    initialRestoreSnapshot === null ? null : {
+      distanceFromBottomPx: normalizeInitialScrollDistance(initialRestoreSnapshot.distanceFromBottomPx),
+      virtualizedTurnList: initialRestoreSnapshot.virtualizedTurnList,
+    },
+  );
   const [virtualizedTurnListApi, setVirtualizedTurnListApi] = useState<WebVirtualizedTurnListApi | null>(null);
   const handleVirtualizerApiChange = useStableEvent((api: WebVirtualizedTurnListApi | null) => {
     if (api === null && virtualizerApiRef.current !== null) {
-      virtualizerRestoreStateRef.current = virtualizerApiRef.current.captureRestoreState();
+      virtualizerRestoreSnapshotRef.current = virtualizerApiRef.current.captureRestoreSnapshot();
     }
     virtualizerApiRef.current = api;
     setVirtualizedTurnListApi(api);
@@ -933,6 +938,8 @@ export function Conversation({
     const responseRestore = scrollPolicyRef.current === "response-placement"
       ? responseApiRef.current?.captureRestoreSnapshot() ?? responseRestoreRef.current
       : null;
+    const virtualizerRestore = virtualizerApiRef.current?.captureRestoreSnapshot()
+      ?? virtualizerRestoreSnapshotRef.current;
     restoreCallbackRef.current?.({
       agentActivityCollapsedById: activityCollapsedByIdRef.current,
       chatReadingPositions: Object.fromEntries(chatReadingPositions),
@@ -941,8 +948,9 @@ export function Conversation({
       commandViews: Object.fromEntries(commandViews),
       asyncQuestionDrafts: asyncQuestionDraftsRef.current,
       distanceFromBottomPx: responseRestore?.distanceFromBottomPx
+        ?? virtualizerRestore?.distanceFromBottomPx
         ?? scrollController.getLastScrollDistanceFromBottomPx(),
-      virtualizedTurnList: virtualizerApiRef.current?.captureRestoreState() ?? virtualizerRestoreStateRef.current,
+      virtualizedTurnList: virtualizerRestore?.virtualizedTurnList ?? null,
       turnFollow: responseRestore?.turnFollow ?? null,
     });
     viewportOwner.dispose();

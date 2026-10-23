@@ -3458,7 +3458,16 @@ cannot replace the controller's durable reading distance or the virtualizer's
 measured rows. The same observations resume when the viewport is measurable;
 visible measurements remain synchronous and explicit scroll-to-bottom intent
 keeps its existing owner. Unmounting a parked View serializes the retained
-checkpoint for the replacement View.
+checkpoint for the replacement View. The Web virtualizer captures its measured
+rows and reading distance together. If View cleanup interrupts a measurement
+commit before scroll compensation, its checkpoint uses that transaction's
+projected distance with the new height table, rather than the controller's
+previous distance. Before releasing a measurable port, its owner reports the
+final physical geometry so a local reflow need not wait for a native scroll
+event to enter the checkpoint. Hidden geometry retains the previous distance.
+Scroll events from a detached port cannot overwrite the
+retained distance before listener cleanup. Response placement retains its own
+restore position.
 
 ## Optional conversation summary
 

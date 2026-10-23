@@ -154,6 +154,11 @@ export class WebConversationViewportOwner {
   readonly attachScrollElement = (element: HTMLDivElement | null): void => {
     if (this.disposed) return;
     if (this.scrollElementRef.current === element) return;
+    // A local reflow adjustment may precede its native scroll event. Capture
+    // measurable geometry while the retiring port still belongs to this owner.
+    if ((this.scrollElementRef.current?.clientHeight ?? 0) > 0) {
+      this.scrollController.reportGeometry();
+    }
     this.cancelReflowAnchor();
     this.scrollElementRef.current?.style.removeProperty("--thread-scroll-padding-bottom");
     this.scrollElementRef.current = element;
@@ -425,7 +430,7 @@ export class WebConversationViewportOwner {
     };
     const clearTouch = () => { touchPoint = null; };
     const handleScroll = () => {
-      if (element.clientHeight === 0) return;
+      if (this.scrollElementRef.current !== element || element.clientHeight === 0) return;
       const physicalDistance = Math.max(0, -element.scrollTop);
       if (
         pointerSnapshot !== null
