@@ -9,7 +9,7 @@ import { LOGICAL_CLIENT_FIELD } from "@opencraft/app-host-protocol";
 import { AccountPoolStore } from "@opencraft/account-pool-host";
 
 import { CodexEngineAdapter } from "../apps/opencraft-daemon/src/codex-engine-adapter.js";
-import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { TokenUsageStateDatabase } from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { replayRolloutUsage } from "../apps/opencraft-daemon/src/token-usage-rollout.js";
 
@@ -88,7 +88,7 @@ try {
   const notifications = frames.filter(frame => ["rawResponse/completed","thread/tokenUsage/updated"].includes(frame.method));
   const rollout = thread.path ? (await readFile(thread.path,"utf8")).split("\n").filter(Boolean).map(line=>JSON.parse(line)) : [];
   const exactUsage = rollout.filter(row=>row.type === "token_usage_record").map(row=>row.payload);
-  const usageState = new OpenCraftHostStateDatabase(join(root,"metering-probe"));
+  const usageState = new TokenUsageStateDatabase(join(root,"metering-probe"));
   let recovery;
   try {
     const ledger = new OpenCraftTokenUsageLedger(usageState,"probe-server",()=>0);

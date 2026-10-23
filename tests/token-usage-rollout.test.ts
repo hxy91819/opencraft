@@ -3,7 +3,7 @@ import test from "node:test";
 import { mkdtemp, rm, writeFile, appendFile, mkdir, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { OpenCraftHostStateDatabase } from "../apps/opencraft-daemon/src/opencraft-host-state-database.js";
+import { TokenUsageStateDatabase } from "../apps/opencraft-daemon/src/token-usage-state-database.js";
 import { OpenCraftTokenUsageLedger } from "../apps/opencraft-daemon/src/token-usage-ledger.js";
 import { replayRolloutUsage } from "../apps/opencraft-daemon/src/token-usage-rollout.js";
 
@@ -12,10 +12,10 @@ const record = (id: string, count: number) => JSON.stringify({type:"token_usage_
   thread_id:"thread",turn_id:"turn",session_id:"session",response_id:id,usage:{total_tokens:count},
   thread_token_usage:{total_tokens:900000},
 }})+"\n";
-async function fixture(body: (value: {root: string; nativeHome: string; path: string; threadId: string; ledger: OpenCraftTokenUsageLedger; state: OpenCraftHostStateDatabase})=>Promise<void>) {
+async function fixture(body: (value: {root: string; nativeHome: string; path: string; threadId: string; ledger: OpenCraftTokenUsageLedger; state: TokenUsageStateDatabase})=>Promise<void>) {
   const root=await mkdtemp(join(tmpdir(),"oc-usage-rollout-"));
   const nativeHome=join(root,"native"); await mkdir(nativeHome);
-  const state=new OpenCraftHostStateDatabase(join(root,"host"));
+  const state=new TokenUsageStateDatabase(join(root,"host"));
   const ledger=new OpenCraftTokenUsageLedger(state,"server",()=>1000);
   ledger.startTurn(key,1000,"human",true);
   ledger.recordInput(key,{inputId:"input",actorId:"A",actorKind:"human",mode:"start",admission:"confirmed"});
