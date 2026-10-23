@@ -20,7 +20,7 @@ import {
 } from "@opencraft/daemon-ipc";
 
 import { DshSessionRouting } from "../../apps/local-agent-host/src/dsh-session-routing.js";
-import { seedLegacyHostStorage, seedNewerHostStorage } from "../local-agent-storage-fixture.js";
+import { seedLegacyHostStorage, seedNewerHostStorage } from "../support/local-agent-storage-fixture.js";
 import { OpenCraftDaemonClientManager } from "../../apps/workbench-electron/src/daemon-client.js";
 import { readDaemonMachineIdentity } from "../../apps/opencraft-daemon/src/machine-identity.js";
 import { startOpenCraftDaemonServer } from "../../apps/opencraft-daemon/src/server.js";

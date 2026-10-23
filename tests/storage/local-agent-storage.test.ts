@@ -11,7 +11,7 @@ import { openLocalAgentStorage } from "../../apps/local-agent-host/src/storage/l
 import { DshSessionRouting } from "../../apps/local-agent-host/src/dsh-session-routing.js";
 import { ThreadCatalog } from "../../apps/local-agent-host/src/thread-catalog.js";
 import { SqliteLifecycleError } from "@opencraft/sqlite-node";
-import { seedLegacyHostStorage, seedNewerHostStorage } from "../local-agent-storage-fixture.js";
+import { seedLegacyHostStorage, seedNewerHostStorage } from "../support/local-agent-storage-fixture.js";
 
 const names = ["session-routing", "threads", "executions", "host-documents", "managed-connectors", "tasks"];
 test("fresh Host storage establishes all configured databases and can reopen up-to-date", async () => {

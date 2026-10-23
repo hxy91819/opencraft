@@ -9,7 +9,7 @@ import WebSocket from "ws";
 import { WebSocketServer } from "ws";
 
 import { openLocalAgentStorage, startLocalAgentHost } from "../../apps/local-agent-host/src/main.js";
-import { seedNewerHostStorage } from "../local-agent-storage-fixture.js";
+import { seedNewerHostStorage } from "../support/local-agent-storage-fixture.js";
 import { ThreadCatalog } from "../../apps/local-agent-host/src/thread-catalog.js";
 import { DshExecutionAuthority } from "../../apps/local-agent-host/src/dsh-execution-authority.js";
 import { OpenCraftHostStateDatabase } from "../../apps/opencraft-daemon/src/opencraft-host-state-database.js";

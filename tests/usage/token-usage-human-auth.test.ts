@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {join} from "node:path";
 import {build} from "esbuild";
-import {humanAuthFixture} from "../human-auth-fixture.js";
+import {humanAuthFixture} from "../support/human-auth-fixture.js";
 import {TokenUsageStateDatabase} from "../../apps/opencraft-daemon/src/token-usage-state-database.js";
 import {OpenCraftTokenUsageLedger} from "../../apps/opencraft-daemon/src/token-usage-ledger.js";
 import {TokenUsageQueryService} from "../../apps/opencraft-daemon/src/token-usage-query-service.js";
