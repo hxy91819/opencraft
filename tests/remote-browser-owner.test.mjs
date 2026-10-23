@@ -10,7 +10,7 @@ import { connect } from 'node:net';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
 import WebSocket from 'ws';
-import { connectBrowserOwner } from '../scripts/remote-browser-owner.mjs';
+import { connectBrowserOwner, reuseBrowserOwner } from '../scripts/remote-browser-owner.mjs';
 import { RemoteBrowserService } from '../scripts/remote-browser-service.mjs';
 const { createBrowserOwner } = createRequire(import.meta.url)('../scripts/remote-browser/owner.cjs');
 
@@ -91,4 +91,17 @@ test('an overlapping Gateway receives a retryable open failure while the prior o
     await first.persistence; await second.persistence;
     await new Promise(resolve => server.close(resolve));
   }
+});
+
+
+test('runtime script upgrade only stops empty owners under their exclusive attachment', async () => {
+  for (const [pages, current, stopped] of [[[{id:'live'}],false,false],[[],true,false],[[],false,true]]) {
+    let stops=0,kills=0;const peer={inventory:pages,kill(){kills++;}};
+    const reused=await reuseBrowserOwner(peer,async()=>current,async()=>{stops++;});
+    assert.equal(stops,stopped?1:0);assert.equal(kills,stopped?1:0);
+    assert.equal(reused,stopped?null:peer);
+  }
+  let kills=0;const peer={inventory:[],kill(){kills++;}};
+  await assert.rejects(reuseBrowserOwner(peer,async()=>false,async()=>{throw Error('stop rejected');}),/stop rejected/);
+  assert.equal(kills,1,'failed upgrade must release its exclusive transport');
 });

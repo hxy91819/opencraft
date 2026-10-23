@@ -183,11 +183,44 @@ export class RemoteBrowserService {
       page.keyTimer.unref();
     }
   }
+  resetVisibility(page) {
+    page.visibilityGeneration = (page.visibilityGeneration ?? 0) + 1;
+    page.visibilityWake?.(); page.visibilityWake = null; page.visibilityJob = null;
+    page.painted = null;
+  }
   visibility(page) {
-    const visible = [...this.viewers(page).values()].some(viewer => viewer.visible);
-    if (page.painted === visible || !page.live || page.closing) return Promise.resolve();
-    page.painted = visible;
-    return this.request(page.id, 'visible', { visible });
+    if (page.visibilityJob) return page.visibilityJob;
+    const generation = page.visibilityGeneration ?? 0, child = this.child;
+    const current = () => !this.closed && !page.closing && page.live
+      && this.child === child && (page.visibilityGeneration ?? 0) === generation;
+    const job = (async () => {
+      let failures = 0;
+      while (current()) {
+        const visible = [...this.viewers(page).values()].some(viewer => viewer.visible);
+        if (page.painted === visible) return;
+        try {
+          await this.request(page.id, 'visible', { visible });
+          if (!current()) return;
+          page.painted = visible; failures = 0;
+        } catch (error) {
+          if (!current()) return;
+          // A failed/unknown outcome cannot be cached as applied. These setters
+          // are idempotent; input and composition are never retried here.
+          page.painted = null;
+          if (error.retryable === false) throw error;
+          if (++failures > 3)
+            throw unavailable('Browser display unavailable; reconnecting');
+          await new Promise(resolve => {
+            const timer = setTimeout(wake, 200 * 2 ** (failures - 1)); timer.unref();
+            function wake() { clearTimeout(timer); if (page.visibilityWake === wake) page.visibilityWake = null; resolve(); }
+            page.visibilityWake = wake;
+          });
+        }
+      }
+    })();
+    page.visibilityJob = job;
+    void job.finally(() => { if (page.visibilityJob === job) page.visibilityJob = null; }).catch(() => {});
+    return job;
   }
   detach(page, ws) {
     this.display.detach(ws);
@@ -201,7 +234,7 @@ export class RemoteBrowserService {
   }
   retire(page, replying) {
     if (page.retirement) return page.retirement;
-    page.closing = true;
+    page.closing = true; this.resetVisibility(page);
     clearTimeout(page.keyTimer); page.keyTimer = null;
     for (const ws of this.viewers(page).keys()) if (ws !== replying) ws.close(1000, 'Browser tab closed');
     this.retiredLeases.add(page.key);
@@ -216,6 +249,12 @@ export class RemoteBrowserService {
       if (this.pages.get(page.key) === page) this.pages.delete(page.key);
       page.controller = null; this.viewers(page).clear();
       await this.persist();
+      // A stale runtime remains pinned while any Tab exists. Releasing an idle
+      // transport lets the next open safely upgrade an empty native owner.
+      if (this.ownerConnector && this.child?.runtimeCurrent === false && !this.pages.size
+        && !this.requests.size && !this.attachments.size) {
+        const child = this.child; this.child = null; this.starting = null; child.kill();
+      }
     })().catch(error => { page.retirement = null; this.retryRetirement(page); throw error; });
     return page.retirement;
   }
@@ -254,7 +293,7 @@ export class RemoteBrowserService {
           for (const request of this.requests.values()) { clearTimeout(request.timer); request.reject(unavailable('Browser owner disconnected')); }
           this.requests.clear();
           for (const page of this.pages.values()) {
-            page.live = false; page.painted = false; page.controller = null; page.controlToken = null; page.controlKind = null; page.controlEpoch = (page.controlEpoch ?? 0) + 1;
+            this.resetVisibility(page); page.live = false; page.painted = false; page.controller = null; page.controlToken = null; page.controlKind = null; page.controlEpoch = (page.controlEpoch ?? 0) + 1;
             for (const ws of this.viewers(page).keys()) ws.close(1011, 'Browser owner disconnected; reconnecting');
           }
           child.kill();
@@ -319,7 +358,7 @@ export class RemoteBrowserService {
         failStartup?.(unavailable('Browser process exited during startup'));
         for (const request of this.requests.values()) { clearTimeout(request.timer); request.reject(unavailable('Browser process exited')); }
         this.requests.clear();
-        for (const p of this.pages.values()) { p.live = false; p.painted = false; p.controller = null; p.controlToken = null; p.controlKind = null; p.controlEpoch = (p.controlEpoch ?? 0) + 1; for (const ws of this.viewers(p).keys()) ws.close(1011, 'Browser process exited; reconnecting'); }
+        for (const p of this.pages.values()) { this.resetVisibility(p); p.live = false; p.painted = false; p.controller = null; p.controlToken = null; p.controlKind = null; p.controlEpoch = (p.controlEpoch ?? 0) + 1; for (const ws of this.viewers(p).keys()) ws.close(1011, 'Browser process exited; reconnecting'); }
         // Retire this transport only. EOF/disconnect asks a still-running owned
         // worker to quit; its late messages/errors cannot touch the replacement.
         child.stdin?.destroy();
@@ -370,7 +409,7 @@ export class RemoteBrowserService {
     const p = [...this.pages.values()].find(page => page.id === message.page);
     if (message.type === 'renderer-gone' && p) {
       this.diagnose('renderer_exited', undefined, message);
-      p.live = false; p.painted = false; p.controller = null; p.controlToken = null; p.controlKind = null;
+      this.resetVisibility(p); p.live = false; p.painted = false; p.controller = null; p.controlToken = null; p.controlKind = null;
       p.controlEpoch = (p.controlEpoch ?? 0) + 1;
       clearTimeout(p.keyTimer); p.keyTimer = null;
       for (const [id, request] of this.requests) if (request.page === p.id) {
@@ -558,7 +597,12 @@ export class RemoteBrowserService {
           if (['navigate', 'viewport'].includes(message.method)) await this.persist();
           if (!quietMethods.has(message.method) || message.method === 'input' && viewer.inputAcknowledgements) reply(message.id, value);
         } catch (error) { opening = false;
-          if (message?.id) reply(message.id, null, error); else ws.close(1008, 'Invalid browser request'); }
+          if (message?.id) reply(message.id, null, error); else ws.close(1008, 'Invalid browser request');
+          // Quiet setters have no client waiter. Exhausted display recovery
+          // must reattach rather than silently leave this viewer out of sync.
+          if (message?.method === 'visible' && error.code === 'BROWSER_UNAVAILABLE')
+            ws.close(1013, 'Browser display unavailable; reconnecting');
+        }
         finally { releaseAttachment?.(); pending--; }
       });
       ws.on('close', code => {
@@ -581,7 +625,7 @@ export class RemoteBrowserService {
     }
     clearTimeout(this.checkpointTimer);
     if (this.loaded) void this.persist().catch(() => {});
-    for (const page of this.pages.values()) { clearTimeout(page.retirementTimer); clearTimeout(page.keyTimer); }
+    for (const page of this.pages.values()) { this.resetVisibility(page); clearTimeout(page.retirementTimer); clearTimeout(page.keyTimer); }
     for (const request of this.requests.values()) { clearTimeout(request.timer); request.reject(new Error('Browser service closed')); }
     this.requests.clear();
     if (this.isolated) this.child?.stdin.end(); else this.child?.kill();

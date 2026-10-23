@@ -63,7 +63,7 @@ test('transferred viewer stops retries and implicit navigation; explicit reload 
 test('control loss keeps transport alive, fences queued writes and rejects an obsolete grant', async () => {
   const host: any = Object.create(RemoteBrowserSurfaceHost.prototype); host.controlListeners = new Set();
   let resolve: (state: any) => void = () => {}, resets = 0, sends = 0;
-  const p: any = {control:{epoch:0,active:false,controller:false,kind:null},controlGeneration:0,connection:1,closed:false,acquiring:null,
+  const p: any = {visible:true,control:{epoch:0,active:false,controller:false,kind:null},controlGeneration:0,connection:1,closed:false,acquiring:null,
     resetInput(){resets++;},receiver:{blur(){},value:'',type:'text',inputMode:'none',setAttribute(){}},events:{onError(){}}};
   host.queueViewport = host.keyboardChanged = () => {}; host.retireMenu = () => {};
   host.rawCall = () => { sends++; return new Promise(r => { resolve = r; }); };

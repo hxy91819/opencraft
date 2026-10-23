@@ -18,11 +18,11 @@ interface Page {
   control: Control; controlGeneration: number; acquiring: { kind: 'human' | 'agent'; promise: Promise<string>; generation: number } | null; agentQueue: Promise<unknown>; serverInitialNavigation: boolean; gestureActive: boolean;
   media: H264MediaSource | null; video: HTMLVideoElement | null; cancelVideoReady: (() => void) | null; id: BrowserPageId; lease: string; container: HTMLDivElement; canvas: HTMLCanvasElement; receiver: HTMLInputElement; editor: string | null; keyboard: RemoteKeyboardPolicy | null; keyboardIntent: { pointer: number; x: number; y: number; editor: string | null; until: number; completed: boolean } | null; ime: RemoteBrowserIme | null; editable: boolean; nativeIme: boolean; multiTouch: boolean;
   events: BrowserSurfaceEvents; navigation: number; url: BrowserUrl | null | undefined; socket: WebSocket | null;
-  restored: boolean; resumed: boolean; ready: Promise<void>; opened: boolean; disconnected: boolean; displaced: boolean; closed: boolean; visible: boolean; blocked: boolean;
+  restored: boolean; resumed: boolean; ready: Promise<void>; opened: boolean; disconnected: boolean; displaced: boolean; closed: boolean; visible: boolean; watching?: boolean; blocked: boolean;
   pending: Map<string, Pending>; decoder: VideoDecoder | null; latest: VideoFrame | null; raf: number;
   reconnect: ReturnType<typeof setTimeout> | null; connection: number; retries: number; needsKey: boolean;
   viewportMeasured: boolean; width: number; height: number; viewport: { width: number; height: number; deviceProfile?: BrowserDeviceProfile }; sentViewport: string;
-  resizeTimer: ReturnType<typeof setTimeout> | null; resizing: boolean;
+  resizeTimer: ReturnType<typeof setTimeout> | null; resizing: boolean; resizeRetry?: { target: string; failures: number }; awaitingFrame?: boolean;
   nativeCopy: boolean; interaction: number; menuIntent: string | null; automation: BrowserAutomation; resetPointers: () => void; resetInput: () => void; inputDispose: () => void;
 }
 /** Physical pages live on the Server. Canvas is only a presentation consumer;
@@ -40,19 +40,29 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
   releaseControl(id: BrowserPageId) { const p = this.require(id); void this.releaseControlToken(p).catch(error => p.events.onError(error.message)); }
   private setControl(p: Page, control: Control) {
     if (!control || !Number.isSafeInteger(control.epoch) || control.epoch < p.control.epoch) return;
+    const humanIntent = p.control.controller && p.control.token === control.token
+      || p.acquiring?.kind === 'human' && p.acquiring.generation === p.controlGeneration;
+    if (control.controller && control.kind === 'human' && (!this.isVisible(p) || !humanIntent)) {
+      ++p.controlGeneration; p.acquiring = null;
+      if (control.token) void this.rawCall(p, 'control', { action: 'release', token: control.token }).catch(() => {});
+      control = { ...control, controller: false, token: undefined };
+    }
+    const gained = control.controller && control.token !== p.control.token;
     const lost = p.control.controller && p.control.token !== control.token;
     p.control = control;
+    if (gained) p.resizeRetry = undefined;
     if (lost) { ++p.controlGeneration; this.retireMenu(p); p.resetInput(); this.resetKeyboard(p); }
     for (const listener of this.controlListeners) listener();
     if (control.controller && control.kind === 'human') this.queueViewport(p);
   }
   private acquireControl(p: Page, kind: 'human' | 'agent'): Promise<string> {
+    if (kind === 'human' && !this.isVisible(p)) return Promise.reject(new BrowserAutomationError('CONTROL_LOST', 'Browser interaction ended', true));
     if (p.control.controller && p.control.kind === kind && p.control.token) return Promise.resolve(p.control.token);
     if (p.acquiring?.kind === kind) return p.acquiring.promise;
     if (kind === 'human' && p.control.controller) this.setControl(p, { ...p.control, controller: false, token: undefined });
     const generation = p.controlGeneration, connection = p.connection;
     const promise = this.rawCall(p, 'control', { action: kind, takeover: kind === 'human' }).then((state: Control) => {
-      if (p.closed || p.connection !== connection || p.controlGeneration !== generation || !state.controller || !state.token || state.epoch < p.control.epoch) {
+      if (p.closed || kind === 'human' && !this.isVisible(p) || p.connection !== connection || p.controlGeneration !== generation || !state.controller || !state.token || state.epoch < p.control.epoch) {
         if (!p.closed && p.connection === connection && state.token) void this.rawCall(p, 'control', { action: 'release', token: state.token }).catch(() => {});
         throw new BrowserAutomationError('CONTROL_LOST', 'Browser control changed; start a new interaction', true);
       }
@@ -121,7 +131,7 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
   setBackingFactory(factory: ((id: BrowserPageId) => void) | null) { this.backing = factory; }
   setUseFactory(factory: ((id: BrowserPageId) => () => void) | null) { this.use = factory; }
   acquireUse(id: BrowserPageId) { return this.use?.(id) ?? (() => {}); }
-  setRoot(root: HTMLElement | null) { this.root = root; if (root) for (const p of this.pages.values()) root.prepend(p.container); else { this.localMenu.retire(); for (const p of this.pages.values()) { p.resetInput(); this.resetKeyboard(p); } } }
+  setRoot(root: HTMLElement | null) { this.root = root; if (root) for (const p of this.pages.values()) root.prepend(p.container); else { this.localMenu.retire(); for (const p of this.pages.values()) { p.resetInput(); this.resetKeyboard(p); } } for (const p of this.pages.values()) this.syncVisibility(p); }
   onClose(listener: (id: BrowserPageId) => void) { this.closeListeners.add(listener); return () => { this.closeListeners.delete(listener); }; }
   setZoom(id: BrowserPageId, percent: number) { this.run(this.require(id), 'zoom', { percent }); }
   async capture(id: BrowserPageId): Promise<string> { const p = this.require(id); await p.ready; return this.call(p, 'capture'); }
@@ -166,14 +176,14 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
     }
     p.blocked = false;
     const visible = phase === 'visible';
-    if (p.visible !== visible) { p.visible = visible; this.run(p, 'visible', { visible }); }
+    p.visible = visible; this.syncVisibility(p);
   }
   block(id: BrowserPageId) { const p = this.pages.get(id); if (p) { this.retireMenu(p); p.resetInput(); this.run(p, 'input', { type: 'touchCancel' }); p.blocked = true; p.container.style.pointerEvents = 'none'; } }
   park(id: BrowserPageId) {
     const p = this.pages.get(id); if (!p) return;
     this.retireMenu(p);
     p.resetInput(); this.resetKeyboard(p); p.container.style.visibility = 'hidden'; p.container.style.pointerEvents = 'none';
-    if (p.visible) { p.visible = false; this.run(p, 'visible', { visible: false }); }
+    p.visible = false; this.syncVisibility(p);
   }
   close(id: BrowserPageId) {
     if (!this.pages.has(id)) { const lease = this.storageIds.get(id); if (lease) this.discard(lease.replace(':', '-')); return; }
@@ -272,7 +282,7 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
     for (const listener of this.controlListeners) listener();
     this.retireMenu(p); p.resetInput(); this.resetKeyboard(p); p.opened = false;
     if (p.resizeTimer) clearTimeout(p.resizeTimer);
-    p.resizeTimer = null; p.resizing = false; this.rejectPending(p); this.resetDecoder(p);
+    p.resizeTimer = null; p.resizing = false; p.resizeRetry = undefined; this.rejectPending(p); this.resetDecoder(p);
   }
   private reconnect(p: Page) {
     // Retire the previous generation before closing it: its delayed close and
@@ -293,14 +303,14 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
       const current = () => !p.closed && p.connection === generation;
       ws.onopen = () => { if (!current()) return; clearTimeout(timer);
         const viewport = p.viewportMeasured ? { ...p.viewport } : undefined;
-        void this.call(p, 'open', { lease: p.lease, multiView: true, inputAcknowledgements: true, visible: p.visible, initialUrl: p.url ?? null, viewport, defaultDeviceProfile: remoteBrowserDeviceProfile() }).then(async config => {
+        void this.call(p, 'open', { lease: p.lease, multiView: true, inputAcknowledgements: true, visible: this.isVisible(p), initialUrl: p.url ?? null, viewport, defaultDeviceProfile: remoteBrowserDeviceProfile() }).then(async config => {
           if (!current()) return; p.inputAcknowledgements = config.inputAcknowledgements === true; p.serverInitialNavigation = config.multiView === true; this.setControl(p, config.control); p.resumed = config.resumed === true; p.restored = (config.resumed || config.restored) && !!config.navigation?.url && config.navigation.url !== 'about:blank'; p.nativeCopy = config.nativeCopy === true; p.nativeIme = config.nativeIme === true; p.multiTouch = config.multiTouch === true; this.keyboardChanged(); this.applyViewport(p, config);
           const effective = { width: config.width, height: config.height, deviceProfile: config.deviceProfile };
           if (!p.viewportMeasured) p.viewport = effective;
           p.sentViewport = JSON.stringify(effective); p.opened = true; for (const listener of this.controlListeners) listener(); p.retries = 0; clearTimeout(timer); resolve();
           if (p.restored && config.navigation) { p.events.onNavigation?.(config.navigation); if (config.navigation.url) p.url = config.navigation.url; }
           if (!config.navigation?.isLoading) p.events.onLoaded(config.navigation?.title || null);
-          this.queueViewport(p); this.run(p, 'visible', { visible: p.visible });
+          this.queueViewport(p); this.run(p, 'visible', { visible: this.isVisible(p) });
         }).catch(error => {
           clearTimeout(timer); reject(error); if (!current()) return; p.disconnected = true;
           if (error instanceof BrowserAutomationError && !error.retryable) terminalError = error;
@@ -377,12 +387,33 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
     if (p.width === config.width && p.height === config.height) return;
     // Config belongs to the new input/decoder epoch. The displayed bitmap keeps
     // its own dimensions until a complete replacement can be painted atomically.
-    this.resetDecoder(p, true); p.width = config.width; p.height = config.height;
+    this.resetDecoder(p, true); p.width = config.width; p.height = config.height; p.awaitingFrame = true;
   }
   private retireMenu(p: Page) { ++p.interaction; p.menuIntent = null; if (this.menuOwner === p) { this.menuOwner = null; this.localMenu.retire(); } }
-  private acceptsInput(p: Page) {
-    return this.root !== null && !p.closed && !this.inputFailed && !p.blocked && p.visible && p.opened && p.container.style.pointerEvents !== 'none';
+  private isVisible(p: Page) {
+    return this.root !== null && p.visible && (typeof document === 'undefined' || !document.hidden);
   }
+  private syncVisibility(p: Page) {
+    const watching = this.root !== null && this.isVisible(p);
+    if (p.watching === watching) return;
+    p.watching = watching;
+    if (!watching) {
+      // Visibility retires human intent, not the logical Tab or an Agent use.
+      const token = p.control.kind === 'human' ? p.control.token : undefined;
+      if (p.acquiring?.kind === 'human' || token) { ++p.controlGeneration; p.acquiring = null; }
+      this.retireMenu(p); p.resetInput(); this.resetKeyboard(p);
+      if (p.resizeTimer) clearTimeout(p.resizeTimer); p.resizeTimer = null;
+      if (token) {
+        this.setControl(p, { ...p.control, controller: false, token: undefined });
+        if (p.opened) void this.rawCall(p, 'control', { action: 'release', token }).catch(() => {});
+      }
+    } else { p.resizeRetry = undefined; this.queueViewport(p); }
+    if (p.opened) this.run(p, 'visible', { visible: watching });
+  }
+  private acceptsInput(p: Page) {
+    return this.root !== null && !p.closed && !this.inputFailed && !p.blocked && this.isVisible(p) && p.opened && p.container.style.pointerEvents !== 'none';
+  }
+  private acceptsPointer(p: Page) { return this.acceptsInput(p) && !p.resizing && !p.awaitingFrame; }
   private copyCurrent(p: Page) {
     this.menuOwner = p;
     const connection = p.connection, interaction = p.interaction;
@@ -408,18 +439,29 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
       focus: () => { if (current()) p.receiver.focus({ preventScroll: true }); }, error: message => p.events.onError(message) });
   }
   private queueViewport(p: Page) {
-    if (p.closed || !p.opened || !p.control.controller || p.control.kind !== 'human' || p.gestureActive || p.resizing || p.resizeTimer || p.sentViewport === JSON.stringify(p.viewport)) return;
-    // Existing presentation geometry owns resize. Bound reconfiguration to one
-    // in flight plus the latest pending size; keep updating during held drags.
-    const connection = p.connection;
+    const target = JSON.stringify(p.viewport), failures = p.resizeRetry?.target === target ? p.resizeRetry.failures : 0;
+    if (p.closed || !p.opened || !this.isVisible(p) || !p.control.controller || p.control.kind !== 'human' || p.gestureActive || p.resizing || p.resizeTimer || p.sentViewport === target || failures > 3) return;
+    const connection = p.connection, generation = p.controlGeneration, token = p.control.token;
+    const current = () => !p.closed && p.opened && this.isVisible(p) && connection === p.connection
+      && generation === p.controlGeneration && p.control.controller && p.control.kind === 'human' && p.control.token === token;
     p.resizeTimer = setTimeout(() => {
-      p.resizeTimer = null; if (p.closed || !p.opened || !p.control.controller || p.control.kind !== 'human' || p.gestureActive || connection !== p.connection) return;
-      const viewport = { ...p.viewport }; p.resetPointers(); p.resizing = true;
-      void this.call(p, 'viewport', viewport).then(() => {
-        if (connection === p.connection) p.sentViewport = JSON.stringify(viewport);
-      }).catch(error => { if (!p.closed && connection === p.connection) { p.sentViewport = JSON.stringify(viewport); p.events.onError(error.message); } })
-        .finally(() => { if (connection === p.connection) { p.resizing = false; this.queueViewport(p); } });
-    }, 100);
+      p.resizeTimer = null; if (!current() || p.gestureActive) return;
+      const viewport = { ...p.viewport }, sent = JSON.stringify(viewport);
+      const attempt = p.resizeRetry?.target === sent ? p.resizeRetry.failures : 0;
+      p.resetPointers(); p.resizing = true;
+      void this.call(p, 'viewport', viewport, token).then(() => {
+        if (current()) { p.sentViewport = sent; p.resizeRetry = undefined; }
+      }).catch(error => {
+        if (!current()) return;
+        const failures = error.retryable === false ? 4 : attempt + 1;
+        p.resizeRetry = { target: sent, failures };
+        if (failures > 3) p.events.onError(error.message);
+      }).finally(() => {
+        // An old connection's completion cannot release its replacement's slot.
+        if (connection !== p.connection) return;
+        p.resizing = false; this.queueViewport(p);
+      });
+    }, failures ? 200 * 2 ** (failures - 1) : 100);
   }
   private call(p: Page, method: string, input?: unknown, expected = p.control.token): Promise<any> {
     const readOnly = ['open', 'visible', 'keyframe', 'capture', 'copy'].includes(method)
@@ -451,7 +493,9 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
     // never in the earlier viewport-notification task.
     if (p.canvas.width !== width) p.canvas.width = width;
     if (p.canvas.height !== height) p.canvas.height = height;
-    p.canvas.getContext('2d', { alpha: false })?.drawImage(frame, 0, 0, width, height);
+    const context = p.canvas.getContext('2d', { alpha: false }); if (!context) return;
+    context.drawImage(frame, 0, 0, width, height);
+    if (width === p.width && height === p.height) p.awaitingFrame = false;
   }
   private snapshotVideo(p: Page, video: HTMLVideoElement) {
     if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) return;
@@ -553,6 +597,7 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
       for (const id of ids) if (canvas.hasPointerCapture(id)) canvas.releasePointerCapture(id);
     };
     listen('pointermove', (event: PointerEvent) => {
+      if (!this.acceptsPointer(p)) return;
       const intent = p.keyboardIntent;
       if (intent && Math.hypot(event.clientX - intent.x, event.clientY - intent.y) > 10) p.keyboardIntent = null;
       if (event.pointerType === 'touch' && p.multiTouch) {
@@ -565,7 +610,7 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
       if (!raf) raf = requestAnimationFrame(flushMove);
     });
     listen('pointerdown', (event: PointerEvent) => {
-      if (!this.acceptsInput(p)) return;
+      if (!this.acceptsPointer(p)) return;
       if (event.pointerType === 'touch' && !p.multiTouch && !event.isPrimary) return;
       event.preventDefault(); flushMove();
       if (event.pointerType === 'touch' && p.multiTouch && (contacts.has(event.pointerId) || contacts.size >= 10)) return;
@@ -603,10 +648,10 @@ export class RemoteBrowserSurfaceHost implements BrowserSurfaceHost {
     listen('pointercancel', (event: PointerEvent) => { if (captured.has(event.pointerId)) cancel(); });
     listen('lostpointercapture', (event: PointerEvent) => { if (captured.has(event.pointerId)) cancel(); });
     window.addEventListener('blur', cancel); cleanup.push(() => window.removeEventListener('blur', cancel));
-    const visibility = () => { if (document.hidden) cancel(); };
+    const visibility = () => { this.syncVisibility(p); };
     document.addEventListener('visibilitychange', visibility); cleanup.push(() => document.removeEventListener('visibilitychange', visibility));
     listen('contextmenu', event => event.preventDefault());
-    listen('wheel', (event: WheelEvent) => { event.preventDefault(); if (!this.acceptsInput(p)) return; void this.acquireControl(p, 'human').catch(error => p.events.onError(error.message)); this.retireMenu(p); send({ type: 'mouseWheel', ...point(event), deltaX: -event.deltaX * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1), deltaY: -event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1), modifiers: modifiers(event) }); }, { passive: false });
+    listen('wheel', (event: WheelEvent) => { event.preventDefault(); if (!this.acceptsPointer(p)) return; void this.acquireControl(p, 'human').catch(error => p.events.onError(error.message)); this.retireMenu(p); send({ type: 'mouseWheel', ...point(event), deltaX: -event.deltaX * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1), deltaY: -event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1), modifiers: modifiers(event) }); }, { passive: false });
     const ime = p.ime = new RemoteBrowserIme(receiver, input => this.call(p, 'ime', input),
       () => this.acceptsInput(p) && p.control.controller && p.control.kind === 'human', message => p.events.onError(message), () => p.editor);
     const textListen = (name: string, handler: (event: any) => void) => { receiver.addEventListener(name, handler); cleanup.push(() => receiver.removeEventListener(name, handler)); };

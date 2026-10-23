@@ -1813,3 +1813,34 @@ Transient owner attachment failures, including a still-attached prior Gateway,
 are retryable browser-unavailable errors. Protocol incompatibility remains
 terminal without replacing live tabs. Rejected private sockets drain their short
 status reply and then close, without retaining unread attachment data.
+
+### Native state acknowledgements and client backgrounding
+
+Visibility and viewport setters distinguish desired, in-flight and acknowledged state.
+A failed or unknown result never advances acknowledged state. Setters serialize and
+coalesce to the latest target, retry transient failures with bounded backoff, and
+retire results with their connection/native generation. This mechanism never replays
+clicks, keys or composition. Exhausted recovery remains actionable and can resume on
+a new connection, control grant or presentation intent.
+
+Remote viewing requires both Shell presentation and a foreground client document.
+Hiding retires local gestures, composition, menus and pending human grants, releases
+human control and stops viewing; it neither destroys the logical Tab nor revokes an
+Agent's independent background use. Foregrounding resumes observation without
+claiming control. Open/reconnect consumes current effective visibility.
+
+Resize preserves the previous complete bitmap. Pointer injection waits for the
+replacement geometry and its first complete frame; focused keyboard/IME editing
+keeps its native target contract during the geometry handoff.
+
+Clipboard capability invalidation follows its owning frame/document. Unrelated
+subframe or same-document navigation does not globally cancel a menu's copy. Top-level
+document replacement, owning-frame replacement, renderer loss and native token
+rejection continue to fail closed, including while capture or Copy is in flight.
+
+A live managed owner keeps its immutable runtime until its Tabs are explicitly
+closed. On attachment, differing public scripts/assets can replace an empty owner
+under its exclusive transport; active inventory always preserves the process. The
+last explicit close releases a stale idle transport so the next open can upgrade.
+An unknown script identity preserves the owner. This is not native binary hot swap:
+existing live Tabs adopt native helper fixes after draining, not through DOM reload.

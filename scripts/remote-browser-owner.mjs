@@ -1,7 +1,7 @@
 import { connect } from 'node:net';
 import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
-import { cp, mkdir, rm, rename } from 'node:fs/promises';
+import { cp, mkdir, rm, rename, readdir, readFile } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import owner from './remote-browser/owner.cjs';
@@ -40,13 +40,41 @@ export async function connectBrowserOwner(socketPath) {
   });
 }
 
+// Public scripts/assets are immutable while an owner is alive. Native binary
+// replacement retains the existing lifecycle contract; this detects JS updates.
+async function scriptsFingerprint(directory) {
+  const hash = createHash('sha256');
+  const entries = await readdir(directory, { withFileTypes: true });
+  for (const name of entries.filter(entry => entry.isFile()).map(entry => entry.name).sort()) {
+    hash.update(name); hash.update('\0'); hash.update(await readFile(join(directory, name))); hash.update('\0');
+  }
+  return hash.digest('hex');
+}
+export async function reuseBrowserOwner(transport, current, stop) {
+  // This transport is the sole attached peer. Its inventory was taken after
+  // draining the previous Gateway, so no other writer can create a page here.
+  transport.runtimeCurrent = await current();
+  if (transport.runtimeCurrent || transport.inventory.length) return transport;
+  try { await stop(); } finally { transport.kill(); }
+  return null;
+}
+
 /** Managed Linux only. The manager owns process lifetime; immutable runtime
  * files live outside releases, so release cleanup cannot break a retained tab. */
 export async function startBrowserOwner({ directory, dataDirectory }) {
   const state = 'opencraft-browser-' + createHash('sha256').update(dataDirectory).digest('hex').slice(0, 16);
   const unit = state + '-owner-v' + owner.PROTOCOL;
   const socketPath = '/var/lib/' + state + '/owner.sock';
-  try { return await connectBrowserOwner(socketPath); } catch (error) {
+  try {
+    const attached = await connectBrowserOwner(socketPath);
+    const reused = await reuseBrowserOwner(attached, async () => {
+      try { return await scriptsFingerprint(directory) === await scriptsFingerprint(join(dataDirectory, 'owner-runtime')); }
+      catch { return true; } // Unknown runtime identity must never destroy tabs.
+    }, async () => {
+      if (await run('systemctl', ['stop', unit]) !== 0) throw new Error('Empty browser owner could not stop');
+    });
+    if (reused) return reused;
+  } catch (error) {
     if (error.code === 'BROWSER_OWNER_INCOMPATIBLE') throw error;
     if (!['ENOENT', 'ECONNREFUSED'].includes(error.code)) throw error;
   }
@@ -72,7 +100,7 @@ export async function startBrowserOwner({ directory, dataDirectory }) {
   }
   const until = Date.now() + 15000;
   do {
-    try { return await connectBrowserOwner(socketPath); } catch (error) {
+    try { const attached = await connectBrowserOwner(socketPath); attached.runtimeCurrent = true; return attached; } catch (error) {
       if (error.code === 'BROWSER_OWNER_INCOMPATIBLE') throw error;
       if (!['ENOENT','ECONNREFUSED'].includes(error.code)) throw error;
     }
