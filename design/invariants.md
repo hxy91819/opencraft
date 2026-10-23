@@ -1835,6 +1835,13 @@ See [Tasks initial loading](../docs/workbench-design-language.md#tasks-initial-l
 - Loading, timeout and retry use the viewer's existing area; they cannot enlarge
   menus, rows or neighboring containers. File-tree visibility and PDF behavior
   remain owned by the existing panel contract.
+- PPTX navigation belongs to its retained file preview: one selected slide,
+  relative fit/zoom and an explicitly toggleable thumbnail rail. Fit consumes
+  the actual preview container in both dimensions, not the browser width.
+  Page navigation never scrolls the surrounding Shell or consumes input editing
+  keys. The thumbnail rail is inert document content within navigation buttons;
+  only near-viewport thumbnails (at most eight) hold render handles. Hidden/
+  detached views release thumbnail work; close/replacement cancels all handles.
 - Evidence: `tests/file-preview-core.test.ts`, `tests/structured-preview.test.ts`,
   `scripts/smoke-office-preview.ts`, `scripts/smoke-structured-preview.ts`;
   detailed boundaries and limits: [file previews](../docs/file-preview.md).

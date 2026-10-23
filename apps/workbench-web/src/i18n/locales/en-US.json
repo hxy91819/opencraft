@@ -873,5 +873,9 @@
   "chat.command.stopped": "Stopped",
   "chat.command.success": "Success",
   "chat.command.exitCode": "Exit code {code}",
-  "chat.command.exitUnknown": "Exit code unknown"
+  "chat.command.exitUnknown": "Exit code unknown",
+  "preview.slideNumber": "Slide number",
+  "preview.slide": "Slide {page}",
+  "preview.slides": "Slide thumbnails",
+  "preview.fitSlide": "Fit slide"
 }

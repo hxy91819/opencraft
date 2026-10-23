@@ -897,5 +897,9 @@
   "chat.command.stopped": "已停止",
   "chat.command.success": "成功",
   "chat.command.exitCode": "退出码 {code}",
-  "chat.command.exitUnknown": "退出码未知"
+  "chat.command.exitUnknown": "退出码未知",
+  "preview.slideNumber": "幻灯片页码",
+  "preview.slide": "第 {page} 页幻灯片",
+  "preview.slides": "幻灯片缩略图",
+  "preview.fitSlide": "适合页面"
 }

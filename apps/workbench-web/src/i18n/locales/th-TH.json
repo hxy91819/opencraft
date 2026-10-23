@@ -875,5 +875,9 @@
   "chat.command.stopped": "หยุดแล้ว",
   "chat.command.success": "สำเร็จ",
   "chat.command.exitCode": "รหัสออก {code}",
-  "chat.command.exitUnknown": "ไม่ทราบรหัสออก"
+  "chat.command.exitUnknown": "ไม่ทราบรหัสออก",
+  "preview.slideNumber": "หมายเลขสไลด์",
+  "preview.slide": "สไลด์ {page}",
+  "preview.slides": "ภาพขนาดย่อของสไลด์",
+  "preview.fitSlide": "ปรับสไลด์ให้พอดี"
 }
