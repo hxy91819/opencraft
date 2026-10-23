@@ -59,7 +59,7 @@ remain stable throughout animation and streaming; closing restores geometry.
 The list must not classify a row from a deep descendant's disclosure state.
 Content/prose boundaries are based on stable content roles, not open state.
 See [spacing ownership](../../docs/architecture/chat-ui/activities-and-tools.md#activity-disclosure-spacing-ownership)
-and `scripts/smoke-activity-spacing.ts` for real Conversation frame sampling.
+and `scripts/smoke/conversation/smoke-activity-spacing.ts` for real Conversation frame sampling.
 
 ### MCP App 客户端宿主
 
@@ -127,7 +127,7 @@ A folded lazy tool group mounts collapsed on its first DOM commit, including an
 in-progress Turn restored by session switching. It must not manufacture an
 expanded frame and then animate it away. Explicit saved expansion, manual toggles
 and live content updates retain their existing ownership and transitions.
-Evidence: `scripts/smoke-conversation-entry-motion.ts` samples real Conversation
+Evidence: `scripts/smoke/conversation/smoke-conversation-entry-motion.ts` samples real Conversation
 group phase and body height on the first commit and subsequent animation frames.
 
 

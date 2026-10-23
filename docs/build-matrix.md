@@ -629,7 +629,7 @@ Ubuntu/Debian 继续使用自己的发行版依赖安装方法，不给现有 Ub
 安装依赖，也不应修改系统全局搜索路径。记录最终 Chromium、库来源、缺失项、修复命令和
 实测结果；执行环境仍不满足时，应报告“浏览器验收未完成”，不能用构建/单测替代。
 
-本机桌面全链路烟测使用 `scripts/smoke-local-desktop.ts`：显式提供上述工具路径和
+本机桌面全链路烟测使用 `scripts/smoke/desktop/smoke-local-desktop.ts`：显式提供上述工具路径和
 `OPENCRAFT_CODEX_EXECUTABLE`，先准备独立只读观察服务；在验收拥有的 Xvfb `:1` 上设置
 已知根窗口颜色 `#2080e0`，然后核对真实 Codex Thread、观看授权、1440×900 的原生 RFB
 画面及像素。推理只访问独立的本地合成端点，不复制真实凭据/会话。服务原状态、隔离

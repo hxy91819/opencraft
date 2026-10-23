@@ -311,7 +311,7 @@ Labeled mobile navigation uses the same compact leading edge as section headings
 
 The inline desktop New chat glyph also consumes the list row inline inset: Conversations, New chat glyph, group/date labels and conversation titles share the leading edge. Its text follows the glyph with the existing control gap. Mobile floating New chat retains its independent pill geometry; do not apply inline-list padding to that presentation.
 
-Validate this alignment through `node scripts/smoke-sidebar-alignment.mjs` (real Shell/Sidebar, narrow/wide, both themes, status/capability transitions) and the running-menu smoke; include a live participant badge consumer when changing row geometry.
+Validate this alignment through `node scripts/smoke/shell/smoke-sidebar-alignment.mjs` (real Shell/Sidebar, narrow/wide, both themes, status/capability transitions) and the running-menu smoke; include a live participant badge consumer when changing row geometry.
 
 
 ## Informational type badges

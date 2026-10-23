@@ -138,7 +138,7 @@ on available container space rather than device detection. Native touch panning,
 trackpad/wheel scrolling and scrollbar dragging retain browser text selection,
 link activation and vertical timeline scrolling. Appending rows keeps the same
 table and scrollport; no JavaScript pan controller or document-wide overflow is
-introduced. `scripts/smoke-markdown-table-scroll.ts` verifies the real renderer.
+introduced. `scripts/smoke/resources/smoke-markdown-table-scroll.ts` verifies the real renderer.
 Wide blocks use automatic expansion beyond the prose column, bounded
 by the current reading surface rather than window width. The timeline supplies
 `--chat-wide-content-available-width` and `--wide-block-panel-max-width`; its
@@ -163,7 +163,7 @@ renderer-owned CSS rather than requiring the embedding host to supply a utility.
 A reserved header keeps preview/copy actions clear of diagram content; touch
 controls remain visible with 44px targets. Existing source fallback, stable
 loading geometry and reading-surface width limits remain authoritative.
-`scripts/smoke-mermaid-display.ts` checks full SVG bounds, hidden source, toolbar
+`scripts/smoke/resources/smoke-mermaid-display.ts` checks full SVG bounds, hidden source, toolbar
 separation, resizing, source replacement and preview on real WebChatDocument.
 Appending prose after a complete fence and finishing the Turn preserve the SVG.
 Measurement delivery reads the latest committed document callback and generation
@@ -405,7 +405,7 @@ physical Conversation View. A preference change does not replace the Composer do
 editor or selections, and submission rechecks the actual active Turn. Side Chat
 retains direct steering because it does not own a durable next-turn queue.
 
-Workbench queue wiring is exercised by `scripts/smoke-ssh-codex-workbench.ts`
+Workbench queue wiring is exercised by `scripts/smoke/execution/smoke-ssh-codex-workbench.ts`
 against an isolated headless Web build (`OPENCRAFT_SSH_UI_WEB_ROOT`). With
 `OPENCRAFT_SSH_UI_ACTIVE_FIXTURE=true` and
 `OPENCRAFT_WORKBENCH_QUEUE_FIXTURE=v1` or `v2`, its synthetic OpenCraft Host
@@ -510,7 +510,7 @@ Historical product validation named `tests/hermes-large-attachment.test.ts` and
 standalone checkout. The recorded browser smoke used a local enterprise-service
 protocol peer and HTTP endpoint and ran the remote Python locally; that evidence
 did not certify a real cloud instance and is not a current passing core check.
-The retained `scripts/smoke-embedded-attachment.ts` exercises the production
+The retained `scripts/smoke/resources/smoke-embedded-attachment.ts` exercises the production
 Composer and shared resolver, not full Application boot.
 
 The AppHost WebSocket message cap remains 48 MiB, accommodating legacy one-shot
@@ -666,7 +666,7 @@ attachments/context and focuses the trailing paragraph; it never submits. The
 existing AppServer compiler retains `> ` prefixes in native input. This Web/Electron
 interaction does not change Native or workspace/terminal selection behavior.
 
-Validation: `scripts/smoke-selection-add-to-chat.ts` exercises real rendered messages,
+Validation: `scripts/smoke/conversation/smoke-selection-add-to-chat.ts` exercises real rendered messages,
 selection popover and editor through native submission compilation without inference.
 It covers draft retention, undo, partial code, caret placement, exclusions, stale
 selection cleanup, theme palettes and Chromium touch. Set OPENCRAFT_CDP_URL to an
@@ -733,7 +733,7 @@ the document inset; its border-box observation only decides whether the collapse
 preview needs its fade and expansion overlay. Short content stays readable without
 an overlay, and streaming growth, shrinkage and width changes update that affordance.
 The existing View choice, completion defaults, copy/download and viewport ownership
-remain unchanged. `scripts/smoke-reasoning-disclosure.ts --plan-preview-only` covers
+remain unchanged. `scripts/smoke/conversation/smoke-reasoning-disclosure.ts --plan-preview-only` covers
 short and long content, growth/shrinkage, expansion and View restoration.
 Queue row leading content is compact: the reorder hit area begins one spacing
 unit from the row edge and immediately precedes the independent sender slot.

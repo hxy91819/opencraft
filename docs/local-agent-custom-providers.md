@@ -154,7 +154,7 @@ writers are outside that adapter queue; this is not a cross-process transaction.
 The protocol client carries an immutable hostId for every read/write/probe; it owns no UI state.
 
 Verification additionally uses `tests/model-services.test.ts` and
-`scripts/smoke-model-services.ts` (real UI → isolated AppServer/DSH, with a local
+`scripts/smoke/execution/smoke-model-services.ts` (real UI → isolated AppServer/DSH, with a local
 model endpoint). Empty optional `input: []` materialized by DSH is normalized to
 omission in the client read projection so round-trip saves keep inherited semantics.
 

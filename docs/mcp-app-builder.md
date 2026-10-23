@@ -227,7 +227,7 @@ These authoring rules do not restyle existing published Apps automatically.
 
 `npm run test:mcp-apps` covers store versions, CAS, ownership, revocation, worker
 limits, managed migration/checksum behavior and a real isolated packaged runtime.
-`scripts/smoke-mcp-app-builder.ts` builds the production Conversation/host and
+`scripts/smoke/extensions/smoke-mcp-app-builder.ts` builds the production Conversation/host and
 runs real WebSocket gateway/Actor/SQLite/QuickJS operations at 390/1280 px;
 only the model/engine and proof provider are synthetic. It covers AI tool
 requests, validation/publication/open, iframe tool calls, manager UI, rollback

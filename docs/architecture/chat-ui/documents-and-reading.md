@@ -176,7 +176,7 @@ documents disable animation at the root and reveal all text. Replica
 projection completion remains distinct from React commit and paint.
 
 Tests cover session ordering, document equivalence and segment identity.
-`scripts/smoke-streaming-presentation.mjs` checks actual Web DOM/CSS with
+`scripts/smoke/conversation/smoke-streaming-presentation.mjs` checks actual Web DOM/CSS with
 synthetic text in an isolated browser; it does not update a running Host or
 establish real-provider throughput.
 

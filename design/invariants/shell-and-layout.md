@@ -37,7 +37,7 @@ fill or page-wide blur cannot substitute for glass. Menus/search are denser
 than panels; circular touch chrome has inset-only shading. Geometry, Radix
 focus and modal lifetime retain their owners. Solid accessibility/unsupported
 filter fallbacks and explicit extension popover surfaces remain readable.
-See the workbench language and `scripts/smoke-frosted-materials.ts` for real
+See the workbench language and `scripts/smoke/shell/smoke-frosted-materials.ts` for real
 consumer, backdrop and fallback verification. Native appearance is unchanged.
 
 Longing is an optional built-in blue glass palette in both light and dark modes.
@@ -147,7 +147,7 @@ Header 的可见导航 rail 用 `max-content` 在同一次布局中保留真实�
 
 core unified Shell 桌面将60px图标栏与列表列分开，移动抽屉纵向菜单位于全宽列表上方；列表标题（含筛选入口）、日期标题与会话行消费同一列表列inset，头像按内容宽度右对齐、右边缘与菜单间距固定。一行/两行共享右边缘，工作目录置于标题下方辅助行，无独立底板，过长省略，不占用标题行宽度。unified默认335px、最小300px（原列表默认275px/最小240px加60px图标栏），旧保存宽度按新最小值夹紧，未保存时消费frame新默认值；手机抽屉先按屏宽减64px保留关闭区域，再以共享frame.sidebarMobileWidthRatio（90%）收窄并取整；不写回桌面宽度、不缩小字体或触控目标；独立/嵌入侧栏保持原宽度。图标行的 icon-label gap、会话层次、右侧状态与菜单命中区保持原语义。下游产品两面保持旧 consumer 留白。
 
-`scripts/smoke-sidebar-thread-insets.mjs` 挂载真实 AppShell + Sidebar + ThreadRowMenu，以合成短/长标题、日期组、项目和状态测宽窄固定/浮动、选中/hover浅深几何；此前 Settings 列测试不代替会话消费链。
+`scripts/smoke/shell/smoke-sidebar-thread-insets.mjs` 挂载真实 AppShell + Sidebar + ThreadRowMenu，以合成短/长标题、日期组、项目和状态测宽窄固定/浮动、选中/hover浅深几何；此前 Settings 列测试不代替会话消费链。
 
 - Sidebar 会话行的产品徽标独立于共用状态/操作尾槽；运行、Goal、待处理、未读等仅用一个状态渲染器。桌面指向/聚焦/打开菜单时切换点号；触屏在同一44px菜单目标内并列状态与点号，不能另留状态列或重叠/挤动标题。
 

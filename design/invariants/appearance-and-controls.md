@@ -17,7 +17,7 @@ Visual regression checks measure fill end versus rendered thumb center at every
 stop and during held preview, with a subpixel tolerance. A CSS-property assertion
 or screenshots of one favorable stop cannot establish this invariant. Preserve
 a failing pre-fix case; inspect near-start, middle and near-end output in addition
-to theme/density/DPR coverage. `scripts/smoke-reasoning-slider.ts` verifies the real
+to theme/density/DPR coverage. `scripts/smoke/conversation/smoke-reasoning-slider.ts` verifies the real
 Composer consumer and keeps per-stop screenshots and geometric samples.
 
 
@@ -29,7 +29,7 @@ Composer consumer and keeps per-stop screenshots and geometric samples.
 - `workbenchIconMetrics` 与 `icons.web.scss` 拥有尺度/描边 primitive，core 导航14px、1.8描边，普通/选中均为轮廓，选中含义由行背景和文字保持；下游产品按旧 consumer 的15/16/14px与原 SVG 属性投影，不强改其他旧组件的显式描边。导航前导槽位沿用 `--size-navigation-leading-slot`，直接 SVG 与包装槽位保持光学中心和文字起点对齐；unified Shell 对 core 上方目的地与下方 Settings 共享 Shell inline inset，不让窄屏通用 Settings padding 改变其中一列。紧凑工具按钮保留其宿主尺寸；不能将所有场景强制放大。
 - 同一操作在展开/收起入口使用相同图形；状态变化不改变按钮命中区、焦点或布局。图标继承控件颜色，不另设选中配色。
 - 独立 core 桌面 rail 的应用导航为 20px，footer 保持 16px；这些例外只作用于各自 rail 区域；应用图标统一消费 Shell 的尺寸，包含显式产品图形家族，不能在共同侧栏列覆盖 `--size-icon-navigation`，否则相邻 Settings 与商业产品会被一同放大。core Settings 仍为 14px 导航角色；下游产品导航/Settings 保留原 consumer 的 15/16px。产品隔离浏览器选中真实 Settings，比对固定旧 Settings 图形并独立校验 Palette/SunMoon 家族；Home/New chat 不再冒充旧 Write。浅深与 DPR1/2 分别核对，不以更新截图或复制当前 resolver 代替兼容预期。
-- 验证：`npx tsx scripts/smoke-icons.ts` 使用真实导航组件检查浅/深色、DPR 1/2、选中与折叠按钮几何，生成图谱和结果 JSON。下游产品目录的 `npm run smoke:sidebar-icons` 另挂载真实 unified AppShell，检查宽窄侧栏双列几何、普通/选中及 下游源样式/图形对照；三面 release 用 `smoke-product-isolation.mjs` 检查根隔离。Web 构建与组件证据不代表 Electron 原生窗口验收。
+- 验证：`npx tsx scripts/smoke/shell/smoke-icons.ts` 使用真实导航组件检查浅/深色、DPR 1/2、选中与折叠按钮几何，生成图谱和结果 JSON。下游产品目录的 `npm run smoke:sidebar-icons` 另挂载真实 unified AppShell，检查宽窄侧栏双列几何、普通/选中及 下游源样式/图形对照；三面 release 用 `smoke-product-isolation.mjs` 检查根隔离。Web 构建与组件证据不代表 Electron 原生窗口验收。
 
 
 ## UI font preference (2026-10-15)

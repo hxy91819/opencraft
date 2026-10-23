@@ -147,13 +147,13 @@ persisted their old baseInstructions cannot recover that previously discarded
 value. Prompt contents and arbitrary provider errors are not diagnostic output.
 
 `tests/dsh-blocks.test.ts`, `tests/dsh-instructions.test.mjs` and
-`scripts/smoke-dsh-instructions.ts` exercise block completion/reconciliation,
+`scripts/smoke/execution/smoke-dsh-instructions.ts` exercise block completion/reconciliation,
 scoped isolation, bounded forks, concurrent resumes and real locked-runtime
 requests across whole-Host and engine-generation recovery. Inference in the
 smoke uses an isolated local synthetic endpoint. These corrections do not prove
 that prompt wiring caused any particular model's communication frequency.
 
-The native synthetic fixture `npx tsx scripts/smoke-dsh-goal.ts` exercises the locked runtime, HTTP/WebSocket transport, native Goal tools, same-session continuation and cold persistence. Only inference is a local synthetic endpoint; it does not assert paid-provider or device behavior.
+The native synthetic fixture `npx tsx scripts/smoke/execution/smoke-dsh-goal.ts` exercises the locked runtime, HTTP/WebSocket transport, native Goal tools, same-session continuation and cold persistence. Only inference is a local synthetic endpoint; it does not assert paid-provider or device behavior.
 
 ## Shared Host schedules, background completion and questions
 
