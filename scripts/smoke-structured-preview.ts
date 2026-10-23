@@ -82,7 +82,45 @@ for(const width of (process.env.OPENCRAFT_PREVIEW_WIDTHS?.split(',').map(Number)
     const multiline=page.getByRole('cell',{name:'Line one Line two',exact:true});
     if(width<700)await multiline.tap();else await multiline.click();
     assert.equal(await page.getByRole('textbox',{name:'Cell contents',exact:true}).inputValue(),'Line one\nLine two');
+    if(width<700){
+      const resize=page.getByRole('separator',{name:'Column width A',exact:true});
+      await page.locator('.structured-preview__table-scroll').evaluate(node=>node.scrollTo({left:0,top:0,behavior:'instant'}));
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      const box=await resize.boundingBox();assert.ok(box);
+      const initial=Number(await resize.getAttribute('aria-valuenow'));
+      const cdp=await page.context().newCDPSession(page),x=box.x+box.width/2,y=box.y+box.height/2;
+      assert.equal(await resize.evaluate((node,{x,y})=>document.elementFromPoint(x,y)===node,{x,y}),true,'touch sequence hits the actual resize handle');
+      const touch=(id:number,x:number,y:number)=>({id,x,y});
+      await resize.evaluate(node=>{const events: {type:string;pointerId:number;trusted:boolean}[]=[];(window as any).tableResizeEvents=events;for(const type of ['pointerdown','pointerup','pointercancel'])node.addEventListener(type,event=>{const pointer=event as PointerEvent;events.push({type:pointer.type,pointerId:pointer.pointerId,trusted:pointer.isTrusted})},true)});
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(101,x,y)]});
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(101,x+20,y)]});
+      await page.waitForFunction(size=>Number(document.querySelector('[role="separator"][aria-label="Column width A"]')?.getAttribute('aria-valuenow'))===size,initial+20);
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(101,x+20,y),touch(102,x+20,y+6)]});
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(101,x+20,y),touch(102,x+50,y+6)]});
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      assert.equal(Number(await resize.getAttribute('aria-valuenow')),initial+20,'a second contact cannot take over a held column resize');
+      const contacts=await page.evaluate(()=>(window as any).tableResizeEvents.filter((event:any)=>event.type==='pointerdown'));
+      assert.equal(contacts.length,2);assert(contacts.every((event:any)=>event.trusted));
+      // Chromium's WebTouch backend releases the supplied point; assert its native event below.
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[touch(102,x+50,y+6)]});
+      const releases=await page.evaluate(()=>(window as any).tableResizeEvents.filter((event:any)=>event.type==='pointerup'));
+      assert.deepEqual(releases.map((event:any)=>event.pointerId),[contacts[1].pointerId],'only the second native contact is released');
+      assert.equal(await resize.evaluate((node,id)=>node.hasPointerCapture(id),contacts[0].pointerId),true,'first contact retains native capture');
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(101,x+40,y)]});
+      await page.waitForFunction(size=>Number(document.querySelector('[role="separator"][aria-label="Column width A"]')?.getAttribute('aria-valuenow'))===size,initial+40);
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+      assert.equal(Number(await resize.getAttribute('aria-valuenow')),initial+40,'only the owner commits the final width');
+      const next=await resize.boundingBox();assert.ok(next);const nextX=next.x+next.width/2,nextY=next.y+next.height/2;
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[touch(103,nextX,nextY)]});
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[touch(103,nextX-25,nextY)]});
+      await page.waitForFunction(size=>Number(document.querySelector('[role="separator"][aria-label="Column width A"]')?.getAttribute('aria-valuenow'))===size,initial+15);
+      await cdp.send('Input.dispatchTouchEvent',{type:'touchCancel',touchPoints:[]});
+      await page.waitForFunction(size=>Number(document.querySelector('[role="separator"][aria-label="Column width A"]')?.getAttribute('aria-valuenow'))===size,initial+40);
+      await cdp.detach();
+      assert.equal(await page.getByRole('textbox',{name:'Cell contents',exact:true}).inputValue(),'Line one\nLine two','resize preserves selected cell content');
+    }
     const handle=page.getByRole('separator',{name:'Column width C',exact:true});
+    await handle.evaluate(node=>node.scrollIntoView({block:'nearest',inline:'center'}));
     if(width<700){
      const box=await handle.boundingBox();assert.ok(box);const cdp=await page.context().newCDPSession(page),x=box.x+box.width/2,y=box.y+box.height/2;
      const before=await handle.getAttribute('aria-valuenow');
