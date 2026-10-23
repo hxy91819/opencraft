@@ -177,7 +177,7 @@ export function inspectHoverSource(source, file) {
 async function files(directory) {
   const result = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (["node_modules", "dist", "build", "tests", "__tests__", "fixtures", ".git", "generated"].includes(entry.name)) continue;
+    if (["node_modules", "dist", "build", "tests", "__tests__", "fixtures", ".git", "generated", "vendor"].includes(entry.name)) continue;
     const path = join(directory, entry.name);
     if (entry.isDirectory()) result.push(...await files(path));
     else if (/\.(?:scss|css|tsx|ts|jsx|js|mjs|html)$/u.test(entry.name) && !/\.(?:test|spec)\./u.test(entry.name)) result.push(path);

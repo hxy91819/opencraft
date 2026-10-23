@@ -461,7 +461,7 @@ export function TokenUsageDashboardView({
                           data-date={cell.date}
                           data-level={cell.level}
                           data-state={cell.state}
-                          aria-label={`${cell.date} · ${count(cell.tokens)} tokens · ${cell.turns} ${copy("轮", "turns")}`}
+                          aria-label={copy(`${cell.date} · ${count(cell.tokens)} Token · ${cell.turns} 轮`, `${cell.date} · ${count(cell.tokens)} tokens · ${cell.turns} turns`)}
                           aria-pressed={selectedCell?.date === cell.date}
                           disabled={cell.state === "outside"}
                           onPointerEnter={event => { if (event.pointerType !== "mouse") return; setPreviewCell(cell); }}
