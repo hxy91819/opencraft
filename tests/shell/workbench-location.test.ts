@@ -226,7 +226,7 @@ test("Extension View routes round-trip without inventing a Conversation location
 
 test("Extension View resources round-trip and can be canonically replaced", () => {
   const resourceUri =
-    "vela-bot:conversation?hostId=host-a&conversationId=conversation-a";
+    "opencraft-bot:conversation?hostId=host-a&conversationId=conversation-a";
   const url = new URL(
     `https://vela.test/views/opencraft.bot-chat.view?resource=${encodeURIComponent(resourceUri)}`,
   );

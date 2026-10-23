@@ -1,5 +1,5 @@
 /** Stable AppServer extension identifier for Bot and group conversations. */
-export const OPENCRAFT_BOT_CONVERSATIONS_EXTENSION = "vela/bot-conversations";
+export const OPENCRAFT_BOT_CONVERSATIONS_EXTENSION = "opencraft/bot-conversations";
 
 export type BotId = string;
 export type BotConversationId = string;
