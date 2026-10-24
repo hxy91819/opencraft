@@ -288,3 +288,13 @@ protocol mismatch fails closed instead of silently killing active tabs.
 The managed supervisor forwards all Headless API paths directly to their owner. Document admission uses a bodyless GET and removes incoming body framing and hop-by-hop headers. A relay assertion is single use: probing admission and then forwarding the same authenticated API request is invalid. Verify the running supervisor artifact separately from its managed Web release; changing the latter does not upgrade the former. Deployment checks must exercise the protected internal entry and backend, not only direct backend requests.
 
 A verified worker readiness message also carries its bounded Headless route table. The supervisor uses that active release's table for HTTP and upgrades, so subsequent API additions follow managed upgrades without leaving an older bootstrap routing them through document admission. Legacy workers omit the table and keep the supervisor's bundled routes. Invalid advertised tables fail candidate readiness; static and updater handling remain with Web.
+
+### Running execution files during Web updates
+
+An unchanged Headless gateway can outlive multiple Web release pointers. Its
+health reports `runtimeReleaseRoot` from the immutable startup location, while
+version and build identity follow the current pointer. Release cleanup retains
+that runtime root and the selected release; only a successful gateway restart
+retires its old file lifetime. Missing or unrecognized runtime identity retains
+all uncertain pins. Browser executables and lazily read runtime files must remain
+available while their owning gateway is alive.

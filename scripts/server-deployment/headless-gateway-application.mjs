@@ -68,10 +68,11 @@ export async function runHeadlessGateway({ parseArguments = parseHeadlessArgumen
     codexCoreEndpoint: endpoint, codexCoreAuthToken: token,
     getExecutionHealth: async () => {
       const current = await readCurrentReleaseManifest(releaseRoot);
-      return observeExecutionHealth({ version: typeof current.version === 'string' ? current.version : null,
+      const observed = await observeExecutionHealth({ version: typeof current.version === 'string' ? current.version : null,
         buildId: typeof current.opencraftWeb?.buildId === 'string' ? current.opencraftWeb.buildId : null, core: health,
         ...(dshDescriptor ? { dsh: () => readDshHostIdentity(dshDescriptor) } : {}),
       });
+      return { ...observed, runtimeReleaseRoot: releaseRoot };
     },
   });
   console.log(`[opencraft headless] ${app.url}`);

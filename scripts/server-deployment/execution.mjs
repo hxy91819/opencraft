@@ -206,12 +206,21 @@ export function createExecutionDeployment({ link, unit, coreUnit, coreEndpoint, 
               || health.dsh?.pid !== dshBefore.pid || health.dsh?.enginePid !== dshBefore.enginePid)
               throw new Error('DSH Host changed during execution update');
           }
-          return;
+          return health;
         }
       } catch (error) { if (['Codex core changed during execution update', 'DSH Host changed during execution update'].includes(error.message)) throw error; }
       await delay(100);
     }
     throw new Error('Execution release failed readiness');
+  }
+  async function retainRuntime(release, health, restarted = false) {
+    if (restarted) { await pin([release.releaseRoot]); return; }
+    const roots = await pinnedRoots();
+    // The current pointer is a release identity, not the running process's
+    // filesystem lifetime. Legacy health cannot prove any old root disposable.
+    const runtime = health?.runtimeReleaseRoot;
+    await pin(typeof runtime === 'string' && roots.includes(runtime)
+      ? [runtime, release.releaseRoot] : roots);
   }
   let statusOperation = null;
   async function readStatus() {
@@ -280,15 +289,14 @@ export function createExecutionDeployment({ link, unit, coreUnit, coreEndpoint, 
       if (oldRoot !== release.releaseRoot) {
         await point(release.releaseRoot);
         if (!runtimeChanged) {
-          try { await ready(release, before, dshBefore); await pin([release.releaseRoot]); return; }
+          try { await retainRuntime(release, await ready(release, before, dshBefore)); return; }
           catch { await restart(); }
         } else await restart();
       } else {
-        try { await ready(release, before, dshBefore); await pin([release.releaseRoot]); return; }
+        try { await retainRuntime(release, await ready(release, before, dshBefore)); return; }
         catch { await restart(); }
       }
-      await ready(release, before, dshBefore);
-      await pin([release.releaseRoot]);
+      await retainRuntime(release, await ready(release, before, dshBefore), true);
     },
   };
 }
