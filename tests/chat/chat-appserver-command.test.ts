@@ -303,6 +303,7 @@ test("queued native input restores into the Composer without flattening typed re
     { type: "audio", url: "https://assets.example/note.wav" },
   ] as const;
   const restored = restoreQueuedInput(input);
+  assert.equal(restored.attachments[2]?.name, "uploaded-image-1");
   const compiled = compileSubmitIntent(
     intent(
       { type: "existing-thread", key: existingKey },

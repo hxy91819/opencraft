@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "vite";
+import { mkdir } from "node:fs/promises";
 import type { Browser, Page } from "playwright";
 
 // Only the owner-supplied submit/queue command boundary is synthetic. This mounts
@@ -10,12 +11,13 @@ import {createIntlTestRoot} from '/tests/fixtures/intl-root.tsx';
 import {createConversationKey} from '@opencraft/chat-core';
 import {createComposerController, composerDocumentToPlainText} from '@opencraft/composer-core';
 import {OpenCraftComposer} from '@opencraft/composer-editor';
+import {restoreQueuedInput,compileSubmitIntent} from '@opencraft/composer-appserver';
 import '/apps/workbench-web/src/styles/app.scss';
 const documentFor = text => ({version:1, blocks:[{type:'paragraph', children:text ? [{type:'text',text}] : []}]});
 const makeController = id => createComposerController({type:'existing-thread',key:createConversationKey('probe',id)}, {now:Date.now,createId:()=>crypto.randomUUID()});
 const item = (id, preview) => ({id,preview,state:'queued',operation:'idle',actionable:true,editableContent:{document:documentFor(preview),attachments:[],context:[]}});
 const actions = [];
-let release;
+let release, editedInput;
 function App() {
   const [controller,setController] = useState(()=>makeController('one'));
   const [rows,setRows] = useState(()=>[item('top','First queued message'),item('next','Second queued message')]);
@@ -23,6 +25,8 @@ function App() {
   window.fixture = {
     controller, actions, config, configure: patch=>setConfig(c=>({...c,...patch})),
     replaceRows:setRows, item, release:()=>release?.(),
+    nativeImage(){setRows([{...item('image','Queued image'),editableContent:restoreQueuedInput([{type:'image',fileId:'uploaded-image-1'}])}])},
+    editedInput:()=>editedInput,
     switchThread:()=>{setController(makeController('two'));setRows([item('new-top','New thread queue')])},
     attachment:lifecycle=>controller.dispatch({type:'add-attachment',attachment:{id:'file',name:'notes.txt',mimeType:'text/plain',size:3,uri:lifecycle==='ready'?'data:text/plain,abc':null,lifecycle,error:null}}),
   };
@@ -36,7 +40,7 @@ function App() {
       if(context.followUpAction==='queue')setRows(previous=>[...previous,item('added',composerDocumentToPlainText(intent.document))]);
       return true;
     }}
-    onUpdateQueuedSubmission={async(id,intent)=>{actions.push({type:'edit',id,text:composerDocumentToPlainText(intent.document)})}}
+    onUpdateQueuedSubmission={async(id,intent)=>{editedInput=compileSubmitIntent(intent).input;actions.push({type:'edit',id,text:composerDocumentToPlainText(intent.document)})}}
     onSteerQueuedSubmission={async id=>{
       actions.push({type:'queue-steer',id});
       if(config.hold)await new Promise(resolve=>release=resolve);
@@ -171,6 +175,25 @@ try {
     await page.keyboard.insertText("Save this queue edit");
     await press();
     assert.deepEqual(await actions(page), [{ type: "edit", id: "top", text: "Save this queue edit" }]);
+
+    // Opaque image handles remain editable without exposing an adapter prefix;
+    // resubmission retains the native image ID rather than treating the locator as a URL.
+    await reset();
+    await page.evaluate(() => (window as any).fixture.nativeImage());
+    await page.locator(".opencraft-composer-queue-item").getByRole("button", { name: "Edit queued message", exact: true }).click();
+    await page.getByRole("button", { name: "Cancel editing queued message", exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => (window as any).fixture.controller.getSnapshot().draft.attachments[0].name), "uploaded-image-1");
+    const imageAttachment = page.getByRole("group", { name: "uploaded-image-1", exact: true });
+    await imageAttachment.waitFor();
+    assert.equal(await imageAttachment.getAttribute("title"), "uploaded-image-1");
+    assert.equal(await imageAttachment.getByRole("button", { name: "Open attached image", exact: true }).isDisabled(), true);
+    await imageAttachment.getByRole("button", { name: "Remove uploaded-image-1", exact: true }).waitFor();
+    if (process.env.OPENCRAFT_SMOKE_OUTPUT) {
+      await mkdir(process.env.OPENCRAFT_SMOKE_OUTPUT, { recursive: true });
+      await page.screenshot({ path: `${process.env.OPENCRAFT_SMOKE_OUTPUT}/queued-image-${mac ? "mac" : "linux"}.png` });
+    }
+    await press();
+    assert.deepEqual(await page.evaluate(() => (window as any).fixture.editedInput()), [{ type: "image", fileId: "uploaded-image-1" }]);
 
     // One physical press cannot drain a queue via autorepeat. Held callbacks
     // also block a second press before the external projection catches up.
