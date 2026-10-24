@@ -922,5 +922,7 @@
   "imageEditor.saveFailed": "Imej tidak dapat disimpan. Teruskan mengedit atau batal.",
   "imageEditor.surface": "Kanvas pengeditan imej",
   "imageEditor.fit": "Muatkan imej",
-  "imageEditor.gestureHint": "Gunakan dua jari untuk zum dan alih."
+  "imageEditor.gestureHint": "Gunakan dua jari untuk zum dan alih.",
+  "im.channels.back": "Saluran IM",
+  "im.route.customize": "Sesuaikan laluan ini"
 }

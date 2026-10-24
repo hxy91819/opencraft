@@ -55,11 +55,11 @@ test("CSS spinners and pseudo-element copy/check drawings cannot bypass ownershi
   ]) assert.equal(inspectInterfaceIconStyles(source, "fixture.scss").length, 1);
   assert.deepEqual(inspectInterfaceIconStyles('.button { border: 1px solid currentColor; } .glyph { animation: spin 1s infinite; } .frame::before { content: ""; border: 1px solid; }', "fixture.scss"), []);
 });
-test("inline controls are rejected while shared artwork, avatars and retained silhouettes are accepted", () => {
+test("inline controls and former layout-library exemptions are rejected; shared artwork and avatars are accepted", () => {
   assert.equal(inspectInterfaceIcons("const icon = <svg><path d='M1 1'/></svg>", "packages/chat-render-web/src/control.tsx").length, 1);
   assert.deepEqual(inspectInterfaceIcons("const icon = <svg/>", "packages/design-system-web/src/interface-icons.tsx"), []);
   assert.deepEqual(inspectInterfaceIcons("const avatar = <svg/>", "plugins/bot-chat/src/bot-avatar.tsx"), []);
   const retained = "packages/design-system-web/src/retained-layout-icons.tsx";
-  assert.deepEqual(inspectInterfaceIcons('export { PanelLeft as SidebarLayoutIcon, PanelLeftClose as SidebarCollapseLayoutIcon } from "lucide-react";', retained), []);
+  assert.equal(inspectInterfaceIcons('export { PanelLeft as SidebarLayoutIcon, PanelLeftClose as SidebarCollapseLayoutIcon } from "lucide-react";', retained).length, 1);
   assert.equal(inspectInterfaceIcons('export { House } from "lucide-react";', retained).length, 1);
 });

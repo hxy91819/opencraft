@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLinkIcon as ExternalLink } from "@opencraft/design-system-web/action-icons";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ConversationReferenceProvider, type ConversationReferencePort } from "@opencraft/composer-editor";
 import { encodeConversationRef, parseConversationRef, type ConversationRef } from "@opencraft/appserver-protocol/collaboration";

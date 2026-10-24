@@ -20,7 +20,6 @@
     "@radix-ui/react-tooltip": "^1.4.1",
     "@opencraft/composer-core": "0.1.0",
     "@opencraft/design-system-web": "0.1.0",
-    "lucide-react": "^1.58.0",
     "prosemirror-commands": "^1.7.1",
     "prosemirror-history": "^1.5.1",
     "prosemirror-inputrules": "^1.5.0",

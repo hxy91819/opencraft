@@ -1,6 +1,6 @@
 import * as DropdownMenu from "@opencraft/design-system-web/dropdown-menu";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Clock } from "lucide-react";
+import { ArrowRightIcon as ArrowRight, ClockIcon as Clock } from "@opencraft/design-system-web/action-icons";
 import { SegmentedControl, SettingsButton, SettingsSelect, SettingsTextInput } from "@opencraft/extension-react";
 import { useIntl } from "@opencraft/i18n/react";
 import type { TaskConversation, TaskDetail, TaskMember, TasksRequestPort } from "@opencraft/appserver-protocol";

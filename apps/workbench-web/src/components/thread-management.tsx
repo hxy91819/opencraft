@@ -6,7 +6,7 @@ import * as ContextMenu from "@radix-ui/react-context-menu";
 import * as DropdownMenu from "@opencraft/design-system-web/dropdown-menu";
 import { ArchiveIcon as Archive, ForkIcon as GitFork, PinIcon as Pin, PinOffIcon as PinOff } from "@opencraft/design-system-web/action-icons";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Link2 } from "lucide-react";
+import { LinkIcon as Link2 } from "@opencraft/design-system-web/action-icons";
 import { useQuery } from "@tanstack/react-query";
 import {
   SettingsActions,

@@ -119,3 +119,15 @@ test("shared actions retain semantic mapping and classic/core role geometry", ()
     }
   }
 });
+
+
+test("layout contribution names use shared artwork without adding a focus target", () => {
+  for (const style of ["classic", "standard"] as const) for (const [name, kind] of [["panel-left", "sidebar-layout"], ["panel-left-close", "sidebar-collapse-layout"]]) {
+    const markup = render(createElement(WorkbenchIcon, { name, purpose: "navigation" }), style);
+    assert.match(markup, new RegExp(`data-action-glyph="${kind}"`));
+    assert.match(markup, new RegExp(`width="${style === "classic" ? 15 : 14}"`));
+    assert.match(markup, /aria-hidden="true"/);
+    assert.match(markup, /focusable="false"/);
+    assert.doesNotMatch(markup, /lucide|tabindex/);
+  }
+});

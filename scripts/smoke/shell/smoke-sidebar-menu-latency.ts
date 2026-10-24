@@ -34,7 +34,7 @@ const vite = await createServer({
   configFile: false, root: process.cwd(), logLevel: "error",
   resolve: { dedupe: ["react", "react-dom"] },
   cacheDir: "node_modules/.vite-sidebar-menu-latency",
-  optimizeDeps: { noDiscovery: true, include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime", "lucide-react", "@radix-ui/react-context-menu", "@radix-ui/react-dropdown-menu", "@radix-ui/react-popover", "@tanstack/react-query", "hoist-non-react-statics", "react-is", "scheduler"] },
+  optimizeDeps: { noDiscovery: true, include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime", "@radix-ui/react-context-menu", "@radix-ui/react-dropdown-menu", "@radix-ui/react-popover", "@tanstack/react-query", "hoist-non-react-statics", "react-is", "scheduler"] },
   esbuild: { jsx: "automatic" }, server: { host: "127.0.0.1", port: 0, hmr: false },
   plugins: [{
     name: "sidebar-menu-latency-fixture",

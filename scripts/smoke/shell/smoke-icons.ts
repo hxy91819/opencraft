@@ -22,7 +22,7 @@ initializeAppearanceTheme();applyWorkbenchProductPresentation(document.getElemen
 const pages=[['model','模型服务','brain'],['remote','远程连接','server'],['account','Codex 账户','user-round-cog'],['voice','语音输入','sliders'],['identity','员工身份','user']];
 const snapshot={settingsPages:pages.map(([id,title,icon])=>({contribution:{id,title,icon,viewId:id}}))};
 const store={subscribe:()=>()=>{},getSnapshot:()=>snapshot};
-function App(){const [section,setSection]=useState('appearance');const [open,setOpen]=useState(true);
+function App(){const [section,setSection]=useState('appearance');const [open,setOpen]=useState(true);const [layoutOpen,setLayoutOpen]=useState(true);
 window.fixture={setThemePreference};
 return <main style={{height:'100vh',display:'grid',gridTemplateColumns:'260px 1fr',background:'var(--color-background-surface)',color:'var(--color-text)'}}>
 <aside style={{padding:'16px 8px',background:'var(--color-background-elevated-secondary)',borderRight:'1px solid var(--color-border-subtle)'}}>
@@ -42,6 +42,9 @@ return <main style={{height:'100vh',display:'grid',gridTemplateColumns:'260px 1f
 </div>
 <div style={{display:'grid',gridTemplateColumns:'repeat(6,minmax(76px,1fr))',gap:1,background:'var(--color-border-subtle)',border:'1px solid var(--color-border-subtle)',borderRadius:12,overflow:'hidden'}}>
 {Object.keys(workbenchIconRegistry).map(name=><div key={name} style={{display:'grid',justifyItems:'center',gap:16,padding:'24px 4px',background:'var(--color-background-surface)'}}><WorkbenchIcon name={name}/><span style={{fontSize:10,color:'var(--color-text-secondary)'}}>{name}</span></div>)}
+</div><div data-layout-size-probe style={{display:'flex',gap:16,alignItems:'center',marginTop:28}}>
+{[14,16,20,24].map(size=><React.Fragment key={size}><WorkbenchIcon name='panel-left' size={size}/><WorkbenchIcon name='panel-left-close' size={size}/></React.Fragment>)}
+<button className='chrome-button' aria-label='Collapse layout preview' aria-pressed={layoutOpen} onClick={()=>setLayoutOpen(!layoutOpen)}><WorkbenchIcon name={layoutOpen?'panel-left-close':'panel-left'} size={16}/></button>
 </div><div style={{display:'flex',gap:20,alignItems:'center',marginTop:28}}><NewTaskIcon/><WorkbenchIcon name='start'/><WorkbenchIcon name='start' size={14}/><span style={{fontSize:12}}>同一语义，同一图形</span></div>
 </section></main>}
 createRoot(document.getElementById('root')).render(<WorkbenchPresentationContext.Provider value={presentation}><App/></WorkbenchPresentationContext.Provider>);`;
@@ -71,12 +74,12 @@ try {
         return {width:rect.width,height:rect.height,stroke:style.strokeWidth,hidden:svg.getAttribute('aria-hidden')};
       }));
       assert(metrics.every(m=>m.width===m.height && m.width===(style==='classic'?16:14)),JSON.stringify(metrics));
-      assert(metrics.every(m=>m.stroke==='1.8px'),JSON.stringify(metrics));
+      assert(metrics.every(m=>m.stroke==='2px'),JSON.stringify(metrics));
       const variants=await page.locator('[data-navigation-probe] svg').evaluateAll(nodes=>nodes.map(svg=>{
         const style=getComputedStyle(svg);
         return {stroke:style.strokeWidth,fill:style.fill,color:style.color};
       }));
-      assert.deepEqual(variants.map(v=>v.stroke),style==='classic'?['2px','2.5px','2px','2px','2px','2.5px']:Array(6).fill('1.8px'));
+      assert.deepEqual(variants.map(v=>v.stroke),style==='classic'?['2px','2.5px','2px','2px','2px','2.5px']:Array(6).fill('2px'));
       assert.deepEqual(variants.map(v=>v.fill),variants.map((v,index)=>style==='classic'&&index===3?v.color:'none'));
 
       const navigation=await page.locator('.sidebar-navigation-item svg').evaluateAll(nodes=>nodes.map(n=>n.getBoundingClientRect().width));
@@ -90,14 +93,23 @@ try {
       // Navigation entries must resolve to distinct, meaningful artwork.
       const symbols=await page.locator('aside [data-workbench-icon]').evaluateAll(nodes=>nodes.map(n=>n.innerHTML));
       assert.equal(new Set(symbols).size,symbols.length);
-      assert.equal(await page.locator('aside .lucide-circle-help').count(),0);
-      for(const [title,glyph] of [['模型服务',style==='classic'?'brain':'brain-circuit'],['远程连接','server'],['Codex 账户','user-round-cog'],['语音输入','sliders-horizontal'],['员工身份','user-round']]) {
+      assert.equal(await page.locator('aside svg[class*=lucide]').count(),0);
+      for(const [title,glyph] of [['模型服务','model'],['远程连接','server'],['Codex 账户','person-settings'],['语音输入','sliders'],['员工身份','person']]) {
         const button=page.getByRole('button',{name:title,exact:true});
-        assert.equal(await button.locator('svg.lucide-'+glyph).count(),1,style+'/'+title);
-        assert.equal(await button.locator('svg.lucide-blocks').count(),0);
+        assert.equal(await button.locator('svg[data-action-glyph='+glyph+']').count(),1,style+'/'+title);
+        assert.equal(await button.locator('svg[data-action-glyph=extensions]').count(),0);
       }
-      assert.equal(await page.locator('[data-navigation-probe] svg.lucide-list-todo').count(),2);
-      await page.screenshot({path:`${output}/icons-${style}-${theme}-${dpr}x.png`});
+      assert.equal(await page.locator('[data-navigation-probe] svg[data-action-glyph=tasks]').count(),2);
+      const layout=await page.locator('[data-layout-size-probe] > svg').evaluateAll(nodes=>nodes.map(svg=>({kind:svg.getAttribute('data-action-glyph'),width:svg.getBoundingClientRect().width,hidden:svg.getAttribute('aria-hidden'),focusable:svg.getAttribute('focusable')})));
+      assert.deepEqual(layout.map(item=>item.width),[14,14,16,16,20,20,24,24]);
+      assert.deepEqual(layout.map(item=>item.kind),Array.from({length:4},()=>['sidebar-layout','sidebar-collapse-layout']).flat());
+      assert(layout.every(item=>item.hidden==='true'&&item.focusable==='false'));
+      const collapse=page.getByRole('button',{name:'Collapse layout preview'});await collapse.scrollIntoViewIfNeeded();
+      await collapse.evaluate(el=>(window as any).layoutButton=el);const before=await collapse.boundingBox();await collapse.focus();await page.keyboard.press('Space');
+      assert.equal(await collapse.getAttribute('aria-pressed'),'false');assert.equal(await collapse.locator('svg').getAttribute('data-action-glyph'),'sidebar-layout');
+      assert(await collapse.evaluate(el=>el===(window as any).layoutButton&&document.activeElement===el));assert.deepEqual(await collapse.boundingBox(),before);
+      await page.keyboard.press('Enter');assert.equal(await collapse.getAttribute('aria-pressed'),'true');assert.equal(await collapse.locator('svg').getAttribute('data-action-glyph'),'sidebar-collapse-layout');
+      await page.screenshot({path:`${output}/icons-${style}-${theme}-${dpr}x.png`,fullPage:true});
     }
     const voice=page.getByRole('button',{name:'语音输入',exact:true});
     const before=await voice.boundingBox();await voice.click();assert.equal(await voice.getAttribute('aria-current'),'page');assert.deepEqual(await voice.boundingBox(),before);
@@ -105,6 +117,6 @@ try {
     assert.equal(await toggle.locator('svg').getAttribute('data-sidebar-toggle-icon-state'),'hidden');
     await page.close();
   }
-  assert.deepEqual(errors,[]);await writeFile(`${output}/result.json`,JSON.stringify({passed:true,styles:['standard','classic'],dpr:[1,2],themes:['light','dark'],checks:['navigation sizing','stroke weight','selected stroke and silhouette fill','selection geometry','toggle geometry','page errors']},null,2));
+  assert.deepEqual(errors,[]);await writeFile(`${output}/result.json`,JSON.stringify({passed:true,styles:['standard','classic'],dpr:[1,2],themes:['light','dark'],checks:['navigation sizing','stroke weight','selected stroke and silhouette fill','selection geometry','toggle geometry','page errors','shared layout sizes','layout keyboard toggle and focus']},null,2));
   console.log(`Icon visual checks passed: ${output}`);
 } finally {await browser?.close();await vite.close();}

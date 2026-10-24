@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { GitFork } from "lucide-react";
+import { ForkIcon as GitFork } from "@opencraft/design-system-web/action-icons";
 import { ProgressIndicator } from "@opencraft/design-system-web/progress";
 import { useIntl } from "@opencraft/i18n/react";
 
