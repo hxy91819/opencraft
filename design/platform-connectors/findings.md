@@ -4,7 +4,7 @@
 - ExtensionSupervisor 的内部 contribution 有 prepare/commit/rollback/dispose，可直接接第一方 Connector Provider。
 - AppServer DynamicTool 通道已有 Thread/connection ownership、取消与响应；Workbench 静态注册 browser/terminal 工具。
 - 首次实现采用两个稳定模型入口，实际贡献通过会话绑定 handle 调用；不改 Hermes 协议，不承诺模型主动获知连接变化。
-- Host 原生 OAuth completed 只有 server 名称、可选 Thread 和成功标志，缺少 Workbench operationId；参考 native MCP processor 的 broadcast 路径后，采用 single-flight/取消隔离，完成仅使状态可重读，连接与会话启用仍需新用户动作。
+- Host 原生 OAuth completed 只有 server 名称、可选 Thread 和成功标志，缺少 Workbench operationId；因此采用 single-flight/取消隔离，完成仅使状态可重读，连接与会话启用仍需新用户动作。
 - DSH 动态调用存在 broker、engine plugin、native tool envelope 三层期限；只延长 broker 仍会在 10/12 秒终止。Host 统一计算期限并随内部 capability 注册下发，真实 13 秒延迟批准 smoke 证明链路没有提前关闭。
 - 配置是领域执行意图，不是 UI preference；复用已持久化 ConversationBinding 的 scope 身份。跨进程保存设置不意味着旧访问 grant 可恢复。
 - 目录覆盖 23 个服务，接入类型包含远端 MCP、HTTP API 和待实现的 CLI；Notion/Ardot/滴答使用 DCR+PKCE。目录与接入引导由共享 contract 描述，Host adapter 与 UI 分离。

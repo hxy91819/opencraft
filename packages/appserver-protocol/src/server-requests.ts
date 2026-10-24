@@ -83,12 +83,12 @@ export interface AppServerServerRequestMap {
     params: DynamicToolCallParams;
     result: DynamicToolCallResponse;
   };
-  /** Older/newer Desktop builds may expose the picker as a dedicated request. */
+  /** Dedicated option-picker route, also supported through dynamic tool calls. */
   "item/tool/requestOptionPicker": {
     params: OptionPickerRequestParams;
     result: OptionPickerResponse;
   };
-  /** Compatibility route retained by Codex Desktop beside setup_codex_context_picker. */
+  /** Dedicated setup-context picker route alongside the dynamic tool form. */
   "item/tool/requestSetupCodexContextPicker": {
     params: SetupCodexContextPickerRequestParams;
     result: SetupCodexContextPickerResponse;

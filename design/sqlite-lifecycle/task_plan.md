@@ -14,7 +14,7 @@
 
 ## history_context
 current_design_refs: `../../docs/platform-architecture.md`、`../../docs/platform-connectors.md`、`../invariants.md`。
-relevant_evolution: 当前 OpenCraft 自有 SQLite 多为建表初始化；session-routing 存在按列检测追加 intent 的历史升级。参考研究在根 `.omx/research/summary.md`，仅作定位，结论重新核对源码。
+relevant_evolution: 设计初期 OpenCraft 自有 SQLite 多为建表初始化，session-routing 存在按列检测追加 intent 的历史升级。后续生命周期契约见 [SQLite 生命周期](../../docs/sqlite-lifecycle.md)，实现结论以各库 owner 当前源码为准。
 superseded_refs: 本任务早期“Drizzle 为默认方案”的设计草案已被后续需求取代；不把待实施契约写成既有能力。
 
 ## interface_refs / data_structure_refs
