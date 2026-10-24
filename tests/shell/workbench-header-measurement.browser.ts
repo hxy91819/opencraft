@@ -60,6 +60,14 @@ try {
       return { width: measure.offsetWidth, fit: (window as any).fixture.readFitWidth(), audit: { ...(window as any).audit } };
     });
     const correct = async (label: string) => { await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))); await page.waitForFunction(() => Math.abs(document.querySelector<HTMLElement>(".app-shell-header__window-controls-measure")!.offsetWidth - (window as any).fixture.readFitWidth()) < 0.6); const value = await sample(); evidence.push({fallback,label,...value}); return value; };
+    const assertEmptyTitleAlignment = async () => {
+      const alignment=await page.locator('.thread-header-title').evaluate((title:HTMLElement)=>{
+        const context=title.closest<HTMLElement>('.app-shell-header__context')!;
+        return { offset:title.getBoundingClientRect().x-context.getBoundingClientRect().x,
+          inset:parseFloat(getComputedStyle(context).paddingLeft) };
+      });
+      assert.ok(Math.abs(alignment.offset-alignment.inset)<0.6, JSON.stringify(alignment));
+    };
     await correct("initial");
     await page.evaluate(() => { (window as any).editor = document.querySelector("input"); });
     const before = await sample();
@@ -73,7 +81,9 @@ try {
       for(let i=1;i<=8;i++){await touch("touchMove",start+(end-start)*i/8);await page.waitForTimeout(20)}
       await touch("touchEnd"); await page.waitForTimeout(650);
       const x=await page.locator(".app-shell-row").evaluate((e:HTMLElement)=>e.getBoundingClientRect().x);
-      assert.ok(Math.abs(x-(open?326:0))<1, String(x)); await correct("swipe-"+open);
+      const sidebarWidth=open?await page.locator(".app-shell-floating-left-panel").evaluate((e:HTMLElement)=>e.getBoundingClientRect().width):0;
+      if(open) assert.ok(sidebarWidth>0 && sidebarWidth<390, "mobile sidebar leaves a visible page strip");
+      assert.ok(Math.abs(x-(open?sidebarWidth:0))<1, `page x=${x}, sidebar width=${sidebarWidth}`); await correct("swipe-"+open);
     }
     const afterSwipes = (await sample()).audit;
     assert.equal(afterSwipes.observes, before.audit.observes);
@@ -110,7 +120,7 @@ try {
       await page.setViewportSize({width,height:844});
       const empty=await correct("empty-"+width);
       assert.equal(empty.width,0); assert.equal(empty.fit,0);
-      if(width===1280) assert.equal(await page.locator('.thread-header-title').evaluate((e:HTMLElement)=>e.getBoundingClientRect().x),36);
+      if(width===1280) await assertEmptyTitleAlignment();
     }
     await page.evaluate(() => { (window as HeaderFixtureWindow).fixture.setBrand("Restored brand"); (window as HeaderFixtureWindow).fixture.setActions(["sidebar-toggle"]); });
     assert.ok((await correct("content-restored")).width>0);
@@ -129,7 +139,7 @@ try {
     });
     await page.waitForFunction(() => (window as HeaderFixtureWindow).fixture.readFitWidth()===0);
     assert.equal(await page.locator('.app-shell-header__window-controls-measure').evaluate((e:HTMLElement)=>e.offsetWidth),0);
-    assert.equal(await page.locator('.thread-header-title').evaluate((e:HTMLElement)=>e.getBoundingClientRect().x),36);
+    await assertEmptyTitleAlignment();
     await page.screenshot({path:output+'/'+(fallback?'fallback':'native')+'-shadow.png'});
     assert.deepEqual(errors,[]);
     await page.screenshot({path:output+"/"+(fallback?"fallback":"native")+".png"});

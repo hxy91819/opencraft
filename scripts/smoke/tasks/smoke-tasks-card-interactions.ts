@@ -53,7 +53,20 @@ try {
     await card.hover(); await card.locator('.tasks-card__quick').click(); await page.locator('.tasks-quick-form').waitFor();
     assert.equal(await page.locator('.tasks-editor').count(), 0); await page.keyboard.press('Escape');
     await card.locator('[aria-haspopup="menu"]').click(); await page.getByRole('menuitem', { name: 'Quick edit', exact: true }).click();
-    await page.locator('.tasks-quick-form').waitFor(); assert.equal(await page.locator('.tasks-editor').count(), 0); await page.keyboard.press('Escape');
+    await page.locator('.tasks-quick-form').waitFor(); assert.equal(await page.locator('.tasks-editor').count(), 0);
+    const quickBounds=await page.locator('.tasks-quick-popover').boundingBox(), cardBounds=await card.boundingBox();
+    assert.ok(quickBounds && cardBounds && quickBounds.x>=cardBounds.x+cardBounds.width
+      && quickBounds.x-cardBounds.x-cardBounds.width<=16
+      && quickBounds.y<cardBounds.y+cardBounds.height && quickBounds.y+quickBounds.height>cardBounds.y
+      && quickBounds.y>=0 && quickBounds.y+quickBounds.height<=950, 'menu quick edit stays alongside its card and fits the viewport');
+    await page.screenshot({ path: join(artifacts, `quick-${theme}.png`) });
+    await page.keyboard.press('Escape');
+    // Raw pointer input has no locator actionability wait. Let the dismissed
+    // Radix layer finish releasing its pointer lock before native gestures.
+    await page.locator('.tasks-quick-form').waitFor({ state: 'detached' });
+    await page.waitForFunction(() => getComputedStyle(document.body).pointerEvents !== 'none');
+    await card.locator('[aria-haspopup="menu"]').click(); await page.getByRole('menuitem', { name: 'Open full details', exact: true }).click();
+    await page.locator('.tasks-editor').waitFor(); await close();
     // A gesture across columns, including title starts, never changes authority.
     for (const target of [card, card.locator('.tasks-card__title')]) {
       const from = await target.boundingBox(), to = await page.locator('.tasks-column[data-status="todo"]').boundingBox(); assert.ok(from && to);
@@ -95,6 +108,10 @@ try {
   const column = page.locator('.tasks-column[data-status="backlog"]'), first = column.locator('.tasks-card').first(); await first.waitFor();
   const beforeTouch = JSON.stringify(snapshot());
   await first.locator('.tasks-kind').tap(); await page.locator('.tasks-editor').waitFor(); await page.keyboard.press('Escape');
+  await first.locator('[aria-haspopup="menu"]').tap(); await page.getByRole('menuitem', { name: 'Quick edit', exact: true }).tap();
+  const quickForm=page.locator('.tasks-quick-form'); await quickForm.waitFor();
+  await quickForm.getByRole('button', { name: 'Close', exact: true }).tap(); await quickForm.waitFor({ state: 'detached' });
+  await page.waitForFunction(() => getComputedStyle(document.body).pointerEvents !== 'none');
   const cdp = await context.newCDPSession(page);
   const touch = (type: string, x: number, y: number) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
   const b = await first.boundingBox(); assert.ok(b);

@@ -365,11 +365,19 @@ function TaskConversationShortcut({ task, activity, onOpen, onEdit }: Pick<TaskC
 }
 function TaskCardContents({ task, members, onEdit, onQuick, onArchive, onOpen, activity }: Omit<TaskCardProps, "pending">) {
   const t = useText();
+  const afterMenuClose = useRef<(() => void) | null>(null);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
   return <>
       <div className="tasks-card__type"><KindBadge kind={task.kind} />{onQuick ? <div className="tasks-card__tools">
         <SettingsButton variant="ghost" className="tasks-card__quick" aria-label={`${t("quickEdit")}: ${task.title}`} onClick={onQuick}><Pencil size={14} aria-hidden="true" /></SettingsButton>
-        <DropdownMenu.Root><DropdownMenu.Trigger asChild><SettingsButton variant="ghost" aria-label={`${t("edit")}: ${task.title}`}><MoreHorizontal size={15} aria-hidden="true" /></SettingsButton></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="tasks-card-menu" sideOffset={4}>
-          <DropdownMenu.Item onSelect={onQuick}>{t("quickEdit")}</DropdownMenu.Item><DropdownMenu.Item onSelect={onEdit}>{t("fullDetails")}</DropdownMenu.Item>
+        <DropdownMenu.Root><DropdownMenu.Trigger ref={menuTrigger} asChild><SettingsButton variant="ghost" aria-label={`${t("edit")}: ${task.title}`}><MoreHorizontal size={15} aria-hidden="true" /></SettingsButton></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="tasks-card-menu" sideOffset={4}
+          onCloseAutoFocus={event => {
+            // Release the menu layer before mounting the next modal surface.
+            const action = afterMenuClose.current;
+            afterMenuClose.current = null;
+            if (action) { event.preventDefault(); menuTrigger.current?.focus({ preventScroll: true }); action(); }
+          }}>
+          <DropdownMenu.Item onSelect={() => { afterMenuClose.current = onQuick ?? null; }}>{t("quickEdit")}</DropdownMenu.Item><DropdownMenu.Item onSelect={() => { afterMenuClose.current = onEdit; }}>{t("fullDetails")}</DropdownMenu.Item>
           {onArchive ? <DropdownMenu.Item onSelect={onArchive}>{t("archive")}</DropdownMenu.Item> : null}
         </DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root>
       </div> : null}</div>

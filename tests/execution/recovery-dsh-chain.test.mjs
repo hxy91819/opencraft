@@ -23,7 +23,8 @@ const adapter=new DshAppServerAdapter(client);
 adapter.summaries.set('s',{sessionId:'s',running:false,blank:false,cwd:'/',updatedAt:1});
 let activations=0;
 adapter.setThreadEngine({describe:async()=>({loaded:false,...(nativeHead?{historyHead:{nextSeq:events.length}}:{}),selection:{provider:'p',model:'m'},permissions:{approval:'ask',sandbox:{mode:'workspace-write',workspaceRoot:'/'},preset:'custom'}}),resume:async()=>{activations++;throw Error('Unexpected activation');},create:async()=>{},fork:async()=>{},inject:async()=>{},release:async()=>{}});
-const transport=new MemoryTransport({receive:async(frame,reply)=>{
+let peer;
+const transport=new MemoryTransport({connected:value=>{peer=value;},receive:async(frame,reply)=>{
  const message=JSON.parse(frame);if(message.id===undefined)return;
  requests.push({method:message.method,params:message.params});
  try {
@@ -44,7 +45,9 @@ try{
  assert.equal(baseline.nativeHistoryReads,2); // one tail plus useful older-only navigation
  assert.equal(requests.filter(r=>r.method==='thread/items/list').length,0);
  assert.notEqual(requests.find(r=>r.method==='thread/turns/list').params.cursor,null);
- const before=native.length; await lease.retryRestore();
+ const before=native.length, revalidation=lease.retryRestore();
+ assert.equal(lease.getSnapshot().authoritative,false,'manual revalidation immediately revokes authority');
+ await revalidation;
  assert.equal(native.length,before+(nativeHead?0:1),'unchanged native head eliminates history reads; legacy falls back');
  const position=requests.filter(r=>r.method==='thread/resume')[1].params.historyCheckpoint;
  const resume=checkpoint=>adapter.dispatch('thread/resume',{threadId:'s',excludeTurns:true,historyCheckpoint:checkpoint,initialTurnsPage:{limit:5,itemsView:'full',sortDirection:'desc'}});
@@ -52,6 +55,13 @@ try{
  assert.equal(unchanged.historyRecovery.mode,'unchanged');
  assert.equal(unchanged.initialTurnsPage.data.length,0);
  assert.equal(unchanged.historyMetrics.nativeReads,nativeHead?0:1);
+ peer.send(JSON.stringify({method:'turn/started',params:{threadId:'s',turn:{id:'active-turn',status:'inProgress',items:[],error:null}}}));
+ for(let i=0;i<60&&lease.getSnapshot().activeTurn===null;i++)await new Promise(r=>setImmediate(r));
+ assert.equal(lease.getSnapshot().activeTurn?.turnId,'active-turn');
+ const activeReads=native.length;
+ await lease.retryRestore();
+ assert.equal(native.length,activeReads+1,'an observed active Turn requires a fresh history read');
+ assert.equal(requests.filter(r=>r.method==='thread/resume').at(-1).params.historyCheckpoint,undefined,'active Turn state cannot offer its older checkpoint');
  for(let turn=10;turn<110;turn++) {
   push('turn/start',{turn}); push('user/message',{source:{kind:'user'},content:[{type:'text',text:`prompt-${turn}`}]});
   push('assistant/message',{turn,message:{content:[{type:'text',text:`answer-${turn}`}]}});
@@ -114,6 +124,6 @@ test('native-head Resume retains events arriving after its cut on a replacement 
   for(const entry of events.slice(from))adapter.onMuxFrame({type:'session/event',sessionId:'s',event:entry.event});
   await until(()=>delivered>beforeDelivery);release();await pending;
   await until(()=>lease.getSnapshot().authoritative&&JSON.stringify(lease.getSnapshot().timeline).includes('late answer'));
-  assert.equal(reads,before,'no history read was needed to preserve concurrent observations');
+  assert.equal(reads,before+1,'replacement connection reloads one bounded tail and preserves concurrent observations');
  }finally{unblock?.();lease?.release();await runtime.dispose();await lifecycle.close();adapter.close();}
 });
