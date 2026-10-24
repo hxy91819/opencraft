@@ -103,7 +103,7 @@ ALTER TABLE codex_bot_message_slots RENAME TO opencraft_bot_message_slots;
 `;
 const PREVIOUS_OWNED_SCHEMA = LEGACY_FULL_SCHEMA + OPENCRAFT_HOST_STATE_OWNED_NAMES;
 const FULL_SCHEMA = PREVIOUS_OWNED_SCHEMA + OPENCRAFT_HOST_BOT_OWNED_NAMES;
-// The early surviving source and deployed CREATE/ALTER sequence prove these
+// Historical schema source and the deployed CREATE/ALTER sequence establish these
 // room layouts. Only known objects/constraints are accepted; records are retained.
 const LEGACY_ROOM_COLUMNS = [
   "thread_id TEXT PRIMARY KEY, created_ms INTEGER NOT NULL",

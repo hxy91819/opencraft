@@ -1,7 +1,6 @@
 import { createImplementation as managerImplementation } from "./opencraft/browser-manager.js";
 import { createImplementation as transitionImplementation } from "./opencraft/presentation-transition.js";
-import { DEFAULT_WEBVIEW_STATE, RESPONSIVE_PRESET_ID, initializeBrowserViewportPresets,
-  getDefaultPanelWidth, clampPanelWidth__rBr_2f54e } from "./opencraft/viewport-presets.js";
+import { DEFAULT_WEBVIEW_STATE, RESPONSIVE_PRESET_ID, initializeBrowserViewportPresets } from "./opencraft/viewport-presets.js";
 
 type Value = Record<string, any>;
 const logger = { info() {} };
@@ -26,31 +25,23 @@ export function createOpenCraftBrowserManager(Host: new (options: Value) => any)
       for (const listener of listeners.get(type) ?? []) listener(value);
     },
   };
-  const Transition = transitionImplementation({ logger__Kp_mubr: logger });
+  const Transition = transitionImplementation({});
   const key = (owner: string, tab: string) => `${owner}\0${tab}`;
   let manager: any;
   const Manager = managerImplementation({
     window: eventScope(window), document: eventScope(document),
     PagePresentationTransition: Transition, WebviewSidebarManager: Host,
-    messageRouterInstance: router, logger__Kp_mubr: logger,
-    createCompositeKey__fN_2fpbe: key,
-    identityPassthrough: (value: unknown) => value,
-    Jl: (value: string) => value,
-    joinKeyWithNull: key, buildCacheKey: key, getCompositeWebviewStorageKey: key,
+    messageRouterInstance: router, logger,
+    createCompositeKey: key, getCompositeWebviewStorageKey: key,
     parseConversationBrowserTabKey: (value: string) => {
       const [conversationId, browserTabId] = value.split("\0");
       return { conversationId, browserTabId };
     },
-    normalizeUrlOrEmpty: (value: string) => value.trim(),
-    $l: { WEB: "web", NEW_TAB_PAGE: "new-tab-page" },
+    webviewTabKinds: { WEB: "web", NEW_TAB_PAGE: "new-tab-page" },
     DEFAULT_WEBVIEW_STATE, RESPONSIVE_PRESET_ID,
     areWebviewTabsEqual: (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b),
-    getDefaultPanelWidth, clampPanelWidth__rBr_2f54e,
-    // Standard guests have no Owl adoption registry. Absence is explicit.
-    getCacheEntry__aVr_2fhgg: () => null, getPendingWebviewAdoptionLease: () => null,
-    getWebviewByKey: (owner: string, tab: string) => manager.getSnapshot(owner, tab)?.url ?? "",
     unregisterWebviewHandler: () => {},
-    ym: { browserSidebar: {
+    hostBridge: { browserSidebar: {
       registerWebviewHostSession: async () => true,
       registerWebviewHost: async (identity: Value) => {
         const host = manager.webviews.get(key(identity.conversationId, identity.browserTabId));
@@ -61,13 +52,13 @@ export function createOpenCraftBrowserManager(Host: new (options: Value) => any)
     } },
   });
   manager = new Manager();
-  const disposeSource = manager.disposeAll.bind(manager);
+  const disposeManager = manager.disposeAll.bind(manager);
   manager.disposeAll = () => {
     // The manager has renderer-wide lifetime; the app supervisor can be
     // disposed independently of the renderer, so release its event ports too.
     for (const remove of removals.splice(0)) remove();
     listeners.clear();
-    disposeSource();
+    disposeManager();
   };
   return manager;
 }

@@ -1,4 +1,4 @@
-/** Portable presentation data for the original Hermes Cron client. */
+/** Portable presentation data for Hermes Cron clients. */
 export type AutomationJob = {
   id: string;
   name: string;

@@ -132,7 +132,7 @@ navigation initiated inside an inaccessible cross-origin guest.
 ### Viewport drag geometry replacement (2026-10-20)
 
 The `viewport-resize.js` pure helper owns axis geometry. Device preset facts,
-source manager, toolbar and transition ownership remain with their current
+browser manager, toolbar and transition ownership remain with their current
 owners.
 Horizontal handles resize around a fixed center, bottom handles alter height,
 and the captured scale maps pointer movement into bounded viewport dimensions.

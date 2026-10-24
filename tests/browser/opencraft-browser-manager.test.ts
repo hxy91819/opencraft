@@ -78,7 +78,7 @@ const state = { mountGeneration: 1, isVisible: true, shouldPaint: true, bounds: 
 test("presentation transition keeps outgoing until ack, prewarm, and next-frame release", () => {
   const env = environment();
   try {
-    const Transition = createImplementation({ logger__Kp_mubr: { info() {} } });
+    const Transition = createImplementation({});
     const transition = new Transition(), a = new Host("a"), b = new Host("b");
     transition.sync(a, state, {}, "right-panel");
     transition.sync(b, state, {}, "right-panel");
@@ -100,7 +100,7 @@ test("presentation transition keeps outgoing until ack, prewarm, and next-frame 
 test("A to B to C fences a late B prewarm callback and preserves the correct outgoing host", () => {
   const env = environment();
   try {
-    const Transition = createImplementation({ logger__Kp_mubr: { info() {} } });
+    const Transition = createImplementation({});
     const transition = new Transition(), a = new Host("a"), b = new Host("b"), c = new Host("c");
     transition.sync(a, state, {}, "right-panel");
     transition.sync(b, state, {}, "right-panel");
