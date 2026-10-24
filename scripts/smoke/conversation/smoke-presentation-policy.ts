@@ -15,9 +15,9 @@ const evidence: unknown[] = [];
 const browser = await chromium.launch({headless: true});
 try {
   for (const product of [false, true]) {
-    // The core's product ID is deliberately a commercial-looking string. It
-    // must still use standard defaults unless the trusted build supplies policy.
-    process.env.OPENCRAFT_PRODUCT = product ? "unrelated-identity" : "lightvela-web";
+    // Product identity alone must not select a presentation policy.
+    // Standard defaults apply unless the trusted build supplies explicit policy.
+    process.env.OPENCRAFT_PRODUCT = product ? "unrelated-identity" : "example-web";
     process.env.OPENCRAFT_BUILD_TARGET = "web";
     const config = createWorkbenchWebConfig({mode:"development",command:"serve"}, {
       hyperNode:false,builtinAgents:false,tasks:false,pluginBranding:false,
