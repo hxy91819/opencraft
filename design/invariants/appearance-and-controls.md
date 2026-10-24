@@ -24,7 +24,7 @@ Composer consumer and keeps per-stop screenshots and geometric samples.
 ## UI 图标：共享视觉语言
 
 - 图形由显式呈现策略选择：OpenCraft core 使用语义图形和共享图标 primitive；下游产品适配保留既有组件的形状、描边、尺度、leading-slot 与选中/hover；颜色主题不选择图形或授予能力。每个 Shadow DOM/presentation root 独立投影 token，多实例不写 document 产品状态。
-- core Web/Electron 导航使用共享图标度量：Lucide 24 单位画布、14px、1.8 描边、圆端点和圆连接；普通控件使用其共享 primitive 的显式尺度与描边；下游产品保留旧 Lucide/16 单位填充图形和显式描边；品牌标识、内容插图与上游生成资源独立，不由通用 SVG 选择器改写。
+- core Web/Electron 导航使用共享图标度量：共享自绘图形的 24 单位画布、14px、1.8 描边、圆端点和圆连接；普通控件使用其共享 primitive 的显式尺度与描边；下游产品按各自 consumer 保留配置的 classic 图形、16 单位填充图形和显式描边；品牌标识、内容插图与上游生成资源独立，不由通用 SVG 选择器改写。
 - `apps/workbench-web/src/components/ui/workbench-icon.tsx` 是导航、设置与面板扩展语义名到图形的唯一 Web 映射。扩展传递语义名；core 未知名称显示中性帮助图形；下游产品的导航/设置/面板保留旧 consumer 的 Blocks/Plus fallback，不误呈现为某个已知功能。
 - `workbenchIconMetrics` 与 `icons.web.scss` 拥有尺度/描边 primitive，core 导航14px、1.8描边，普通/选中均为轮廓，选中含义由行背景和文字保持；下游产品按旧 consumer 的15/16/14px与原 SVG 属性投影，不强改其他旧组件的显式描边。导航前导槽位沿用 `--size-navigation-leading-slot`，直接 SVG 与包装槽位保持光学中心和文字起点对齐；unified Shell 对 core 上方目的地与下方 Settings 共享 Shell inline inset，不让窄屏通用 Settings padding 改变其中一列。紧凑工具按钮保留其宿主尺寸；不能将所有场景强制放大。
 - 同一操作在展开/收起入口使用相同图形；状态变化不改变按钮命中区、焦点或布局。图标继承控件颜色，不另设选中配色。

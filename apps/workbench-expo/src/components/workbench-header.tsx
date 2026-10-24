@@ -1,9 +1,5 @@
 import type { WorkbenchThread } from "@opencraft/workbench-runtime";
-import {
-  Cloud,
-  Code2,
-  PanelLeftOpen,
-} from "lucide-react-native";
+import { CloudIcon as Cloud, CodeIcon as Code2, SidebarHiddenIcon as PanelLeftOpen } from "@opencraft/design-system-native/action-icons";
 import type { ReactNode } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet, useWorkbenchTheme } from "../styles/workbench-styles";

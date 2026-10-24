@@ -85,32 +85,32 @@ import {
   type VirtualizedTurnListApi,
 } from "@opencraft/timeline-virtualizer";
 import {
-  AlertCircle,
-  ArrowRight,
-  Bot,
-  BookOpen,
-  CalendarClock,
-  Check,
-  Circle,
-  ChevronLeft,
-  ChevronRight,
-  Copy,
-  FileCode2,
-  FileSearch,
-  Folder,
+  AlertIcon as AlertCircle,
+  ArrowRightIcon as ArrowRight,
+  AgentIcon as Bot,
+  BookIcon as BookOpen,
+  CalendarClockIcon as CalendarClock,
+  CheckIcon as Check,
+  CircleIcon as Circle,
+  ChevronLeftIcon as ChevronLeft,
+  ChevronRightIcon as ChevronRight,
+  CopyIcon as Copy,
+  CodeFileIcon as FileCode2,
+  SearchFileIcon as FileSearch,
+  FolderIcon as Folder,
   ImageIcon,
-  ListChecks,
-  MessageSquare,
-  Monitor,
-  Search,
-  ShieldCheck,
-  Globe2,
-  Square,
-  TerminalSquare,
-  WandSparkles,
-  Wrench,
-  X,
-} from "lucide-react-native";
+  ChecklistIcon as ListChecks,
+  MessageIcon as MessageSquare,
+  MonitorIcon as Monitor,
+  SearchIcon as Search,
+  ReviewShieldIcon as ShieldCheck,
+  GlobeIcon as Globe2,
+  SquareIcon as Square,
+  TerminalIcon as TerminalSquare,
+  SparklesIcon as WandSparkles,
+  ToolIcon as Wrench,
+  CloseIcon as X,
+} from "@opencraft/design-system-native/action-icons";
 import {
   setupContextSourceExamples,
   setupRoleOptions,
@@ -1758,7 +1758,14 @@ function NativeTodoTimelineRenderer({ block }: TimelineBlockRendererProps) {
   const [open, setOpen] = useState(false);
   if (block.type !== "todo") return null;
   if (block.entries.length === 0) return null;
-  return <View><InteractiveSurface accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)}><Text style={styles.semanticBody}>{todoSummary(block)}</Text></InteractiveSurface>{open ? <SemanticCard icon={<ListChecks color={theme.color.icon.secondary} size={theme.metrics.control.iconSmall} />} title={block.explanation ?? "Steps"}>{block.entries.map((entry) => <Text key={entry.id} style={styles.semanticBody}>{entry.status === "complete" ? "✓" : "○"} {entry.text}</Text>)}</SemanticCard> : null}</View>;
+  return <View><InteractiveSurface accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)}><Text style={styles.semanticBody}>{todoSummary(block)}</Text></InteractiveSurface>{open ? <SemanticCard icon={<ListChecks color={theme.color.icon.secondary} size={theme.metrics.control.iconSmall} />} title={block.explanation ?? "Steps"}>{block.entries.map((entry) => {
+    const StatusIcon = entry.status === "complete" ? Check : Circle;
+    return <View key={entry.id} accessible accessibilityLabel={`${entry.status === "complete" ? "Completed" : "Pending"}: ${entry.text}`}
+      style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing[2] }}>
+      <StatusIcon color={theme.color.icon.secondary} size={theme.metrics.control.iconSmall} />
+      <Text style={[styles.semanticBody, { flex: 1 }]}>{entry.text}</Text>
+    </View>;
+  })}</SemanticCard> : null}</View>;
 }
 
 function NativeCompactionBlock({ block }: { block: Extract<TimelineBlock, { type: "compaction" }> }) {

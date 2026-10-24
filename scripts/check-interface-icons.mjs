@@ -48,7 +48,7 @@ export function inspectInterfaceIcons(source, file) {
       }
     }
     // Keep keyboard legends and document text distinct from generated control artwork.
-    if (!file.includes("native/") && (ts.isJsxText(node) || ts.isStringLiteral(node))) {
+    if (ts.isJsxText(node) || ts.isStringLiteral(node)) {
       let parent = node.parent;
       let inJsx = ts.isJsxText(node);
       let keyboard = false;
@@ -65,8 +65,8 @@ export function inspectInterfaceIcons(source, file) {
         fail(node, "generated control glyphs must use shared SVG, not font characters");
       }
     }
-    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier?.text === "lucide-react") {
-      fail(node, "general Web glyphs must use design-system-web/action-icons");
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && ["lucide-react", "lucide-react-native"].includes(node.moduleSpecifier?.text)) {
+      fail(node, "interface glyphs must use the shared platform action-icons owner");
     }
     if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && node.tagName.getText(ast) === "svg"
       && !file.startsWith("packages/design-system-web/") && !localArtwork.has(file)) {
@@ -104,7 +104,7 @@ function sources(directory) {
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const directories = process.argv.slice(2);
-  const files = (directories.length ? directories : ["apps/workbench-web/src", "packages", "plugins"]).flatMap(directory => sources(resolve(root, directory)));
+  const files = (directories.length ? directories : ["apps/workbench-web/src", "apps/workbench-expo/src", "packages", "plugins"]).flatMap(directory => sources(resolve(root, directory)));
   const errors = files.flatMap(file => /\.s?css$/.test(file)
     ? inspectInterfaceIconStyles(readFileSync(file, "utf8"), relative(root, file).replaceAll("\\", "/"))
     : inspectInterfaceIcons(readFileSync(file, "utf8"), relative(root, file).replaceAll("\\", "/")));

@@ -3,7 +3,12 @@ import { Platform } from "react-native";
 import type { ChatDocumentNode } from "@opencraft/chat-document";
 import type { ChatNodeRendererProps } from "@opencraft/chat-render-react";
 import { nativeThemes } from "@opencraft/design-system/tokens.native";
-import { Check, Copy, Expand, X } from "lucide-react-native";
+import {
+  CheckIcon as Check,
+  CopyIcon as Copy,
+  ExpandIcon as Expand,
+  CloseIcon as X,
+} from "@opencraft/design-system-native/action-icons";
 import { useState } from "react";
 import { Modal, Pressable, SafeAreaView, ScrollView, Text, View } from "react-native";
 import { StyleSheet } from "../styles";

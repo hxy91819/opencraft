@@ -4,7 +4,7 @@ import {
   type ModalDismissReason,
   type ModalSize,
 } from "@opencraft/design-system/modal";
-import { X } from "lucide-react-native";
+import { CloseIcon as X } from "@opencraft/design-system-native/action-icons";
 import type { ReactNode } from "react";
 import {
   Modal,

@@ -69,7 +69,6 @@
     "expo-web-browser": "~57.0.2",
     "heroui-native": "1.0.10",
     "katex": "^0.18.4",
-    "lucide-react-native": "1.35.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
@@ -85,7 +84,8 @@
     "tailwind-merge": "3.6.0",
     "tailwind-variants": "3.2.2",
     "tailwindcss": "4.3.2",
-    "uniwind": "1.12.0"
+    "uniwind": "1.12.0",
+    "@opencraft/design-system-native": "0.1.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

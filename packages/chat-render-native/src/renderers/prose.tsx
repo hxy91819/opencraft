@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 import type { ChatDocumentNode } from "@opencraft/chat-document";
 import type { ChatNodeRendererProps } from "@opencraft/chat-render-react";
 import { nativeThemes } from "@opencraft/design-system/tokens.native";
-import { Check } from "lucide-react-native";
+import { CheckIcon as Check } from "@opencraft/design-system-native/action-icons";
 import { createContext, useContext, type ReactNode } from "react";
 import { Text, View } from "react-native";
 import { StyleSheet } from "../styles";
