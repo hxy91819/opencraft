@@ -36,7 +36,7 @@
 ## Architecture Evidence
 
 - `platform-architecture.md` currently documents Environment as the parent of local model-service pages; the user's new decision supersedes that presentation contract.
-- `local-agent-custom-providers.md` confirms `LocalAgentSettingsService` is a UI-free Host-scoped client and Model Services is the accepted Lobe-style view. This lets the view move without migrating storage or engine logic.
+- `local-agent-custom-providers.md` confirms `LocalAgentSettingsService` is a UI-free Host-scoped client and Model Services is the accepted provider/detail view. This lets the view move without migrating storage or engine logic.
 - Settings already renders extension pages and owns the adaptive master/detail container. The current exclusion of environment-owned pages and redirect to `openEnvironments` are the specific seams to remove.
 - The app's current Environment surface also owns an environment-creation modal; removing the surface removes that entry, but not account discovery or persisted Host profiles.
 
