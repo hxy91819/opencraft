@@ -78,11 +78,12 @@ client reload recreates them from source content.
 
 The generic headless connection extension/provider is `opencraft.server-connections`.
 New server/SSH profiles and settings registrations use that identity. Its native
-account settings page remains explicitly `codex-accounts`. Existing
-`vela.headless-codex` profile providers are rewritten on hosted Web startup with
-an incremented profile revision; Host IDs, recipes and machine observations stay
-intact. Exact former settings and View bookmarks are read-only aliases supplied
-by the Web composition and replaced through the application Router, including
+account settings page remains explicitly `codex-accounts`. The exact former
+built-in provider ID is a migration input declared by the
+[server connection identity owner](../../plugins/builtin-agents/src/server-connection-identity.ts).
+Hosted Web startup rewrites matching profiles with an incremented revision;
+Host IDs, recipes and machine observations stay intact. Exact former settings and
+View bookmarks are read-only aliases supplied by the Web composition and replaced through the application Router, including
 hostless startup and POP. Unrelated extension IDs are never prefix-rewritten.
 The old literals live only in that compatibility reader and its negative/recovery
 tests; they are not current registrations or defaults.

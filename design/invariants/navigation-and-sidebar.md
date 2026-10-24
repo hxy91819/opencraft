@@ -204,7 +204,7 @@ the list viewport and the existing application Router authority.
 ## Application navigation glyphs
 
 - Navigation contribution 只声明图标语义和当前目的地；Web/Electron 的 NavigationIcon 拥有轮廓/选中图形投影，Design System 拥有 20px 图标、36px 基础控件、圆角、间距和状态色。不得套用菜单行的 14px 图标或独立次要颜色，也不以收缩时整体 scale 改变图标物理大小。
-- 选中态仅对明确支持的闭合图形填充；Bot 面部、Server 指示灯和 Gear 中心等内部细节保留轮廓，不能统一 `svg { fill }` 抹掉。不同状态共享同一 SVG 盒子，不改变页面意图；不恢复 Home 或添加参考产品的未接通入口。
+- 选中态仅对明确支持的闭合图形填充；Bot 面部、Server 指示灯和 Gear 中心等内部细节保留轮廓，不能统一 `svg { fill }` 抹掉。不同状态共享同一 SVG 盒子，不改变页面意图；不恢复 Home，新增入口必须具备已接通的功能。
 - Shell 的 compact/expanded 内容保持同一实例，应用行的视觉盒子与触控命中区分离；粗指针或当前触摸输入时至少 44px，仍容纳于原 52px 紧凑栏中。鼠标 hover、键盘焦点、当前目的地与菜单打开分别投影。账户菜单保持其独立密度与反馈。
 - 证据：`workbench-navigation-icons.test.ts`、`smoke-navigation-icons.ts` 检查尺寸、图形、状态色继承、明暗/扩展主题、紧凑/展开、触控/鼠标、普通菜单负例与键盘/强制颜色；真实手机和当前预览替换须另行记录。
 

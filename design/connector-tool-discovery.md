@@ -11,8 +11,7 @@
 这里的 `Connector Capability Runtime` 不是第三套连接或会话真源。它是
 `AgentCapabilityRuntime` 的 Connector provider/projection slice：从既有 `ConnectorRuntime`
 读取当前 Thread 的选择、授权、目录代次与执行入口，产出统一的 capability view，再由不同
-Engine Adapter 投影到各自协议。产品层、Connector 层和 Composer 不得按 DSH、Codex、Hermes
-等引擎名称分支。
+Engine Adapter 投影到各自协议。产品层、Connector 层和 Composer 不得按引擎名称分支。
 
 ## 当前实现与适用边界
 
@@ -67,7 +66,7 @@ RPC。长期公共边界是 capability view 与 refresh contract，而不是这�
 ### 1. Capability view 统一，Engine 投影不同
 
 Capability Runtime 始终提供同一套有界 catalog/search/detail/handle 语义。Engine Adapter 再根据
-显式协商结果选择投影，不能在 Connector 工具或 UI 中形成“Codex 原生、DSH 兜底”两条产品路径。
+显式协商结果选择投影。Connector 工具和 UI 消费同一能力契约，不为不同引擎另建产品路径。
 
 - AppServer 明确支持 deferred dynamic tools 时，在新 Thread 的标准
   `thread/start.dynamicTools` 中投影 `deferLoading: true`，由 AppServer 的 ToolSearch 激活精确 schema。

@@ -56,9 +56,9 @@ leaf for independent plan/approval/loading consumers.
 Completion, failure or interruption removes the sweep; reduced motion disables both decorations. See the activity icon design contract.
 
 Engine-returned reasoning is a chronological Item-owned inner disclosure within
-the response's work container, not the body of a tool group's live “Thinking” header. Codex, DSH and Hermes
-consume the same default policy: nonempty explicit summary text wins; when no
-summary is returned, the actual returned textual detail/content is available.
+the response's work container, not the body of a tool group's live “Thinking” header.
+All engine adapters consume the same shared disclosure policy: nonempty explicit
+summary text wins; when no summary is returned, the actual returned textual detail/content is available.
 The body selects that content once, without concatenating duplicate summary
 and detail. Empty Items and opaque/encrypted fields create no disclosure and
 cannot be used to fabricate an explanation.

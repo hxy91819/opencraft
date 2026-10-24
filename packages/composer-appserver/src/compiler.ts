@@ -146,7 +146,7 @@ function appendInline(
       }
       diagnostics.push({
         code: "NON_NATIVE_RESOURCE",
-        message: `Resource ${inline.title} has no native Codex UserInput representation and was serialized as text`,
+        message: `Resource ${inline.title} was included as a text link`,
         sourceId: inline.id,
       });
       appendText(input, `[${inline.title}](${inline.uri})`);
@@ -234,7 +234,7 @@ function appendAttachment(
   }
   diagnostics.push({
     code: "NON_NATIVE_ATTACHMENT",
-    message: `Attachment ${attachment.name} has no native Codex UserInput representation and was serialized as text`,
+    message: `Attachment ${attachment.name} was included as a text link`,
     sourceId: attachment.id,
   });
   appendText(input, `\nAttachment: [${attachment.name}](${attachment.uri})`);

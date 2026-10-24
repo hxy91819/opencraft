@@ -40,7 +40,7 @@ Changing node construction must not create a second resource or identity owner.
 
 ## 通用媒体与 PDF 文件预览
 
-- `MEDIA:<path>` 是与扩展名无关的资源交付入口，图片、音频、视频、PDF 和未知文件均先经共享资源策略，再进入当前 Host 的文件预览。PDF 不按 Codex/Hermes 或本机/SSH 判断，所有能够提供文件字节的 Host 共用 PDF.js；未知或无法解码的文件保留下载动作。
+- `MEDIA:<path>` 是与扩展名无关的资源交付入口，图片、音频、视频、PDF 和未知文件均先经共享资源策略，再进入当前 Host 的文件预览。PDF 不按执行引擎或连接位置分支，所有能够提供文件字节的 Host 共用 PDF.js；未知或无法解码的文件保留下载动作。
 - PDF 文档、Worker、当前页绘制与文字层属于资源 View；换文件或卸载取消旧任务，晚到结果不得写入新资源。每次只绘制当前页，限制高 DPI 画布像素，Worker、CMap、字体和编解码资源随构建提供，不依赖外部 CDN。
 - 文件预览不修改原附件、文件、会话或引擎能力。Web 的共享 Renderer 不宣称已完成 Expo 原生 PDF 阅读器。
 
