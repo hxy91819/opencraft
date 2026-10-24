@@ -21,9 +21,11 @@ connect/send/subscribe/close。原纯 core bridge 和未选择 core 的默认方
 
 core 的数据目录 guard 与 overlay 的 `host-overlays-owner` guard 独立，均复用内核持有的
 SQLite EXCLUSIVE 锁，进程退出释放。Headless 的安装级 server.lock 仍保护整个数据根。
-Headless startup 通过已有 AppHost owner 完成一次内部 initialize 并释放临时逻辑连接，
-使 queue/Goal 的恢复不依赖浏览器首次重连；初始化失败不开放正式 listener。
-该连接不拥有队列、账户或额外存储。首次切换检查旧 CLI/任务；旧二进制未使用新 guard 不能当作自动排空。关闭 overlay 只关闭
+配置独立 core 时，Headless 在 HTTP/SSH listener 启动后，通过已有 AppHost owner 后台
+初始化 `local-codex`，每次尝试结束后释放临时逻辑连接。初始化成功使该 Host 的
+queue/Goal 恢复不依赖浏览器首次重连；初始化失败时就绪检查报告不可用并退避重试，
+不阻塞网站监听。就绪检查继续监测连接丢失，gateway 关闭时撤销检查。
+该检查不拥有队列、账户、core 进程或额外存储。首次切换检查旧 CLI/任务；旧二进制未使用新 guard 不能当作自动排空。关闭 overlay 只关闭
 其原生连接与 stores，不关闭 core。复用数据/项目 cwd，不从包目录推导身份。
 
 ## Codex 原生会话与保留数据
