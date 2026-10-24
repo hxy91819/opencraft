@@ -207,7 +207,7 @@ glyphs and their consumer-specific scales; core keeps the new artwork. Shared me
 semantic Web icon adapter own sizes/strokes. The classic adapter retains the
 existing glyphs; `workbenchIconMetrics.classic` names their scale without
 dispatching on a product ID. Tokens are projected onto each
-Presentation Root; the downstream product does not globally override explicit legacy Lucide strokes.
+Presentation Root; the downstream product does not globally override explicit consumer-owned strokes.
 A color palette such as `opencraft.core.canvas` never grants product capabilities or selects
 an icon family.
 
