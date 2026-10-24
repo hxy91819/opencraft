@@ -15,7 +15,7 @@ test('standalone Expo config keeps the public identity and permission wording', 
   assert.equal(config.ios.bundleIdentifier, 'dev.opencraft.workbench');
   assert.equal(config.android.package, 'dev.opencraft.workbench');
   const commands = require(path.join(app, 'package.json')).scripts;
-  assert.equal(Object.values(commands).some(command => command.includes('products/vela')), false, 'Public native commands must work without the private product workspace');
+  assert.equal(Object.values(commands).some(command => /\bproducts[\\/]/u.test(command)), false, 'Public native commands must work without downstream product workspaces');
   assert.equal(config.plugins.find(p => p[0] === 'expo-image-picker')[1].photosPermission, 'Allow OpenCraft to choose a profile photo.');
   assert.equal(config.plugins.find(p => p[0] === 'expo-audio')[1].microphonePermission, 'Allow OpenCraft to record your voice for transcription.');
 });
