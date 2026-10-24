@@ -1,12 +1,12 @@
 # Ordinary relay deployment
 
-OpenCraft can run directly or connect outward to an independently deployed Node relay. The relay lives in `apps/relay-server` in this repository and builds separately; instance connectivity is optional `plugins/relay-connect`. `packages/identity-core` defines verified identity and scoped assertions, `packages/access-control` owns instance membership, and `plugins/enterprise-identity` owns enterprise identity verification and employee-specific presentation. Removing an identity plugin leaves an enabled core admission policy closed.
+OpenCraft can run directly or connect outward to an independently deployed Node relay. The relay lives in `apps/relay-server` in this repository and builds separately; instance connectivity is optional `plugins/relay-connect`. `packages/identity-core` defines verified identity and scoped assertions, `packages/access-control` owns instance membership, and a trusted downstream identity adapter owns enterprise verification and employee-specific presentation. The public core does not bundle an enterprise identity plugin. Removing an identity plugin leaves an enabled core admission policy closed.
 
 The first release forwards ordinary HTTP and WebSocket traffic, including streamed responses and uploads. The relay operator can see application traffic. TLS protects each transport hop; this is not E2EE. A team can choose its department relay or a shared company relay. Relays have separate credentials, keys, sessions and route registries; instances never automatically fall back to another relay.
 
 ## One enterprise identity entry, independently owned instances
 
-Only `authenticationOrigin` needs an approved enterprise identity entry. A team address redirects document navigation there, verifies employee identity through the enterprise identity plugin, then returns a single-use, short-lived handoff ticket. The callback also requires the initiating browser's host-only login cookie. It establishes a host-only, HttpOnly session for that team origin; tickets and sessions are bound to the configured instance and origin. API/WS requests without a session return 401 rather than HTML redirects.
+Only `authentication.origin` needs an approved identity entry. A team address redirects document navigation there, verifies identity through the configured server adapter, then returns a single-use, short-lived handoff ticket. The callback also requires the initiating browser's host-only login cookie. It establishes a host-only, HttpOnly session for that team origin; tickets and sessions are bound to the configured instance and origin. API/WS requests without a session return 401 rather than HTML redirects.
 
 Team addresses still need DNS and TLS. A relay operator can provision wildcard DNS/certificates once, then enroll team subdomains without each team applying for an enterprise identity application/domain. Wildcard enterprise identity registration is unnecessary with the fixed authentication origin. Availability and approval policy of a company's actual enterprise identity gateway must still be verified by its operator. The relay is not an organization directory or a SaaS business-data service.
 
@@ -176,17 +176,40 @@ npm run build:relay -- /absolute/output/relay
 node /absolute/output/relay/relay.mjs /absolute/private/relay.json
 ```
 
-All JSON configurations below must be owner-only regular files (0600), with absolute paths. Generate an Ed25519 key pair and independent random 32-byte base64url enrollment credentials using your deployment secret tooling. Never commit actual keys, tokens, sessions or configurations. The relay config shape is:
+All JSON configurations below must be owner-only regular files (0600), with absolute paths. Generate an Ed25519 key pair and independent random 32-byte base64url enrollment credentials using your deployment secret tooling. Never commit actual keys, tokens, sessions or configurations. A minimal core transit configuration is:
 
 ```json
 {
   "schemaVersion": 1,
-  "issuer": "department-relay",
   "host": "127.0.0.1",
   "port": 18090,
-  "authenticationOrigin": "https://login.example.test",
-  "tencentOaTokenFile": "/private/ioa-token",
-  "privateKey": "<Ed25519 PKCS8 PEM>",
+  "routes": [],
+  "hubNetwork": {
+    "stateFile": "/private/hub-network.json",
+    "operatorCredentialFile": "/private/hub-operator.json"
+  }
+}
+```
+
+The operator file contains `{ "credential": "<independent 43-character random base64url>" }`.
+Enrollment, peer TLS and incoming endpoint configuration are described below.
+
+An authenticated gateway instead requires a trusted entry that supplies
+`RelayComposition.createIdentity`; the default CLI rejects gateway configuration
+without that adapter. See [server identity composition](server-authentication.md#headless-composition-contract)
+for the instance-side boundary. Its core configuration shape is:
+
+```json
+{
+  "schemaVersion": 1,
+  "host": "127.0.0.1",
+  "port": 18090,
+  "authentication": {
+    "issuer": "department-relay",
+    "origin": "https://login.example.test",
+    "privateKey": "<Ed25519 PKCS8 PEM>",
+    "providers": ["example-identity"]
+  },
   "routes": [{
     "instanceId": "team-a",
     "origin": "https://team-a.example.test",
@@ -211,7 +234,7 @@ The instance connection configuration contains only:
 }
 ```
 
-Start the instance with `--relay-connect-file /private/connection.json`. This enables core membership even without an enterprise identity application token on that instance. The local target defaults to the instance listener. For an installation with a separate managed static entry, an operator may pin `targetPort` to that entry's loopback port. A relay cannot choose the target, tunnel to arbitrary services, or export the managed update endpoints. Keep updater access on a protected management route; membership admin is separate from software deployment authority.
+Start the instance with `--relay-connect-file /private/connection.json`. This enables core membership without requiring the relay's identity-provider credentials on that instance. The local target defaults to the instance listener. For an installation with a separate managed static entry, an operator may pin `targetPort` to that entry's loopback port. A relay cannot choose the target, tunnel to arbitrary services, or export the managed update endpoints. Keep updater access on a protected management route; membership admin is separate from software deployment authority.
 
 `allowLoopbackInsecure: true` permits only an explicit `http://127.0.0.1:PORT` relay for local tests or a relay on the same machine. Network connections require HTTPS and normal certificate verification; optional absolute `caFile` adds a private company CA bundle without disabling verification. Enrollment is administrator maintained in the relay's configuration; adding/removing a route or rotating its credential requires restarting the relay. Run one connector per instance credential. Relay restart drops sessions/tunnels and requires employee sign-in again, with no application database changes.
 
@@ -226,15 +249,16 @@ configuration when no adapter is supplied. It never imports a module named by
 JSON or silently ignores private fields. Declared providers constrain principals
 returned by the adapter; core authorization at each target remains authoritative.
 
-The enterprise identity configuration illustrated above belongs to a downstream product entry,
-which bundles its identity adapter explicitly via the `relayEntry` parameter of
-`packageRelay` or `packageWebServer`. The product owns that schema and plugin
-creation. Trusted external product entries use normal dependency resolution
+Downstream products bundle their identity adapter explicitly via the `relayEntry`
+parameter of `packageRelay` or `packageWebServer`. The product owns private
+configuration and adapter creation; private fields are not part of the core
+configuration illustrated above. Trusted external product entries use normal dependency resolution
 first, then the current core workspace's node_modules as a build fallback; no
 module path comes from runtime JSON. The application owns resource rollback, listeners, TLS, assertions and
 Hub routing. Existing product artifacts retain their `relay.mjs` interface.
-Choose the product artifact for enterprise login tests below; the default core
-artifact deliberately rejects unrecognized product configuration.
+Choose the matching product artifact for real enterprise login validation; the
+public tests below use synthetic providers. The default core artifact deliberately
+rejects unrecognized product configuration.
 
 ## Bootstrap a new team without its own enterprise identity application
 
@@ -259,7 +283,7 @@ Bootstrap a member/admin using `access-admin.mjs` below, and start Headless with
 that same data root and `--access-control`. Persisted Hub identity trust and
 published origin enable target admission without a separate enterprise identity token or legacy
 connector configuration on the team. An explicit
-`--access-member-provider enterprise-identity` may admit all verified employees when that is
+`--access-member-provider example-identity` may admit all verified employees when that is
 the team's policy; administrator grants stay explicit. The approved enterprise identity entry
 still runs only at the original relay. Later node administration uses settings.
 
@@ -270,19 +294,26 @@ The authoritative store is `memberships.sqlite` under the instance data director
 Bootstrap/recover administrators from the instance machine using the independently bundled administration command:
 
 ```sh
-node /absolute/output/relay/access-admin.mjs /private/instance/memberships.sqlite grant enterprise-identity STAFF_ID admin
-node /absolute/output/relay/access-admin.mjs /private/instance/memberships.sqlite grant enterprise-identity STAFF_ID member
-node /absolute/output/relay/access-admin.mjs /private/instance/memberships.sqlite revoke enterprise-identity STAFF_ID member
+node /absolute/output/relay/access-admin.mjs /private/instance/memberships.sqlite grant example-identity STABLE_SUBJECT admin
+node /absolute/output/relay/access-admin.mjs /private/instance/memberships.sqlite grant example-identity STABLE_SUBJECT member
+node /absolute/output/relay/access-admin.mjs /private/instance/memberships.sqlite revoke example-identity STABLE_SUBJECT member
 node /absolute/output/relay/access-admin.mjs /private/instance/memberships.sqlite list
 node /absolute/output/relay/access-admin.mjs /private/instance/memberships.sqlite audit
 ```
 
-enterprise identity's immutable numeric staff ID is the principal subject; login name is display/legacy enrollment input. For initial name-based enrollment, grant `enterprise-identity login:employee.name member` (lowercase). The first verified sign-in binds that grant to the stable staff ID and consumes the name grant. Later account rename/reuse does not transfer an already bound grant. Revoking a stable subject always wins over an old name grant. Administrators should subsequently manage the stable subject shown in the member list/session API.
+Replace `example-identity` and `STABLE_SUBJECT` with the configured provider and
+its verified immutable subject from the session/member APIs. Core subjects are
+provider-scoped and need not be numeric; display or login names are not identity
+proof. A trusted adapter may supply verified legacy aliases for one-time grant
+binding. Core consumes that alias grant and retains the stable subject, so later
+name reuse does not transfer the bound grant. Explicit stable-subject revocation
+wins over a legacy alias. Product-specific staff mapping and enrollment inputs
+belong to that product's adapter.
 
 The core also exposes authenticated `GET /__opencraft_access/session`, admin-only `GET/POST /__opencraft_access/members` and `GET /__opencraft_access/audit`. POST requires matching Origin, JSON and `{provider,subject,role,enabled}`; remote self-removal is rejected. Local machine administration is the recovery authority and its audit operator is recorded as `local-operator`, not a fabricated employee. There is no organization synchronization.
 
-For an installation that admits every verified employee, explicitly configure
-`--access-member-provider enterprise-identity` on the instance. Only identities verified by
+For an installation that admits every verified identity from a provider, explicitly configure
+`--access-member-provider example-identity` on the instance. Only identities verified by
 the configured provider/assertion trust receive an implicit ordinary member role;
 anonymous requests and other providers stay denied. Existing administrators retain
 their role. Explicit stable-subject/Actor membership revocation and disabled Actors
@@ -291,23 +322,26 @@ so restarting without this option removes default access without leaving permane
 The default installation remains explicit-member-only. This option never disables
 signature, scope, expiry, relay admission or resource authorization checks.
 
-Existing `--enterprise-identity-allowlist-file` installations import their validated names once into core storage. Subsequent administration uses the core store; editing the old file does not resurrect revoked accounts. An empty policy denies everyone. Removing a provider does not turn off `--access-control` or relay membership. HTTP admission is checked for every request, and open HTTP/WS sessions are checked on a 500ms revocation poll (subject to event-loop scheduling); revoked WS clients lose message delivery and are forcibly disconnected even if they ignore the close handshake; native engine work can continue under its existing independent execution contract.
+A downstream adapter may import validated legacy memberships once through the
+core store; its legacy configuration and input validation remain product-owned.
+The public Headless CLI does not expose a private allowlist-file option.
+Subsequent administration uses the core store; reimporting a previously recorded
+source does not resurrect revoked accounts. An enabled admission policy without
+member grants or a configured provider default denies everyone. Removing a provider does not turn off `--access-control` or relay membership. HTTP admission is checked for every request, and open HTTP/WS sessions are checked on a 500ms revocation poll (subject to event-loop scheduling); revoked WS clients lose message delivery and are forcibly disconnected even if they ignore the close handshake; native engine work can continue under its existing independent execution contract.
 
 ## Validate without a registered domain
 
 ```sh
 npm run test:relay
-npm run test:enterprise-identity
 npm run test:headless-server
-npm run smoke:relay
 ```
 
 Use `.test` names resolved locally and a trusted local test CA for browser HTTPS/cookie/redirect tests. No domain registration is needed. Keep synthetic enterprise identity signing keys confined to the test boundary; success does not establish that a real corporate gateway forwards the right headers. Separately verify actual employee login through the approved existing entry.
 
-The optional browser smoke runs on a Linux test host with OpenSSL, NSS `certutil`
-and Playwright Chromium installed. It trusts its CA only in the isolated browser
-home directory, without changing the host's certificate store or disabling TLS
-verification. Set `OPENCRAFT_RELAY_SMOKE_DIRECTORY` to retain evidence elsewhere.
+Enterprise provider tests and browser sign-in smoke commands belong to the
+downstream product that supplies the adapter. For the public packaged transit
+Hub/browser path, use the `smoke:hub-network` command documented below; it uses
+isolated test identities and does not validate a real enterprise provider.
 
 The test matrix includes two isolated instances, team-bound login/cookies, rejected cross-team/replayed assertions and tickets, HTTP and WS/binary flow, large upload checksums, incremental SSE, membership revocation, instance disconnect/reconnect, independent relay credentials and gateway Origin rejection. Revoke enrollment by rotating/removing the route credential and restarting its relay; revoke business access in the instance store. Never silently move an instance between relays.
 
@@ -419,13 +453,13 @@ Hub state. A configured invalid file fails startup rather than creating another
 identity. A relay configured as an enterprise identity gateway has an operator-managed assertion authority and
 preserves legacy routes and the approved authentication origin. Only services
 explicitly trusting that same authority are published through its enterprise identity gateway.
-A department node serving only as a transit relay can omit all four gateway
-fields (`issuer`, `privateKey`, `tencentOaTokenFile`, `authenticationOrigin`) and set
-`routes: []`. Import the upstream invitation into its state with `hub-admin.mjs`
+A department node serving only as a transit relay omits the `authentication`
+object and sets `routes: []`. Import the upstream invitation into its state with `hub-admin.mjs`
 before startup, then configure its incoming endpoint and issue downstream invites.
 It forwards the original issuer's scoped assertions without holding that issuer's
-private key or obtaining its own enterprise identity application. The same binary supplies both
-roles; partial gateway configuration is rejected.
+private key or obtaining its own enterprise identity application. The core application supports both roles through explicit
+composition; gateway authentication requires the trusted adapter entry described above. Partial
+gateway configuration is rejected.
 Changes to listener certificates, delegation or relay configuration require a
 service restart; ordinary invitation and policy changes use settings with revision
 conflict detection and operator audit. Keep the previous configuration/artifact
