@@ -1,6 +1,6 @@
 @use "@opencraft/design-system/interaction-mixins.web" as controls;
 
-// Width/height transitions are intentional bounded source behavior, not Shell motion.
+// Width/height transitions are local to this surface; Shell owns pane motion.
 .thread-composer-overlay-host,
 .thread-composer-reveal-host {
   position: absolute;

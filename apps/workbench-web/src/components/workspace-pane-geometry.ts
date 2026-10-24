@@ -29,7 +29,7 @@ export function workspacePaneGeometry(
   };
 }
 
-/** Source Wba: scope changes and explicit snaps do not inherit old motion. */
+/** Scope changes and reduced motion snap directly to the target pane state. */
 export function paneTransitionIntent(previous: {scope: string; open: boolean; fullWidth: boolean},
   next: {scope: string; open: boolean; fullWidth: boolean}, reducedMotion: boolean) {
   return {
