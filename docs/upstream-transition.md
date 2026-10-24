@@ -206,8 +206,8 @@ this migration does not claim a device/native build or change application behavi
   review and public-release validation remain incomplete.
   Public native development identifiers remain legacy values in this phase;
   product release identifiers and callbacks are unchanged.
-- The original Platform/Hermes plugins, account SDK and three product snapshots
-  (`lightvela-agent-core`, `vela-chat-client-core`, `vela-collaboration-web`) live
+- The original Platform/Hermes plugins, account SDK and the product's agent-core,
+  chat-client and collaboration Web snapshots live
   in downstream `products/<product>/plugins` and `products/<product>/packages`. Their package
   names and runtime implementations are preserved. Product tests own the original
   private cases; mixed suites keep generic Actor/Host/Workbench checks in core.

@@ -41,7 +41,7 @@ DOM Chat 由 Web visualViewport 契约管理输入区和列表容量，外层只
 
 验证只选触及的路径：协议与状态模型测边界/迟到消息，下游产品 DOM 功能在 `products/<product>` 运行 `build:mobile-bot-runtime` 和 `smoke:mobile-bot-runtime`，Expo 改动跑 typecheck 与相应 iOS bundle。交互变更要有可复现操作和实际运行时观察；不把每次改动都变成强制截图或全仓门禁。给新预览链接时使用完整明文 `exps://` URL，只轻量核验 manifest，告知 iPhone 用 Safari 和美区 Expo Go 打开。
 
-下游产品正式移动端按 `OPENCRAFT_LIGHTVELA_EDITION=cn|intl` 构建两包，包标识、URL scheme 和 OIDC 回调必须成套匹配；Expo Go 保留开发标识及旧回调。登录页不显示地区选择。站点覆盖只放在开发者模式，需登出后切换，不能将旧站点的凭证、Bot 或缓存带入新站点。改发行身份时同步核对 `app.config.js`、构建脚本、认证服务回调清单及 [Expo README](README.md)，并验证两包可同时安装且各自收到回调。
+下游产品通过自己的发行配置选择地区包，包标识、URL scheme 和 OIDC 回调必须成套匹配；开发入口的安装标识与回调连续性由产品维护。登录页不显示地区选择。站点覆盖只放在开发者模式，需登出后切换，不能将旧站点的凭证、Bot 或缓存带入新站点。改发行身份时同步核对产品配置、构建脚本、认证服务回调清单及 [Expo README](README.md#native-sign-in)，并验证多包可同时安装且各自收到回调；公开默认入口不选择私有地区或账号。
 
 文档维护按“一个事实、一处权威”处理：改现有过时段落，再加必要的短规则；README 讲使用方式，本文件讲 Agent 工作边界，设计文档讲不变量，源码与测试讲当前行为。不要叠加一次性故障禁令或保留与现状冲突的旧描述。
 

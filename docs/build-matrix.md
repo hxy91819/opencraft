@@ -7,7 +7,6 @@ so each surface is an explicit matrix target with its own artifact contract.
 | Target | Renderer/runtime | Output | Build host |
 | --- | --- | --- | --- |
 | `web-browser` | Vite, HTTP origin, same-origin `/appserver` gateway | Hashed static release | Linux/macOS/Windows |
-| `lightvela-web` | downstream product/Hermes Vite product, no HyperNode plugin | `dist-lightvela-web` hashed static release | Linux/macOS/Windows |
 | `electron-renderer` | Vite, origin-root asset URLs, Electron loopback origin | Relocatable renderer tree | Linux/macOS/Windows |
 | `electron-host` | Sandboxed Electron main/preload + static loopback origin + independent OpenCraft Daemon | Main/preload, daemon executable and pinned DSH runtime | Linux/macOS/Windows |
 | `electron-macos-arm64-zip` | Electron host + renderer | Apple Silicon `.app` ZIP | Linux/macOS |
@@ -285,16 +284,16 @@ credential check in the same Environment runs before either native build, so
 missing Secrets fail without consuming macOS build time. Configure the Environment
 to allow only the `main` branch and `v*` tags.
 
-The standalone core must not resolve downstream-parent `file:` dependencies. The downstream snapshots of `lightvela-agent-core`, `vela-chat-client-core` and Collaboration now
+The standalone core must not resolve downstream-parent `file:` dependencies. The downstream agent, chat-client and Collaboration snapshots now
 belong to downstream `products/<product>/packages`, with their generator and checks in
 that product. Run its `sync:shared-packages` when a corresponding `shared/`
 authority changes, then `check:shared-packages`; the product owns these aliases
 and the original generators. Public core contains no private compatibility CLI. Existing snapshot drift is reported
 separately rather than silently regenerating current styling.
 
-For downstream builds, file-linked Collaboration sources outside `opencraft/` resolve
-`@lightvela/vela-chat-client-core`, `@tencentcloud/chat` and `tim-upload-plugin`
-from the workbench-owned dependency graph via Vite deduplication. Keep the
+For downstream builds, the product config owns dependency resolution and Vite
+deduplication for file-linked Collaboration sources, chat clients and messaging
+SDKs outside the core checkout. Keep the
 canonical chat package's messaging/platform subpath exports in its generated
 snapshot; do not externalize those imports to make a release build succeed.
 Verify the downstream product's `build:embedded:release` after changing either boundary.
