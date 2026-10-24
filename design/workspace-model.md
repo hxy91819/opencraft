@@ -45,7 +45,7 @@ Web/Electron 不把云端 Bot 创建作为工作区前置条件。账号状态�
 
 ### 明确的平台适配与尚未等价项
 
-- Codex 私有 `discard-conversation-from-cache` 不属于 OpenCraft AppServer ABI；此处使用生成协议已有的 `thread/unsubscribe`，并释放本地 lease。服务器何时回收 ephemeral 由服务器控制，不能称为立即物理销毁。
+- 关闭临时侧聊时释放本地 lease，并调用 OpenCraft AppServer 的 `thread/unsubscribe`。服务器负责 ephemeral 会话的回收；取消订阅不代表立即物理销毁。
 - 本机 DSH/远端 Hermes 若不支持 ephemeral fork，呈现明确错误，不能伪造成功。标准 Codex AppServer 的真实 WebSocket 创建/父子运行/关闭已验证，推理边界仅使用本地合成 Responses 服务，未调用外部模型。
 - 精细浏览器 peek/手势显隐、完整编辑器选择/撤销的切换连续性仍需对照验证，不因初步输入框可见就宣布整体体验完成。下方面板已按用户要求移除，不再作为待办。
 - 不迁移 owner/follower 协议到 UI；已有 AppHost/HostRuntime 的执行权限保持权威。
