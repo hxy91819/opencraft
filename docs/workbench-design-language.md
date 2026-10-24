@@ -168,7 +168,17 @@ selection; downstream products include their own roots in post-deploy checks.
 The usage heatmap distinguishes mouse/keyboard preview from explicit cell
 selection. Touch and pen entry cannot create a preview; tap or keyboard activation
 toggles selection, which remains visible outside the hover gate. Outside-range
-cells are disabled, and the existing daily table retains the textual alternative.
+cells are disabled and cannot preview unqueried dates as zero usage; the existing
+daily table retains the textual alternative.
+Large bar values wrap within their numeric column rather than painting outside
+the chart card. The seven-row matrix uses bounded square cells even for short date ranges, so
+its caption and controls remain readable together. Daily and weekly charts show
+at most the latest 26 weeks; cumulative bars retain the usage from the entire
+selected range, including days before the first displayed week. The daily table
+and summary retain the complete selected range. Missing coverage remains partial;
+a model with unknown identity can still have a known token amount. If an older
+response omits the optional settled-turn count, show an unknown count rather
+than relabeling every turn as settled. A known empty range still has zero turns.
 
 The persistent desktop titlebar rail has one disclosure rule: while the
 Sidebar is open, Start is the single new-task affordance; while it is hidden, a

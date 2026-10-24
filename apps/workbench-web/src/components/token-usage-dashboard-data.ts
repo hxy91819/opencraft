@@ -5,7 +5,7 @@ export interface DashboardMetrics {
   total: string;
   peak: string;
   peakDay: string | null;
-  settledTurns: number;
+  settledTurns: number | null;
   longestStreak: number;
   currentStreak: number;
 }
@@ -81,7 +81,7 @@ export function dashboardMetrics(
   const peak = max.toString();
   if (max === 0n) peakDay = null;
 
-  const settledTurns = snapshot.summary.settledTurns ?? snapshot.summary.turns ?? 0;
+  const settledTurns = snapshot.summary.settledTurns ?? (snapshot.summary.turns === 0 ? 0 : null);
 
   // Active days: turns > 0 or tokens > 0
   const activeDaySet = new Set<number>();
@@ -252,6 +252,20 @@ export function buildActivityBars(
   const bars: ActivityBar[] = [];
   let cumTokens = 0n;
   let cumTurns = 0;
+
+  // The display is bounded to recent weeks; cumulative totals still begin at
+  // the requested range start, including days before the first visible bar.
+  if (mode === "cumulative") {
+    const firstVisibleDay = startWeekDate.toISOString().slice(0, 10);
+    for (const day of map.values()) {
+      if (day.key >= from && day.key < firstVisibleDay && day.key <= through) {
+        try {
+          cumTokens += BigInt(day.tokens);
+          cumTurns += day.turns;
+        } catch {}
+      }
+    }
+  }
 
   for (let w = 0; w < weeks; w++) {
     const monday = new Date(startWeekDate.getTime() + w * 7 * 86400000);

@@ -14,7 +14,7 @@ import {TokenUsageDashboardView} from '/apps/workbench-web/src/components/token-
 import {buildOpenCraftThemeCssProperties} from '/packages/design-system/src/theme-engine.ts';
 import '/apps/workbench-web/src/styles/app.scss';
 window.setTheme=theme=>{for(const [key,value] of Object.entries(buildOpenCraftThemeCssProperties(theme)))document.documentElement.style.setProperty(key,value);};window.setTheme('light');
-window.calls=[];window.mode='ok';window.expanded=false;window.pageDelay=20;
+window.calls=[];window.large=false;window.mode='ok';window.expanded=false;window.pageDelay=20;
 const connection={hostId:'fixture',phase:'ready',error:null};
 const port={getSnapshot:()=>({...connection}),subscribe:()=>()=>{},request:async(host,method,params)=>{
  window.calls.push(params);if(window.mode==='unauthorized')throw Object.assign(new Error('unauthorized'),{code:401});
@@ -22,12 +22,12 @@ const port={getSnapshot:()=>({...connection}),subscribe:()=>()=>{},request:async
  if(window.mode==='failed')throw new Error('offline');
  await new Promise(r=>setTimeout(r,window.pageDelay));
  const personal=params.scope!=='team';
- const tokens=personal?'1000':'2000';
+ const tokens=window.large?'900719925474099312345':personal?'1000':'2000';
  return {serverId:'fixture',canQueryTeam:true,scope:params.scope,actorId:personal?'A':null,asOf:Date.now(),snapshotRevision:3,timezone:'Asia/Shanghai',policyVersion:'equal-turn-v1',view:params.view,
  coverage:{enabled:true,enabledAt:Date.now()-100000,partial:false,openGaps:0,missingUsage:0,unknownModelTurns:0},summary:{tokens,allocatedTokens:tokens,turns:1,threads:1,categories:{settled:tokens,provisional:'0',pending:'0',system:'0',unknown:'0'}},
  diagnostics:{since:Date.now(),counts:{collected:3,corrected:1,deduplicated:7,excluded:0,missing:0,reconciled:1,writeFailures:0,queryFailures:0},lastSourceSuccessAt:Date.now()-1000,lastReconcileAt:Date.now()-1000,writeLatency:{count:20,samples:20,p95Ms:1.2,maxMs:2},queryLatency:{count:2,samples:2,p95Ms:3.4,maxMs:4}},
  daily:[{key:params.from,tokens,turns:1}],models:[{key:'["provider","actual-model"]',tokens,turns:1}],
- rows:params.view==='turns'?[{threadId:'thread-fixture',turnId:'turn-fixture',startedAt:Date.now(),executionState:'completed',allocationState:'settled',rawTokens:'2000',allocatedTokens:tokens,participantCount:2,revision:3,models:[]}]:window.expanded?Array.from({length:30},(_,n)=>({key:(params.cursor?'thread-page2-':'thread-page1-')+n,tokens,turns:1})):[{key:params.view==='actors'?'A':'thread-fixture',tokens,turns:1}],nextCursor:window.expanded&&!params.cursor?'fixture-page2':null};
+ rows:params.view==='turns'?[{threadId:'thread-fixture',turnId:'turn-fixture',startedAt:Date.now(),executionState:'completed',allocationState:'settled',rawTokens:window.large?tokens:'2000',allocatedTokens:tokens,participantCount:window.large?1:2,revision:3,models:[]}]:window.expanded?Array.from({length:30},(_,n)=>({key:(params.cursor?'thread-page2-':'thread-page1-')+n,tokens,turns:1})):[{key:params.view==='actors'?'A':'thread-fixture',tokens,turns:1}],nextCursor:window.expanded&&!params.cursor?'fixture-page2':null};
 }};
 createRoot(document.getElementById('root')).render(<div className="settings-page__viewport" data-layout="document"><div className="settings-page__content"><TokenUsageDashboardView hostId="fixture" agentRuntimes={port} locale={${JSON.stringify(locale)}}/></div></div>);`;
 const vite=await createServer({configFile:false,root:process.cwd(),logLevel:"error",esbuild:{jsx:"automatic"},resolve:{dedupe:["react","react-dom"]},server:{host:"127.0.0.1",port:0},plugins:[{
@@ -104,6 +104,10 @@ try {
    assert.equal(await cell.getAttribute('aria-pressed'),'false');
    await cell.dispatchEvent('pointerout',{pointerType:'mouse'});
  }
+ const outside=page.locator('.token-usage__heatmap-cell[data-state="outside"]').last();
+ const outsideDate=await outside.getAttribute('data-date');
+ await outside.dispatchEvent('pointerover',{pointerType:'mouse'});
+ assert.ok(!(await caption.innerText()).includes(outsideDate!),"unqueried dates must not preview zero usage");
  await session.detach();
  // A real touch-capable context verifies native tap, not synthetic click alone.
  const touchContext=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}});
@@ -115,6 +119,10 @@ try {
  await touchCell.tap();assert.equal(await touchCell.getAttribute('aria-pressed'),'true');
  await touchCell.tap();assert.equal(await touchCell.getAttribute('aria-pressed'),'false');
  await touchContext.close();
+ // A short range must remain a compact chart in the actual Settings viewport.
+ await page.setViewportSize({width:1440,height:900});
+ const activityHeight=await page.locator('.token-usage__activity').evaluate(el=>el.getBoundingClientRect().height);
+ assert.ok(activityHeight<450,"short-range activity must not push its own caption below a viewport: "+activityHeight);
  const diagnostics=page.getByText(locale==="en-US"?"View runtime diagnostics":"查看运行诊断",{exact:true});
  await diagnostics.focus();await page.keyboard.press("Enter");
  await page.getByText(locale==="en-US"?"Deduplicated":"去重",{exact:true}).waitFor();
@@ -123,6 +131,18 @@ try {
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),`horizontal overflow at ${width}/${theme}`);
    await page.screenshot({path:output+`/${width}-${theme}.png`,fullPage:true});
  }
+ await page.evaluate(()=>{(window as any).large=true;});
+ await page.getByRole("button",{name:locale==="en-US"?"Refresh":"刷新",exact:true}).click();
+ await page.waitForFunction(()=>document.querySelector('.token-usage__strip-cell strong')?.getAttribute('title')?.replaceAll(',','')==='900719925474099312345');
+ await page.getByRole("radio",{name:locale==="en-US"?"Weekly":"按周",exact:true}).click();
+ for(const width of [320,1440]) {
+   await page.setViewportSize({width,height:900});
+   const values=await page.locator('.token-usage__bar-value').evaluateAll(nodes=>nodes.map(node=>({width:node.clientWidth,ink:node.scrollWidth})));
+   assert.ok(values.length>0&&values.every(value=>value.ink<=value.width),'large bar values stay readable within their column '+JSON.stringify(values));
+   await page.screenshot({path:output+`/${width}-large-weekly.png`});
+ }
+ await page.getByRole("radio",{name:locale==="en-US"?"Daily":"按日",exact:true}).click();
+ await page.evaluate(()=>{(window as any).large=false;});
  await page.getByLabel(locale==="en-US"?"Scope":"用量范围").selectOption("team");await page.getByRole("heading",{name:locale==="en-US"?"Team usage":"团队用量",exact:true}).waitFor();
  await page.evaluate(()=>{(window as any).mode="unauthorized";});await page.getByRole("button",{name:locale==="en-US"?"Refresh":"刷新",exact:true}).click();
  await page.getByText(locale==="en-US"?"Sign in to view usage.":"请登录后查看用量。",{exact:true}).waitFor();

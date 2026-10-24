@@ -396,7 +396,7 @@ export function TokenUsageDashboardView({
                 <small>{metrics.peakDay ?? "—"}</small>
               </div>
               <div className="token-usage__strip-cell">
-                <strong>{count(String(metrics.settledTurns))}</strong>
+                <strong>{metrics.settledTurns === null ? "—" : count(String(metrics.settledTurns))}</strong>
                 <span>{copy("已结算轮次", "Settled turns")}</span>
                 <small>{copy(`共 ${visible.summary.turns} 轮`, `${visible.summary.turns} turns total`)}</small>
               </div>
@@ -450,7 +450,7 @@ export function TokenUsageDashboardView({
                     className="token-usage__heatmap"
                     role="group"
                     aria-label={copy("每日 Token 活跃度热力图", "Daily token activity heatmap")}
-                    style={{ gridTemplateColumns: `repeat(${grid.weeks},minmax(4px,1fr))` }}
+                    style={{ gridTemplateColumns: `repeat(${grid.weeks},minmax(4px,16px))` }}
                   >
                     {grid.columns.map((week) =>
                       week.map((cell) => (
@@ -464,7 +464,7 @@ export function TokenUsageDashboardView({
                           aria-label={copy(`${cell.date} · ${count(cell.tokens)} Token · ${cell.turns} 轮`, `${cell.date} · ${count(cell.tokens)} tokens · ${cell.turns} turns`)}
                           aria-pressed={selectedCell?.date === cell.date}
                           disabled={cell.state === "outside"}
-                          onPointerEnter={event => { if (event.pointerType !== "mouse") return; setPreviewCell(cell); }}
+                          onPointerEnter={event => { if (cell.state === "outside" || event.pointerType !== "mouse") return; setPreviewCell(cell); }}
                           onPointerLeave={event => { if (event.pointerType === "mouse") setPreviewCell(null); }}
                           onFocus={event => { if (!event.currentTarget.matches(":focus-visible") || document.documentElement.dataset.pointerFocus) return; setPreviewCell(cell); }}
                           onBlur={() => setPreviewCell(null)}
@@ -474,7 +474,7 @@ export function TokenUsageDashboardView({
                     )}
                   </div>
                 </div>
-                <div className="token-usage__heatmap-months" style={{ gridTemplateColumns: `repeat(${grid.weeks},minmax(4px,1fr))` }}>
+                <div className="token-usage__heatmap-months" style={{ gridTemplateColumns: `repeat(${grid.weeks},minmax(4px,16px))` }}>
                   {Array.from({ length: grid.weeks }, (_, i) => grid.monthLabels.find((x) => x.index === i)).map((x, i) => (
                     <span key={i}>{x?.label ?? ""}</span>
                   ))}
