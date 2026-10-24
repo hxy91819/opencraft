@@ -323,16 +323,17 @@ test('web-only execution updates switch the pointer without restarting an unchan
     const link = join(state, 'execution-current');
     const tokenPath = join(root, 'token'); await writeFile(tokenPath, 'synthetic-hash-token');
     const endpoint = join(root, 'core.sock'); await new Promise(done => core.listen(endpoint, done));
+    let runningRoot, reportRuntimeRoot = false;
     health = createServer(async (_request, response) => {
       const manifest = JSON.parse(await readFile(join(await readlink(link), 'package.json'), 'utf8'));
       response.end(JSON.stringify({ ok: true, version: manifest.version, buildId: manifest.opencraftWeb.buildId,
-        core: { pid: 11, codexPid: 12 } }));
+        core: { pid: 11, codexPid: 12 }, ...(reportRuntimeRoot ? { runtimeReleaseRoot: runningRoot } : {}) }));
     });
     await new Promise(done => health.listen(0, '127.0.0.1', done));
     let restarts = 0;
     const execution = createExecutionDeployment({ link, unit: 'execution.service', coreUnit: 'core.service', coreEndpoint: endpoint, tokenPath,
       healthUrl: `http://127.0.0.1:${health.address().port}/health`, timeout: 500,
-      validate: async () => {}, prepareAccess: async () => {}, restart: async () => { restarts += 1; } });
+      validate: async () => {}, prepareAccess: async () => {}, restart: async () => { restarts += 1; runningRoot = await readlink(link); } });
 
     await execution.apply({ releaseRoot: firstRoot, version: '1.0.0', buildId: 'web-one' });
     assert.equal(restarts, 1, 'first deployment still starts the backend');
@@ -341,12 +342,28 @@ test('web-only execution updates switch the pointer without restarting an unchan
     await execution.apply({ releaseRoot: secondRoot, version: '1.1.0', buildId: 'web-two' });
     assert.equal(restarts, 1, 'identical backend payload does not restart the gateway');
     assert.equal(await readlink(link), secondRoot, 'the web pointer still advances');
+    assert.ok((await execution.referencedRoots()).includes(firstRoot), 'unchanged process retains its startup files even when health has no runtime identity');
+    await execution.apply({ releaseRoot: secondRoot, version: '1.1.0', buildId: 'web-two' });
+    assert.ok((await execution.referencedRoots()).includes(firstRoot), 'same-pointer reconciliation cannot drop a still-running runtime');
 
     await execution.apply({ releaseRoot: thirdRoot, version: '1.2.0', buildId: 'web-three' });
     assert.equal(restarts, 2, 'a changed backend payload restarts the gateway');
+    assert.deepEqual(await execution.referencedRoots(), [thirdRoot], 'successful restart ends the old process file lifetime');
 
     await execution.apply({ releaseRoot: secondRoot, version: '1.1.0', buildId: 'web-two' });
     assert.equal(restarts, 3, 'cross-runtime rollback restarts as well');
+
+    reportRuntimeRoot = true;
+    await execution.apply({ releaseRoot: firstRoot, version: '1.0.0', buildId: 'web-one' });
+    assert.equal(restarts, 3);
+    assert.deepEqual(await execution.referencedRoots(), [secondRoot, firstRoot], 'health identifies the actual running root independently of the selected pointer');
+    await execution.apply({ releaseRoot: firstRoot, version: '1.0.0', buildId: 'web-one' });
+    assert.deepEqual(await execution.referencedRoots(), [secondRoot, firstRoot], 'repeat reconciliation keeps the runtime root');
+    const retained = await execution.referencedRoots();
+    for (const candidate of [firstRoot, secondRoot, thirdRoot]) {
+      if (!retained.includes(candidate)) await rm(candidate, { recursive: true, force: true });
+    }
+    assert.ok((await readFile(join(runningRoot, 'execution/gateway.mjs'))).length > 0, 'release cleanup leaves running gateway files readable');
   } finally {
     if (health) { health.closeAllConnections(); await new Promise(done => health.close(done)); }
     core.closeAllConnections(); await new Promise(done => core.close(done));
