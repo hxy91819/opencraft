@@ -3,6 +3,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import * as Menu from "@opencraft/design-system-web/dropdown-menu";
 import { GlobeIcon as Globe2, LogoutIcon as LogOut } from "@opencraft/design-system-web/action-icons";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { FormattedMessage } from "@opencraft/i18n/react";
 import { SettingsActions, SettingsButton, SettingsGroup, SettingsIconButton, SettingsListItem, SettingsNotice, SettingsPageHeader, SettingsRow, SettingsSection, SettingsSwitch, SettingsTextInput } from "@opencraft/extension-react";
 import type { SshConnectionEdit, SshConnectionView } from "@opencraft/app-host-protocol";
 import { SshConnectionsController } from "./controller";
@@ -36,7 +37,7 @@ function ConnectionEditor({ editor, controller, onClose }: { editor: Editor; con
     <Dialog.Overlay className="ssh-connections-dialog__overlay" />
     <Dialog.Content className="ssh-connections-dialog" onEscapeKeyDown={event => { if (busy) event.preventDefault(); }} onPointerDownOutside={event => { if (busy) event.preventDefault(); }}>
       <header><Dialog.Title>{title}</Dialog.Title><Dialog.Close asChild><SettingsIconButton label="关闭连接设置" disabled={busy}><X size={18} /></SettingsIconButton></Dialog.Close></header>
-      <Dialog.Description>{editor.kind === "delete" ? "仅移除这个连接，远端文件和 Codex 服务不会删除或停止。" : "从 OpenCraft 服务器连接远端。密码只交给后端保存，不会返回浏览器。"}</Dialog.Description>
+      <Dialog.Description>{editor.kind === "delete" ? <FormattedMessage id="sshConnections.removeDescription" defaultMessage="Removing this connection does not delete remote files or stop remote services." /> : "从 OpenCraft 服务器连接远端。密码只交给后端保存，不会返回浏览器。"}</Dialog.Description>
       {editor.kind === "delete" ? <SettingsNotice>确认删除“{row?.displayName}”？此处已有会话将暂时无法访问。</SettingsNotice> : <form id="ssh-connection-form" onSubmit={event => { event.preventDefault(); void run(async () => {
         if (!row && (!trust || !trusted)) return;
         await controller.save(row, input, row ? undefined : trust!);

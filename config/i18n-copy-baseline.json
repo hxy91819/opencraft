@@ -857,7 +857,6 @@
     {"file":"plugins/builtin-agents/src/model-services/view.tsx","kind":"aria-label","text":"正在加载提供商","count":1},
     {"file":"plugins/builtin-agents/src/model-services/view.tsx","kind":"jsx-text","text":"暂无提供商","count":1},
     {"file":"plugins/builtin-agents/src/ssh-connections/view.tsx","kind":"label","text":"关闭连接设置","count":1},
-    {"file":"plugins/builtin-agents/src/ssh-connections/view.tsx","kind":"jsx-expression","text":"仅移除这个连接，远端文件和 Codex 服务不会删除或停止。","count":1},
     {"file":"plugins/builtin-agents/src/ssh-connections/view.tsx","kind":"jsx-expression","text":"从 OpenCraft 服务器连接远端。密码只交给后端保存，不会返回浏览器。","count":1},
     {"file":"plugins/builtin-agents/src/ssh-connections/view.tsx","kind":"jsx-text","text":"确认删除“","count":1},
     {"file":"plugins/builtin-agents/src/ssh-connections/view.tsx","kind":"jsx-text","text":"”？此处已有会话将暂时无法访问。","count":1},
