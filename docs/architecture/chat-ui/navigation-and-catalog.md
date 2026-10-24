@@ -60,13 +60,22 @@ Sidebar Thread menus contain Thread-scoped mutations only. Creating a new task
 and opening Host settings remain ordinary application navigation; neither is
 advertised as a Thread menu action.
 
-A Goal is durable Codex Thread state, not a Composer draft or a Web timer. The
-Codex AppServer owns objective, status, and usage counters. The Codex Host
-advertises the supported Goal methods, keeps a replaceable index of active
-Threads, and owns continuation after Turn completion, including when no browser
-is connected. Queued user input has priority over autonomous continuation;
-continuation is serialized with other per-Thread Host operations. The DSH Host
-currently advertises read-only Goal support, never a simulated write path.
+A Goal is durable Thread state owned by the execution engine. The Host declares
+the supported read/write methods and usage accounting; shared UI follows those
+capabilities rather than treating a Composer draft or Web timer as Goal state.
+
+For Codex, the AppServer owns objective, status, and usage counters. Its Host
+keeps a replaceable index of active Threads and owns continuation after Turn
+completion, including when no browser is connected. Queued user input has
+priority over autonomous continuation; continuation is serialized with other
+per-Thread Host operations.
+
+The DSH Host advertises writes only when its native Goal port is available;
+otherwise it remains read-only. The native service owns mutation and durability,
+and its Goal-round driver owns continuation. It declares `usageAccounting:false`,
+so shared UI omits token/time metrics rather than inventing accounting. See the
+[DSH Goal boundary](../../dsh-appserver-boundaries.md) for activation, restore,
+and supported mutation semantics.
 
 For SSH Codex, Goals remain native remote Thread state. The shared broker
 preserves an explicit upstream Goal capability, or discovers enabled Goals
