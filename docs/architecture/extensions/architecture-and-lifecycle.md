@@ -49,7 +49,10 @@ Contribution 仍不会因为安装或激活而自动进入模型上下文。
 
 ## 2. 客户端扩展边界
 
-插件目录、安装和启用状态属于 Host/AppServer；客户端 bridge 按可用性惰性激活。
+原生 AppServer 插件的目录、安装和启用状态属于对应 Host/AppServer；客户端 bridge
+按可用性惰性激活。OpenCraft 客户端 Extension 的安装和启用意图由
+`ExtensionInstallationRepository` 持有，`ExtensionManager` 协调加载，
+`ExtensionSupervisor` 持有实际激活；管理页目录只是这些状态的派生投影。
 内部 registry、主题 factory 和编辑器扩展登记不构成第三方任意代码执行边界。
 外部 App 内容经独立 sandbox、CSP、资源代理和主题/尺寸 RPC 呈现。
 
