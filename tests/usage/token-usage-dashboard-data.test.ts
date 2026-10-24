@@ -145,3 +145,15 @@ test("an omitted settled turn count stays unknown instead of borrowing the total
   assert.equal(metrics.settled, "1200");
   assert.equal(metrics.total, "1500");
 });
+
+test("earlier cumulative days retain the visible weeks' invalid-value and duplicate-key handling", () => {
+  const daily = [
+    { key: "2025-11-01", tokens: "100", turns: 1 },
+    { key: "2025-11-01", tokens: "200", turns: 2 },
+    { key: "2025-11-02", tokens: "unavailable", turns: 9 },
+    { key: "2026-10-24", tokens: "300", turns: 3 },
+  ];
+  const last = buildActivityBars(daily, "2025-11-01", "2026-10-24", "cumulative").at(-1)!;
+  assert.equal(last.tokens, "500");
+  assert.equal(last.turns, 5);
+});

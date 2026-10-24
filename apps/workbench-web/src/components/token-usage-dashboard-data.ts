@@ -257,10 +257,12 @@ export function buildActivityBars(
   // the requested range start, including days before the first visible bar.
   if (mode === "cumulative") {
     const firstVisibleDay = startWeekDate.toISOString().slice(0, 10);
-    for (const day of daily) {
+    for (const day of map.values()) {
       if (day.key >= from && day.key < firstVisibleDay && day.key <= through) {
-        cumTokens += BigInt(day.tokens);
-        cumTurns += day.turns;
+        try {
+          cumTokens += BigInt(day.tokens);
+          cumTurns += day.turns;
+        } catch {}
       }
     }
   }
