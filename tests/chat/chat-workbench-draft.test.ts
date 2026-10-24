@@ -354,6 +354,8 @@ test("skills are a typed host resource and skills/changed is an invalidation sig
     const response = await runtime.resources.composerCatalog.listSkills({
       cwds: ["/workspace", "/shared"],
       forceReload: true,
+      threadId: "thread-created",
+      model: "native-model",
     });
     assert.equal(response.data[0]?.skills[0]?.name, "repo-review");
     const request = harness.requests.find((candidate) => candidate.method === "skills/list");

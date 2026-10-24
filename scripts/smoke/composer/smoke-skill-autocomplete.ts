@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { createServer } from "vite";
 
 const { chromium, _electron } = await import(process.env.OPENCRAFT_PLAYWRIGHT_MODULE ?? "playwright");
+const engineScope = process.argv.includes("--engine-scope");
 const output = await mkdtemp(join(tmpdir(), "opencraft-skill-autocomplete-"));
 const source = `
 import React,{useMemo,useState} from 'react';import{createRoot}from'react-dom/client';
@@ -22,13 +23,13 @@ const response=host=>({data:[{cwd:'/workspace/'+host,errors:[],skills:[
 {name:'disabled-skill',path:'/disabled/SKILL.md',description:'Hidden',enabled:false,scope:'user'},
 ...Array.from({length:extra},(_,i)=>({name:'added-'+i,path:'/workspace/'+host+'/added-'+i+'/SKILL.md',description:'Added live',enabled:true,scope:'user'}))]}]});
 function App(){const[host,setHost]=useState('A');const[available,setAvailable]=useState(true);
-const controller=useMemo(()=>createComposerController({type:'existing-thread',key:{hostId:host,threadId:'thread'}},{now:Date.now,createId:()=>crypto.randomUUID()}),[host]);
-const catalog=useMemo(()=>available?{subscribeSkillsChanged:f=>{listeners.add(f);return()=>listeners.delete(f)},search(q,signal){requests.push({kind:q.kind,query:q.query,host,signal});const snapshot=response(host);const result=()=>q.kind==='skill'?searchAppServerSkills(snapshot,q.query,q.limit):[];
+const controller=useMemo(()=>createComposerController(${engineScope ? "{type:'new-thread',draftId:'stable-draft',execution:{hostId:host,workspace:{cwd:'/workspace',runtimeWorkspaceRoots:['/workspace']}}}" : "{type:'existing-thread',key:{hostId:host,threadId:'thread'}}"},{now:Date.now,createId:()=>crypto.randomUUID()}),[host]);
+const catalog=useMemo(()=>available?{subscribeSkillsChanged:f=>{listeners.add(f);return()=>listeners.delete(f)},search(q,signal){requests.push({kind:q.kind,query:q.query,model:q.model,host,signal});const snapshot=response(q.model==='pi:model'?'Pi':host);const result=()=>q.kind==='skill'?searchAppServerSkills(snapshot,q.query,q.limit):[];
 if(mode==='hold')return new Promise(resolve=>pending.push(()=>resolve(result())));if(mode==='error')throw Error('Synthetic catalog failure');return Promise.resolve(mode==='empty'?[]:result());}}:undefined,[host,available]);
-window.fixture={locale:locale=>intlRuntime.update({localeOverride:locale}),refresh:n=>{extra=n;listeners.forEach(f=>f())},host:()=>host,mode:v=>mode=v,resolve:()=>{pending.splice(0).forEach(f=>f())},requests:()=>requests.map(({signal,...r})=>({...r,aborted:signal?.aborted})),submitted:()=>submitted,switchHost:()=>setHost('B'),unavailable:()=>setAvailable(false),compile:()=>compileSubmitIntent(controller.createSubmitIntent()).input,document:()=>controller.getSnapshot().draft.document,
+window.fixture={model:value=>controller.dispatch({type:'set-selections',patch:{model:value}}),locale:locale=>intlRuntime.update({localeOverride:locale}),refresh:n=>{extra=n;listeners.forEach(f=>f())},host:()=>host,mode:v=>mode=v,resolve:()=>{pending.splice(0).forEach(f=>f())},requests:()=>requests.map(({signal,...r})=>({...r,aborted:signal?.aborted})),submitted:()=>submitted,switchHost:()=>setHost('B'),unavailable:()=>setAvailable(false),compile:()=>compileSubmitIntent(controller.createSubmitIntent()).input,document:()=>controller.getSnapshot().draft.document,
 codeBlock:()=>controller.dispatch({type:'set-document',document:{version:1,blocks:[{type:'code-block',language:'sh',text:'$'}]}}),
 dark:()=>{document.documentElement.dataset.theme='dark';for(const[k,v]of Object.entries(buildOpenCraftThemeCssProperties('dark',graphiteThemePalette.dark)))document.documentElement.style.setProperty(k,v)}};
-return <main style={{padding:40,paddingTop:320,maxWidth:900,margin:'auto'}}><button id='outside' style={{position:'fixed',top:16,left:16}}>Outside editor</button><OpenCraftComposer controller={controller} catalog={catalog} shortcutCommands={host==='A'?[{name:'new',description:'New conversation'},{name:'compress',description:'Compress context'},{name:'status',description:'View status'},{name:'usage',description:'View usage'},{name:'stop',description:'Stop current task'},{name:'help',description:'All commands'}]:undefined} selectionCatalog={{models:[{id:'model',value:'model',label:'Model',description:null,isDefault:true,defaultEffort:null,efforts:[]}],permissionProfiles:[]}} onSubmit={async()=>{submitted++}} onCancel={()=>{}}/></main>}
+return <main style={{padding:40,paddingTop:320,maxWidth:900,margin:'auto'}}><button id='outside' style={{position:'fixed',top:16,left:16}}>Outside editor</button><OpenCraftComposer controller={controller} catalog={catalog} shortcutCommands={host==='A'?[{name:'new',description:'New conversation'},{name:'compress',description:'Compress context'},{name:'status',description:'View status'},{name:'usage',description:'View usage'},{name:'stop',description:'Stop current task'},{name:'help',description:'All commands'}]:undefined} selectionCatalog={{models:[{id:'model',value:'model',label:'Model',description:null,isDefault:true,defaultEffort:null,efforts:[]},{id:'pi:model',value:'pi:model',label:'Pi Model',description:null,isDefault:false,defaultEffort:null,efforts:[]}],permissionProfiles:[]}} onSubmit={async()=>{submitted++}} onCancel={()=>{}}/></main>}
 const intlRuntime=new LocaleRuntime([{locale:'zh-CN',label:'简体中文',load:async()=> (await import('/apps/workbench-web/src/i18n/locales/zh-CN.json')).default}]);
 createRoot(document.getElementById('root')).render(<IntlRuntimeProvider runtime={intlRuntime}><App/></IntlRuntimeProvider>);`;
 const vite=await createServer({configFile:false,root:process.cwd(),logLevel:"error",cacheDir:join("node_modules",`.vite-${basename(output)}`),resolve:{dedupe:["react","react-dom","react-intl"]},optimizeDeps:{include:["react","react-dom/client","react/jsx-runtime","react-intl"]},esbuild:{jsx:"automatic"},server:{host:"127.0.0.1",port:0,hmr:false},plugins:[{name:"skill-autocomplete-fixture",resolveId:id=>id==="/probe.tsx"?id:null,load:id=>id==="/probe.tsx"?source:null,configureServer(server){server.middlewares.use((req,res,next)=>{if(req.url==="/favicon.ico"){res.statusCode=204;res.end();return}if(req.url!=="/")return next();res.setHeader('content-type','text/html');res.end('<title>Skill autocomplete verification</title><div id="root"></div><script type="module" src="/probe.tsx"></script>')})}}]});
@@ -42,6 +43,37 @@ try{
   page.setDefaultTimeout(15000);page.setDefaultNavigationTimeout(60000);page.on('pageerror',(e:Error)=>{errors.push(e.message);console.error(e.message)});page.on('console',(m:any)=>{if(m.type()==='error')console.error(m.text())});await page.addInitScript('window.__name=value=>value');await page.goto(url,{waitUntil:'domcontentloaded'});console.log('Composer fixture loaded');
   const editor=page.locator('.opencraft-composer-editor');const list=page.getByRole('listbox',{name:'skill suggestions'});const options=list.getByRole('option');
   const fill=async(text:string)=>{await editor.fill('');await page.getByRole('listbox').waitFor({state:'hidden'});await editor.fill(text)};
+  if (engineScope) {
+    await fill('Keep this draft $'); await options.first().waitFor();
+    assert.match(await options.first().innerText(), /A Review/u);
+    await editor.evaluate(element => { (window as any).retainedEditor = element; });
+    await page.evaluate(() => (window as any).fixture.model('pi:model'));
+    await page.waitForFunction(() => (window as any).fixture.requests().some((query: any) => query.model === 'pi:model'));
+    await page.waitForFunction(() => document.querySelector('[role="option"]')?.textContent?.includes('Pi Review'));
+    assert.equal(await editor.innerText(), 'Keep this draft $');
+    assert.equal(await editor.evaluate(element => element === (window as any).retainedEditor), true);
+    assert.equal(await editor.evaluate(element => element === document.activeElement), true);
+    await page.screenshot({ path: join(output, 'pi-candidates.png') });
+    await page.evaluate(() => (window as any).fixture.model('model'));
+    await page.waitForFunction(() => document.querySelector('[role="option"]')?.textContent?.includes('A Review'));
+    // Hold an old-engine lookup, then change the selected model on the same draft.
+    await page.evaluate(() => (window as any).fixture.mode('hold'));
+    await fill('Keep this draft $review'); await page.getByText('Loading skills…', { exact: true }).waitFor();
+    await page.evaluate(() => { (window as any).fixture.model('pi:model'); });
+    await page.waitForFunction(() => (window as any).fixture.requests().filter((query: any) => query.model === 'pi:model').length === 2);
+    await page.evaluate(() => (window as any).fixture.resolve());
+    await options.first().waitFor(); assert.match(await options.first().innerText(), /Pi Review/u);
+    await page.keyboard.press('Enter');
+    const selected = (await page.evaluate(() => (window as any).fixture.compile())).find((input: any) => input.type === 'skill');
+    assert.deepEqual(selected, { type: 'skill', name: 'repo-review', path: '/workspace/Pi/review/SKILL.md' });
+    assert.equal(await page.evaluate(() => (window as any).fixture.submitted()), 0);
+    assert.match(await editor.innerText(), /^Keep this draft/u);
+    evidence.push('same draft and editor follow selected model; old in-flight candidates rejected; canonical Pi path inserted without sending');
+    await page.evaluate(() => { (window as any).fixture.mode('ready'); (window as any).fixture.dark(); });
+    await fill('$'); await options.first().waitFor(); await page.setViewportSize({ width: 390, height: 740 });
+    await page.screenshot({ path: join(output, 'pi-candidates-dark-narrow.png') });
+    assert.deepEqual(errors, []);
+  } else {
   await page.getByRole('button',{name:'Commands'}).click();
   const commandMenu=page.locator('.opencraft-composer-shortcut-menu');
   await commandMenu.getByRole('menuitem').first().waitFor();
@@ -116,5 +148,6 @@ try{
   await editor.dispatchEvent('compositionstart');await editor.dispatchEvent('keydown',{key:'Enter',code:'Enter',keyCode:13,isComposing:true});assert.equal(await editor.locator('[data-kind="skill"]').count(),0);await editor.dispatchEvent('compositionend');evidence.push('IME Enter does not select or send');
   await page.evaluate(()=>(window as any).fixture.unavailable());await page.getByText('Skills unavailable',{exact:true}).waitFor();evidence.push('missing Host catalog is visible, not silent');
   await page.evaluate(()=>(window as any).fixture.codeBlock());await editor.locator('pre').waitFor();await editor.click();await page.keyboard.press('End');await page.keyboard.type('test');assert.equal(await list.count(),0);evidence.push('dollar in code blocks remains literal');
+  }
   assert.deepEqual(errors,[]);console.log(JSON.stringify({output,platform:desktop?'electron':'chromium',evidence,errors}));
 }finally{await writeFile(join(output,'report.json'),JSON.stringify({evidence,errors},null,2));await desktop?.close();await browser?.close();await vite.close()}

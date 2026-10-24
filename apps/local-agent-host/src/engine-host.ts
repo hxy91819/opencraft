@@ -6,6 +6,7 @@ import type { AddressInfo } from "node:net";
 import { WebSocket, WebSocketServer } from "ws";
 import { LOGICAL_CLIENT_FIELD } from "@opencraft/app-host-protocol";
 import { AppServerRpcError, serializeHistoryReply, type ExecutionEngineClient, type ExecutionEngineProvider } from "@opencraft/appserver-client";
+import { SCOPED_SKILL_CATALOG_EXTENSION, SCOPED_SKILL_CATALOG_METHOD, OPENCRAFT_METHOD_ACCESS_EXTENSION, parseAppServerMethodAccess } from "@opencraft/appserver-protocol";
 
 type Value = Record<string, any>;
 interface LegacyHost { websocketUrl: string; resolveWebsocketUrl?: () => Promise<string>; close(): Promise<void>; storageOutcomes?: readonly unknown[] }
@@ -78,7 +79,7 @@ export async function startEngineHost(options: {
     };
     const subscriptions = options.providers.map(provider => provider.subscribe((method, params) => {
       const threadId = params.threadId ?? params.thread?.id;
-      for (const state of clients.values()) if (method === "opencraft/schedules/changed" || threadId && state.opened.has(threadId)) state.owner.notify(method, params);
+      for (const state of clients.values()) if (method === "opencraft/schedules/changed" || method === "skills/changed" || threadId && state.opened.has(threadId)) state.owner.notify(method, params);
     }));
     // A frontend connection owns one backend incarnation. Replacing only the
     // backend would lose its connection-scoped Thread attachments while the
@@ -188,7 +189,10 @@ export async function startEngineHost(options: {
             const initialized = options.legacy
               ? await singleflight(`initialize:${JSON.stringify(params)}`, () => callLegacy(method, params, clientId))
               : piInitialization;
+            const access = parseAppServerMethodAccess(initialized.capabilities?.extensions?.[OPENCRAFT_METHOD_ACCESS_EXTENSION]);
             reply({ ...initialized, capabilities: { ...initialized.capabilities, extensions: { ...initialized.capabilities?.extensions, ...resources?.extensions,
+              ...(access ? { [OPENCRAFT_METHOD_ACCESS_EXTENSION]: { ...access, methods: [...new Set([...access.methods, SCOPED_SKILL_CATALOG_METHOD])] } } : {}),
+              [SCOPED_SKILL_CATALOG_EXTENSION]: { version: 1 },
               "opencraft/execution-engines": { version: 1, defaultEngine: options.defaultEngine, providers: options.providers.map(provider => ({ id: provider.id, threadPrefix: provider.threadPrefix, modelPrefix: provider.modelPrefix, extensions: provider.extensions })) },
               "opencraft/thread-pins": { version: 1 },
               "opencraft/scoped-model-catalog": { version: 1 } } } }); return;
@@ -244,6 +248,23 @@ export async function startEngineHost(options: {
             if (target) { reply(await target.request(method, params, state.owner)); return; }
           }
           if (method === "permissionProfile/list" && !options.legacy) { reply(await registry.get(options.defaultEngine)!.request(method, params, state.owner)); return; }
+          if (method === "skills/list" || method === SCOPED_SKILL_CATALOG_METHOD) {
+            const scoped = method === SCOPED_SKILL_CATALOG_METHOD;
+            if (scoped && ((params.threadId !== undefined && (typeof params.threadId !== "string" || !params.threadId))
+              || (params.model !== undefined && (typeof params.model !== "string" || !params.model)))) throw new Error("Invalid Skill catalog target");
+            const provider = scoped && params.threadId !== undefined
+              ? options.providers.find(provider => provider.ownsThread(params.threadId))
+              : scoped && params.model !== undefined
+                ? options.providers.find(provider => provider.ownsModel(params.model))
+                : registry.get(options.defaultEngine);
+            // Only the envelope owns routing fields. Native Hosts keep their wire contract.
+            const native = { cwds: params.cwds, forceReload: params.forceReload };
+            if (provider) { reply(await provider.request("skills/list", {
+              ...native, ...(scoped && params.threadId ? { threadId: params.threadId } : {}),
+            }, state.owner)); return; }
+            if (!options.legacy) throw new Error("Skill catalog execution engine is unavailable");
+            reply(await callLegacy("skills/list", native, clientId)); return;
+          }
           const provider = typeof params.threadId === "string" ? options.providers.find(provider => provider.ownsThread(params.threadId))
             : typeof params.model === "string" ? options.providers.find(provider => provider.ownsModel(params.model))
             : method === "thread/start" ? registry.get(options.defaultEngine) : undefined;

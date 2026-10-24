@@ -12,6 +12,7 @@ import { getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
 import { PiDurableSession, createPiModels, type PiSnapshot, type PiForkContext } from "./session.js";
 import { assertPiFields, compareThreads, fullAccessProfile, piModel, selection, thinking, workspace } from "./contract.js";
 import { compilePiInput } from "./input.js";
+import { piSkillCatalog, validatePiSkillInput } from "./skills.js";
 import { projectPiSnapshot, tokenUsage, textOf, type PiTurn } from "./projection.js";
 import type { ExecutionEngineClient as EngineClient } from "@opencraft/appserver-client";
 export { piModel } from "./contract.js";
@@ -447,6 +448,12 @@ export class PiEngine {
     }
     if (method === "permissionProfile/list") return { data: this.permissionProfiles(), nextCursor: null };
     if (method === "model/list") return { data: await this.models(), nextCursor: null };
+    if (method === "skills/list") {
+      const cwd = params.threadId ? (await this.session(params.threadId)).cwd : this.options.cwd;
+      if (params.cwds !== undefined && (!Array.isArray(params.cwds) || params.cwds.some((root: unknown) => typeof root !== 'string'))) throw new Error("Invalid Pi Skill workspace roots");
+      const roots: string[] = params.cwds?.length ? [...new Set<string>(params.cwds)] : [cwd];
+      return { data: roots.map(root => piSkillCatalog(root, this.options.modelDirectory ?? this.options.directory)) };
+    }
     if (method === "thread/list") {
       if (params.parentThreadId && params.ancestorThreadId) throw new Error("parentThreadId and ancestorThreadId are mutually exclusive");
       const data = [...this.sessions.values()].filter(s => !s.ephemeral && s.archived === (params.archived === true))
@@ -564,6 +571,7 @@ export class PiEngine {
       const ref = selection(params.model ?? session.model), model = (await this.modelsRuntime).getModel(ref.provider, ref.modelId);
       if (!model) throw new Error("Pi model is unavailable");
       const cwd = await workspace(params, session.cwd);
+      if (Array.isArray(params.input)) validatePiSkillInput(params.input, cwd, this.options.modelDirectory ?? this.options.directory);
       const content = await compilePiInput(params.input, params.additionalContext, cwd, model);
       const { native } = await this.configure(session, params);
       const createdAtMs = Date.now();
