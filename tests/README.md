@@ -41,3 +41,11 @@ private product sources to run its tests. Core Bot history is covered by
 `chat/chat-bot-history-demand.test.ts`; locale resolution is covered by
 `shell/i18n-runtime.test.ts`. These suites do not establish downstream Hermes
 integration or product site-region behavior.
+
+`npm run smoke:presentation-policy` runs both default and explicitly configured
+presentation in a real browser using the public build factory. It covers legacy
+theme restoration, current preference priority, opaque extension IDs, shared
+glyphs in page and Shadow DOM, narrow/wide viewports, draft preservation through
+theme changes and saved preferences after reloads. It needs installed Playwright Chromium and
+no private product configuration. Set `OPENCRAFT_PRESENTATION_REPORT` to keep its
+JSON evidence and screenshots outside the checkout.
