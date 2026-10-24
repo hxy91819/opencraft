@@ -365,7 +365,7 @@ test("direct public gateway accepts proxy HTTPS Origin for static WebUI and WebS
 test("browser AppHost bridge routes Codex frames through one leased Server transport", async (context) => {
   const root = await mkdtemp(join(tmpdir(), "opencraft-headless-server-"));
   context.after(() => rm(root, { recursive: true, force: true }));
-  await writeFile(join(root, "index.html"), "<!doctype html><title>Codex bridge</title>");
+  await writeFile(join(root, "index.html"), "<!doctype html><title>AppHost bridge fixture</title>");
   await writeHeadlessVersion(root);
   const messageListeners = new Set();
   const statusListeners = new Set();
