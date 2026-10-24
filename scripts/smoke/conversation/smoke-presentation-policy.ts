@@ -1,28 +1,28 @@
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { createServer } from "vite";
 import { createWorkbenchWebConfig } from "../../../apps/workbench-web/vite.config";
 const { chromium } = await import("playwright");
 const output = resolve(process.env.OPENCRAFT_PRESENTATION_REPORT ?? "/tmp/opencraft-presentation-policy");
-const productConfig = process.env.OPENCRAFT_PRESENTATION_PRODUCT_CONFIG;
-const productPolicy = process.env.OPENCRAFT_PRESENTATION_PRODUCT_POLICY;
+const explicitOptions = {
+  iconStyle: "classic" as const,
+  defaultThemeId: "opencraft.core.canvas",
+  hiddenBuiltinThemeIds: ["opencraft.core.mist"],
+};
 await mkdir(output, {recursive: true});
 const evidence: unknown[] = [];
 const browser = await chromium.launch({headless: true});
 try {
-  for (const product of [false, ...(productConfig ? [true] : [])]) {
+  for (const product of [false, true]) {
     // The core's product ID is deliberately a commercial-looking string. It
     // must still use standard defaults unless the trusted build supplies policy.
     process.env.OPENCRAFT_PRODUCT = product ? "unrelated-identity" : "lightvela-web";
     process.env.OPENCRAFT_BUILD_TARGET = "web";
-    const config = product
-      ? (await import(pathToFileURL(resolve(productConfig!)).href)).default({mode:"development",command:"serve"})
-      : createWorkbenchWebConfig({mode:"development",command:"serve"}, {hyperNode:false,builtinAgents:false,tasks:false,pluginBranding:false});
-    const policyImport = productPolicy
-      ? `import {velaWebPresentation as explicitPolicy} from ${JSON.stringify('/@fs/'+resolve(productPolicy))};`
-      : `const explicitPolicy=resolveWorkbenchPresentation({iconStyle:'classic'});`;
+    const config = createWorkbenchWebConfig({mode:"development",command:"serve"}, {
+      hyperNode:false,builtinAgents:false,tasks:false,pluginBranding:false,
+      presentation: product ? explicitOptions : undefined,
+    });
     const source = `
 import React from 'react';import{createRoot}from'react-dom/client';
 import{WorkbenchIcon}from'/apps/workbench-web/src/components/ui/workbench-icon.tsx';
@@ -32,12 +32,12 @@ import{WorkbenchPresentationContext,workbenchPresentation,applyWorkbenchProductP
 import{resolveWorkbenchPresentation}from'/apps/workbench-web/src/workbench-presentation';
 import{initializeAppearanceTheme,getAppearanceThemeSnapshot,setAppearanceThemeId,setThemePreference}from'/apps/workbench-web/src/appearance-theme';
 import'/apps/workbench-web/src/styles/app.scss';
-${policyImport}
+const explicitPolicy=resolveWorkbenchPresentation(${JSON.stringify(explicitOptions)});
 initializeAppearanceTheme();
 const host=document.createElement('section');document.body.append(host);const shadow=host.attachShadow({mode:'open'});const slot=document.createElement('div');shadow.append(slot);applyWorkbenchProductPresentation(host,'another-identity',explicitPolicy);
 const glyphs=<><WorkbenchIcon name='appearance'/><NavigationIcon name='settings' selected/><NewTaskIcon/></>;
 createRoot(slot).render(<WorkbenchPresentationContext.Provider value={explicitPolicy}>{glyphs}</WorkbenchPresentationContext.Provider>);
-createRoot(document.getElementById('root')).render(<main><h1>Presentation policy</h1><div id='glyphs'>{glyphs}</div><nav className='settings-page__navigation'><button id='navigation-glyph'><NavigationIcon name='settings' selected/></button></nav><textarea aria-label='Draft' defaultValue='Preserved draft'/></main>);
+createRoot(document.getElementById('root')).render(<main><h1>Presentation policy</h1><div id='glyphs'>{glyphs}</div><nav className='settings-page__navigation'><button id='navigation-glyph'><NavigationIcon name='updates' selected/></button></nav><textarea aria-label='Draft' defaultValue='Preserved draft'/></main>);
 window.proof={getAppearanceThemeSnapshot,setAppearanceThemeId,setThemePreference,workbenchPresentation,host,slot};`;
     const server = await createServer({...config,configFile:false,root:process.cwd(),logLevel:"error",
       cacheDir:"node_modules/.vite-presentation-proof",server:{host:"127.0.0.1",port:0,hmr:false},
@@ -77,14 +77,14 @@ window.proof={getAppearanceThemeSnapshot,setAppearanceThemeId,setThemePreference
         const page=await browser.newPage({viewport:{width,height:800}});const errors:string[]=[];
         page.on('pageerror',error=>errors.push(error.message));
         await page.goto(url);await page.locator('#glyphs svg').first().waitFor();
-        const initial=await page.evaluate(()=>{const p=(window as any).proof;return{policy:p.workbenchPresentation,snapshot:p.getAppearanceThemeSnapshot(),glyph:document.querySelector('#glyphs svg')!.getAttribute('class'),shadowGlyph:p.slot.querySelector('svg').getAttribute('class'),shadowSize:p.host.style.getPropertyValue('--size-product-navigation-icon')}});
+        const initial=await page.evaluate(()=>{const p=(window as any).proof;return{policy:p.workbenchPresentation,snapshot:p.getAppearanceThemeSnapshot(),glyph:document.querySelector('#glyphs svg')!.getAttribute('data-action-glyph'),shadowGlyph:p.slot.querySelector('svg').getAttribute('data-action-glyph'),shadowSize:p.host.style.getPropertyValue('--size-product-navigation-icon')}});
         assert.equal(initial.policy.iconStyle,product?'classic':'standard');
         assert.equal(initial.snapshot.themeId,product?'opencraft.core.canvas':'opencraft.core.neutral');
         assert.equal(initial.snapshot.availableThemes.some((t:any)=>t.id==='opencraft.core.mist'),!product);
-        assert.match(initial.glyph,product?/lucide-palette/:/lucide-sun-moon/);
-        assert.match(initial.shadowGlyph,/lucide-palette/);assert.equal(initial.shadowSize,'auto');
+        assert.equal(initial.glyph,product?'palette':'appearance');
+        assert.equal(initial.shadowGlyph,'palette');assert.equal(initial.shadowSize,'auto');
         const stroke = await page.locator('#navigation-glyph svg').evaluate(svg=>getComputedStyle(svg).strokeWidth);
-        assert.equal(stroke,product?'2.5px':'1.8px');
+        assert.equal(stroke,product?'2.5px':'2px');
         // Changing only identity cannot change icon presentation or its stroke.
         await page.evaluate(()=>{document.documentElement.dataset.workbenchProduct='unrelated-product';});
         assert.equal(await page.locator('#navigation-glyph svg').evaluate(svg=>getComputedStyle(svg).strokeWidth),stroke);

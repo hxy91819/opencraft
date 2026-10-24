@@ -104,6 +104,7 @@
     "test": "npm run test:sqlite-node && npm run test:local-agent-storage && npm run test:control-standards && npm run test:identity && npm run test:extensions && npm run test:connectors && npm run test:appserver && npm run test:dsh-bridge && npm run test:chat && npm run test:adaptive-navigation && npm run test:text-selection && npm run test:workbench:unit",
     "test:control-standards": "tsx --test tests/shell/shared-control-standards.test.ts tests/shell/typography-system.test.ts tests/shell/ui-typography-harness.test.ts tests/chat/conversation-activity-visual.test.ts tests/shell/workbench-appearance-theme.test.ts",
     "smoke:icons": "tsx scripts/smoke/shell/smoke-icons.ts",
+    "smoke:presentation-policy": "tsx scripts/smoke/conversation/smoke-presentation-policy.ts",
     "smoke:control-standards": "tsx scripts/smoke/shell/smoke-control-standards.ts",
     "test:navigation-icons": "tsx --test tests/shell/workbench-navigation-icons.test.ts tests/shell/workbench-shell-navigation.test.ts tests/shell/workbench-sidebar-dock.test.ts",
     "smoke:navigation-icons": "tsx scripts/smoke/shell/smoke-navigation-icons.ts",
