@@ -2,10 +2,11 @@
 
 Headless exposes conversation references, bounded native history reads and durable
 message handoff through one core `Collaboration` service. The Web/Electron renderer
-supplies copy, paste, `@` search and a reference dialog. Codex source threads created
-with this service also receive server-owned `read_thread`, `send_message_to_thread`
-and `get_thread_delivery` tools. This is a capability of the configured Headless
-Codex adapter; SSH, DSH and federated resources do not inherit it.
+supplies copy, paste, `@` search and a reference dialog. Resource routing covers
+local Codex and enabled Pi/DSH targets. Separately, Codex source threads created
+with the configured Headless adapter receive server-owned `read_thread`,
+`send_message_to_thread` and `get_thread_delivery` tools. Those source tools do not
+extend to Pi, DSH, SSH or federated resources merely because a target is routable.
 
 ## Identity and ownership
 
@@ -17,10 +18,11 @@ hints. Links never carry authentication or a transcript. The shared codec lives
 in `appserver-protocol/collaboration`. Opening a link checks the resource's stable
 server identity before selecting a local Host route.
 
-The Headless Codex server namespace uses its persisted installation identity plus
-an engine namespace. Moving its data retains that identity; connecting through
-another route does not create another resource. Cross-server resolution is not yet
-implemented, and an unknown server fails closed without requesting a supplied URL.
+Each Headless server namespace uses its persisted installation identity plus an
+engine namespace. Moving its data retains that identity; connecting through
+another route does not create another resource. Resolution outside this
+installation is not yet implemented, and an unknown server fails closed without
+requesting a supplied URL.
 
 Actor remains the acting subject. Referencing an old thread does not create a
 Session Actor, issue a credential or wake the target. An explicit Actor run binding
@@ -37,10 +39,11 @@ Markdown references open the shared dialog, which reads actual history and can
 send a follow-up. Failed sends retain their text and idempotency key; changing the
 text is a new command. The dialog uses the shared modal, clipboard and notices.
 
-Submitting up to three references asks the core to attach a bounded native-history
-excerpt in `additionalContext` with `kind: untrusted`. This works for existing
-source threads as well as new ones. Queued user inputs resolve their original
-execution authority when the target turn begins, independently of the old page.
+On the configured Codex source path, submitting up to three references asks the
+core to attach a bounded native-history excerpt in `additionalContext` with
+`kind: untrusted`. This works for existing source threads as well as new ones.
+Queued user inputs resolve their original execution authority when the target
+turn begins, independently of the old page.
 Excerpts identify their source and history watermark; unavailable and truncated
 sources are explicit. A reference alone never proves content has been read, and
 old snapshots do not update automatically.
@@ -96,25 +99,32 @@ identities. The implementation is `access-control/collaboration`; there is no se
 
 Message, idempotency receipt and optional execution intent are one SQLite
 transaction. `conversation-execution` is the narrow target adapter, using existing
-AppHost logical-client admission. The target's `OpenCraftHostQueue` remains the sole
-claimant, owns its durable receipt and uses its own model, account, workspace and
-permissions. Target authorization is rechecked immediately before claim. A
-conversation target remains fixed even if an unrelated Session is rebound.
-Conversation routing is resolved from the current adapter rather than saved as
-its resource identity.
+AppHost logical-client admission and the canonical server identity to select the
+engine. Codex handoff uses its `OpenCraftHostQueue`; Pi and DSH use their native
+Host input ports and durable submission receipts. Each target retains its own
+admission, model, account, workspace and permissions; the core adds no second
+engine queue. Target authorization is rechecked before native admission. Pi/DSH
+do not support conversation steer or retracting a native handoff through this
+adapter. A conversation target remains fixed even if an unrelated Session is
+rebound. Conversation routing is resolved from the current adapter rather than
+saved as its resource identity.
 
 Accepted, queued, submitted/injected, rejected, cancelled and unknown are different
 facts. Submitted proves engine admission, not semantic completion. Cancellation
-checks the real queue claim, and an uncertain transfer is queried by its original
-ID after reconnection or restart. It is never resent merely because a response
-was lost. Historical submitted facts remain factual after revocation.
+checks the target's durable admission receipt, and an uncertain transfer is
+queried by its original ID after reconnection or restart. It is never resent
+merely because a response was lost. Historical submitted facts remain factual
+after revocation.
 
 ## Supported boundary and verification
 
-Existing Codex threads can be read and receive messages, and references submitted
-from them receive bounded context. Native dynamic tools are registered at source
-thread creation; this adapter does not pretend that native resume can add tools
-to older source threads. The reference dialog remains available for direct reads
+Configured local Codex and enabled Pi/DSH targets can be discovered, read and
+receive messages through the shared core. Actor run bindings and source-tool
+delegation remain on the primary Codex authority; target routing does not extend
+those capabilities. Existing Codex source threads receive bounded reference
+context. Native dynamic tools are registered at source thread creation; this
+adapter does not pretend that native resume can add tools to older source threads.
+The reference dialog remains available for direct reads
 and sends. New adapters must implement native history and durable handoff before
 advertising these capabilities; no renderer-only delivery fallback is provided.
 
@@ -122,6 +132,8 @@ advertising these capabilities; no renderer-only delivery fallback is provided.
 revocation, restart and delegation budgets. `actor-collaboration-codex.test.ts`
 uses the real core, AppHost and persistent Host queue with a synthetic native
 engine, including detached-viewer tools and untrusted reference context.
+`im-multi-engine.test.ts` covers routed catalog identities, native Pi handoff,
+duplicate-input receipts and unsupported steer with isolated model fixtures.
 `smoke-conversation-interoperability.ts` exercises real browser components and
 that core/queue with fixture human authentication and model output. It covers
 copy/paste/search, saved links, history, failed-send retention and successful
