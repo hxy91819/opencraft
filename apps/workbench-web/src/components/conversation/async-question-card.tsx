@@ -1,6 +1,6 @@
 import type { AsyncQuestion } from "@opencraft/chat-core";
 import { useIntl } from "@opencraft/i18n/react";
-import { ArrowRight, Check, ChevronDown, CircleHelp } from "lucide-react";
+import { ArrowRightIcon as ArrowRight, CheckIcon as Check, ChevronDownIcon as ChevronDown, HelpIcon as CircleHelp } from "@opencraft/design-system-web/action-icons";
 import * as React from "react";
 
 import { useOptionalAsyncNotices } from "../async-notices-context";

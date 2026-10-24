@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ChevronLeftIcon, ArrowRightIcon } from "@opencraft/design-system-web/action-icons";
 import * as Dialog from "@radix-ui/react-dialog";
 import { parseConversationRef } from "@opencraft/appserver-protocol/collaboration";
 import {
@@ -380,7 +381,7 @@ export function createImView(controller: ImController) {
         <div className="im-heading">
         {current ? (
           <Button variant="quiet" onClick={() => setSelected(null)}>
-            ‹ IM 渠道
+            <ChevronLeftIcon size={16} /> IM 渠道
           </Button>
         ) : null}
         <SettingsPageHeader
@@ -614,7 +615,7 @@ export function createImView(controller: ImController) {
                             })
                           }
                         >
-                          在此基础上自定义 →
+                          在此基础上自定义 <ArrowRightIcon size={16} />
                         </Button>
                       ) : (
                         <p className="im-hint">
@@ -718,7 +719,7 @@ export function createImView(controller: ImController) {
                     </Button>
                   ) : null}
                   <details className="im-history">
-                    <summary>版本与回退</summary>
+                    <summary className="ui-native-disclosure">版本与回退</summary>
                     <SettingsGroup appearance="plain">
                       {current.versions.length ? (
                         current.versions.map((v) => (

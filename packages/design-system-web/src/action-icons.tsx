@@ -5,6 +5,7 @@ export type { ActionIconProps } from "./icon-glyph";
 export * from "./interface-icons";
 export * from "./image-edit-icons";
 export * from "./activity-icons";
+export { RecoveryScanArtwork } from "./recovery-scan";
 export * from "./retained-layout-icons";
 
 /** Input geometry remains owned by ui-composer-input-icon (including touch). */
