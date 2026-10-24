@@ -5,7 +5,6 @@ import ts from "typescript";
 import scss from "postcss-scss";
 
 const root = resolve(import.meta.dirname, "..");
-const retainedLayout = "packages/design-system-web/src/retained-layout-icons.tsx";
 const localArtwork = new Set([
   "apps/workbench-web/src/chrome-actions/sidebar-toggle-icon.tsx",
   "apps/workbench-web/src/components/sidebar-bots.tsx",
@@ -67,11 +66,7 @@ export function inspectInterfaceIcons(source, file) {
       }
     }
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier?.text === "lucide-react") {
-      if (file !== retainedLayout) fail(node, "general Web glyphs must use design-system-web/action-icons");
-      else if (!ts.isExportDeclaration(node) || !node.exportClause || !ts.isNamedExports(node.exportClause)
-        || node.exportClause.elements.some(item => !["PanelLeft", "PanelLeftClose"].includes(item.propertyName?.text ?? item.name.text))) {
-        fail(node, "only the explicitly retained layout silhouettes belong here");
-      }
+      fail(node, "general Web glyphs must use design-system-web/action-icons");
     }
     if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && node.tagName.getText(ast) === "svg"
       && !file.startsWith("packages/design-system-web/") && !localArtwork.has(file)) {
@@ -114,5 +109,5 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     ? inspectInterfaceIconStyles(readFileSync(file, "utf8"), relative(root, file).replaceAll("\\", "/"))
     : inspectInterfaceIcons(readFileSync(file, "utf8"), relative(root, file).replaceAll("\\", "/")));
   if (errors.length) { console.error(errors.join("\n")); process.exitCode = 1; }
-  else console.log(`Interface icon ownership verified across ${files.length} source files (retained layout and avatar exceptions explicit).`);
+  else console.log(`Interface icon ownership verified across ${files.length} source files (avatar artwork exceptions explicit).`);
 }

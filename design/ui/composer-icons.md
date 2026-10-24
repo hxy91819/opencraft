@@ -77,23 +77,23 @@ classes and source geometry; `timeline-icons` keeps progress ratios, interpolati
 and gradient identifiers. Consumers retain their callbacks and motion policies.
 The Workbench compatibility activity entry only re-exports shared components.
 
-Interface glyphs use the shared original artwork. Lucide packages and copied Lucide SVG paths are prohibited, including for new image editing controls. The retained layout adapter is a known legacy dependency pending migration, not permission to introduce further library glyphs; preserve its user-requested visual behavior while migrating. Image text, crop, fit, undo/redo, sticker and mosaic controls use `image-edit-icons` through the shared action entry. Content sticker previews are content, separate from interface glyphs.
+Interface glyphs use the shared original artwork. Lucide packages and copied Lucide SVG paths are prohibited, including for new image editing controls. The shared `layout-icons` owner provides the sidebar frame and collapse action without a library adapter; consumers retain their public names, slots and callbacks. Image text, crop, fit, undo/redo, sticker and mosaic controls use `image-edit-icons` through the shared action entry. Content sticker previews are content, separate from interface glyphs.
 
 Run `npm run check:icons` to inspect direct imports, re-exports, dynamic registry
 inputs and inline control SVG across Web, shared packages and plugins. Test the
 policy with `node --test tests/tooling/interface-icons-policy.test.mjs`. Product workspaces
 consume the same entry and must be scanned in their own delivery verification.
 
-The retained sidebar/split-panel family is the visual reference for common Web
+The shared sidebar/split-panel family is the visual reference for common Web
 glyphs: light rounded strokes, complete quiet frames, generous interior space and
-only the detail needed to identify an action. Keep its original artwork unchanged.
+only the detail needed to identify an action. The existing paired Shell sidebar-state artwork retains its geometry; generic layout controls use the shared rounded frame.
 Use `RoundedPage` for both file types and permission pages so folded corners stay
 aligned. Static model choices and reasoning share `BrainArtwork`; only activity
 rows add the existing pulse. Semantic openings such as arrows, folder openings and
 overlapping objects remain intentional; decorative gaps are not a house style.
 Review the entire family at 16/20/24px in both themes, including dense compound
 glyphs. Calibrate activity paint bounds at the existing rail owner after geometry
-changes; never change global strokes or the retained panel glyphs to compensate.
+changes; never change global strokes or the Shell sidebar-state glyphs to compensate.
 
 CSS borders, pseudo-elements and Unicode glyphs are also artwork. Sidebar running/opening,
 generic Button busy and desktop clipboard progress consume LoadingRingIcon; their existing
@@ -160,7 +160,7 @@ glyph, an 18px permission shield and a 14px permission chevron within existing
 targets. The scroll-to-bottom arrow uses a 2-unit stroke; touch scales its canvas
 to 23px without a separate hairline override.
 
-The explicitly retained sidebar/split artwork and settings gear keep their
+The paired Shell sidebar-state artwork and settings gear keep their
 existing geometry and weight; the gear explicitly retains 1.5 units. Activity
 rails retain their calibrated 1.2px effective stroke, and loading rings retain
 shared progress geometry. These are separate semantic owners, not feature-level

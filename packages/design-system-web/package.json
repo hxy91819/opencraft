@@ -22,7 +22,6 @@
     "@radix-ui/react-slider": "^1.6.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "lucide-react": "^1.35.0",
     "motion": "^12.38.0",
     "@radix-ui/react-dropdown-menu": "2.2.1"
   },

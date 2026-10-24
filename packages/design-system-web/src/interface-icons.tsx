@@ -130,7 +130,7 @@ export const EnvironmentsIcon = glyph("environments", <><rect x="4" y="7" width=
 
 export const ReviewShieldIcon = glyph("review-shield", <Shield><path d="m8.5 10 2 2-2 2m5 1H16" /></Shield>);
 
-/** Static utility marks share the same rounded canvas as the retained layout family. */
+/** Static utility marks share the same rounded canvas as the shared layout family. */
 export const WrapTextIcon = glyph("wrap-text", <><path d="M4.5 6h15M4.5 11.5H16a3 3 0 0 1 0 6h-5m3-3-3 3 3 3M4.5 17.5H7" /></>);
 export const MinusIcon = glyph("minus", <path d="M5 12h14" />);
 export const UrgentPriorityIcon = glyph("priority-urgent", <><path d="M9 5.5v8m6-8v8" /><circle cx="9" cy="18" r=".75" fill="currentColor" stroke="none" /><circle cx="15" cy="18" r=".75" fill="currentColor" stroke="none" /></>);
