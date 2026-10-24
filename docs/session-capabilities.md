@@ -114,6 +114,16 @@ reference, source, sender, target, expiry and reply mode in SQLite migration v3.
 The model cannot choose a channel or destination. Owner, human, sender linkage,
 channel state and conversation permissions are checked again at invocation.
 
+The trusted reply declaration marks this bounded effect as preauthorized by the
+admitted incoming message. The Codex adapter configuration projects that choice
+only to `opencraft_session.tools.im_reply.approval_mode = "approve"`, including
+creation reservations. It does not change the session approval policy, sandbox
+or another tool's approval. Ordinary providers retain native approval defaults.
+The hint never appears in the MCP schema and grants no domain authority: signed
+session identity and all current IM checks still apply. Already pending native
+approval requests are not automatically answered or replayed by configuration
+refresh; native active-turn ownership remains unchanged.
+
 New tool-mode arrivals skip processing stream feedback and automatic final
 forwarding. A normal final remains in the workbench. The explicit tool sends one
 complete text response within the original transport deadline and a 20,000-byte
