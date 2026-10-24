@@ -464,7 +464,7 @@ export function TokenUsageDashboardView({
                           aria-label={copy(`${cell.date} · ${count(cell.tokens)} Token · ${cell.turns} 轮`, `${cell.date} · ${count(cell.tokens)} tokens · ${cell.turns} turns`)}
                           aria-pressed={selectedCell?.date === cell.date}
                           disabled={cell.state === "outside"}
-                          onPointerEnter={event => { if (event.pointerType !== "mouse") return; setPreviewCell(cell); }}
+                          onPointerEnter={event => { if (cell.state === "outside" || event.pointerType !== "mouse") return; setPreviewCell(cell); }}
                           onPointerLeave={event => { if (event.pointerType === "mouse") setPreviewCell(null); }}
                           onFocus={event => { if (!event.currentTarget.matches(":focus-visible") || document.documentElement.dataset.pointerFocus) return; setPreviewCell(cell); }}
                           onBlur={() => setPreviewCell(null)}

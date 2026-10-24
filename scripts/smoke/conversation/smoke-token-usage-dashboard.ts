@@ -104,6 +104,10 @@ try {
    assert.equal(await cell.getAttribute('aria-pressed'),'false');
    await cell.dispatchEvent('pointerout',{pointerType:'mouse'});
  }
+ const outside=page.locator('.token-usage__heatmap-cell[data-state="outside"]').last();
+ const outsideDate=await outside.getAttribute('data-date');
+ await outside.dispatchEvent('pointerover',{pointerType:'mouse'});
+ assert.ok(!(await caption.innerText()).includes(outsideDate!),"unqueried dates must not preview zero usage");
  await session.detach();
  // A real touch-capable context verifies native tap, not synthetic click alone.
  const touchContext=await browser.newContext({hasTouch:true,isMobile:true,viewport:{width:390,height:844}});
