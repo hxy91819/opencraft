@@ -36,13 +36,15 @@ try {
     await activate(trigger);
     const archive=page.getByRole('menuitem',{name:'Archive',exact:true});await archive.waitFor();
     assert.equal(await archive.locator('svg').count(),1);
-    assert.equal(await page.getByRole('menuitem',{name:'Task membership',exact:true}).locator('svg').count(),1);
+    const linkTasks=page.getByRole('menuitem',{name:'Link tasks',exact:true});await linkTasks.waitFor();
+    assert.equal(await linkTasks.locator('svg[data-action-glyph="task-link"]').count(),1);
     await page.screenshot({path:`/tmp/opencraft-conversation-header-menu/${touch?'touch':'desktop'}-${theme}.png`});
     const fork=page.getByRole('menuitem',{name:'Create branch',exact:true});
     assert.equal(await fork.locator('svg[data-action-glyph="fork"]').count(),1);
     const beforeError=await page.getByRole('menu').boundingBox();
     await activate(fork);
     await page.waitForFunction("window.fixture.state.forks===1");
+    await activate(trigger);
     await fork.and(page.locator('[aria-busy="true"]')).waitFor();
     assert.equal(await fork.getAttribute('aria-busy'),'true');
     assert.equal(await fork.getAttribute('data-disabled'),'');
