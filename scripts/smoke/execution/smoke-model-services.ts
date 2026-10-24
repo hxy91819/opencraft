@@ -8,7 +8,7 @@ import { startLocalAgentHost } from "../../../apps/local-agent-host/src/main";
 import { ModelConfigurationRepository, ModelCredentialRepository } from "../../../apps/local-agent-host/src/model-config/repository";
 
 const { chromium } = await import(process.env.OPENCRAFT_PLAYWRIGHT_MODULE ?? "playwright");
-const dataDirectory = await mkdtemp(resolve(tmpdir(), "opencraft-lobe-models-"));
+const dataDirectory = await mkdtemp(resolve(tmpdir(), "opencraft-model-services-"));
 delete process.env.OPENCRAFT_DSH_URL; delete process.env.OPENCRAFT_DSH_REPOSITORY;
 let host: Awaited<ReturnType<typeof startLocalAgentHost>> | undefined;
 let vite: Awaited<ReturnType<typeof createServer>> | undefined;
@@ -97,10 +97,10 @@ try {
     assert.equal(mark.width, mark.height);
     if (mark.mask !== null) assert.notEqual(mark.mask, 'none');
   }
-  await page.screenshot({ path: '/tmp/opencraft-lobe-model-services-light.png' });
+  await page.screenshot({ path: '/tmp/opencraft-model-services-light.png' });
   await page.evaluate(() => (window as any).theme('dark'));
   await page.waitForFunction(() => getComputedStyle(document.querySelector('.model-brand-mark__glyph')!).backgroundColor !== 'rgb(26, 28, 31)');
-  await page.screenshot({ path: '/tmp/opencraft-lobe-model-services-dark.png', animations: 'disabled' });
+  await page.screenshot({ path: '/tmp/opencraft-model-services-dark.png', animations: 'disabled' });
   await page.evaluate(() => (window as any).theme('light'));
   const before = await page.evaluate(async () => {const result=await (window as any).request('runtime/status/read',{});return [result.provider,result.model];});
   await page.getByRole('button', { name:'添加提供商', exact:true }).filter({ visible: true }).click();
