@@ -8,6 +8,7 @@ import {
   createAssistantTurnPresentationPlan,
   projectTimeline,
   type TimelineSourceTurn,
+  type TimelineSnapshot,
 } from "@opencraft/chat-core";
 import {
   TimelineBlockRendererProvider,
@@ -16,6 +17,8 @@ import {
 import { AgentActivity } from "../../apps/workbench-web/src/components/conversation-renderers/activity/agent-activity-renderers";
 import { Conversation, webBuiltinTimelineRendererComponents } from "../../apps/workbench-web/src/components/conversation";
 import "../../apps/workbench-web/src/styles/app.scss";
+
+import { createConversationDisplayContinuity } from "@opencraft/workbench-runtime";
 
 const ctx = new Context();
 document.documentElement.dataset.theme = "light";
@@ -51,6 +54,7 @@ const initial: TimelineSourceTurn = {
 };
 function Demo() {
   const [turn, setTurn] = useState<TimelineSourceTurn>(initial);
+  const [cachedTimeline, setCachedTimeline] = useState<TimelineSnapshot | null>(null);
   const [choice, setChoice] = useState<boolean>();
   const [generation, setGeneration] = useState(0);
   probe.final = () =>
@@ -80,14 +84,23 @@ function Demo() {
     setTurn((turn) => JSON.parse(JSON.stringify(turn)));
     setGeneration((value) => value + 1);
   };
-  probe.stop = () =>
+  probe.cached = async () => {
+    const cache = createConversationDisplayContinuity({ namespace: "work-status-fixture", storage: {
+      load: async () => null, save: async () => {}, remove: async () => {},
+    } });
+    await cache.observe(timeline);
+    setCachedTimeline(await cache.load("fixture", "fixture"));
+  };
+  probe.stop = () => {
+    setCachedTimeline(null);
     setTurn({
       ...initial,
       status: "interrupted",
       interruptedByThisClient: true,
       durationMs: 4_500,
     });
-  const timeline = projectTimeline(
+  };
+  const timeline = cachedTimeline ?? projectTimeline(
     {
       key: createConversationKey("fixture", "fixture"),
       phase: "live",
@@ -116,6 +129,8 @@ function Demo() {
               <AgentActivity
                 key={unit.id}
                 unit={unit}
+                innerCollapsedById={{}}
+                onInnerCollapsedChange={() => {}}
                 persistedCollapsed={choice}
                 onCollapsedChange={setChoice}
               />
