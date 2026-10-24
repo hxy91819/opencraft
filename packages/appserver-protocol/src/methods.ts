@@ -209,7 +209,7 @@ export type ModelListParams = GeneratedModelListParams & {
 /** OpenCraft can explicitly represent a model without configurable reasoning. */
 export type CatalogModel = Omit<GeneratedModelListResponse["data"][number], "defaultReasoningEffort"> & {
   defaultReasoningEffort: GeneratedModelListResponse["data"][number]["defaultReasoningEffort"] | null;
-  /** OpenCraft-owned model metadata that the generated Codex catalog omits. */
+  /** Optional OpenCraft-owned model metadata supplied by the Host. */
   contextWindow?: number;
   maxTokens?: number;
   source?: "builtin" | "custom";
@@ -243,8 +243,7 @@ export type TurnSteerParams = GeneratedTurnSteerParams;
 export type TurnSteerResponse = GeneratedTurnSteerResponse & {
   /**
    * Extension used by Hosts that preserve a steer racing Turn completion.
-   * Omitted by an unextended Codex AppServer and therefore equivalent to
-   * `steered`.
+   * When omitted, the accepted input is treated as `steered`.
    */
   readonly disposition?: "steered" | "queued";
 };
@@ -270,7 +269,7 @@ export type ThreadQueueListParams = GeneratedThreadQueueListParams;
 export interface ThreadQueueListResponse {
   readonly data: readonly QueuedSubmission[];
   readonly nextCursor: string | null;
-  /** Optional Host extension; omitted by an unextended Codex AppServer. */
+  /** Optional Host extension for accepted input awaiting the next step boundary. */
   readonly steering?: readonly SteeringSubmission[];
 }
 export type ThreadQueueUpdateParams = GeneratedThreadQueueUpdateParams;

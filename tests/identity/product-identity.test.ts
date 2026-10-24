@@ -25,12 +25,6 @@ const read = (path: string) => readFileSync(new URL(path, root), "utf8");
 
 const json = (path: string) => JSON.parse(read(path));
 
-const sharedWorkspacePackages = new Map([
-  ["packages/lightvela-agent-core/package.json", ["@lightvela/agent-core", "shared/lightvela-agent-core"]],
-  ["packages/vela-chat-client-core/package.json", ["@lightvela/vela-chat-client-core", "shared/vela-chat-client-core"]],
-]);
-
-
 test("all workspace packages use OpenCraft without old scope aliases", () => {
   assert.equal(json("package.json").name, "opencraft");
   for (const group of ["apps", "packages", "plugins"]) {
@@ -39,13 +33,7 @@ test("all workspace packages use OpenCraft without old scope aliases", () => {
       const path = `${group}/${entry.name}/package.json`;
       if (!existsSync(new URL(path, root))) continue;
       const manifest = json(path);
-      const sharedPackage = sharedWorkspacePackages.get(path);
-      if (sharedPackage) {
-        assert.equal(manifest.name, sharedPackage[0], path);
-        assert.equal(json(`${group}/${entry.name}/UPSTREAM.json`).source, sharedPackage[1], path);
-      } else {
-        assert.match(manifest.name, /^@opencraft\//u, path);
-      }
+      assert.match(manifest.name, /^@opencraft\//u, path);
       assert.doesNotMatch(JSON.stringify(manifest), /@vela\//u, path);
     }
   }
@@ -86,15 +74,15 @@ test("three public hosts agree on OpenCraft branding and identity", () => {
 test("web product identity is normalized once for product-owned policies", () => {
   assert.equal(resolveWorkbenchProductId(undefined), "opencraft");
   assert.equal(
-    resolveWorkbenchProductId({ VITE_OPENCRAFT_PRODUCT_ID: " lightvela-web " }),
-    "lightvela-web",
+    resolveWorkbenchProductId({ VITE_OPENCRAFT_PRODUCT_ID: " example-web " }),
+    "example-web",
   );
 });
 
 
 test("owned Bot names canonicalize while saved conversation identity remains readable", () => {
-  const key = createConversationKey("velahermes0", "20260906_125907_f05d94");
-  const uri = "vela-bot:conversation?hostId=velahermes0&conversationId=20260906_125907_f05d94";
+  const key = createConversationKey("opaque-host", "stored-conversation");
+  const uri = "vela-bot:conversation?hostId=opaque-host&conversationId=stored-conversation";
   assert.equal(botConversationResourceUri(key), uri.replace("vela-bot:", "opencraft-bot:"));
   assert.deepEqual(parseBotConversationViewResource(uri), { kind: "conversation", key });
   assert.equal(OPENCRAFT_BOT_CONVERSATIONS_EXTENSION, "opencraft/bot-conversations");

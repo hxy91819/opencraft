@@ -355,7 +355,7 @@ export function registerBuiltinThreadHistoryStrategies(ctx: Context): () => void
       matches: (context) => context.useTailHydration && context.isDurableHost,
       async load(context) {
         // Host placement does not imply support for paginated Item history.
-        // Server-owned native Codex currently declares the legacy read surface.
+        // Honor the returned history mode before choosing a paginated read strategy.
         if (context.response.thread.historyMode === "legacy") return readFullHistory(context);
         return loadDurablePage(context, null);
       },

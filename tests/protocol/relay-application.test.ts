@@ -135,7 +135,9 @@ test('generic independently bundled application has no enterprise implementation
   const bundle = join(dir, 'application.mjs');
   const result = await build({ entryPoints: ['apps/relay-server/src/application.ts'], outfile: bundle, bundle: true, metafile: true,
     platform: 'node', format: 'esm', target: 'node24', banner: { js: "import {createRequire} from 'node:module';const require=createRequire(import.meta.url);" } });
-  assert.ok(!Object.keys(result.metafile!.inputs).some(path => /plugins\/enterprise-identity|lightvela|frontend\//u.test(path)));
+  const sourceRoots = ['apps/relay-server/src/', 'packages/', 'node_modules/'];
+  assert.deepEqual(Object.keys(result.metafile!.inputs).filter(path => !sourceRoots.some(root => path.startsWith(root))), [],
+    'Standalone Relay bundles only its own application, shared packages and dependencies');
   const { startRelayApplication: standalone } = await import(pathToFileURL(bundle).href);
   const operator = join(dir, 'operator.json'); await writeFile(operator, JSON.stringify({ credential: token() }), { mode: 0o600 });
   const port = await freePort();

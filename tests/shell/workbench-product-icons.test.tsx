@@ -62,8 +62,8 @@ test("activity rows present a complete project badge without Server artwork", ()
 test("identity alone never selects a different icon family", () => {
   const renderIdentity = (id: string) => renderToStaticMarkup(createElement(WorkbenchProductContext.Provider,
     {value: id}, createElement(WorkbenchIcon, {name: "appearance"})));
-  assert.equal(renderIdentity("lightvela-web"), renderIdentity("an-unrelated-product"));
-  assert.match(renderIdentity("lightvela-web"), /data-action-glyph="appearance"/);
+  assert.equal(renderIdentity("example-web"), renderIdentity("an-unrelated-product"));
+  assert.match(renderIdentity("example-web"), /data-action-glyph="appearance"/);
 });
 
 

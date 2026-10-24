@@ -24,7 +24,7 @@ test("root presentation follows explicit options and resets obsolete classic ove
   applyWorkbenchProductPresentation(root, "independent-product", classic);
   assert.equal(properties.get("--size-product-navigation-icon"), "auto");
   assert.equal(properties.get("--space-settings-navigation-inline"), "12px");
-  applyWorkbenchProductPresentation(root, "lightvela-web", resolveWorkbenchPresentation());
+  applyWorkbenchProductPresentation(root, "example-web", resolveWorkbenchPresentation());
   assert.equal(properties.has("--size-product-navigation-icon"), false);
   assert.equal(properties.get("--size-icon-navigation"), "14px");
   assert.equal(properties.get("--space-settings-navigation-inline"), "0px");
