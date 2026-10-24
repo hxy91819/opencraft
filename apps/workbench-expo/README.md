@@ -23,8 +23,7 @@ UI, state and storage. This does not switch the default or select a downstream
 product. Commands and remaining acceptance are documented in
 [Packaged Web Workbench](../../docs/mobile-workbench-container.md).
 
-The downstream instructions below describe the **explicit downstream product**.
-In a downstream product checkout run `node products/<product>/run-expo.cjs start --go` from the
+To select an **explicit downstream product**, run `node products/<product>/run-expo.cjs start --go` from the
 downstream root, or `npm run expo:start --prefix products/<product> -- --go`. Its runner
 selects the original Router/account/Bot entry and edition configuration.
 The downstream `products/<product>` APK/IPA/agents-next aliases select that product
@@ -42,218 +41,117 @@ installation continuity; product-specific permission text belongs to its config.
 | iPhone 体验当前代码 | Expo Go 临时预览，依赖持续运行的 Metro | [真机快速体验](#iphone-真机快速体验) |
 | Android 内测安装 | `dev.opencraft.workbench`，开发签名 APK | [Android 内测 APK](#android-internal-apk) |
 | Android 正式包与资料 | 公开默认 `dev.opencraft.workbench`；下游产品自行声明正式包名，分别生成签名与包资料 | [Android 正式 APK](#android-release-apk) |
-| iOS 可安装测试包 | 内测 `dev.opencraft.workbench`；大陆 `ai.lightvela.vela`；国际 `ai.lightvela.vela.intl` | [iOS IPA](#ios-site-shell-and-simulator) |
+| iOS 可安装测试包 | 公开默认 `dev.opencraft.workbench`；产品包由显式产品配置声明 | [iOS IPA](#ios-site-shell-and-simulator) |
 
 Expo Go 链接、Android APK 和 iOS IPA 是不同交付物。每次交付都从当前
 checkout 构建并验证成品；构建成功本身不代表已经安装、上架或发布。
 
 ## iPhone 真机快速体验
 
-当前 iOS 版使用 HeroUI Native 登录页和智能体滑动侧栏，侧栏左下角固定“个人与设置”入口，不显示底部 Tab。智能体设置运行由 `frontend/` 源码构建的本地 DOM 功能容器；“对话”使用 OpenCraft 自有的 RN Chat 和 Composer，连接所选 Bot 的实例与 Profile。个人页合并原生资料与应用设置，并提供“订阅管理”按钮。深入管理账号、实名认证和订阅支付时打开所选站点的现有网页。Android 版仍是独立的 React Native 工作台；它的内测 APK 见下文。
-
-登录页精灵图标内联在首屏 JS 中，避免 Expo Go 通过远程 Metro 再请求一张图片。替换 `assets/lightvela-icon.png` 后运行 `npm --prefix ../products/<product> run assets:login-mark` 更新首屏素材。
-
-1. 在 iPhone 上从[美区 App Store 安装 Expo Go](https://apps.apple.com/us/app/expo-go/id982107779)。
-2. 让开发者先运行 `npx expo whoami`，确认电脑 Expo CLI 与手机 Expo Go 登录的是同一个 Expo 账号；未登录时在电脑上完成 `npx expo login`。再按 [Cloudflare Expo Go 预览 skill](../../.agents/skills/opencraft-expo-cf-preview/SKILL.md)启动并核验预览，取得本次的 `exps://…trycloudflare.com` 链接。链接每次可能变化；Metro 和 Cloudflare Tunnel 必须保持运行。直连链接不能绕过 iPhone 真机的 Expo 账号校验。
-3. 把完整链接粘贴到 **Safari 地址栏**，允许跳转 Expo Go。不要用聊天软件内置浏览器，也不必等待项目出现在 Expo Go 的开发服务器列表。
-4. Expo Go 默认进入国际站并登录下游产品。登录后进入“我的智能体”；打开左侧菜单，从固定的“个人与设置”入口进入个人页。个人页可管理订阅、选择语言和查看开源授权。登录前也能从右上角打开设置。调试大陆站时，在登录前的设置中启用开发者模式，再切换站点。
-
-如果出现红屏或一直加载，请把手机画面发给开发者，并让其检查外网 manifest 与正在运行的 Metro 日志；只有定位到 bundle 传输问题时才检查完整 bundle。此预览是临时开发服务，不能当作已安装的独立 IPA。
-如果 Expo Go 提示电脑的 CLI 未登录或账号不同，先让开发者核对 `npx expo whoami`，在电脑上完成同账号登录后，点手机错误页的 **Try Again**；无需把密码发给开发者。只有 CLI 已缓存另一个账号时才需要重启 Metro。
-
-## iOS site shell and simulator
-
-The iOS shell uses HeroUI Native. Expo Go and installed builds use the same App
-login flow and website shell. On iOS, `expo-web-browser` uses
-`ASWebAuthenticationSession`. Expo Go and the mainland package retain
-`opencraft://auth/lightvela`; the international package registers
-`opencraft-intl://auth/lightvela` so two installed packages have separate
-callbacks. For Expo
-account discovery, sign in to the same Expo account in the CLI and Expo Go;
-check the CLI account with `npx expo whoami`. The verified `exps://` link above
-is the direct entry when the server list does not show the project.
-
-From the repository root, start Metro and scan its QR code with the iPhone
-Camera:
-
-```bash
-npm install
-npm --prefix ../products/<product> run build:mobile-bot-runtime
-node ../products/<product>/run-expo.cjs start --go
-```
-
-The Bot runtime build requires a downstream product checkout with `frontend/` and
-`opencraft/` dependencies installed. It packages the existing frontend Bot
-components, providers and styles as local HTML under `products/<product>/native/assets/`.
-The generated asset contains frontend code and is ignored by Git. Regenerate
-it after frontend Bot changes, before starting Metro or building an iOS archive.
-The standalone public OpenCraft subtree lacks `frontend/` and cannot
-regenerate this private runtime.
-
-If the phone cannot reach the computer over the local network, add `--tunnel`.
-Expo CLI may ask to install `@expo/ngrok`. An anonymous tunnel can serve a
-manifest but still be rejected by Expo Go on a physical iPhone.
-
-For an HTTPS reverse proxy, set `EXPO_PACKAGER_PROXY_URL` to its public origin
-before starting Metro and open `exps://<proxy-host>` in Expo Go. Expo Go maps
-`exp://` to HTTP; `exps://` uses HTTPS. Metro gzips `.bundle` responses when
-the client accepts gzip, which helps remote phones load the iOS bundle.
-If Expo Go's development-server list needs the Expo tunnel, keep `--tunnel` and
-set `OPENCRAFT_EXPO_BUNDLE_ORIGIN` to a separate HTTPS proxy for the same Metro
-server. Requests for `.bundle` through `exp.direct` then redirect to that proxy;
-the manifest and list entry remain on the Expo tunnel.
-
-Open the Expo Go link in Safari on iPhone. Install Expo Go from the US App
-Store if it is unavailable in your current storefront. The Expo Go route opens
-the App login gate and then the site shell. Test the callback on a physical
-iPhone; bundle delivery alone does not prove the auth session completes.
-
-On a Mac with Xcode and CocoaPods installed, build the native development app:
-
-```bash
-npm install
-npm run dev:expo:ios
-```
-
-Expo generates the native project when needed, installs pods, builds the custom
-development client, starts Metro, and opens the iOS Simulator. The default
-theme is explicitly light. Expo no longer depends on Unistyles or NitroModules;
-the Android workbench uses React Native styles, while iOS uses HeroUI Native.
-
-After native sign-in, iOS verifies the session and loads the
-App-packaged Bot DOM runtime. The native session and region are supplied to
-the existing frontend repository and session providers before their scripts
-run. A local Gesture Handler/Reanimated container provides the interruptible
-left drawer, with HeroUI Native controls for Bot and feature selection. Browser,
-Terminal and Workbench stay in the embedded runtime but are hidden from the
-mobile drawer;
-the frontend components execute the feature logic. Account and billing remain
-in a separate first-party WebView, and other origins open outside the App.
-Android and Expo Web keep their existing workbench renderer.
-
-The iOS shell has no bottom bar. Its native Bot drawer owns navigation and
-keeps the Account and settings entry fixed at the lower left. The account page
-uses `@opencraft/mobile-account-sdk` for profile, verification, nickname and
-safety-phone rules, with an independent native presentation. When referrals
-are enabled, it shows the invite link and reward counts and opens the iOS share
-sheet. It can edit the nickname, change the avatar, copy the account ID, sign
-out and, for verified domestic accounts, change the safety phone. Avatar
-selection uses Expo Go compatible image modules, compresses the photo and
-uploads it through the existing profile API with Expo FileSystem multipart PUT.
-
-The account page opens the first-party website for full account management,
-real-name verification and Subscription management. The website stays mounted
-beneath the native account surface so those routes appear without a blank
-intermediate page. The native Bot runtime also stays mounted while the account
-is open; returning reveals the drawer in its previous state. Settings and
-open-source notices are native pages within the account flow. Settings is also
-available before sign-in from the login gate. The packaged Bot runtime omits
-the website sidebar because the native drawer owns mobile navigation. A
-versioned `@opencraft/mobile-bot-bridge` contract carries Bot selection, create,
-delete, refresh and external navigation between those two runtimes. See
-[mobile shell](../../docs/mobile-shell.md) and [embedded Bot bridge](../../docs/mobile-bot-bridge.md)
-before changing either side.
-
-The native Settings screen offers Follow device, Simplified Chinese, and
-English. The choice is saved locally and translates the App shell. Before a
-first-party WebView page starts its JavaScript, the App writes the selected
-locale to the website's existing `lw-locale` and `lw-locale-explicit` keys;
-changing it reloads the current page so the website's own i18n can apply it.
-International Simplified Chinese maps to the site's published `zh-SG` locale.
-The mainland China website currently remains Chinese even if the App shell is
-English. No session token or language value is sent to another origin. Add
-future native translations in `products/<product>/native/src/runtime/mobile-language.ts` and expose a
-locale only after both App and website have a complete dictionary.
-
-For iPhone diagnostics, open Settings, enable Developer mode, then open
-Diagnostic log. It keeps only the latest 100 lines on the device across app
-restarts. Logs contain fixed event names and numeric facts such as HTTP status
-and upload size; they exclude tokens, account IDs, paths, request bodies and
-response text. Normal account errors remain plain user-facing messages.
-
-Settings also contains an offline list of this Expo app's direct open-source
-dependencies, with their versions and license identifiers from the workspace
-lockfile. Each row opens the upstream package page for full terms; a separate
-button opens the downstream product's complete open-source notice. Run
-`npm run licenses:generate --workspace @opencraft/workbench-expo` after changing
-app dependencies and `npm run licenses:check --workspace @opencraft/workbench-expo`
-to verify the bundled list.
-
-The WebView warms a small set of first-party, versioned static assets for nearby
-`/agents/` pages without requesting private API data. It registers the site's
-existing Service Worker, which explicitly stores versioned Next.js assets in
-Cache Storage and serves them on later visits. This bypasses the live site's
-`Cache-Control: no-store` on JavaScript chunks without caching chat or API
-responses. Until that Service Worker change is published to `lightvela.ai`,
-prefetch falls back to the ordinary HTTP cache and JavaScript reuse is limited.
-Native archive, signing, and device verification still require a Mac with Xcode.
-
-For a signed internal IPA on a Mac with Xcode, CocoaPods, an Apple Developer
-team, and a provisioning profile for `dev.opencraft.workbench`, run:
+公开默认入口是 RN Workbench/Composer，直连配置的 Host，不要求私有产品账号、
+Bot 或登录页。设置 `EXPO_PUBLIC_APPSERVER_WS_URL` 为手机可达的 Host，再从仓库根运行：
 
 ```bash
 npm ci
-APPLE_TEAM_ID=YOUR_TEAM_ID npm --prefix ../products/<product> run build:ios:ipa
+npm run start --workspace @opencraft/workbench-expo -- --go
 ```
 
-The script prebuilds iOS, installs pods, archives a Release build, and exports
-`apps/workbench-expo/release/OpenCraft-ios-internal.ipa` with a SHA-256 file.
-Set `OPENCRAFT_IOS_EXPORT_METHOD=ad-hoc` for registered test devices; the
-default is `development`. Apple signing and device installation cannot be
-verified on Linux.
+1. 在 iPhone 上安装 [Expo Go](https://apps.apple.com/us/app/expo-go/id982107779)。
+2. 核对电脑 CLI 的 `npx expo whoami` 与手机 Expo Go 登录同一 Expo 账号。外网预览按
+   [Cloudflare Expo Go 预览 skill](../../.agents/skills/opencraft-expo-cf-preview/SKILL.md)
+   启动并核验本次 manifest；Metro 与隧道须持续运行。
+3. 把完整 `exps://` 链接粘贴到 Safari 地址栏，允许跳转 Expo Go。若开发服务器列表
+   没有项目，可使用已核验的直达链接；直达链接不能绕过 Expo 的账号校验。
+4. 打开 Workbench，检查配置 Host 的连接与会话。只有显式选择下游产品时才会进入
+   该产品自己的账号、区域与 Bot 流程；其操作步骤由产品维护。
 
-要构建产品品牌的 iOS 测试 IPA，在干净 checkout 的 Mac 上设置
-`OPENCRAFT_IOS_RELEASE=1`，并提供对应 Bundle ID 的 Apple Developer Team。
-默认大陆包 `ai.lightvela.vela`：
+红屏或持续加载时先检查外网 manifest 和 Metro 日志，定位到 bundle 传输问题后再
+检查完整 bundle。只核验 manifest 不能证明 Host、登录或模型链路已可用。
+电脑缓存了其他 Expo 账号时先修正登录并重启 Metro，不向开发者发送密码。
+Expo Go 是临时开发预览，不是已安装的独立 IPA。
+
+需要 Expo 自带隧道时，可在启动参数中加 `--tunnel`；CLI 可能提示安装
+`@expo/ngrok`。使用 HTTPS 反向代理时，设置 `EXPO_PACKAGER_PROXY_URL` 并打开
+`exps://<proxy-host>`。若开发服务器列表仍依赖 Expo 隧道，可以用
+`OPENCRAFT_EXPO_BUNDLE_ORIGIN` 为同一 Metro 选择独立 HTTPS bundle 代理。
+这些开发传输配置不选择下游产品，也不改变 Host 或账号权限。
+
+## iOS site shell and simulator
+
+The public iOS entry uses the shared RN Workbench. A downstream site/account
+shell is selected only through the trusted product entry described above.
+On a Mac with Xcode and CocoaPods, run from the repository root:
 
 ```bash
-OPENCRAFT_IOS_RELEASE=1 APPLE_TEAM_ID=YOUR_TEAM_ID \
-  OPENCRAFT_IOS_EXPORT_METHOD=ad-hoc npm --prefix ../products/<product> run build:ios:ipa
+npm ci
+npm run dev:expo:ios
 ```
 
-该命令生成 `apps/workbench-expo/release/LightVela-ios-internal.ipa`；
-国际包使用另一份干净 checkout，设置
-`OPENCRAFT_LIGHTVELA_EDITION=intl`，Bundle ID 为 `ai.lightvela.vela.intl`，
-产物为 `LightVela-International-ios-internal.ipa`。两包需要各自的签名配置。
-`ad-hoc` 需要测试设备 UDID 和有效的签名配置。现有脚本只导出 development
-或 ad-hoc 测试包，不会生成 App Store 分发 IPA。Mac、Xcode、CocoaPods
-与 Apple 签名缺一不可；Linux 上的 JS bundle 检查不能代替 IPA 验证。
+Expo prepares the native project, installs pods, builds the development client
+and opens the iOS Simulator. The public development application ID is
+`dev.opencraft.workbench`; `app.json` owns its default identity and permissions.
+A simulator build does not validate physical-device networking, sign-in or
+native permission behavior.
 
-## Native sign-in
+For a signed internal IPA, use a Mac with Xcode, CocoaPods, an Apple Developer
+team and a provisioning profile for the selected Bundle ID:
 
-The iOS app uses the existing `GET /oauth2/authorize` page and
-`POST /auth/session/exchange`. The release edition fixes the default site:
-`OPENCRAFT_LIGHTVELA_EDITION=cn` (the release default) uses `api.lightvela.com`,
-`lightvela.com/agents` and `opencraft://auth/lightvela`; `intl` uses
-`api.lightvela.ai`, `lightvela.ai/agents` and
-`opencraft-intl://auth/lightvela`. Expo Go retains the development identity,
-defaults to international, and uses the existing `opencraft://` callback.
-The site override is available only after enabling Developer mode in Settings,
-before sign-in. A signed-in session must sign out before changing sites; tokens
-never cross regions. Installing a different edition resets a saved region
-override to that edition's default.
-Explicitly register OIDC client `opencraft-native-v1` with both exact native callbacks on each production auth service before testing the international release. Deploy a backend version that accepts both callbacks before changing `AUTH_OIDC_CLIENTS_JSON`; the previous backend accepts only the original callback. The shared login page owns provider selection; native never selects Google directly. The server must support these endpoints and the API gateway must allow them
-without an existing session. Updating this app alone cannot enable that backend
-contract; an unavailable backend must not fall back to session tokens in URLs.
+```bash
+npm ci
+APPLE_TEAM_ID=YOUR_TEAM_ID npm run build:expo:ios:ipa
+```
 
-The account owns the PKCE transaction (random verifier/state in SecureStore,
-10-minute lifetime), validates the exact callback and state, then exchanges the
-short-lived one-time code over TLS. Completion/cancellation compare-deletes only the owning transaction, through a process-wide serialized SecureStore adapter.
-Cold-start callbacks restore the pending transaction; the callback route returns
-to `/` and never owns credentials. Stale callbacks cannot suppress a saved session. The generic web login flow is unchanged. Native OIDC grants live for 120 seconds and are redeemed only through the first-party session adapter, not as site-gateway JWTs.
+The shared script prebuilds iOS, archives a Release build and exports
+`apps/workbench-expo/release/OpenCraft-ios-internal.ipa` with a SHA-256 file.
+`OPENCRAFT_IOS_EXPORT_METHOD` accepts `development` (default) or `ad-hoc`;
+ad-hoc installation needs registered device UDIDs and a matching profile.
+`OPENCRAFT_IOS_RELEASE=1` requires a clean checkout without a generated `ios/`
+project. `OPENCRAFT_NATIVE_ARTIFACT_NAME` changes the output prefix for an
+explicit product build. Product Bundle IDs, schemes, icons, permission copy
+and regional release selectors belong to that product's config, not core
+build targets. This script does not export an App Store distribution IPA.
 
-The matching server contract is `user/auth/api/native-login.openapi.yaml` in the
-the downstream repository. No production deployment is implied by a simulator build.
-
-CI and Linux hosts can verify the complete JavaScript bundle and native package
-discovery closure without Xcode:
+Linux and CI can verify JavaScript packaging without Xcode:
 
 ```bash
 npm run build:expo:ios
 ```
 
-This emits `dist/ios/main.jsbundle`; it does not compile CocoaPods or boot an
-Apple binary.
+This emits `apps/workbench-expo/dist/ios/main.jsbundle` and its assets. It does
+not compile CocoaPods, sign an IPA or prove an Apple binary runs.
+
+## Native sign-in
+
+The public default entry does not create a downstream account. A product that
+adds native sign-in owns the authorization endpoints, registered OIDC client,
+exact callback URLs, region selection, session format and any account SDK.
+Configure those in the product's trusted local entry/config and auth service;
+changing the core bundle alone cannot enable an external backend contract.
+
+Keep each transaction's random state and PKCE verifier with its credential
+owner. Validate the exact callback and state before exchanging a short-lived
+one-time code over TLS. Cancellation, replacement and cold-start restoration
+must act only on the owning transaction; stale callbacks or 401 responses must
+not clear a newer session. Never put session tokens in callback URLs or send
+credentials, Bot state or cached account data to another region. A product with
+multiple installed editions must use matching Bundle IDs, schemes, callbacks
+and signing profiles, then verify callback delivery on physical devices.
+
+The product also owns its packaged Bot DOM runtime and generated login assets.
+Prepare them through that product's build tools before selecting its Expo
+entry. The shared runner generates only public math/Mermaid assets, plus the
+Web Workbench for the explicit experimental Web-container entry. Public builds
+do not require private frontend sources or generated Bot HTML. For shared
+container and lifecycle invariants see [mobile shell](../../docs/mobile-shell.md),
+[embedded Bot bridge](../../docs/mobile-bot-bridge.md) and
+[packaged Web Workbench](../../docs/mobile-workbench-container.md).
+
+Update bundled dependency license metadata with
+`npm run licenses:generate --workspace @opencraft/workbench-expo` after dependency
+changes, and verify it with
+`npm run licenses:check --workspace @opencraft/workbench-expo`. Preserve required
+third-party notices; a product owns any additional notices for its private
+dependencies and assets.
 
 ## Android internal APK
 
@@ -264,7 +162,7 @@ from the OpenCraft root:
 
 ```bash
 npm ci
-npm --prefix ../products/<product> run build:android:apk
+npm run build:expo:android:apk
 adb install -r apps/workbench-expo/release/OpenCraft-android-internal.apk
 ```
 
@@ -280,12 +178,10 @@ ID is `dev.opencraft.workbench`, version `0.1.0` (Android version code 1). Expo'
 generated release configuration signs it with a development keystore for
 internal testing only. Bump the version code for a later distributable build.
 
-Once OpenCraft is mirrored to its standalone GitHub repository, the manual
-**Android internal APK** Actions workflow builds the same target and provides
-the APK as an artifact. The nested workflow does not execute downstream and does
-not publish to a store or GitHub Release. Installing the APK does not require
-Metro; sign-in still requires the downstream sign-in server contract
-described above.
+The manual **Android internal APK** Actions workflow builds this public target
+and provides the APK as an artifact. It does not execute a downstream product
+or publish to a store or GitHub Release. Installing the APK does not require
+Metro; using the Workbench still requires a reachable configured Host.
 
 ## Android release APK
 
@@ -342,17 +238,14 @@ python3 apps/workbench-expo/scripts/serve-android-release-apk.py \
 
 ## Parallel `/agents-next` Expo Web console
 
-From `opencraft/`, run `npm --prefix ../products/<product> run build:agents-next`.
-Then start the frontend dev server and visit `/agents-next/`. From `frontend/`,
-`npm run build:agents-next` performs the same preparation; run it before a
-frontend release build that includes this experimental entry. Both workspaces'
-dependencies must be installed. The generated `frontend/public/__expo-agents/`
-assets are ignored and rebuilt from source. The official `/agents` entry stays
-in place.
+This entry belongs to the downstream product and is not a public core target.
+Use that product's documented build command from its own checkout; it owns the
+frontend source, generated static assets and `/agents-next/` routing. The normal
+`/agents` entry remains independent. Core does not ship a compatibility command
+that invokes private frontend builds.
 
-Navigation/session controls are shared HeroUI Native components. Phone/tablet/
-foldable/desktop layouts use measured container width and preserve one mounted
-DOM runtime. This console embeds the existing frontend configuration code and
-OpenCraft Web chat locally; it does not mount RN Chat or a hosted feature page.
-Electron can consume the Web mount port after wiring its host capabilities;
-that existing entry is not migrated by this change.
+The shared contract uses measured container width and preserves one mounted
+DOM runtime across phone, tablet, foldable and desktop layouts. The product
+packages its frontend configuration and OpenCraft Web chat locally; it must not
+replace native device capability ports with a hosted feature page. Electron
+assembly and real-device acceptance remain separate product responsibilities.

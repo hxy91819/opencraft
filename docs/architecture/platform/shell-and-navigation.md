@@ -424,17 +424,17 @@ Appearance; internal developer mode adds Plugins and Laboratory, and Electron
 also adds the read-only SQLite inspector described above. EnvironmentDirectory, account discovery and
 persisted Host profiles remain runtime services used by Chat and providers, but
 they have no built-in application navigation or creation UI.
-Desktop account restoration runs asynchronously after extension activation and
-never depends on OS Keychain. A Main-process `PrivateStorage` port persists only
-region and session token in `userData/private-storage/lightvela-account.json`.
-This is explicitly plaintext protected by directory 0700/file 0600 permissions,
-not encryption or protection against same-account processes. Writes use private
-temporary files and atomic replacement; keys and file types are validated. The
-renderer still has no filesystem port or durable token storage. Legacy
-`lightvela-account.encrypted` is not decrypted or migrated: one fresh login is
-required. Logout clears new session data and obsolete local ciphertext without
-accessing the system keychain. Generation/abort guards prevent cancelled saves
-and late restoration from undoing sign-out.
+Downstream desktop account restoration runs asynchronously after extension
+activation. The product session adapter chooses its account storage key and
+owns its token format, former session cleanup and fresh-login policy; the public
+desktop does not create a private product account. The Main-process
+`PrivateStorage` port uses plaintext files protected by directory 0700/file 0600
+permissions, not encryption or protection against same-account processes.
+Writes use private temporary files and atomic replacement; keys and file types
+are validated. The renderer has no filesystem port or durable token storage.
+Product session cleanup must preserve generation/abort guards so cancelled
+saves and late restoration cannot undo sign-out. Core source naming changes do
+not rename private account files or decrypt former product sessions.
 
 ## 会话顶部信息
 

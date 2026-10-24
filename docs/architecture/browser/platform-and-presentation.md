@@ -120,12 +120,11 @@ an external destination leaves the existing Page and panel intact. New-window
 requests forwarded to the coordinator follow the same route. Tools report external
 routing without claiming that an external tab is controlled or inspectable.
 
-the downstream product's embedded composition and the standalone browser-hosted Web bootstrap
-supply the same allowlist of `lightvela.ai` and
-`lightvela.com`, including subdomains. Matching uses a parsed HTTP(S) hostname and a
-DNS label boundary, not arbitrary URL text. Other destinations open with
-`_blank` and `noopener,noreferrer`, preserving the containing conversation. The full
-Electron workbench supplies no policy and retains its native browsing behavior. This is a
+Trusted application composition can supply a product navigation policy; the
+standalone Web and Electron defaults do not supply a private-site allowlist.
+A product allowlist must match parsed HTTP(S) hostnames at DNS label boundaries,
+not arbitrary URL text. Its external opener should preserve the containing
+conversation and use `noopener,noreferrer` for a new browser tab. This is a
 policy for OpenCraft-initiated navigation, not a security boundary for redirects or
 navigation initiated inside an inaccessible cross-origin guest.
 

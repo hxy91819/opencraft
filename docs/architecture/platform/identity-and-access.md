@@ -178,7 +178,7 @@ restores focus. Avatar editing, clipboard feedback and the semantic usage meter
 are reusable renderer controls. The account feature retains profile mutations,
 credit interpretation and regional billing URLs. Subscription management and
 entitlement recovery open `/account/billing` on the signed-in region’s public
-site (`lightvela.com` for China, `lightvela.ai` internationally); the legacy
+site, as selected by that product's account configuration; the legacy
 `/account?tab=billing` URL is not used. Utility modal appearance is
 theme-owned and content-sized, with no account-specific fixed canvas. Warning,
 error, usage-track, utility-shadow and scrim colors are emitted by the theme
