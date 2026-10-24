@@ -1,5 +1,5 @@
 import React from "react";
-import { Mic } from "lucide-react";
+import { MicrophoneIcon } from "@opencraft/design-system-web/action-icons";
 import { createComposerController } from "@opencraft/composer-core";
 import { createConversationScopeRegistry } from "@opencraft/workbench-runtime";
 import { AppShell } from "../../apps/workbench-web/src/components/app-shell";
@@ -37,7 +37,7 @@ function App() {
     onRightPanelOpenChange={noop} rightPanel={null}>
     <NewThreadDraftPage showExecutionControls={!params.has("inline")} draft={draft} controller={controller} selectionCatalog={{ models: toolbar ? models : [], permissionProfiles: toolbar ? permissionProfiles : [] }}
       modelSelectionPolicy={params.get("policy") === "session" ? "session" : params.get("policy") === "host-default" ? "host-default" : "user"}
-      composerEndActions={toolbar ? <button className="opencraft-composer-icon-button" aria-label="Microphone"><Mic size={16} /></button> : undefined}
+      composerEndActions={toolbar ? <button className="opencraft-composer-icon-button" aria-label="Microphone"><MicrophoneIcon size={16} /></button> : undefined}
       catalog={{ search: async () => [] }} workspaceOptions={[]} activeHostId="fixture" hostOptions={[]}
       connectionPhase="ready" onSelectHost={noop} onSelectWorkspace={noop} onBrowseWorkspace={noop}
       onSubmit={() => false} heading="要做点什么？" placeholder="聊聊你的想法，或交给我一件事" />

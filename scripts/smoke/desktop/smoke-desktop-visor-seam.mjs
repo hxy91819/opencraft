@@ -10,7 +10,7 @@ assertBrowserRuntimeDependencies(process.env.OPENCRAFT_CHROMIUM_EXECUTABLE ?? ch
 const css = compile('packages/design-system/src/desktop-view.web.scss').css;
 const artifacts = await mkdtemp(join(tmpdir(), 'opencraft-visor-seam-'));
 // Previous mask boundary, only for proving the regression and comparing the
-// unchanged exterior. No reference-product installation is needed at runtime.
+// unchanged exterior in this self-contained fixture.
 const baseline = `.ui-desktop-view__island::before{width:17px;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 24'%3E%3Cpath d='M0 0H16L16.5 24C16.5 24 15.8019 12.2069 12.48 6.72C9.15808 1.23312 0 0 0 0Z'/%3E%3C/svg%3E")}
  .ui-desktop-view__island::after{width:17px;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 25'%3E%3Cpath d='M16.5 0H0L0.5 25C0.5 25 0.698078 12.2069 4.02 6.72C7.34192 1.23312 16.5 0 16.5 0Z'/%3E%3C/svg%3E")}
  @container(width >= 48rem){.ui-desktop-view__island::before{width:16px;mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 24'%3E%3Cpath d='M0 0H16V24C16 24 15.8019 12.2069 12.48 6.72C9.15808 1.23312 0 0 0 0Z'/%3E%3C/svg%3E")}}`;

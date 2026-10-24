@@ -192,7 +192,8 @@ export class BrowserPresentationCoordinator {
     this.records.delete(record.snapshot.id);
     this.manager.releaseMountGeneration(record.owner, record.snapshot.pageId, record.snapshot.id, record.snapshot.generation);
     // React releases the old effect before mounting the new panel in a commit.
-    // Defer only the physical detach so the source handoff can retain outgoing.
+    // Defer only the physical detach so the presentation transition can retain
+    // the outgoing host.
     queueMicrotask(() => {
       if (record.host.getMountGeneration() !== record.snapshot.generation
         || this.manager.hasOtherMountGenerationClaim(record.owner, record.snapshot.pageId,

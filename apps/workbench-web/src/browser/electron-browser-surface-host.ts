@@ -169,8 +169,8 @@ export class ElectronBrowserSurfaceHost implements BrowserSurfaceHost {
   }
 
   setRoot(root: HTMLElement | null): void {
-    // The React placeholder is not the backing owner. Only the source
-    // manager may park a page; placeholder unmount cannot revoke its lease.
+    // The React placeholder is not the backing owner. Only the browser host
+    // registry may park a page; placeholder unmount cannot revoke its lease.
     if (root) this.ensureRoot();
   }
   private ensureRoot(): HTMLDivElement {

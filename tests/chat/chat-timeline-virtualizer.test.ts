@@ -934,7 +934,7 @@ test("scroll-to-bottom visibility excludes the synthetic response spacer", () =>
   }), false);
 });
 
-test("bottom padding and viewport reporting match the original virtualized list", () => {
+test("virtualized viewport reports bounds and excludes bottom padding from bottom distance", () => {
   const layout = buildTurnLayout(turns(5), {}, config);
   assert.equal(distanceExcludingBottomPadding(180, 64), 116);
   assert.equal(distanceExcludingBottomPadding(40, 64), 0);
