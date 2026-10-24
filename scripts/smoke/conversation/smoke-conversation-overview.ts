@@ -48,7 +48,7 @@ createIntlTestRoot(document.getElementById('root')).render(<App/>);
 const vite = await createServer({ configFile: false, root: process.cwd(), logLevel: "error",
   resolve: { dedupe: ["react", "react-dom"] }, cacheDir: "node_modules/.vite-conversation-overview",
   esbuild: { jsx: "automatic", target: "esnext" },
-  optimizeDeps: { noDiscovery: true, include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime", "react-intl", "@tanstack/react-query", "lucide-react", "motion/react", "@radix-ui/react-dialog", "@radix-ui/react-tooltip", "@radix-ui/react-popover", "@radix-ui/react-dropdown-menu", "@radix-ui/react-context-menu", "@radix-ui/react-alert-dialog", "sonner", "tslib"] },
+  optimizeDeps: { noDiscovery: true, include: ["react", "react-dom", "react-dom/client", "react/jsx-runtime", "react/jsx-dev-runtime", "react-intl", "@tanstack/react-query", "motion/react", "@radix-ui/react-dialog", "@radix-ui/react-tooltip", "@radix-ui/react-popover", "@radix-ui/react-dropdown-menu", "@radix-ui/react-context-menu", "@radix-ui/react-alert-dialog", "sonner", "tslib"] },
   server: { host: "127.0.0.1", port: 0, hmr: false },
   plugins: [{ name: "overview-fixture", resolveId: id => id === "/overview-fixture.tsx" ? id : null,
     load: id => id === "/overview-fixture.tsx" ? source : null,
