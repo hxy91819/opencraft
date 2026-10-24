@@ -177,7 +177,7 @@ test("explicit permissions survive restart, snapshot each occurrence and reject 
   } finally { await f.close(); }
 });
 
-// Native Host timing: reference product interaction does not introduce a second scheduler.
+// Native Host owns timing; client interactions do not introduce a second scheduler.
 import { nextCalendarRun, nextIntervalRun } from "@opencraft/appserver-protocol";
 test("calendar rules respect zone, multiple times and selected dates", () => {
   assert.equal(nextCalendarRun({ period: "daily", times: ["18:00", "09:00"], days: [] }, "Asia/Shanghai", Date.parse("2026-10-21T02:00Z")), Date.parse("2026-10-21T10:00Z"));

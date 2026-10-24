@@ -34,7 +34,7 @@ function SidebarVisibleIcon() {
 }
 
 export function SidebarToggleIcon({ sidebarOpen }: SidebarToggleIconProps) {
-  // The reference uses a paired panel outline, with no directional chevron.
+  // The paired panel outline indicates sidebar state without a directional chevron.
   // Replacing the SVG atomically avoids WebKit's one-frame repaint when a complex path's `d`
   // attribute is mutated in place, while the owning button stays mounted.
   return sidebarOpen ? <SidebarVisibleIcon /> : <SidebarHiddenIcon />;

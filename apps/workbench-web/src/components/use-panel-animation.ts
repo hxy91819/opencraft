@@ -9,7 +9,7 @@ import { useLayoutEffect, useReducer, useRef } from "react";
 import { paneTransitionIntent } from "./workspace-pane-geometry";
 
 /** Single Shell transaction owner; visibility and full-width remain distinct
- * MotionValues. Source nSi settles visibility before changing width mode.
+ * MotionValues. Open-pane mode changes restore visibility before width motion.
  */
 export function useWorkspacePaneAnimation(progress: MotionValue<number>, visibility: MotionValue<number>, fullWidth: boolean, scope: string, open: boolean): void {
   const previous = useRef({ scope, open, fullWidth });
@@ -33,7 +33,7 @@ export function useWorkspacePaneAnimation(progress: MotionValue<number>, visibil
   }, [fullWidth, scope, open, reducedMotion, progress, visibility]);
 }
 
-// settings/app-shell-layout-motion-context-04359.ts.
+// Shared spring for pane visibility, size and full-width transitions.
 export const PANEL_SPRING_TRANSITION = {
   type: "spring",
   duration: 0.5,
