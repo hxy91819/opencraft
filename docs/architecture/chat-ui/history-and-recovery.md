@@ -208,13 +208,15 @@ and manual expansion in light/dark and desktop/touch.
 
 
 
-## Server-owned native Codex history
+<a id="server-owned-native-codex-history"></a>
+
+## Durable Host legacy history
 
 A Durable Host placement does not imply paginated Item support. When a resumed
 Thread explicitly declares `historyMode: "legacy"`, the Durable history strategy
 reads `thread/read` with `includeTurns: true` and commits a complete history
-baseline. It does not call `thread/items/list`, which native Codex may expose as
-unsupported. Paginated Durable Threads retain separate Turn and Item loading;
+baseline. It does not call `thread/items/list`; legacy providers need not support
+that method. Paginated Durable Threads retain separate Turn and Item loading;
 message-window history keeps its own higher-priority strategy. This applies to
 normal navigation and to conversations opened from linked Tasks alike.
 

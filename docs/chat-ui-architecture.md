@@ -63,7 +63,7 @@
 - <a id="hermes-message-windows-and-bot-history-continuity"></a>[Hermes message windows and Bot history continuity](architecture/chat-ui/history-and-recovery.md#hermes-message-windows-and-bot-history-continuity)
 - <a id="turn-identity-handoff-and-mounted-window"></a>[Turn identity handoff and mounted window](architecture/chat-ui/history-and-recovery.md#turn-identity-handoff-and-mounted-window)
 - <a id="restored-baseline-versus-live-entry-motion"></a>[Restored baseline versus live entry motion](architecture/chat-ui/history-and-recovery.md#restored-baseline-versus-live-entry-motion)
-- <a id="server-owned-native-codex-history"></a>[Server-owned native Codex history](architecture/chat-ui/history-and-recovery.md#server-owned-native-codex-history)
+- <a id="server-owned-native-codex-history"></a><a id="durable-host-legacy-history"></a>[Durable Host legacy history](architecture/chat-ui/history-and-recovery.md#durable-host-legacy-history)
 - <a id="bounded-history-recovery"></a>[Bounded history recovery](architecture/chat-ui/history-and-recovery.md#bounded-history-recovery)
 - <a id="recovery-technical-details"></a>[Recovery technical details](architecture/chat-ui/history-and-recovery.md#recovery-technical-details)
 - <a id="external-conversation-presentation-and-history-reads"></a>[External conversation presentation and history reads](architecture/chat-ui/history-and-recovery.md#external-conversation-presentation-and-history-reads)
