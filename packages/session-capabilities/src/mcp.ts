@@ -77,14 +77,17 @@ export class SessionCapabilityMcp {
       finally { await rm(temporary, { force: true }); }
     }
   }
-  private configuration(token: string): Record<string, unknown> {
+  private configuration(token: string, tools: readonly CapabilityTool[]): Record<string, unknown> {
     if (!this.url) throw new Error("Capability listener unavailable");
-    return { url: this.url, http_headers: { Authorization: "Bearer " + token } };
+    const approved = tools.filter(tool => tool.approval === "preauthorized");
+    return { url: this.url, http_headers: { Authorization: "Bearer " + token },
+      ...(approved.length ? { tools: Object.fromEntries(approved.map(tool => [tool.name, { approval_mode: "approve" }])) } : {}) };
   }
   config(session: CapabilitySession): Record<string, unknown> | null {
-    if (!this.url || !this.capabilities.tools(session).length) return null;
+    const tools = this.capabilities.tools(session);
+    if (!this.url || !tools.length) return null;
     const id = this.bindings?.id(session) ?? [...this.memoryBindings].find(([, s]) => s.serverId === session.serverId && s.threadId === session.threadId)?.[0];
-    return this.configuration(id ? this.bindingToken(id) : this.token(session));
+    return this.configuration(id ? this.bindingToken(id) : this.token(session), tools);
   }
   /** Host-only creation reservation. Listing a declaration never authorizes a
    * call; the real native identity must be bound and domain admission committed. */
@@ -93,7 +96,7 @@ export class SessionCapabilityMcp {
     if (this.pending.size >= 128) throw new Error("Too many pending capability reservations");
     const id = randomUUID();
     this.pending.set(id, { tools: structuredClone(tools), expiresAt: Date.now() + 60_000 });
-    return { configuration: this.configuration(this.bindingToken(id)),
+    return { configuration: this.configuration(this.bindingToken(id), tools),
       bind: (session: CapabilitySession) => {
         const pending = this.pending.get(id);
         if (!pending || pending.expiresAt <= Date.now() || this.bindings?.get(id) || this.memoryBindings.has(id)) throw new Error("Capability reservation expired or already bound");
@@ -136,7 +139,8 @@ export class SessionCapabilityMcp {
       const tools = authenticated.session ? this.capabilities.tools(authenticated.session) : authenticated.tools ?? [];
       const staged = authenticated.reservationId ? this.pending.get(authenticated.reservationId) : undefined;
       if (tools.length && authenticated.reservationId) this.pending.delete(authenticated.reservationId);
-      return { tools: tools.length ? tools : staged && staged.expiresAt > Date.now() ? staged.tools : [] };
+      const visible = tools.length ? tools : staged && staged.expiresAt > Date.now() ? staged.tools : [];
+      return { tools: visible.map(({ approval: _approval, ...tool }) => tool) };
     });
     mcp.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
       try {

@@ -4,6 +4,8 @@ export interface CapabilityTool {
   readonly name: string;
   readonly description: string;
   readonly inputSchema: Record<string, unknown>;
+  /** Trusted domain consent already covers this bounded invocation; never model supplied. */
+  readonly approval?: "preauthorized";
 }
 export interface CapabilityResult { success: boolean; contentItems: { type: "inputText"; text: string }[] }
 export interface SessionCapabilityProvider {

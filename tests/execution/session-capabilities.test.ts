@@ -42,3 +42,25 @@ test("new native sessions list reserved declarations but cannot call until bound
  const reopened=new Client({name:'reopened',version:'1'});await reopened.connect(new StreamableHTTPClientTransport(new URL(next.url),{requestInit:{headers:next.http_headers}}));t.after(()=>reopened.close());
  assert.equal((await reopened.callTool({name:'reply',arguments:{text:'restored'}})).isError,false);assert.equal(calls,2);assert.deepEqual(store.get('made-up'),null);
 });
+
+test("domain preauthorization is per tool, survives reservation binding, and never grants a call",async t=>{
+ const service=new SessionCapabilities();let admitted=false,calls=0;
+ const reply={...tool,approval:"preauthorized" as const},ordinary={...tool,name:"other"};
+ service.register({id:"fixture",tools:s=>admitted&&s.threadId==="one"?[reply,ordinary]:[],async call(){calls++;return "ok";}});
+ const mcp=new SessionCapabilityMcp(service,randomBytes(32));await mcp.listen();t.after(()=>mcp.close());
+ const reserved=mcp.prepare([reply,ordinary]),config=reserved.configuration as any;
+ assert.deepEqual(config.tools,{reply:{approval_mode:"approve"}});
+ assert.equal(config.default_tools_approval_mode,undefined);
+ const client=new Client({name:"fixture",version:"1"});await client.connect(new StreamableHTTPClientTransport(new URL(config.url),{requestInit:{headers:config.http_headers}}));t.after(()=>client.close());
+ assert.ok((await client.listTools()).tools.every(t=>!("approval" in t)));
+ assert.equal((await client.callTool({name:"reply",arguments:{text:"before binding"}})).isError,true);
+ reserved.bind({serverId:"s",threadId:"one"});
+ assert.equal((await client.callTool({name:"reply",arguments:{text:"before admission"}})).isError,true);
+ admitted=true;
+ assert.deepEqual((mcp.config({serverId:"s",threadId:"one"}) as any).tools,config.tools);
+ assert.equal((await client.callTool({name:"reply",arguments:{text:"admitted"}})).isError,false);
+ admitted=false;
+ assert.equal((await client.callTool({name:"reply",arguments:{text:"revoked"}})).isError,true);
+ assert.equal(calls,1);assert.equal(mcp.config({serverId:"s",threadId:"one"}),null);
+ const defaults=mcp.prepare([ordinary]).configuration as any;assert.equal(defaults.tools,undefined);
+});

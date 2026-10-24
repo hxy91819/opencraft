@@ -136,7 +136,7 @@ upgrade described in [session capabilities](session-capabilities.md).
 WeCom follows the [official long-connection contract](https://developer.work.weixin.qq.com/document/path/101463):
 fixed WSS endpoint, Bot ID/Secret subscription, 30-second heartbeat and bounded
 reconnect. Normal human text, recognized voice and mixed text are supported;
-`compat_info` identities are excluded. New tool-mode messages send only a final stream protocol frame using the
+The exact `compat_info.source=channel` source is normalized as a group with a `wecom-channel:` chat ID namespace, retaining canonical `from.userid` and the same sender authorization. Replies keep the original callback request/stream IDs. Channel callbacks require a nonempty `chatid`. Only absent compatibility metadata follows ordinary-user admission. Assistant, unknown and malformed compatibility sources, including null or empty metadata, remain excluded. Safe `lastCompatibilitySource` classifies observed metadata as `empty`, `ai_assistant`, `channel` or `other`, without publishing arbitrary values. New tool-mode messages send only a final stream protocol frame using the
 original request and stream IDs. Processing/final feedback remains only for
 legacy final-mode admissions. Active connection takeover stops
 reconnect. The adapter refuses expired replies and waits for ACKs.
@@ -153,6 +153,16 @@ Core's existing shared-instance native conversation permissions are unchanged.
 This feature does not provide private filesystem/history isolation per person.
 Health exposes safe connection phases and managed storage outcomes, never
 credentials, identity maps or message content.
+WeCom health also exposes an adapter-lifetime diagnostic snapshot: start time,
+last frame/ACK/callback times, callback/handoff/completion/failure/ignore counts,
+the last fixed ignore reason and an allowlisted admission error category.
+No sender, request ID, message text, secret or arbitrary error is included.
+An authenticated socket with recent ACKs does not prove message delivery;
+zero callbacks only describes the current adapter lifetime. A completed handoff
+does not prove native execution or an IM reply. Use the durable message and
+delivery receipts for those later stages. Recreating the adapter resets these
+observations; automatic socket reconnects retain them. These observations never
+change authorization or retry a message.
 
 ## Verification
 
