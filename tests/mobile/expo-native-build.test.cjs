@@ -4,8 +4,36 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { createRequire } = require('node:module');
+const semver = require('semver');
 
 const app = path.resolve(__dirname, '../../apps/workbench-expo');
+
+test('Expo Router and animation runtime resolve within the installed SDK contract', () => {
+  const fromApp = createRequire(path.join(app, 'package.json'));
+  const manifest = fromApp('./package.json');
+  const sdkFile = fromApp.resolve('expo/package.json');
+  const bundled = JSON.parse(fs.readFileSync(path.join(path.dirname(sdkFile), 'bundledNativeModules.json'), 'utf8'));
+  const packages = {};
+  for (const name of ['expo-router', 'react-native-reanimated', 'react-native-worklets']) {
+    const file = fromApp.resolve(`${name}/package.json`);
+    const installed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assert.ok(semver.satisfies(installed.version, manifest.dependencies[name]), `${name} must satisfy its direct declaration`);
+    assert.ok(semver.satisfies(installed.version, bundled[name]), `${name} must match the installed Expo SDK`);
+    packages[name] = { file, installed };
+  }
+  const reanimated = packages['react-native-reanimated'];
+  const worklets = packages['react-native-worklets'];
+  const fromReanimated = createRequire(reanimated.file);
+  assert.ok(semver.satisfies(worklets.installed.version, reanimated.installed.peerDependencies['react-native-worklets']), 'Worklets must satisfy Reanimated native compatibility');
+  assert.equal(fs.realpathSync(fromReanimated.resolve('react-native-worklets/package.json')), fs.realpathSync(worklets.file), 'Expo and Reanimated must share one Worklets runtime');
+  assert.equal(fs.realpathSync(fromApp.resolve('react-native-worklets/plugin')), fs.realpathSync(fromReanimated.resolve('react-native-worklets/plugin')), 'The Babel plugin must come from the same Worklets package');
+  for (const name of ['@gorhom/bottom-sheet', 'heroui-native']) {
+    const fromConsumer = createRequire(fromApp.resolve(`${name}/package.json`));
+    assert.equal(fs.realpathSync(fromConsumer.resolve('react-native-reanimated/package.json')), fs.realpathSync(reanimated.file), `${name} must use the Expo Reanimated runtime`);
+    assert.equal(fs.realpathSync(fromConsumer.resolve('react-native-worklets/package.json')), fs.realpathSync(worklets.file), `${name} must use the Expo Worklets runtime`);
+  }
+});
 
 test('standalone Expo config keeps the public identity and permission wording', () => {
   const config = require(path.join(app, 'app.config.js'))({ config: require(path.join(app, 'app.json')).expo });
