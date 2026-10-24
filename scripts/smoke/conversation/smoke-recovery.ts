@@ -34,6 +34,7 @@ const vite=await createServer({configFile:false,root:process.cwd(),logLevel:"err
 }}]});
 let browser:any; const sockets=new WebSocketServer({noServer:true});
 let dropNextResume = false, resumeRequests = 0;
+const resumeParams: any[] = [];
 let releaseResume: (() => void) | undefined, holdNextResume = false;
 try {
  await vite.listen();vite.httpServer!.on("upgrade",(req,socket,head)=>{
@@ -43,6 +44,7 @@ try {
   const request=JSON.parse(frame.toString());if(request.id===undefined)return;
   if(request.method === "thread/resume") {
     resumeRequests++;
+    resumeParams.push(request.params);
     if(holdNextResume){holdNextResume=false;await new Promise<void>(resolve=>{releaseResume=resolve;});}
     if(dropNextResume){dropNextResume=false;return;}
   }
@@ -70,7 +72,7 @@ try {
   await page.waitForSelector('[data-authoritative="true"]');
   assert.equal(await page.getByRole('textbox',{name:'Unsent draft'}).inputValue(),'Preserve my unsent words');
   assert.equal(await page.evaluate(()=>document.querySelector('[data-turn-key="dsh-turn-s-9"]')===(window as any).originalRow),true);
-  assert.equal(calls.length,before,'unchanged native head eliminates history reads and retains navigation index');
+  assert.equal(calls.length,before+1,'replacement connection reloads one bounded tail without enumerating navigation');
   await page.screenshot({path:`${output}/unchanged-${width}-${theme}.png`});
   const trace=await page.evaluate(()=>(window as any).recovery.trace);
   assert.equal(new Set(trace.map((e:any)=>e.recoveryId)).size,1);
@@ -78,24 +80,26 @@ try {
   const unchangedReads=calls.length-before;
   // Hold the real RPC boundary to inspect in-progress UI before a failure.
   const resumeRequestsBefore=resumeRequests;
+  const readsBeforeRevalidation=calls.length;
   holdNextResume=true;
   await page.evaluate(()=>{void (window as any).recovery.revalidate();});
   const notice=page.locator('.conversation-recovery-notice');
-  await notice.waitFor();
+  await page.waitForFunction(()=>(window as any).recovery.snapshot().authoritative===false);
+  assert.ok(resumeParams.at(-1)?.historyCheckpoint,'idle manual revalidation offers its authoritative checkpoint');
   await page.waitForTimeout(1100);
-  const assertSimpleLoading = async () => {
-    assert.equal(await notice.locator('details, pre, button').count(),0,'loading has no diagnostic disclosure or copy action');
-    assert.doesNotMatch(await notice.innerText(),/Technical details|Attempts started|elapsed|Retry in|TIMEOUT|Last failure/);
+  const assertQuietRecovery = async () => {
+    assert.equal(await notice.count(),0,'retained history has no notice during automatic recovery or intermediate failure');
   };
-  await assertSimpleLoading();
+  await assertQuietRecovery();
   assert.ok(consoleDetails.some(text=>text.includes('stage: history')&&text.includes('currentStage: history')&&text.includes('recoveryId:')),'complete details are available in console during concise loading');
   const detailCount=consoleDetails.length;await page.waitForTimeout(100);assert.equal(consoleDetails.length,detailCount,'no elapsed-time console timer');
   assert.equal(resumeRequests,resumeRequestsBefore+1,'passive loading starts only the requested read');
   assert.equal(await page.evaluate(()=>document.querySelector('[data-turn-key="dsh-turn-s-9"]')===(window as any).originalRow),true);
-  const bounds=await notice.boundingBox();assert.ok(bounds && bounds.x>=0 && bounds.x+bounds.width<=width);
+  const bounds=await page.getByRole('textbox',{name:'Unsent draft'}).boundingBox();assert.ok(bounds && bounds.x>=0 && bounds.x+bounds.width<=width);
   await page.screenshot({path:`${output}/progress-${width}-${theme}.png`});
   releaseResume!();releaseResume=undefined;
   await page.waitForSelector('[data-authoritative="true"]');
+  assert.equal(calls.length,readsBeforeRevalidation,'unchanged idle revalidation does not reread history');
   assert.equal(await notice.count(),0,'authoritative recovery removes progress');
   const resumedBefore = resumeRequests;
   const timeoutStart = Date.now();
@@ -103,7 +107,7 @@ try {
   const observedRetry=page.waitForFunction(()=>(window as any).recovery.progressTrace.some((rows:any[])=>rows.some(row=>row?.lastFailure?.code==='TIMEOUT')));
   await page.evaluate(()=>{void (window as any).recovery.revalidate();});
   try { await observedRetry; } catch(error) { console.error(JSON.stringify(await page.evaluate(()=>(window as any).recovery.progressTrace))); throw error; }
-  await assertSimpleLoading();
+  await assertQuietRecovery();
   await page.waitForSelector('[data-authoritative="true"]');
   const timeoutRecoveryMs = Date.now()-timeoutStart;
   assert.equal(resumeRequests-resumedBefore,2,'one timed-out history request retries without a page reload');

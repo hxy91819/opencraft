@@ -1266,10 +1266,22 @@ export function createAppServerWorkbenchRuntime(
     session?.resume.markNeedsResume(threadId);
   };
 
+  const captureHistoryCheckpoint = (binding: ConversationBinding) => {
+    const snapshot = binding.runtime.getSnapshot();
+    return {
+      session,
+      revision: connectionRevision,
+      checkpoint: snapshot.authoritative && snapshot.activeTurn === null
+        && binding.pendingCommandCount === 0 && binding.acceptedTurnIds.size === 0
+        ? session?.views.get(binding.threadId)?.historyCheckpoint ?? null : null,
+    };
+  };
+
   const hydrateBinding = (
     binding: ConversationBinding,
     force: boolean,
     retryRejected = false,
+    checkpointCapture?: ReturnType<typeof captureHistoryCheckpoint>,
   ): Promise<void> => {
     if (binding.disposed)
       return Promise.reject(
@@ -1296,12 +1308,17 @@ export function createAppServerWorkbenchRuntime(
     const operation = Promise.resolve()
       .then(async () => {
         if (!current()) throw new AppServerClientError("ABORTED", "Thread recovery was superseded");
+        const currentSession = requireSession();
+        // Entering sync revokes authority. Capture eligibility from the attached
+        // transcript first; active Turns and replacement connections still reload.
+        const captured = checkpointCapture ?? captureHistoryCheckpoint(binding);
+        const historyCheckpoint = force && captured.session === currentSession && captured.revision === connectionRevision
+          ? captured.checkpoint : null;
         binding.phase = force ? "reconnecting" : "hydrating";
         binding.replica.reportSyncStarted();
         touchBinding(binding);
         publish();
         if (!current()) throw new AppServerClientError("ABORTED", "Thread recovery was superseded");
-        const currentSession = requireSession();
         if (force) binding.replica.disconnect();
         const stopPreview = currentSession.views.subscribeThread(binding.threadId, () => {
           const view = currentSession.views.get(binding.threadId);
@@ -1316,11 +1333,6 @@ export function createAppServerWorkbenchRuntime(
               throw new Error("This temporary side chat expired after disconnect. Start a new side chat.");
             }
           } else {
-            // Only an authoritative transcript without an in-flight Turn can
-            // offer its checkpoint. An active Turn may have advanced beyond it.
-            const snapshot = binding.runtime.getSnapshot();
-            const historyCheckpoint = force && snapshot.authoritative && snapshot.activeTurn === null
-              ? currentSession.views.get(binding.threadId)?.historyCheckpoint ?? null : null;
             await currentSession.resume.resume({ threadId: binding.threadId, force, retryRejected,
               unresolvedTurnIds: [...binding.acceptedTurnIds], ...(force ? { historyCheckpoint } : {}) });
           }
@@ -2140,10 +2152,11 @@ export function createAppServerWorkbenchRuntime(
         getSnapshot: binding.runtime.getSnapshot,
         retryRestore() {
           if (released || binding.disposed) return Promise.reject(new Error(`Thread ${threadId} lease is released`));
+          const checkpoint = captureHistoryCheckpoint(binding);
           binding.replica.reportSyncStarted();
           recovery.begin("revalidate");
           return recovery.recover({ key: binding, demand: () => recoveryDemand(binding),
-            run: () => recovery.span("history-authoritative", () => hydrateBinding(binding, true, true)),
+            run: () => recovery.span("history-authoritative", () => hydrateBinding(binding, true, true, checkpoint)),
             retryable: retryableHistoryFailure, propagateFailure: true,
           }, true);
         },
