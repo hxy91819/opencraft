@@ -486,7 +486,6 @@ export function createWorkbenchWebConfig(
             // Optional document engines also import server rendering helpers; keep those
             // with their lazy consumers instead of the startup React runtime.
             { name: "react-runtime", test: id => /\/node_modules\/(?:react|react-dom|scheduler)\//.test(id) && !/\/react-dom\/(?:server(?:[./-])|cjs\/react-dom-server)/.test(id), includeDependenciesRecursively: false },
-            { name: "icons", test: /\/node_modules\/lucide-react\//, includeDependenciesRecursively: false },
             { name: "startup-composition", test: /\/runtime\/(?:web-workbench-supervisor|web-workbench-application)\.ts$/, includeDependenciesRecursively: false },
             // Keep the shared dynamic-import helper separate from entry-only
             // modulepreload side effects and their application hash references.

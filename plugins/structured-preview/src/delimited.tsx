@@ -1,3 +1,4 @@
+import { ArrowUpIcon, ArrowDownIcon } from "@opencraft/design-system-web/action-icons";
 import { createRoot } from "react-dom/client";
 import { useLayoutEffect, useRef, useState, useMemo, type PointerEvent } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -56,8 +57,8 @@ function DelimitedTable({ rows, source, name, intl }: { rows: string[][]; source
     </div>
     <form className="structured-preview__search" hidden={showSource} onSubmit={event => { event.preventDefault(); find(1); }}>
       <input type="search" value={query} onChange={event => { setQuery(event.target.value); setNotFound(false); }} aria-label={message("preview.find", "Find in table")} placeholder={message("preview.find", "Find in table")} />
-      <button type="button" disabled={!query} onClick={() => find(-1)} aria-label={message("preview.previousMatch", "Previous match")}>↑</button>
-      <button type="submit" disabled={!query} aria-label={message("preview.nextMatch", "Next match")}>↓</button>
+      <button type="button" disabled={!query} onClick={() => find(-1)} aria-label={message("preview.previousMatch", "Previous match")}><ArrowUpIcon size={16} /></button>
+      <button type="submit" disabled={!query} aria-label={message("preview.nextMatch", "Next match")}><ArrowDownIcon size={16} /></button>
       <span role="status">{notFound ? message("preview.noMatch", "No matches") : ""}</span>
     </form>
     <pre className="structured-preview__source" hidden={!showSource}>{source}</pre>

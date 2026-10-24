@@ -5,7 +5,8 @@ export type { ActionIconProps } from "./icon-glyph";
 export * from "./interface-icons";
 export * from "./image-edit-icons";
 export * from "./activity-icons";
-export * from "./retained-layout-icons";
+export { RecoveryScanArtwork } from "./recovery-scan";
+export * from "./layout-icons";
 
 /** Input geometry remains owned by ui-composer-input-icon (including touch). */
 export function MicrophoneIcon({ off = false, ...props }: ActionIconProps & { readonly off?: boolean }) {

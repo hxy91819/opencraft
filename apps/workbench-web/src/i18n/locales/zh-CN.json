@@ -944,5 +944,7 @@
   "imageEditor.saveFailed": "保存失败，可以继续编辑或取消。",
   "imageEditor.surface": "图片编辑画布",
   "imageEditor.fit": "适应屏幕",
-  "imageEditor.gestureHint": "双指缩放和移动图片。"
+  "imageEditor.gestureHint": "双指缩放和移动图片。",
+  "im.channels.back": "IM 渠道",
+  "im.route.customize": "在此基础上自定义"
 }

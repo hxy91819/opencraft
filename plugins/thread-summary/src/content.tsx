@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { defineMessages } from "@opencraft/i18n";
 import { useIntl } from "@opencraft/i18n/react";
-import { ChevronDownIcon, CheckIcon, FilesActivityIcon, TerminalIcon, AgentActivityIcon, TargetIcon } from "@opencraft/design-system-web/action-icons";
+import { AddIcon, MinusIcon, ChevronDownIcon, CheckIcon, FilesActivityIcon, TerminalIcon, AgentActivityIcon, TargetIcon } from "@opencraft/design-system-web/action-icons";
 import type { ConversationSummaryProps } from "@opencraft/workbench-panels-react";
 import { deriveThreadSummary } from "./model";
 import "./styles.scss";
@@ -56,7 +56,7 @@ export default function ThreadSummaryContent({ context, viewState, onViewStateCh
       <ul className="thread-summary__list">{model.files.map(file => <li key={file.path}><button type="button" className="thread-summary__row thread-summary__link" title={file.path}
         disabled={!context.current || file.kind === "delete"} onClick={() => context.onOpenResource(file.path)}>
         <FilesActivityIcon size={16} aria-hidden="true" /><span className="thread-summary__filename">{file.path.split(/[\\/]/u).at(-1)}<small>{file.path}</small></span>
-        <span className="thread-summary__file-kind" aria-label={file.kind === "add" ? t("added") : file.kind === "delete" ? t("deleted") : t("modified")}>{file.kind === "add" ? "+" : file.kind === "delete" ? "−" : ""}</span>
+        <span className="thread-summary__file-kind" aria-label={file.kind === "add" ? t("added") : file.kind === "delete" ? t("deleted") : t("modified")}>{file.kind === "add" ? <AddIcon size={14} /> : file.kind === "delete" ? <MinusIcon size={14} /> : null}</span>
       </button></li>)}</ul>) : null}
     {model.activities.length ? section("activity", t("activity"), model.activities.length,
       <ul className="thread-summary__list">{model.activities.map(activity => <li key={activity.id}>

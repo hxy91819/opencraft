@@ -2,7 +2,7 @@ import { useIntl } from "@opencraft/i18n/react";
 import { DndContext, DragOverlay, KeyboardSensor, MouseSensor, TouchSensor, closestCenter, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MoreHorizontal as MoreIcon, Pencil as EditIcon } from "lucide-react";
+import { MoreIcon, EditIcon, AddIcon, MinusIcon, GripIcon } from "@opencraft/design-system-web/action-icons";
 import * as DropdownMenu from "@opencraft/design-system-web/dropdown-menu";
 import { SettingsButton, SettingsNotice, SettingsPanel } from "@opencraft/extension-react";
 import { useRef, useState, type ReactNode } from "react";
@@ -35,9 +35,9 @@ function SortableAction({ action, customize, selected, onToggle, onInvoke }: {
   return <div ref={setNodeRef} className={customize ? "toolbar-dock__choice" : "toolbar-dock__item"}
     data-dragging={isDragging || undefined} style={{ transform: customize && isDragging ? undefined : CSS.Transform.toString(transform), transition }}>
     {customize ? <>
-      <button ref={setActivatorNodeRef} type="button" className="toolbar-dock__grip" {...attributes} {...listeners} aria-label={intl.formatMessage({ id: "toolbarDock.dragAction", defaultMessage: "Drag {action}" }, { action: action.label })} title={intl.formatMessage({ id: "toolbarDock.drag", defaultMessage: "Drag to reorder" })}>⠿</button>
+      <button ref={setActivatorNodeRef} type="button" className="toolbar-dock__grip" {...attributes} {...listeners} aria-label={intl.formatMessage({ id: "toolbarDock.dragAction", defaultMessage: "Drag {action}" }, { action: action.label })} title={intl.formatMessage({ id: "toolbarDock.drag", defaultMessage: "Drag to reorder" })}><GripIcon size={16} /></button>
       <span className="toolbar-dock__choice-icon" aria-hidden="true">{action.icon}</span><span className="toolbar-dock__choice-label">{action.label}</span>
-      <button type="button" className="toolbar-dock__toggle" aria-label={intl.formatMessage(selected ? { id: "toolbarDock.remove", defaultMessage: "Remove from toolbar: {action}" } : { id: "toolbarDock.add", defaultMessage: "Add to toolbar: {action}" }, { action: action.label })} onClick={onToggle}>{selected ? "−" : "+"}</button>
+      <button type="button" className="toolbar-dock__toggle" aria-label={intl.formatMessage(selected ? { id: "toolbarDock.remove", defaultMessage: "Remove from toolbar: {action}" } : { id: "toolbarDock.add", defaultMessage: "Add to toolbar: {action}" }, { action: action.label })} onClick={onToggle}>{selected ? <MinusIcon size={16} /> : <AddIcon size={16} />}</button>
     </> : <button type="button" className="chrome-button toolbar-dock__action" {...attributes} {...listeners}
       aria-roledescription={intl.formatMessage({ id: "toolbarDock.action", defaultMessage: "Draggable toolbar button" })} aria-label={action.label} title={action.label} disabled={action.disabled}
       aria-busy={action.pending || undefined} aria-haspopup={action.dialog ? "dialog" : undefined}
@@ -139,10 +139,10 @@ export function ToolbarDock({ scope, dockId, actions, label, defaultActions = []
           {createPortal(<DragOverlay adjustScale={false} dropAnimation={null}
             style={{ zIndex: "calc(var(--layer-application-modal, 230) + 2)", pointerEvents: "none" }}>
             {draggedAction ? <div className="toolbar-dock__choice toolbar-dock__drag-preview" aria-hidden="true">
-              <span className="toolbar-dock__grip">⠿</span>
+              <span className="toolbar-dock__grip"><GripIcon size={16} /></span>
               <span className="toolbar-dock__choice-icon">{draggedAction.icon}</span>
               <span className="toolbar-dock__choice-label">{draggedAction.label}</span>
-              <span className="toolbar-dock__toggle">{draft.includes(draggedAction.id) ? "−" : "+"}</span>
+              <span className="toolbar-dock__toggle">{draft.includes(draggedAction.id) ? <MinusIcon size={16} /> : <AddIcon size={16} />}</span>
             </div> : null}
           </DragOverlay>, portal ?? document.body)}
         </DndContext>

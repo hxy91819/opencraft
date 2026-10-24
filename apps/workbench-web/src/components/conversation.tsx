@@ -1,4 +1,4 @@
-import { LoaderCircle as LoadingRingIcon } from "lucide-react";
+import { LoadingRingIcon } from "@opencraft/design-system-web/action-icons";
 import { ForkTurnButton } from "./conversation/fork-turn-button";
 import { MessageTimestamp } from "./conversation/message-timestamp";
 import { PatchActivityIcon } from "./activity-glyphs";
