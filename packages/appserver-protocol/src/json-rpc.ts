@@ -73,8 +73,8 @@ function parseErrorObject(value: unknown): JsonRpcErrorObject | null {
 }
 
 /**
- * Parses the Codex AppServer JSON-RPC dialect. The server accepts envelopes
- * both with and without the optional `jsonrpc: "2.0"` marker.
+ * Parses AppServer JSON-RPC frames with or without the optional
+ * `jsonrpc: "2.0"` marker.
  */
 export function parseJsonRpcMessage(frame: string): JsonRpcIncomingMessage {
   let value: unknown;
