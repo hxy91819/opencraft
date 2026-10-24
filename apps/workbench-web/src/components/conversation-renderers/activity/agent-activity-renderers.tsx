@@ -185,7 +185,8 @@ function AgentActivity({
     && (staticWork?.type !== "worked-for" || staticWork.item.status !== "working")
     && (unit.workedDurationMs !== null || (staticWork?.type === "worked-for" && staticWork.item.status !== "working"));
   const hasAnimatedContent = !staticHeader && (layout.visibleUnits.length > 0 || inlineSubagentActivity !== null);
-  const visibleContent = open ? layout.visibleUnits : layout.persistentUnits;
+  // A static header already owns the completed interval; do not repeat its divider below.
+  const visibleContent = staticHeader ? [] : open ? layout.visibleUnits : layout.persistentUnits;
   // One keyed list keeps persistent Apps mounted while restoring chronological
   // expanded content. Separate persistent/expanded trees duplicate the surface.
   const keepsPersistentContent = layout.showToggle && unit.partitions.persistentUnits.length > 0;

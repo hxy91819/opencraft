@@ -64,3 +64,9 @@ they are not a claim that every upstream provider persists these new facts.
   transient ResizeObserver warnings, not an idle loop.
 
 No production deployment is part of this refactor.
+
+A static header for a cached completed interval owns the only work label and
+rule. Its retained worked-for item must not also render as a content divider
+below the header. Live clocks and disclosures with activity bodies retain
+their normal content paths. `scripts/smoke/conversation/smoke-work-status.ts` exercises a real
+paint-cache projection, alongside live, settled, expanded and stopped states.
