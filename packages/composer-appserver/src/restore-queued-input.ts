@@ -81,12 +81,15 @@ export function restoreQueuedInput(
       case "image":
         attachments.push("url" in entry
           ? attachment(`queued-image-${index}`, entry.url, "image")
-          : attachment(
-              `queued-image-${index}`,
-              `codex-file:${encodeURIComponent(entry.fileId)}`,
-              "image",
-              { codexFileId: entry.fileId },
-            ));
+          : {
+              ...attachment(
+                `queued-image-${index}`,
+                `attachment:${encodeURIComponent(entry.fileId)}`,
+                "image",
+                { codexFileId: entry.fileId },
+              ),
+              name: entry.fileId,
+            });
         break;
       case "localImage":
         attachments.push(
