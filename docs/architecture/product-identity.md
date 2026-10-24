@@ -75,10 +75,13 @@ Downstream branding never authorizes a different core data root.
 
 ### Legacy migration
 
-`~/Library/Application Support/@vela/workbench-electron` and
-`@vela/workbench-electron-preview` are legacy inputs, not canonical destinations.
-The production migration must run before `app.setPath("userData")` and before
-single-instance/daemon ownership is acquired:
+The current [desktop product configuration](../../apps/workbench-electron/src/product-identity.json)
+declares no legacy profile roots for either production or preview. The
+[desktop directory resolver](../../apps/workbench-electron/src/desktop-directories.ts)
+supports migration when a product explicitly configures a former root. Such a
+root is a migration input; canonical destinations follow the directory identity
+charter above. For a configured production root, migration must run before
+`app.setPath("userData")` and before single-instance/daemon ownership is acquired:
 
 1. An explicit `--user-data-dir` wins and disables automatic migration.
 2. If the OpenCraft root exists, use it and do not merge a legacy tree into it.
@@ -106,13 +109,14 @@ helpers, sets Electron userData, and switches Main to the managed runtime cwd.
 Daemon and DSH receive that runtime directory explicitly. New native Threads
 reject a missing workspace cwd instead of inheriting process cwd.
 
-The migration moves an inactive legacy profile atomically, renames the daemon
-token, discards stale sockets and creates the rollback compatibility link. An
-active legacy runtime defers migration and a post-rename failure rolls back to
-the intact legacy profile. Explicit `--user-data-dir` profiles skip migration.
+When a legacy root is explicitly configured, the migration moves an inactive
+profile atomically, renames the daemon token, discards stale sockets and creates
+the rollback compatibility link. An active legacy runtime defers migration; a
+post-rename failure rolls back to the intact legacy profile. Explicit `--user-data-dir` profiles skip migration.
 
-Migration occurs only when a rebuilt application is installed and launched;
-building source alone never moves a machine's profile.
+A configured migration runs when the application is launched; building source
+alone never moves a machine's profile. Current standalone product identities
+do not enable legacy profile migration.
 
 Current first-party plugin, provider and View registrations use `opencraft.*`.
 The Web composition migrates exact former built-in provider IDs only when their
@@ -130,8 +134,10 @@ Appearance preferences write the current `opencraft.appearance-theme` and
 `opencraft.core.*`; their exact old IDs and preference keys are read only for
 compatibility, with current values taking precedence. Extension-owned theme
 identities remain opaque. Client projection metadata writes `__opencraft*`
-fields; exact old `__vela*` fields are compatibility reads, not the current
-write format. Unknown metadata remains intact.
+fields. The [projection normalizer](../../packages/chat-core/src/turn-user-message-normalization.ts)
+accepts only the known former projection keys as compatibility input and removes
+them from its normalized output; current values take precedence. Unknown metadata
+remains intact.
 
 These compatibility identities do not authorize new downstream product-named
 filesystem paths, directories, sockets, tokens, databases or logs. Published

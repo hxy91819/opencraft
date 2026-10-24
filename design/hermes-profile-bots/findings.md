@@ -6,7 +6,7 @@
 - Bot/conversation绑定profile不可随UI选择改变；stored session→profile恢复由native索引/唯一查找决定。profile缺失/不支持明确拒绝；不全局activate profile。
 - 新正式模式management false并在handler拒绝写操作，不能靠隐藏按钮拦profiles.create/delete；原有显式runtime test opt-in兼容。
 - 消息/execution/profile恢复使用现有adapter；取消必须核对execution归属conversation，未知普通thread通知不投影为Bot事件。
-- Ctl/前端仅作为当前契约事实参照，不改变其API/云资源；真实实例测试与本地替身分开。
+- 只核对既有控制面与客户端契约，不改变API或云资源；真实实例测试与本地替身分开。
 
 ## 恢复检查追加
 

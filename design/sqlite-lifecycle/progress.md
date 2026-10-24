@@ -4,7 +4,7 @@
 - 用户将实现请求收窄为先设计；停止依赖安装与实现。
 - 完成初始 SQLite owner 清单，创建设计计划。
 - 未读取或修改真实用户数据库。
-- 对照 replica cache、Native/Web adapter、Agent JSON authority、设置迁移的失败重试测试与 workspaceId 回填。结论：借鉴分类和幂等，不照搬清缓存到权威库。
+- 对照 replica cache、Native/Web adapter、Agent JSON authority、设置迁移的失败重试测试与 workspaceId 回填。结论：缓存与权威库分别定义恢复策略，迁移保持幂等，权威库不得套用清缓存的恢复方案。
 - 新增 docs/sqlite-lifecycle.md 设计草案及平台/文档索引链接；明确六个 Node SQLite owner、独立迁移版本、不可丢数据、过渡期旧客户端风险、文件拓扑、阶段验收。
 - 当前 npm stable/RC 与 node-sqlite 指南不同，依赖版本/基线 API/锁事务行为列为实施前门禁；没有安装依赖。
 - 文档 validator errors=[]、warnings=[]，staged impact passed（staging 为空），git diff --check passed。未运行实现测试、不宣称迁移功能完成。

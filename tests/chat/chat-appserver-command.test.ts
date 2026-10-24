@@ -121,7 +121,7 @@ test("current, legacy and unlabelled inline images compile to the same wire inpu
   }
 });
 
-test("rich Composer documents compile into ordered native Codex UserInput entries", () => {
+test("rich Composer documents compile into ordered AppServer input entries", () => {
   const compiled = compileSubmitIntent(
     intent(
       { type: "existing-thread", key: existingKey },
@@ -580,7 +580,7 @@ test("continuation does not require an in-memory submission journal", async () =
   await h.close();
 });
 
-test("new, fork, steer, queue and interrupt targets use their native Codex methods", async () => {
+test("new, fork, steer, queue and interrupt targets use their AppServer methods", async () => {
   const h = await harness();
   const diagnostics: string[] = [];
   const port = commandPort(h, diagnostics);
