@@ -27,7 +27,6 @@ const { outputFiles } = await build({
       "./workspace-pdf-preview": `export const WorkspacePdfPreview=()=>null;`,
       "./workspace-code-editor": `export const WorkspaceCodeEditor=()=>{throw new Error("editor unavailable")};`,
       "./workspace-file-icon": `export const WorkspaceFileIcon=()=>null;`,
-      "lucide-react": `export const AlertTriangle=()=>null;export {AlertTriangle as ChevronDown,AlertTriangle as ChevronRight,AlertTriangle as Download,AlertTriangle as Folder,AlertTriangle as FolderOpen,AlertTriangle as Image,AlertTriangle as LoaderCircle,AlertTriangle as Pencil,AlertTriangle as PanelLeftClose,AlertTriangle as PanelLeftOpen,AlertTriangle as RotateCcw,AlertTriangle as Save,AlertTriangle as Search};`,
     };
     builder.onResolve({filter:/.*/}, args => args.path in modules ? {path:args.path,namespace:"boundary"} : undefined);
     builder.onLoad({filter:/.*/,namespace:"boundary"}, args => ({contents:modules[args.path],loader:"js",resolveDir:new URL("../..", import.meta.url).pathname}));
