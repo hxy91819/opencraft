@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CODEX_USER_REQUEST_MARKER, deriveUserMessageSemantics as derive,
+import { deriveUserMessageSemantics as derive,
   extractLastUserRequest as extract, stripGoalDirective as goal } from "../../packages/chat-core/src/user-message";
 
 test("last request supplies text while only pre-first-request context supplies flags", () => {
@@ -11,10 +11,13 @@ test("last request supplies text while only pre-first-request context supplies f
   assert.equal(extract("  untouched  "), "  untouched  ");
   assert.equal(extract("## My request:   "), "");
   assert.equal(extract("## my request: untouched"), "## my request: untouched");
-  CODEX_USER_REQUEST_MARKER.lastIndex = 999;
-  assert.equal(extract(raw), "/goal final");
-  assert.equal(CODEX_USER_REQUEST_MARKER.lastIndex, 999);
-  CODEX_USER_REQUEST_MARKER.lastIndex = 0;
+  for (const [input, expected] of [
+    [raw, "/goal final"],
+    ["## My request: short", "short"],
+    ["## My request for Codex: other", "other"],
+    ["untouched", "untouched"],
+    [raw, "/goal final"],
+  ] as const) assert.equal(extract(input), expected);
 });
 
 test("all independent header combinations preserve the prior-context suppression rule", () => {

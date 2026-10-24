@@ -9,7 +9,6 @@ export interface UserMessageSemantics {
 }
 
 /** Native prompt envelope markers; preserve their exact input spelling. */
-export const CODEX_USER_REQUEST_MARKER = /## My request(?: for Codex)?:/g;
 export const CODEX_REVIEW_MODE_HEADER = "## Code review guidelines:";
 export const CODEX_PULL_REQUEST_FIX_HEADER = "## Pull request fix:";
 export const CODEX_AUTO_RESOLVE_MERGE_HEADER = "## Auto resolve merge:";
