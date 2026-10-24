@@ -2,14 +2,6 @@ import { ExtensionSupervisor } from "@opencraft/extension-runtime";
 import type { ExtensionDocument } from "@opencraft/extension-contract";
 import { openClientExtensionPersistence } from "../../apps/workbench-web/src/runtime/client-extension-persistence";
 
-await new Promise<void>((resolve, reject) => {
-  const request = indexedDB.open("fixture-vela-extension-settings", 1);
-  request.onupgradeneeded = () => {
-    const store = request.result.createObjectStore("values", { keyPath: "key" });
-    store.put({ key: "fixture.storage.preferences\u0000enabled", contributionId: "fixture.storage.preferences", fieldKey: "enabled", value: true });
-  };
-  request.onsuccess = () => { request.result.close(); resolve(); }; request.onerror = () => reject(request.error);
-});
 const platform = await openClientExtensionPersistence(base => `fixture-${base}`);
 const backend = platform.backend;
 const supervisor = new ExtensionSupervisor({ platform: "web", persistence: backend });
@@ -36,7 +28,6 @@ await activate();
   notifications: () => notifications,
   workerMessages: () => workerMessages,
   workerDisposed: () => workerDisposed,
-  legacySettings: () => platform.settings.load(),
   async upgrade() { await supervisor.deactivate("fixture.storage"); await activate(2); },
   async stop() { await supervisor.dispose(); },
 };

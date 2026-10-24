@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { indexedDB } from "fake-indexeddb";
-import { parseWebDeploymentConfig, resolveWebDeploymentConfig, resolveLegacyWebsiteLocation, restoreLegacyWebsiteSelection } from "../../apps/workbench-web/src/runtime/web-deployment-config";
+import { parseWebDeploymentConfig, resolveWebDeploymentConfig, resolveLegacyWebsiteLocation } from "../../apps/workbench-web/src/runtime/web-deployment-config";
 
 import { ExtensionSupervisor } from "@opencraft/extension-runtime";
 import { PlatformViewRendererRegistry } from "@opencraft/extension-react";
@@ -64,20 +64,6 @@ test("named Web products cannot inherit another product's Host or Replica state"
     productDatabaseName("fixture-product", "opencraft-workbench-replica"),
     "opencraft-workbench-replica-fixture-product",
   );
-});
-
-test("embedded Host startup cannot restore another Host's legacy conversation", () => {
-  const hostId = "embedded:current-profile";
-  const preferences = new Map<string, string>([
-    [currentProductStorageKey("vela.active-thread-id"), "thread:other-profile"],
-  ]);
-  const storage = { getItem: (key: string) => preferences.get(key) ?? null };
-
-  assert.equal(rememberedThreadId(storage, hostId, "configured"), null);
-  assert.equal(rememberedThreadId(storage, hostId, "environment"), "thread:other-profile");
-
-  preferences.set(activeThreadStorageKey(hostId), "thread:current-profile");
-  assert.equal(rememberedThreadId(storage, hostId, "configured"), "thread:current-profile");
 });
 
 test("browser Host definitions preserve identity and reject ambiguous or credentialed URLs", () => {
@@ -443,21 +429,6 @@ test("present but malformed runtime data fails instead of silently losing Hosts"
   for (const raw of ['bad', 'null', '[]', '{}', '{"hosts":[],"builtinAgents":"true","hypernode":false}']) {
     assert.throws(() => parseWebDeploymentConfig(raw));
   }
-});
-
-test("legacy website selections migrate additively without overwriting local preferences", () => {
-  const values = new Map([
-    ["vela.active-host-id", "hypernode"], ["vela.active-thread-id:hypernode", "thread-old"],
-    ["vela.selected-project-id:hypernode", "project-old"], ["vela.selected-project-id:local", "project-local"],
-  ]);
-  const storage = { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => values.set(key, value), removeItem: (key: string) => { values.delete(key); } } as Storage;
-  restoreLegacyWebsiteSelection(storage);
-  assert.equal(values.get("opencraft.active-host-id"), "local");
-  assert.equal(values.get("opencraft.active-thread-id:local"), "thread-old");
-  assert.equal(values.get("opencraft.selected-project-id:local"), "project-local");
-  assert.equal(values.get("opencraft.active-thread-id:hypernode"), "thread-old");
-  restoreLegacyWebsiteSelection(storage);
-  assert.equal(values.get("opencraft.active-thread-id:local"), "thread-old");
 });
 test("legacy thread and draft links retain resource identity on the canonical website Host", () => {
   assert.deepEqual(resolveLegacyWebsiteLocation({ kind: "thread", key: { hostId: "hypernode", threadId: "t" } } as never), {

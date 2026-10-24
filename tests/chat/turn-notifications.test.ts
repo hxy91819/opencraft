@@ -85,9 +85,9 @@ test("message summaries reuse visible Chat text, hiding attachment instructions 
   const message = { ...userItem("file", text), content: [{ type: "text", text, text_elements: [{ byte_range: { start: 0, end: new TextEncoder().encode(hidden).length }, placeholder: "opencraft:staged-file:v1" }] }] };
   assert.equal(readUserMessageDisplayText(message), visible);
   assert.equal(readUserMessageDisplayText(userItem("request", "## Prior conversation with Codex:\ncontext\n## My request for Codex:\n真正的请求")), "真正的请求");
-  assert.equal(readUserMessageDisplayText({ ...userItem("pending", "not accepted"), __velaMessageKind: "steering", __velaSteeringStatus: "pending" }), null);
-  assert.equal(readUserMessageDisplayText({ ...userItem("accepted", "visible"), __opencraftMessageKind: "steering", __opencraftSteeringStatus: "accepted", __velaSteeringStatus: "pending" }), "visible");
-  assert.equal(readUserMessageDisplayText({ ...userItem("pending-new", "hidden"), __opencraftMessageKind: "steering", __opencraftSteeringStatus: "pending", __velaSteeringStatus: "accepted" }), null);
+  assert.equal(readUserMessageDisplayText({ ...userItem("pending", "not accepted"), __opencraftMessageKind: "steering", __opencraftSteeringStatus: "pending" }), null);
+  assert.equal(readUserMessageDisplayText({ ...userItem("accepted", "visible"), __opencraftMessageKind: "steering", __opencraftSteeringStatus: "accepted" }), "visible");
+  assert.equal(readUserMessageDisplayText({ ...userItem("pending-new", "hidden"), __opencraftMessageKind: "steering", __opencraftSteeringStatus: "pending" }), null);
   assert.equal(readUserMessageDisplayText({ ...userItem("failed", "not sent"), deliveryStatus: "failed" }), null);
   assert.equal(readUserMessageDisplayText({ id: "answer", type: "agentMessage", text: "answer" }), null);
 });

@@ -22,10 +22,10 @@ try {
     copy.querySelectorAll(".opencraft-composer-placeholder").forEach(item => item.remove());
     return copy.textContent ?? "";
   });
-  for (const width of [1280, 390]) for (const legacy of [false, true]) {
+  for (const width of [1280, 390]) {
     const page = await browser.newPage({ viewport: { width, height: 844 }, hasTouch: width === 390, isMobile: width === 390 });
     const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
-    await page.goto(`${roomOrigin}?legacy=${legacy}`);
+    await page.goto(roomOrigin);
     const editor = page.locator('.bot-chat-composer-dock [role="textbox"]'); await editor.waitFor();
     await editor.fill(`Bot local draft ${width}`);
     await page.reload(); await editor.waitFor();
@@ -52,6 +52,6 @@ try {
       await input.fill(""); await task.reload(); await input.waitFor(); assert.equal(await editorText(input), "");
       await task.close();
     }
-    console.log(`PASS ${width}px ${legacy ? "legacy" : "canonical"} Bot resource: refresh, isolation, clear, no automatic send`);
+    console.log(`PASS ${width}px canonical Bot resource: refresh, isolation, clear, no automatic send`);
   }
 } finally { await browser?.close(); await new Promise<void>(ok => server.close(() => ok())); }

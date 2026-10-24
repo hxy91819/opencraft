@@ -143,28 +143,3 @@ test("browser handler returns a structured honest failure instead of mock succes
   );
   h.dispose();
 });
-
-
-test("exact former browser calls retain context while mixed and unknown pairs fall through", async () => {
-  const calls: unknown[] = [];
-  const h = harness({
-    open: (context, input) => { calls.push({ method: "open", context, input }); return { opened: true }; },
-    getTabContext: (context, input) => { calls.push({ method: "context", context, input }); return "page"; },
-    browserUse: (context, input) => { calls.push({ method: "use", context, input }); return { ok: true }; },
-  }, "saved-owner");
-  const request = (namespace: string, tool: string, args: unknown = {}) => ({ id: "request", method: "item/tool/call" as const,
-    params: { namespace, tool, arguments: args, threadId: "saved-thread", turnId: "saved-turn", callId: "saved-call" } });
-  try {
-    for (const [namespace, tool] of [["vela_app", "open_in_vela"], ["vela_browser", "get_tab_context"], ["vela_browser", "browser_use"]]) {
-      const result = await h.call(request(namespace!, tool!, { tab_id: "saved-tab" })) as { success: boolean };
-      assert.equal(result.success, true);
-    }
-    assert.deepEqual(calls, ["open", "context", "use"].map(method => ({ method,
-      context: { hostId: "saved-owner", threadId: "saved-thread", turnId: "saved-turn", callId: "saved-call" }, input: { tab_id: "saved-tab" } })));
-    for (const [namespace, tool] of [["vela_app", "open_in_opencraft"], ["opencraft_app", "open_in_vela"], ["third_party", "browser_use"], ["vela_browser.custom", "browser_use"], ["opencraft_browser", "unrelated"]]) {
-      assert.equal(await h.call(request(namespace!, tool!, null)), "fallback");
-    }
-    assert.equal(calls.length, 3);
-    assert.equal((await h.call(request("opencraft_app", "open_in_opencraft", null)) as {success: boolean}).success, false);
-  } finally { h.dispose(); }
-});

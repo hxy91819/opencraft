@@ -3,12 +3,6 @@ import test from "node:test";
 import { setImmediate } from "node:timers/promises";
 import { IDBFactory } from "fake-indexeddb";
 import { IndexedDbIdentityError, migrateIndexedDbIdentity } from "@opencraft/indexeddb-storage";
-import { IndexedDbHostConnectionProfileStore } from "../../apps/workbench-web/src/runtime/indexeddb-host-profile-store";
-import { IndexedDbSidebarLayoutStorage } from "../../apps/workbench-web/src/runtime/indexeddb-sidebar-layout-storage";
-import { openIndexedDbExtensionPersistence } from "../../apps/workbench-web/src/runtime/indexeddb-extension-persistence";
-import { IndexedDbReplicaClientStorage } from "@opencraft/appserver-replica-storage-web";
-import type { HostConnectionProfile } from "@opencraft/workbench-runtime";
-import type { ReplicaClientState } from "@opencraft/appserver-replica";
 
 function result<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
@@ -88,56 +82,4 @@ test("concurrent migration callers produce one destination without duplicate rec
   const current = await result(factory.open("opencraft-owned"));
   try { assert.equal(await result(current.transaction("rows").objectStore("rows").count()), 1); }
   finally { current.close(); }
-});
-
-test("Host profiles retain recipes, machine identity, revisions and deletion after namespace migration", async () => {
-  const factory = new IDBFactory();
-  const profile: HostConnectionProfile = { hostId: "opaque-host", displayName: "Saved", providerId: "fixture.provider", providerConfig: { url: "wss://saved.example/" }, providerConfigVersion: 2, hostKind: "durable", enabled: true, autoConnect: false, includeInSidebar: true, credentialRef: "opaque-ref", transportEndpoint: null, executionLocation: null, workspaceBrowseRoots: ["/workspace"], revision: 7, machineIdentity: null, agent: null };
-  let store = await IndexedDbHostConnectionProfileStore.open({ databaseName: "server:one:vela-host-connections", factory });
-  await store.put(profile); store.close();
-  const options = { databaseName: "server:one:opencraft-host-connections", formerDatabaseName: "server:one:vela-host-connections", factory };
-  store = await IndexedDbHostConnectionProfileStore.open(options);
-  assert.deepEqual(store.getSnapshot().profiles, [profile]);
-  await store.remove(profile.hostId); store.close();
-  store = await IndexedDbHostConnectionProfileStore.open(options);
-  assert.deepEqual(store.getSnapshot().profiles, []); store.close();
-  const other = await IndexedDbHostConnectionProfileStore.open({ databaseName: "server:two:opencraft-host-connections", formerDatabaseName: "server:two:vela-host-connections", factory });
-  assert.deepEqual(other.getSnapshot().profiles, []); other.close();
-});
-
-test("extension documents retain CAS/tombstone revisions and current writes do not alter the former source", async () => {
-  const factory = new IDBFactory(); const key = "plugin/fixture.extension/settings";
-  const old = await openIndexedDbExtensionPersistence("vela-extension-data", factory);
-  await old.compareAndSet(key, 0, 1, { nested: { enabled: false } }); await old.close();
-  let current = await openIndexedDbExtensionPersistence("opencraft-extension-data", factory, "vela-extension-data");
-  assert.equal((await current.read(key))?.revision, 1);
-  assert.equal((await current.compareAndSet(key, 0, 1, { stale: true })).updated, false);
-  await current.compareAndSet(key, 1, 1, {}); await current.close();
-  current = await openIndexedDbExtensionPersistence("opencraft-extension-data", factory, "vela-extension-data");
-  assert.deepEqual(await current.read(key), { revision: 2, version: 1, value: {} }); await current.close();
-});
-
-test("sidebar layout ownership and intentional unpinning survive migration and reopen", async () => {
-  const factory = new IDBFactory(); const document = { schemaVersion: 1 as const, pinnedEntityKeys: ["host/opaque"], ownership: "user" as const };
-  let store = await IndexedDbSidebarLayoutStorage.open({ databaseName: "vela-sidebar-layout", factory });
-  await store.save("account:one", document); store.close();
-  store = await IndexedDbSidebarLayoutStorage.open({ factory });
-  assert.deepEqual(await store.load("account:one"), document);
-  await store.save("account:one", { ...document, pinnedEntityKeys: [] }); store.close();
-  store = await IndexedDbSidebarLayoutStorage.open({ factory });
-  assert.deepEqual((await store.load("account:one"))?.pinnedEntityKeys, []); store.close();
-});
-
-test("default and Expo Web Replica caches preserve exact cursors and clear without reimport", async () => {
-  for (const [former, current] of [["vela-appserver-replica", "opencraft-appserver-replica"], ["vela-workbench-replica", "opencraft-workbench-replica"]]) {
-    const factory = new IDBFactory();
-    const state: ReplicaClientState = { schemaVersion: 1, storageKey: "account:one:host:threads", scope: "threads", epoch: "opaque-epoch", nextSeq: 17, journalStartSeq: 8, entities: [{ entityId: "thread-a", value: { title: "Offline title" } }] };
-    const old = new IndexedDbReplicaClientStorage({ databaseName: former, factory }); await old.commitClient(state); old.close();
-    const config = current === "opencraft-appserver-replica" ? { factory } : { factory, databaseName: current, formerDatabaseName: former };
-    let store = new IndexedDbReplicaClientStorage(config);
-    assert.deepEqual(await store.loadClient(state.storageKey), state);
-    assert.equal(await store.loadClient("account:two:host:threads"), null);
-    await store.clearClient(state.storageKey); store.close();
-    store = new IndexedDbReplicaClientStorage(config); assert.equal(await store.loadClient(state.storageKey), null); store.close();
-  }
 });

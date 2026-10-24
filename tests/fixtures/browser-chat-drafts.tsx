@@ -43,9 +43,7 @@ let navigate = (_room: string) => {};
 function Probe() {
   const [room, setRoom] = useState("a"); navigate = setRoom;
   const host = { platform: "web", activeHostId: "fixture", replaceViewResource() {} } as ExtensionSettingsViewProps["host"];
-  return <View host={host} activation={{ viewId: "draft-fixture", resourceUri: new URLSearchParams(location.search).get("legacy") === "true"
-      ? botConversationResourceUri(createConversationKey("fixture", room)).replace("opencraft-bot:", "vela-bot:")
-      : botConversationResourceUri(createConversationKey("fixture", room)) }}
+  return <View host={host} activation={{ viewId: "draft-fixture", resourceUri: botConversationResourceUri(createConversationKey("fixture", room)) }}
     contribution={{ id: "draft-fixture", title: "Bot", viewType: "draft-fixture" }} />;
 }
 createRoot(document.getElementById("root")!).render(<IntlRuntimeProvider runtime={locale}><Probe /></IntlRuntimeProvider>);

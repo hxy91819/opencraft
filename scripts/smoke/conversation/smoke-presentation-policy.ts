@@ -47,24 +47,8 @@ window.proof={getAppearanceThemeSnapshot,setAppearanceThemeId,setThemePreference
         });}}]});
     try {
       await server.listen();const url=`http://127.0.0.1:${(server.httpServer!.address() as {port:number}).port}`;
-      const legacyIds=['codex','web','frost','lavender','mist','zencode'];
-      const canonicalIds=['neutral','canvas','frost','lavender','mist','graphite'];
-      for (const [index,legacy] of legacyIds.entries()) {
-        const page=await browser.newPage();
-        const oldId=`vela.core.${legacy}`;const canonical=`opencraft.core.${canonicalIds[index]}`;
-        await page.addInitScript(oldId=>{localStorage.setItem('vela.appearance-theme','dark');localStorage.setItem('vela.appearance-theme-id',oldId)},oldId);
-        await page.goto(url);await page.locator('#glyphs svg').first().waitFor();
-        const saved=await page.evaluate(()=>(window as any).proof.getAppearanceThemeSnapshot());
-        assert.equal(saved.requestedThemeId,canonical);assert.equal(saved.preference,'dark');
-        assert.equal(saved.themeId, product&&legacy==='mist'?'opencraft.core.canvas':canonical);
-        if (!(product&&legacy==='mist')) {
-          await page.evaluate(oldId=>(window as any).proof.setAppearanceThemeId(oldId),oldId);
-          assert.deepEqual(await page.evaluate(()=>[localStorage.getItem('opencraft.appearance-theme-id'),localStorage.getItem('vela.appearance-theme-id')]),[canonical,oldId]);
-        }
-        evidence.push({legacyId:oldId,product,saved});await page.close();
-      }
       const priority=await browser.newPage();
-      await priority.addInitScript(()=>{if(localStorage.getItem('opencraft.appearance-theme')!==null)return;localStorage.setItem('vela.appearance-theme','dark');localStorage.setItem('vela.appearance-theme-id','vela.core.frost');localStorage.setItem('opencraft.appearance-theme','light');localStorage.setItem('opencraft.appearance-theme-id','vela.core.lavender')});
+      await priority.addInitScript(()=>{if(localStorage.getItem('opencraft.appearance-theme')!==null)return;localStorage.setItem('opencraft.appearance-theme','light');localStorage.setItem('opencraft.appearance-theme-id','opencraft.core.lavender')});
       await priority.goto(url);await priority.locator('#glyphs svg').first().waitFor();
       let preferred=await priority.evaluate(()=>(window as any).proof.getAppearanceThemeSnapshot());
       assert.equal(preferred.preference,'light');assert.equal(preferred.themeId,'opencraft.core.lavender');
@@ -72,7 +56,7 @@ window.proof={getAppearanceThemeSnapshot,setAppearanceThemeId,setThemePreference
       await priority.reload();await priority.locator('#glyphs svg').first().waitFor();
       preferred=await priority.evaluate(()=>(window as any).proof.getAppearanceThemeSnapshot());
       assert.equal(preferred.requestedThemeId,'vendor.paper');assert.equal(preferred.themeId,product?'opencraft.core.canvas':'opencraft.core.neutral');
-      evidence.push({product,canonicalKeyPriority:true,opaqueExtensionId:true});await priority.close();
+      evidence.push({product,canonicalSelection:true,opaqueExtensionId:true});await priority.close();
       for (const width of [1100,390]) {
         const page=await browser.newPage({viewport:{width,height:800}});const errors:string[]=[];
         page.on('pageerror',error=>errors.push(error.message));

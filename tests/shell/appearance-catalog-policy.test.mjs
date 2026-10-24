@@ -7,7 +7,6 @@ test("theme choices start with the visible product default independently of the 
   const cases = [
     [{}, ["Neutral", "Canvas", "Frost", "Longing", "Lavender", "Graphite", "Mist"]],
     [{ defaultThemeId: "opencraft.core.canvas", hiddenBuiltinThemeIds: ["opencraft.core.mist"] }, ["Canvas", "Neutral", "Frost", "Longing", "Lavender", "Graphite"]],
-    [{ defaultThemeId: "vela.core.web", hiddenBuiltinThemeIds: ["vela.core.mist"] }, ["Canvas", "Neutral", "Frost", "Longing", "Lavender", "Graphite"]],
     [{ defaultThemeId: "opencraft.core.frost", hiddenBuiltinThemeIds: ["opencraft.core.neutral"] }, ["Frost", "Canvas", "Longing", "Lavender", "Graphite", "Mist"]],
     [{ defaultThemeId: "extension.paper" }, ["Neutral", "Canvas", "Frost", "Longing", "Lavender", "Graphite", "Mist"]],
     [{ hiddenBuiltinThemeIds: ["neutral", "canvas", "frost", "longing", "lavender", "graphite", "mist"].map(id => `opencraft.core.${id}`) }, ["Neutral"]],
@@ -21,7 +20,7 @@ test("theme choices start with the visible product default independently of the 
       define: { "import.meta.env": JSON.stringify({ VITE_OPENCRAFT_PRESENTATION: JSON.stringify(policy) }), "process.env.NODE_ENV": '"production"' },
       logLevel: "silent",
     });
-    for (const saved of [null, "opencraft.core.frost", "extension.missing", "vela.core.zencode", "opencraft.core.zencode"]) {
+    for (const saved of [null, "opencraft.core.frost", "extension.missing", "opencraft.core.zencode"]) {
       const context = vm.createContext({ window: {
         matchMedia: () => ({ matches: false }),
         localStorage: { getItem: key => key === "opencraft.appearance-theme-id" ? saved : null },

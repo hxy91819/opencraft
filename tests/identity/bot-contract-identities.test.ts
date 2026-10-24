@@ -7,35 +7,29 @@ import { MemoryTransport } from "@opencraft/appserver-transport-memory";
 import { createCordisBotConversationRuntime } from "@opencraft/bot-conversation-appserver";
 import { OPENCRAFT_BOT_CONVERSATIONS_EXTENSION, OPENCRAFT_BOT_CONVERSATIONS_CAPABILITY, parseJsonRpcMessage, isJsonRpcRequest, encodeJsonRpcMessage } from "@opencraft/appserver-protocol";
 
-const legacyCapability = "vela/bot-conversations";
 
-test("Bot resources write the current scheme and preserve exact saved identities on both read schemes", () => {
+test("Bot resources write the current scheme and preserve exact identities in the current scheme", () => {
   const key = createConversationKey("host:/scope α", "conversation:/?&β");
   const uri = botConversationResourceUri(key);
   assert.equal(new URL(uri).protocol, "opencraft-bot:");
-  for (const input of [uri, uri.replace("opencraft-bot:", "vela-bot:")]) {
-    assert.deepEqual(parseBotConversationViewResource(input), { kind: "conversation", key });
-  }
+  assert.deepEqual(parseBotConversationViewResource(uri), { kind: "conversation", key });
   for (const botId of [undefined, null, "", " saved bot "]) {
     const selection = botSelectionResourceUri(key.hostId, botId);
     assert.equal(new URL(selection).protocol, "opencraft-bot:");
-    for (const input of [selection, selection.replace("opencraft-bot:", "vela-bot:")]) {
-      assert.deepEqual(parseBotConversationViewResource(input), { kind: "selection", hostId: key.hostId, botId: botId?.trim() || null });
-    }
+    assert.deepEqual(parseBotConversationViewResource(selection), { kind: "selection", hostId: key.hostId, botId: botId?.trim() || null });
   }
-  for (const input of [null, "not a URI", "vela-bot.custom:selection?hostId=h", "opencraft-bot:conversation?hostId=h", "opencraft-bot:selection", "opencraft-bot:other?hostId=h"]) {
+  for (const input of [null, "not a URI", "third-party-bot:selection?hostId=h", "opencraft-bot:conversation?hostId=h", "opencraft-bot:selection", "opencraft-bot:other?hostId=h"]) {
     assert.equal(parseBotConversationViewResource(input), null);
   }
 });
 
-test("real client initialization negotiates current or exact older Bot capabilities, with current declaration authoritative", async () => {
+test("real client initialization validates current Bot capabilities", async () => {
   const capability = OPENCRAFT_BOT_CONVERSATIONS_CAPABILITY;
   const cases = [
     { extensions: { [OPENCRAFT_BOT_CONVERSATIONS_EXTENSION]: capability }, supported: true },
-    { extensions: { [legacyCapability]: capability }, supported: true },
-    { extensions: { [OPENCRAFT_BOT_CONVERSATIONS_EXTENSION]: { version: 2 }, [legacyCapability]: capability }, supported: false },
-    { extensions: { [OPENCRAFT_BOT_CONVERSATIONS_EXTENSION]: null, [legacyCapability]: capability }, supported: false },
-    { extensions: { [legacyCapability + ".custom"]: capability }, supported: false },
+    { extensions: { [OPENCRAFT_BOT_CONVERSATIONS_EXTENSION]: { version: 2 } }, supported: false },
+    { extensions: { [OPENCRAFT_BOT_CONVERSATIONS_EXTENSION]: null }, supported: false },
+    { extensions: { ["third-party/bot-conversations"]: capability }, supported: false },
     { extensions: {}, supported: false },
     { extensions: null, supported: false },
   ];

@@ -206,7 +206,7 @@ test("Service Worker routes documents and root-relative assets through one Host 
 test("restored Pages recover Host ownership before materializing their physical surface", () => {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
   const storage = new Map<string, string>([[
-    "vela.browser-pages.v1",
+    "opencraft.browser-pages.v1",
     JSON.stringify([{
       id: "page-restored",
       ownerId: "conversation:one",

@@ -3674,12 +3674,10 @@ test("generated images move from live Activity to final assistant content withou
 });
 
 
-test("saved command source identities accept legacy aliases and prefer canonical metadata", () => {
+test("saved command source identities retain canonical metadata", () => {
   const cases = [
-    { payload: { __velaSourceItemId: "legacy" }, expected: ["legacy"] },
-    { payload: { __velaSourceItemIds: ["legacy-a", "legacy-b"] }, expected: ["legacy-a", "legacy-b"] },
-    { payload: { __opencraftSourceItemId: "canonical", __velaSourceItemId: "stale" }, expected: ["canonical"] },
-    { payload: { __opencraftSourceItemIds: ["canonical-a"], __velaSourceItemIds: ["stale"] }, expected: ["canonical-a"] },
+    { payload: { __opencraftSourceItemId: "canonical" }, expected: ["canonical"] },
+    { payload: { __opencraftSourceItemIds: ["canonical-a"] }, expected: ["canonical-a"] },
   ];
   for (const { payload, expected } of cases) {
     const snapshot = projectTimeline(source([{ id: "saved", status: "complete", items: [{

@@ -121,7 +121,6 @@ if (process.argv[2] === 'core') {
     };
     const initialized = await rpc('initialize', { clientInfo: { name: 'headless-update-smoke', version: '1' }, capabilities: { experimentalApi: true } });
     assert.equal(initialized.capabilities.extensions['opencraft/bot-conversations'], undefined);
-    assert.equal(initialized.capabilities.extensions['vela/bot-conversations'], undefined);
     const respond = (id: string | number, result: unknown) => socket.send(JSON.stringify({ type: 'host/send', requestId: 'reply-' + (++sequence), hostId: 'local-codex', leaseId, generation, frame: JSON.stringify({ id, result }) }));
     return { socket, rpc, frames, respond };
   }
