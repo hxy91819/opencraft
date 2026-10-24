@@ -14,8 +14,8 @@
 Controller lease、presence、loading、音频、Presentation、viewport 和实时 frame 都是
 ephemeral state，不进入 durable Replica Journal。
 
-Codex V3 browser-use/tool 事件可以投影为聊天活动、截图和链接，但在没有协议证据时不
-假设它提供完整交互式 Browser RPC。
+browser-use/tool 事件可投影为聊天活动、截图和链接，但这些投影不能作为完整交互式
+Browser RPC 的能力凭据；是否可交互仍须核对实际协议能力。
 
 ### 14.2 本地 View Checkpoint
 
