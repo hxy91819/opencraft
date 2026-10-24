@@ -253,6 +253,18 @@ export function buildActivityBars(
   let cumTokens = 0n;
   let cumTurns = 0;
 
+  // The display is bounded to recent weeks; cumulative totals still begin at
+  // the requested range start, including days before the first visible bar.
+  if (mode === "cumulative") {
+    const firstVisibleDay = startWeekDate.toISOString().slice(0, 10);
+    for (const day of daily) {
+      if (day.key >= from && day.key < firstVisibleDay && day.key <= through) {
+        cumTokens += BigInt(day.tokens);
+        cumTurns += day.turns;
+      }
+    }
+  }
+
   for (let w = 0; w < weeks; w++) {
     const monday = new Date(startWeekDate.getTime() + w * 7 * 86400000);
     const mondayStr = monday.toISOString().slice(0, 10);

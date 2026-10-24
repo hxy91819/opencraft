@@ -115,6 +115,10 @@ try {
  await touchCell.tap();assert.equal(await touchCell.getAttribute('aria-pressed'),'true');
  await touchCell.tap();assert.equal(await touchCell.getAttribute('aria-pressed'),'false');
  await touchContext.close();
+ // A short range must remain a compact chart in the actual Settings viewport.
+ await page.setViewportSize({width:1440,height:900});
+ const activityHeight=await page.locator('.token-usage__activity').evaluate(el=>el.getBoundingClientRect().height);
+ assert.ok(activityHeight<450,"short-range activity must not push its own caption below a viewport: "+activityHeight);
  const diagnostics=page.getByText(locale==="en-US"?"View runtime diagnostics":"查看运行诊断",{exact:true});
  await diagnostics.focus();await page.keyboard.press("Enter");
  await page.getByText(locale==="en-US"?"Deduplicated":"去重",{exact:true}).waitFor();

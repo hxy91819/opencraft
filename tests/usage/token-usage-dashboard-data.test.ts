@@ -123,3 +123,17 @@ test("modelShare, formatModelLabel and formatStateLabel provide reliable present
   assert.equal(formatStateLabel("provisional", copy), "暂定");
   assert.equal(formatStateLabel("custom-state", copy), "custom-state");
 });
+
+
+test("cumulative bars retain earlier usage when the selected range exceeds the visible weeks", () => {
+  const daily = [
+    { key: "2025-10-31", tokens: "999", turns: 9 },
+    { key: "2025-11-01", tokens: "9007199254740993", turns: 2 },
+    { key: "2026-10-24", tokens: "300", turns: 1 },
+    { key: "2026-10-25", tokens: "999", turns: 9 },
+  ];
+  const cumulative = buildActivityBars(daily, "2025-11-01", "2026-10-24", "cumulative");
+  assert.equal(cumulative.at(-1)!.tokens, "9007199254741293");
+  assert.equal(cumulative.at(-1)!.turns, 3);
+  assert.equal(buildActivityBars(daily, "2025-11-01", "2026-10-24", "weekly").at(-1)!.tokens, "300");
+});

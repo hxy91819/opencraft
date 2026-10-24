@@ -50,7 +50,7 @@
 :root:not([data-pointer-focus]) .token-usage__heatmap-cell:focus-visible { outline:2px solid var(--color-border-strong); outline-offset:1px; }
 .token-usage__heatmap-cell:disabled { cursor:default; }
 .token-usage__heatmap-months { display:grid; gap:3px; margin-inline-start:24px; color:var(--color-text-tertiary); font:var(--typography-disclaimer-font); }
-.token-usage__heatmap-months span { overflow:hidden; white-space:nowrap; }
+.token-usage__heatmap-months span { white-space:nowrap; }
 .token-usage__activity-caption { min-height:16px; margin:0; color:var(--color-text-secondary); font:var(--typography-metadata-font); }
 
 .token-usage__bars { display:grid; gap:6px; margin:0; padding:0; list-style:none; min-width:0; }

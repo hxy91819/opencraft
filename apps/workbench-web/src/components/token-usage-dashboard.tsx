@@ -450,7 +450,7 @@ export function TokenUsageDashboardView({
                     className="token-usage__heatmap"
                     role="group"
                     aria-label={copy("每日 Token 活跃度热力图", "Daily token activity heatmap")}
-                    style={{ gridTemplateColumns: `repeat(${grid.weeks},minmax(4px,1fr))` }}
+                    style={{ gridTemplateColumns: `repeat(${grid.weeks},minmax(4px,16px))` }}
                   >
                     {grid.columns.map((week) =>
                       week.map((cell) => (
@@ -474,7 +474,7 @@ export function TokenUsageDashboardView({
                     )}
                   </div>
                 </div>
-                <div className="token-usage__heatmap-months" style={{ gridTemplateColumns: `repeat(${grid.weeks},minmax(4px,1fr))` }}>
+                <div className="token-usage__heatmap-months" style={{ gridTemplateColumns: `repeat(${grid.weeks},minmax(4px,16px))` }}>
                   {Array.from({ length: grid.weeks }, (_, i) => grid.monthLabels.find((x) => x.index === i)).map((x, i) => (
                     <span key={i}>{x?.label ?? ""}</span>
                   ))}
