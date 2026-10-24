@@ -2,7 +2,7 @@ import { ChevronDownIcon, RotateIcon as RotateCcw, CloseIcon as X } from "@openc
 import { useEffect, useRef, useState, type RefObject, type PointerEvent } from "react";
 
 import { browserViewportDeviceProfile, computeBrowserViewportLayout, type BrowserViewportMode } from "@opencraft/browser-core";
-import { DEVICE_PRESETS, initializeBrowserViewportPresets, clampPanelWidth__rBr_2f54e, getDefaultPanelWidth } from "./opencraft/viewport-presets.js";
+import { DEVICE_PRESETS, initializeBrowserViewportPresets, clampViewportWidth, clampViewportHeight } from "./opencraft/viewport-presets.js";
 import { computeDragResizeDimensions } from "./opencraft/viewport-resize.js";
 initializeBrowserViewportPresets();
 
@@ -129,8 +129,8 @@ export function BrowserDeviceHandles({mode,slot,onChange}:{mode:DeviceMode;slot:
         event.preventDefault();
         const horizontal=edge!=="bottom",vertical=edge!=="left"&&edge!=="right";
         onChange({type:"device",presetId:"responsive",deviceProfile:browserViewportDeviceProfile(mode),
-          width:clampPanelWidth__rBr_2f54e(mode.width+(horizontal?(event.key==="ArrowRight"?amount:event.key==="ArrowLeft"?-amount:0):0)),
-          height:getDefaultPanelWidth(mode.height+(vertical?(event.key==="ArrowDown"?amount:event.key==="ArrowUp"?-amount:0):0))});
+          width:clampViewportWidth(mode.width+(horizontal?(event.key==="ArrowRight"?amount:event.key==="ArrowLeft"?-amount:0):0)),
+          height:clampViewportHeight(mode.height+(vertical?(event.key==="ArrowDown"?amount:event.key==="ArrowUp"?-amount:0):0))});
       }}/>)}
   </div>;
 }

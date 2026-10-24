@@ -37,10 +37,9 @@ function boundedDimension(value, minimum) {
   return integer > 4096 ? 4096 : integer;
 }
 
-// Retain these consumed names, including the historical width-helper suffix.
-export function clampPanelWidth__rBr_2f54e(width) {
+export function clampViewportWidth(width) {
   return boundedDimension(width, 240);
 }
-export function getDefaultPanelWidth(height) {
+export function clampViewportHeight(height) {
   return boundedDimension(height, 160);
 }

@@ -48,7 +48,7 @@ export class OpenCraftPresentationHost {
     return changed;
   }
   setAdoptionAttributes(lease: unknown, id: unknown) {
-    if (lease != null || id != null) throw new Error("Owl WebContents adoption is not supported");
+    if (lease != null || id != null) throw new Error("WebContents adoption is not supported");
   }
   markRegistered() {
     if (this.disposed || this.registered) return false;

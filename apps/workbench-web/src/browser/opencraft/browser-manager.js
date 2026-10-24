@@ -2,8 +2,14 @@
 export function createImplementation(ports) {
 const window = ports.window ?? globalThis.window;
 const document = ports.document ?? globalThis.document;
-const {$l,DEFAULT_WEBVIEW_STATE,Jl,PagePresentationTransition,RESPONSIVE_PRESET_ID,areWebviewTabsEqual,bm,buildCacheKey,clampPanelWidth__rBr_2f54e,createCompositeKey__fN_2fpbe,createLoggerFacade,createWebviewHandoffManager,getCacheEntry__aVr_2fhgg,getCompositeWebviewStorageKey,getDefaultPanelWidth,getPendingWebviewAdoptionLease,getWebviewByKey,identityPassthrough,initializeAllModules__sd_bofx,initializeBrowserViewportPresets,initializeSidebarGlobalState,joinKeyWithNull,logger__Kp_mubr,messageRouterInstance,normalizeUrlOrEmpty,parseConversationBrowserTabKey,WebviewSidebarManager,browserSidebarWebviewModule,unregisterWebviewHandler,ym}=ports;
-const WVr="default", UVr={responsiveViewportSize:null,toolbarState:DEFAULT_WEBVIEW_STATE};
+const {
+  webviewTabKinds, DEFAULT_WEBVIEW_STATE, PagePresentationTransition,
+  RESPONSIVE_PRESET_ID, areWebviewTabsEqual, createCompositeKey,
+  getCompositeWebviewStorageKey, logger, messageRouterInstance,
+  parseConversationBrowserTabKey, WebviewSidebarManager,
+  unregisterWebviewHandler, hostBridge,
+}=ports;
+const defaultDeviceToolbarTabState={responsiveViewportSize:null,toolbarState:DEFAULT_WEBVIEW_STATE};
 return class BrowserHostRegistry {
   listeners = new Set();
   browserUseCursorStates = new Map();
@@ -53,10 +59,10 @@ return class BrowserHostRegistry {
     return () => this.listeners.delete(listener);
   };
 
-  #key(owner, tab) { return createCompositeKey__fN_2fpbe(owner, tab); }
+  #key(owner, tab) { return createCompositeKey(owner, tab); }
   #host(owner, tab) { return this.webviews.get(this.#key(owner, tab)); }
   #log(message, safe, sensitive) {
-    logger__Kp_mubr.info(message, sensitive === undefined ? { safe } : { safe, sensitive });
+    logger.info(message, sensitive === undefined ? { safe } : { safe, sensitive });
   }
   getSnapshot(owner, tab) { return this.snapshots.get(this.#key(owner, tab)) ?? null; }
   getMediaTabs() { return this.mediaTabs; }
@@ -104,7 +110,7 @@ return class BrowserHostRegistry {
     return this.getConversationBrowserTabIdsFromKeys(owner, new Set([...this.webviews.keys(), ...this.browserUseTabKeys]));
   }
   getBrowserUseBrowserTabIds(owner) { return this.getConversationBrowserTabIdsFromKeys(owner, this.browserUseTabKeys); }
-  getDeviceToolbarTabState(owner, tab) { return this.deviceToolbarTabStates.get(this.#key(owner, tab)) ?? UVr; }
+  getDeviceToolbarTabState(owner, tab) { return this.deviceToolbarTabStates.get(this.#key(owner, tab)) ?? defaultDeviceToolbarTabState; }
   getMountGeneration(owner, tab) { return this.mountStates.get(this.#key(owner, tab))?.generation ?? 0; }
   claimMountGeneration(owner, tab, claim) {
     const key = this.#key(owner, tab);
@@ -190,7 +196,7 @@ return class BrowserHostRegistry {
     const attempt = {};
     this.registrationAttempts.set(host, attempt);
     if (this.rendererSessionRegistration === null) {
-      this.rendererSessionRegistration = ym.browserSidebar.registerWebviewHostSession({ rendererInstanceId: this.rendererInstanceId }).catch(() => false);
+      this.rendererSessionRegistration = hostBridge.browserSidebar.registerWebviewHostSession({ rendererInstanceId: this.rendererInstanceId }).catch(() => false);
     }
     const current = () => this.isCurrentWebviewHost(host) && this.registrationAttempts.get(host) === attempt;
     const register = async () => {
@@ -200,7 +206,7 @@ return class BrowserHostRegistry {
           return;
         }
         if (!current()) return;
-        const accepted = await ym.browserSidebar.registerWebviewHost({
+        const accepted = await hostBridge.browserSidebar.registerWebviewHost({
           browserTabId: host.getBrowserTabId(), conversationId: host.getConversationId(),
           hostGeneration: host.getHostGeneration(), pagePersistence, rendererInstanceId: this.rendererInstanceId,
         });
@@ -404,7 +410,7 @@ return class BrowserHostRegistry {
     const next = [];
     for (const key of new Set([...this.webviews.keys(), ...this.browserUseTabKeys])) {
       const snapshot = this.snapshots.get(key);
-      if (!snapshot || snapshot.tabType !== $l.WEB || !snapshot.url || !(snapshot.isAudible || snapshot.isCapturingUserMedia)) continue;
+      if (!snapshot || snapshot.tabType !== webviewTabKinds.WEB || !snapshot.url || !(snapshot.isAudible || snapshot.isCapturingUserMedia)) continue;
       const { conversationId, browserTabId } = parseConversationBrowserTabKey(key);
       next.push({ conversationId, browserTabId, faviconUrl: snapshot.faviconUrl, isAudioMuted: snapshot.isAudioMuted,
         isAudible: snapshot.isAudible, isCapturingCamera: snapshot.isCapturingCamera,
