@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useIntl } from "@opencraft/i18n/react";
 
 import {
@@ -14,7 +14,10 @@ import {
   type EscapeSequenceState,
   type TitleTapSequenceState,
 } from "../internal-developer-mode";
-import { InternalDeveloperDiagnostics } from "./internal-developer-diagnostics";
+const InternalDeveloperDiagnostics = lazy(async () => {
+  const module = await import("./internal-developer-diagnostics");
+  return { default: module.InternalDeveloperDiagnostics };
+});
 
 const TITLE_TAP_SELECTOR = [
   ".settings-page__navigation-heading",
@@ -90,7 +93,11 @@ export function InternalDeveloperModeGate() {
             : intl.formatMessage({ id: "developerMode.disabled", defaultMessage: "Internal developer mode disabled" })}
         </div>
       ) : null}
-      {enabled ? <InternalDeveloperDiagnostics /> : null}
+      {enabled ? (
+        <Suspense fallback={null}>
+          <InternalDeveloperDiagnostics />
+        </Suspense>
+      ) : null}
     </>
   );
 }

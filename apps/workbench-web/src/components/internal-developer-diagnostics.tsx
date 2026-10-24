@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { FormattedMessage, useIntl } from "@opencraft/i18n/react";
 import { writeTextToClipboard } from "@opencraft/chat-render-web/clipboard";
 
+import "../styles/internal-developer-diagnostics.scss";
+
 import {
   captureRuntimeEnvironment,
   clearRuntimeDiagnostics,
