@@ -375,10 +375,10 @@ test("Codex Engine shares one physical initialize and restores logical client ro
     await adapter.send(JSON.stringify({ id: 900, result: { answers: {} }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
     const resolved = await waitFor(frames, frame => frame.method === "serverRequest/resolved");
     assert.equal(resolved[LOGICAL_CLIENT_FIELD], "client-a");
-    await adapter.send(JSON.stringify({ id: "a:resume", method: "thread/resume", params: { threadId: "codex-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
+    await adapter.send(JSON.stringify({ id: "a:resume", method: "thread/resume", params: { threadId: "fixture-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
     await waitFor(frames, frame => frame.id === "a:resume");
-    assert.ok(diagnostics.some(event => event.event === "thread-resume-start" && event.clientId === "client-a" && event.threadId === "codex-thread-1"));
-    assert.ok(diagnostics.some(event => event.event === "thread-resume-finish" && event.clientId === "client-a" && event.threadId === "codex-thread-1" && event.outcome === "succeeded"));
+    assert.ok(diagnostics.some(event => event.event === "thread-resume-start" && event.clientId === "client-a" && event.threadId === "fixture-thread-1"));
+    assert.ok(diagnostics.some(event => event.event === "thread-resume-finish" && event.clientId === "client-a" && event.threadId === "fixture-thread-1" && event.outcome === "succeeded"));
 
     await adapter.send(JSON.stringify({ id: "b:accounts", method: "opencraft/codex/accounts/list", params: {}, [LOGICAL_CLIENT_FIELD]: "client-b" }));
     const accounts = await waitFor(frames, frame => frame.id === "b:accounts");
@@ -453,9 +453,9 @@ test("joining Client receives Thread events before its delayed resume acknowledg
     await initializeClient(adapter, frames, "client-b");
     await adapter.send(JSON.stringify({ id: "a:start", method: "thread/start", params: { cwd: root }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
     await waitFor(frames, frame => frame.id === "a:start");
-    await adapter.send(JSON.stringify({ id: "b:resume", method: "thread/resume", params: { threadId: "codex-thread-1", testDelayMs: 50 }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
+    await adapter.send(JSON.stringify({ id: "b:resume", method: "thread/resume", params: { threadId: "fixture-thread-1", testDelayMs: 50 }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
     const before = frames.length;
-    await adapter.send(JSON.stringify({ id: "a:probe", method: "test/emitThreadNotification", params: { threadId: "codex-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
+    await adapter.send(JSON.stringify({ id: "a:probe", method: "test/emitThreadNotification", params: { threadId: "fixture-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
     await waitFor(frames, frame => frame.id === "a:probe");
     const joinedEvent = await waitFor(frames, frame => frames.indexOf(frame) >= before && frame.method === "thread/status/changed" && frame[LOGICAL_CLIENT_FIELD] === "client-b");
     assert.ok(joinedEvent);
@@ -479,7 +479,7 @@ test("a Client that detaches during resume cannot regain notifications or intera
     await initializeClient(adapter, frames, "client-b");
     await send("client-a", "a:start", "thread/start", { cwd: root });
     await waitFor(frames, frame => frame.id === "a:start");
-    const threadId = "codex-thread-1";
+    const threadId = "fixture-thread-1";
     await send("client-b", "b:resume", "thread/resume", { threadId, testDelayMs: 50 });
     await send("client-b", "b:detach", "thread/unsubscribe", { threadId });
     assert.deepEqual((await waitFor(frames, frame => frame.id === "b:detach")).result, { status: "notSubscribed" });
@@ -517,7 +517,7 @@ test("a reused logical Client ID cannot inherit the previous connection's late r
     await initializeClient(adapter, frames, "client-b");
     await send("client-a", "a:start", "thread/start", { cwd: root });
     await waitFor(frames, frame => frame.id === "a:start");
-    const threadId = "codex-thread-1";
+    const threadId = "fixture-thread-1";
     await send("client-a", "a:old-resume", "thread/resume", { threadId, testDelayMs: 50 });
     await adapter.send(JSON.stringify({ method: "runtime/client/disconnect", [LOGICAL_CLIENT_FIELD]: "client-a" }));
     await initializeClient(adapter, frames, "client-a");
@@ -557,7 +557,7 @@ test("late thread/start success after disconnect releases the otherwise orphaned
     for (let attempt = 0; attempt < 30; attempt += 1) {
       await new Promise(resolve => setTimeout(resolve, 10));
       const id = `b:probe:${attempt}`;
-      await send("client-b", id, "test/emitThreadNotification", { threadId: "codex-thread-1" });
+      await send("client-b", id, "test/emitThreadNotification", { threadId: "fixture-thread-1" });
       const probe = await waitFor(frames, frame => frame.id === id);
       if ((probe.result as any).nativeSubscribed === false) {
         released = true;
@@ -565,11 +565,11 @@ test("late thread/start success after disconnect releases the otherwise orphaned
       }
     }
     assert.equal(released, true);
-    await send("client-b", "b:duplicate-unsubscribe", "thread/unsubscribe", { threadId: "codex-thread-1" });
+    await send("client-b", "b:duplicate-unsubscribe", "thread/unsubscribe", { threadId: "fixture-thread-1" });
     assert.deepEqual((await waitFor(frames, frame => frame.id === "b:duplicate-unsubscribe")).result, { status: "notSubscribed" });
-    await send("client-b", "b:resume", "thread/resume", { threadId: "codex-thread-1" });
+    await send("client-b", "b:resume", "thread/resume", { threadId: "fixture-thread-1" });
     await waitFor(frames, frame => frame.id === "b:resume");
-    await send("client-b", "b:probe-after-resume", "test/emitThreadNotification", { threadId: "codex-thread-1" });
+    await send("client-b", "b:probe-after-resume", "test/emitThreadNotification", { threadId: "fixture-thread-1" });
     assert.deepEqual((await waitFor(frames, frame => frame.id === "b:probe-after-resume")).result, { nativeSubscribed: true });
   } finally {
     await adapter.close();
@@ -721,40 +721,40 @@ test("Host-owned Codex queue admits a second steer before the first appears in h
     await initializeClient(adapter, frames, client);
     await request("thread", "thread/start", { cwd: root });
     const started = await request("turn", "turn/start", {
-      threadId: "codex-thread-1", input: [{ type: "text", text: "first" }], clientUserMessageId: "first",
+      threadId: "fixture-thread-1", input: [{ type: "text", text: "first" }], clientUserMessageId: "first",
     });
     const activeTurnId = (started.result as any).turn.id;
     const added = await request("add", "thread/queue/add", {
-      threadId: "codex-thread-1", input: [{ type: "text", text: "follow up" }], clientUserMessageId: "queued-1",
+      threadId: "fixture-thread-1", input: [{ type: "text", text: "follow up" }], clientUserMessageId: "queued-1",
     });
     const queuedId = (added.result as any).queuedSubmission.id;
     const secondAdded = await request("add-2", "thread/queue/add", {
-      threadId: "codex-thread-1", input: [{ type: "text", text: "another follow up" }], clientUserMessageId: "queued-2",
+      threadId: "fixture-thread-1", input: [{ type: "text", text: "another follow up" }], clientUserMessageId: "queued-2",
     });
     const secondQueuedId = (secondAdded.result as any).queuedSubmission.id;
-    const queued = await request("list-1", "thread/queue/list", { threadId: "codex-thread-1" });
+    const queued = await request("list-1", "thread/queue/list", { threadId: "fixture-thread-1" });
     assert.equal((queued.result as any).data[0].id, queuedId);
     const steered = await request("steer", "thread/queue/steer", {
-      threadId: "codex-thread-1", queuedSubmissionId: queuedId, expectedTurnId: activeTurnId,
+      threadId: "fixture-thread-1", queuedSubmissionId: queuedId, expectedTurnId: activeTurnId,
     });
     assert.deepEqual(steered.result, { turnId: activeTurnId });
-    const afterSteer = await request("list-2", "thread/queue/list", { threadId: "codex-thread-1" });
+    const afterSteer = await request("list-2", "thread/queue/list", { threadId: "fixture-thread-1" });
     assert.equal((afterSteer.result as any).data[0].id, secondQueuedId);
     assert.equal((afterSteer.result as any).steering[0].clientUserMessageId, "queued-1");
     const secondSteer = await request("steer-2", "thread/queue/steer", {
-      threadId: "codex-thread-1", queuedSubmissionId: secondQueuedId, expectedTurnId: activeTurnId,
+      threadId: "fixture-thread-1", queuedSubmissionId: secondQueuedId, expectedTurnId: activeTurnId,
     });
     assert.deepEqual(secondSteer.result, { turnId: activeTurnId });
-    const afterSecondSteer = await request("list-3", "thread/queue/list", { threadId: "codex-thread-1" });
+    const afterSecondSteer = await request("list-3", "thread/queue/list", { threadId: "fixture-thread-1" });
     assert.deepEqual((afterSecondSteer.result as any).data, []);
     assert.deepEqual((afterSecondSteer.result as any).steering.map((item: any) => item.clientUserMessageId), ["queued-1", "queued-2"]);
-    await request("complete", "test/completeTurn", { threadId: "codex-thread-1" });
+    await request("complete", "test/completeTurn", { threadId: "fixture-thread-1" });
     for (let attempt = 0; attempt < 30; attempt += 1) {
-      const listed = await request(`list-final-${attempt}`, "thread/queue/list", { threadId: "codex-thread-1" });
+      const listed = await request(`list-final-${attempt}`, "thread/queue/list", { threadId: "fixture-thread-1" });
       if ((listed.result as any).steering.length === 0) break;
       await new Promise(resolve => setTimeout(resolve, 5));
     }
-    const settled = await request("settled", "thread/queue/list", { threadId: "codex-thread-1" });
+    const settled = await request("settled", "thread/queue/list", { threadId: "fixture-thread-1" });
     assert.deepEqual((settled.result as any).steering, []);
   } finally {
     await adapter.close();
@@ -776,35 +776,35 @@ test("ambiguous Codex queue steer stays claimed until explicit history-checked d
     await initializeClient(adapter, frames, client);
     await request("thread", "thread/start", { cwd: root });
     const turn = await request("turn", "turn/start", {
-      threadId: "codex-thread-1", input: [{ type: "text", text: "first" }], clientUserMessageId: "first",
+      threadId: "fixture-thread-1", input: [{ type: "text", text: "first" }], clientUserMessageId: "first",
     });
     const targetTurnId = (turn.result as any).turn.id;
     const added = await request("add", "thread/queue/add", {
-      threadId: "codex-thread-1", input: [{ type: "text", text: "possibly delivered" }], clientUserMessageId: "maybe-1",
+      threadId: "fixture-thread-1", input: [{ type: "text", text: "possibly delivered" }], clientUserMessageId: "maybe-1",
     });
     const queuedId = (added.result as any).queuedSubmission.id;
     const next = await request("add-next", "thread/queue/add", {
-      threadId: "codex-thread-1", input: [{ type: "text", text: "must wait" }], clientUserMessageId: "next-1",
+      threadId: "fixture-thread-1", input: [{ type: "text", text: "must wait" }], clientUserMessageId: "next-1",
     });
     const steer = await request("steer", "thread/queue/steer", {
-      threadId: "codex-thread-1", queuedSubmissionId: queuedId, expectedTurnId: targetTurnId,
+      threadId: "fixture-thread-1", queuedSubmissionId: queuedId, expectedTurnId: targetTurnId,
     });
     assert.ok(steer.error);
-    const unknown = await request("unknown", "thread/queue/list", { threadId: "codex-thread-1" });
+    const unknown = await request("unknown", "thread/queue/list", { threadId: "fixture-thread-1" });
     assert.equal((unknown.result as any).steering[0].pausedReason, "steer-delivery-unconfirmed");
     const blocked = await request("blocked", "thread/queue/steer", {
-      threadId: "codex-thread-1", queuedSubmissionId: (next.result as any).queuedSubmission.id, expectedTurnId: targetTurnId,
+      threadId: "fixture-thread-1", queuedSubmissionId: (next.result as any).queuedSubmission.id, expectedTurnId: targetTurnId,
     });
     assert.match((blocked.error as any).message, /Earlier delivery is unconfirmed/);
-    const stillQueued = await request("still-queued", "thread/queue/list", { threadId: "codex-thread-1" });
+    const stillQueued = await request("still-queued", "thread/queue/list", { threadId: "fixture-thread-1" });
     assert.equal((stillQueued.result as any).data[0].clientUserMessageId, "next-1");
-    await request("complete", "test/completeTurn", { threadId: "codex-thread-1" });
+    await request("complete", "test/completeTurn", { threadId: "fixture-thread-1" });
     const deleted = await request("discard", "thread/queue/delete", {
-      threadId: "codex-thread-1", queuedSubmissionId: queuedId,
+      threadId: "fixture-thread-1", queuedSubmissionId: queuedId,
       expectedTurnId: targetTurnId, acknowledgeUnknownDelivery: true,
     });
     assert.deepEqual(deleted.result, { deleted: true });
-    const settled = await request("settled", "thread/queue/list", { threadId: "codex-thread-1" });
+    const settled = await request("settled", "thread/queue/list", { threadId: "fixture-thread-1" });
     assert.deepEqual((settled.result as any).steering, []);
   } finally {
     await adapter.close();
@@ -817,9 +817,9 @@ test("a queued start with an unknown target reconciles against all Turn history 
   const dataRoot = join(root, "data");
   await mkdir(dataRoot);
   const queue = new OpenCraftHostQueue(dataRoot);
-  const claim = queue.add("codex-thread-1", "accepted-before-restart", [{ type: "text", text: "same input" }]);
-  queue.claim("codex-thread-1", claim.id, "unknown");
-  queue.settle("codex-thread-1", claim.id, "unknown", "steer-delivery-unconfirmed");
+  const claim = queue.add("fixture-thread-1", "accepted-before-restart", [{ type: "text", text: "same input" }]);
+  queue.claim("fixture-thread-1", claim.id, "unknown");
+  queue.settle("fixture-thread-1", claim.id, "unknown", "steer-delivery-unconfirmed");
   queue.close();
   const frames: Array<Record<string, unknown>> = [];
   const adapter = createRoutingAdapter(root, frames);
@@ -832,11 +832,11 @@ test("a queued start with an unknown target reconciles against all Turn history 
     await initializeClient(adapter, frames, "client-a");
     await request("thread", "thread/start", { cwd: root });
     await request("turn", "turn/start", {
-      threadId: "codex-thread-1", input: [{ type: "text", text: "same input" }], clientUserMessageId: "accepted-before-restart",
+      threadId: "fixture-thread-1", input: [{ type: "text", text: "same input" }], clientUserMessageId: "accepted-before-restart",
     });
     let reconciled = false;
     for (let attempt = 0; attempt < 30; attempt += 1) {
-      const listed = await request(`list-${attempt}`, "thread/queue/list", { threadId: "codex-thread-1" });
+      const listed = await request(`list-${attempt}`, "thread/queue/list", { threadId: "fixture-thread-1" });
       if ((listed.result as any).steering.length === 0) { reconciled = true; break; }
       await new Promise(resolve => setTimeout(resolve, 5));
     }
@@ -860,16 +860,16 @@ test("Host queue starts the next turn after completion without sending a native 
     await initializeClient(adapter, frames, "client-a");
     await request("thread", "thread/start", { cwd: root });
     const first = await request("turn", "turn/start", {
-      threadId: "codex-thread-1", input: [{ type: "text", text: "first" }], clientUserMessageId: "first",
+      threadId: "fixture-thread-1", input: [{ type: "text", text: "first" }], clientUserMessageId: "first",
     });
     const firstTurnId = (first.result as any).turn.id;
     await request("add", "thread/queue/add", {
-      threadId: "codex-thread-1", input: [{ type: "text", text: "next" }], clientUserMessageId: "next",
+      threadId: "fixture-thread-1", input: [{ type: "text", text: "next" }], clientUserMessageId: "next",
     });
-    await request("complete", "test/completeTurn", { threadId: "codex-thread-1" });
+    await request("complete", "test/completeTurn", { threadId: "fixture-thread-1" });
     const second = await waitFor(frames, frame => frame.method === "turn/started" && (frame.params as any).turn.id !== firstTurnId);
     assert.ok((second.params as any).turn.id);
-    const listed = await request("listed", "thread/queue/list", { threadId: "codex-thread-1" });
+    const listed = await request("listed", "thread/queue/list", { threadId: "fixture-thread-1" });
     assert.deepEqual((listed.result as any).data, []);
     assert.deepEqual((listed.result as any).steering, []);
   } finally {
@@ -888,7 +888,7 @@ test("last viewer leaving preserves background turns and queued work until the H
     await adapter.send(JSON.stringify({ id, method, params, [LOGICAL_CLIENT_FIELD]: clientId }));
     return waitFor(frames, frame => frame.id === id);
   };
-  const threadId = "codex-thread-1";
+  const threadId = "fixture-thread-1";
   try {
     await adapter.connect();
     await initializeClient(adapter, frames, "client-a");
@@ -934,7 +934,7 @@ test("a closed client releases its thread subscriptions and native Codex context
   const root = await mkdtemp(join(tmpdir(), "opencraft-codex-disconnect-release-"));
   const frames: Array<Record<string, unknown>> = [];
   const adapter = createRoutingAdapter(root, frames, 0, undefined, 10);
-  const threadId = "codex-thread-1";
+  const threadId = "fixture-thread-1";
   let sequence = 0;
   const request = async (clientId: string, method: string, params: Record<string, unknown>) => {
     const id = `disconnect-${++sequence}`;
@@ -979,17 +979,17 @@ test("definitive Codex steer rejection releases the Host claim without losing th
     await initializeClient(adapter, frames, "client-a");
     await request("thread", "thread/start", { cwd: root });
     await request("turn", "turn/start", {
-      threadId: "codex-thread-1", input: [{ type: "text", text: "first" }], clientUserMessageId: "first",
+      threadId: "fixture-thread-1", input: [{ type: "text", text: "first" }], clientUserMessageId: "first",
     });
     const added = await request("add", "thread/queue/add", {
-      threadId: "codex-thread-1", input: [{ type: "text", text: "follow" }], clientUserMessageId: "follow",
+      threadId: "fixture-thread-1", input: [{ type: "text", text: "follow" }], clientUserMessageId: "follow",
     });
     const queuedId = (added.result as any).queuedSubmission.id;
     const rejected = await request("steer", "thread/queue/steer", {
-      threadId: "codex-thread-1", queuedSubmissionId: queuedId, expectedTurnId: "stale-turn",
+      threadId: "fixture-thread-1", queuedSubmissionId: queuedId, expectedTurnId: "stale-turn",
     });
     assert.ok(rejected.error);
-    const listed = await request("listed", "thread/queue/list", { threadId: "codex-thread-1" });
+    const listed = await request("listed", "thread/queue/list", { threadId: "fixture-thread-1" });
     assert.equal((listed.result as any).data[0].id, queuedId);
     assert.deepEqual((listed.result as any).steering, []);
   } finally {
@@ -1003,16 +1003,16 @@ test("restart preserves an unconfirmed claim and blocks a later queued turn", as
   const dataRoot = join(root, "data");
   await mkdir(dataRoot);
   const queue = new OpenCraftHostQueue(dataRoot);
-  const uncertain = queue.add("codex-thread-1", "uncertain", [{ type: "text", text: "maybe" }]);
-  queue.claim("codex-thread-1", uncertain.id, "turn-old");
-  queue.add("codex-thread-1", "later", [{ type: "text", text: "later" }]);
+  const uncertain = queue.add("fixture-thread-1", "uncertain", [{ type: "text", text: "maybe" }]);
+  queue.claim("fixture-thread-1", uncertain.id, "turn-old");
+  queue.add("fixture-thread-1", "later", [{ type: "text", text: "later" }]);
   queue.close();
   const frames: Array<Record<string, unknown>> = [];
   const adapter = createRoutingAdapter(root, frames);
   try {
     await adapter.connect();
     await initializeClient(adapter, frames, "client-a");
-    await adapter.send(JSON.stringify({ id: "list", method: "thread/queue/list", params: { threadId: "codex-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
+    await adapter.send(JSON.stringify({ id: "list", method: "thread/queue/list", params: { threadId: "fixture-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
     const listed = await waitFor(frames, frame => frame.id === "list");
     assert.equal((listed.result as any).steering[0].id, uncertain.id);
     assert.equal((listed.result as any).steering[0].pausedReason, "steer-delivery-unconfirmed");
@@ -1030,7 +1030,7 @@ test("Host resumes an unloaded Codex thread and drains a durable queued message 
   const dataRoot = join(root, "data");
   await mkdir(dataRoot);
   const queue = new OpenCraftHostQueue(dataRoot);
-  queue.add("codex-thread-1", "background", [{ type: "text", text: "continue" }]);
+  queue.add("fixture-thread-1", "background", [{ type: "text", text: "continue" }]);
   queue.close();
   const frames: Array<Record<string, unknown>> = [];
   const adapter = createRoutingAdapter(root, frames);
@@ -1040,7 +1040,7 @@ test("Host resumes an unloaded Codex thread and drains a durable queued message 
     let cleared = false;
     for (let attempt = 0; attempt < 30; attempt += 1) {
       const id = `list-${attempt}`;
-      await adapter.send(JSON.stringify({ id, method: "thread/queue/list", params: { threadId: "codex-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
+      await adapter.send(JSON.stringify({ id, method: "thread/queue/list", params: { threadId: "fixture-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
       const listed = await waitFor(frames, frame => frame.id === id);
       if ((listed.result as any).data.length === 0 && (listed.result as any).steering.length === 0) { cleared = true; break; }
       await new Promise(resolve => setTimeout(resolve, 5));
@@ -1062,21 +1062,21 @@ test("Codex Fork subscribes only its requester to the child and late disconnecte
     await initializeClient(adapter, frames, "client-b");
     await adapter.send(JSON.stringify({ id: "a:start", method: "thread/start", params: { cwd: root }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
     await waitFor(frames, frame => frame.id === "a:start");
-    await adapter.send(JSON.stringify({ id: "a:fork", method: "thread/fork", params: { threadId: "codex-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
+    await adapter.send(JSON.stringify({ id: "a:fork", method: "thread/fork", params: { threadId: "fixture-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
     const forked = await waitFor(frames, frame => frame.id === "a:fork");
-    assert.equal((forked.result as any).thread.id, "codex-fork-1");
-    const childStarted = await waitFor(frames, frame => frame.method === "thread/started" && (frame.params as any).thread.id === "codex-fork-1");
+    assert.equal((forked.result as any).thread.id, "fixture-fork-1");
+    const childStarted = await waitFor(frames, frame => frame.method === "thread/started" && (frame.params as any).thread.id === "fixture-fork-1");
     assert.equal(childStarted[LOGICAL_CLIENT_FIELD], "client-a");
-    assert.equal(frames.some(frame => frame.method === "thread/started" && (frame.params as any).thread.id === "codex-fork-1" && frame[LOGICAL_CLIENT_FIELD] === "client-b"), false);
-    await adapter.send(JSON.stringify({ id: "a:failed-fork", method: "thread/fork", params: { threadId: "codex-thread-1", testFail: true }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
+    assert.equal(frames.some(frame => frame.method === "thread/started" && (frame.params as any).thread.id === "fixture-fork-1" && frame[LOGICAL_CLIENT_FIELD] === "client-b"), false);
+    await adapter.send(JSON.stringify({ id: "a:failed-fork", method: "thread/fork", params: { threadId: "fixture-thread-1", testFail: true }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
     const rejected = await waitFor(frames, frame => frame.id === "a:failed-fork");
     assert.match((rejected.error as { message: string }).message, /fork rejected/);
-    assert.equal(frames.filter(frame => frame.method === "thread/started" && (frame.params as any).thread.id !== "codex-thread-1").length, 1);
-    await adapter.send(JSON.stringify({ id: "b:late-fork", method: "thread/fork", params: { threadId: "codex-thread-1", testDelayMs: 50 }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
+    assert.equal(frames.filter(frame => frame.method === "thread/started" && (frame.params as any).thread.id !== "fixture-thread-1").length, 1);
+    await adapter.send(JSON.stringify({ id: "b:late-fork", method: "thread/fork", params: { threadId: "fixture-thread-1", testDelayMs: 50 }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
     await adapter.send(JSON.stringify({ method: "runtime/client/disconnect", [LOGICAL_CLIENT_FIELD]: "client-b" }));
     await waitFor(frames, frame => frame.method === "test/delayedResponseSent");
     assert.equal(frames.some(frame => frame.id === "b:late-fork"), false);
-    await adapter.send(JSON.stringify({ id: "a:emit", method: "test/emitServerRequest", params: { threadId: "codex-fork-late" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
+    await adapter.send(JSON.stringify({ id: "a:emit", method: "test/emitServerRequest", params: { threadId: "fixture-fork-late" }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
     const emitted = await waitFor(frames, frame => frame.id === "a:emit");
     const requestId = (emitted.result as { requestId: number }).requestId;
     assert.equal(frames.some(frame => frame.id === requestId && frame.method === "item/tool/requestUserInput"), false);
@@ -1101,9 +1101,9 @@ test("pending Codex server requests follow the resumed Thread owner, not an arbi
 
     await adapter.send(JSON.stringify({ method: "runtime/client/disconnect", [LOGICAL_CLIENT_FIELD]: "client-a" }));
     await new Promise(resolve => setTimeout(resolve, 40));
-    await adapter.send(JSON.stringify({ id: "b:probe", method: "test/emitThreadNotification", params: { threadId: "codex-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
+    await adapter.send(JSON.stringify({ id: "b:probe", method: "test/emitThreadNotification", params: { threadId: "fixture-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
     assert.deepEqual((await waitFor(frames, frame => frame.id === "b:probe")).result, { nativeSubscribed: true });
-    await adapter.send(JSON.stringify({ id: "b:emit", method: "test/emitServerRequest", params: { threadId: "codex-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
+    await adapter.send(JSON.stringify({ id: "b:emit", method: "test/emitServerRequest", params: { threadId: "fixture-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
     const emitted = await waitFor(frames, frame => frame.id === "b:emit");
     const requestId = (emitted.result as { requestId: number }).requestId;
     assert.equal(frames.some(frame => frame.id === requestId && frame.method === "item/tool/requestUserInput"), false);
@@ -1111,7 +1111,7 @@ test("pending Codex server requests follow the resumed Thread owner, not an arbi
     await adapter.send(JSON.stringify({ id: requestId, result: { answers: {} }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
 
     await initializeClient(adapter, frames, "client-c");
-    await adapter.send(JSON.stringify({ id: "c:resume", method: "thread/resume", params: { threadId: "codex-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-c" }));
+    await adapter.send(JSON.stringify({ id: "c:resume", method: "thread/resume", params: { threadId: "fixture-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-c" }));
     await waitFor(frames, frame => frame.id === "c:resume");
     const replayedOriginal = frames.filter(frame => frame.id === 900 && frame.method === "item/tool/requestUserInput");
     assert.deepEqual(replayedOriginal.map(frame => frame[LOGICAL_CLIENT_FIELD]), ["client-a", "client-c"]);
@@ -1139,20 +1139,20 @@ test("a late Thread resume response cannot reclaim ownership for a disconnected 
     await adapter.connect();
     await initializeClient(adapter, frames, "client-a");
     await initializeClient(adapter, frames, "client-b");
-    await adapter.send(JSON.stringify({ id: "a:resume", method: "thread/resume", params: { threadId: "codex-thread-1", testDelayMs: 50 }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
+    await adapter.send(JSON.stringify({ id: "a:resume", method: "thread/resume", params: { threadId: "fixture-thread-1", testDelayMs: 50 }, [LOGICAL_CLIENT_FIELD]: "client-a" }));
     await adapter.send(JSON.stringify({ method: "runtime/client/disconnect", [LOGICAL_CLIENT_FIELD]: "client-a" }));
     await waitFor(frames, frame => frame.method === "test/delayedResponseSent");
     assert.equal(frames.some(frame => frame.id === "a:resume"), false);
-    await adapter.send(JSON.stringify({ id: "b:emit", method: "test/emitServerRequest", params: { threadId: "codex-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
+    await adapter.send(JSON.stringify({ id: "b:emit", method: "test/emitServerRequest", params: { threadId: "fixture-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
     const emitted = await waitFor(frames, frame => frame.id === "b:emit");
     const requestId = (emitted.result as { requestId: number }).requestId;
     assert.equal(frames.some(frame => frame.id === requestId && frame.method === "item/tool/requestUserInput"), false);
 
-    await adapter.send(JSON.stringify({ id: "b:wrong-resume", method: "thread/resume", params: { threadId: "codex-thread-1", testWrongThreadId: true }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
+    await adapter.send(JSON.stringify({ id: "b:wrong-resume", method: "thread/resume", params: { threadId: "fixture-thread-1", testWrongThreadId: true }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
     await waitFor(frames, frame => frame.id === "b:wrong-resume");
     assert.equal(frames.some(frame => frame.id === requestId && frame.method === "item/tool/requestUserInput"), false);
 
-    await adapter.send(JSON.stringify({ id: "b:resume", method: "thread/resume", params: { threadId: "codex-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
+    await adapter.send(JSON.stringify({ id: "b:resume", method: "thread/resume", params: { threadId: "fixture-thread-1" }, [LOGICAL_CLIENT_FIELD]: "client-b" }));
     await waitFor(frames, frame => frame.id === "b:resume");
     const request = await waitFor(frames, frame => frame.id === requestId && frame.method === "item/tool/requestUserInput");
     assert.equal(request[LOGICAL_CLIENT_FIELD], "client-b");
