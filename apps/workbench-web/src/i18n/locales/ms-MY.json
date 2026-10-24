@@ -924,5 +924,6 @@
   "imageEditor.fit": "Muatkan imej",
   "imageEditor.gestureHint": "Gunakan dua jari untuk zum dan alih.",
   "im.channels.back": "Saluran IM",
-  "im.route.customize": "Sesuaikan laluan ini"
+  "im.route.customize": "Sesuaikan laluan ini",
+  "sshConnections.removeDescription": "Mengalih keluar sambungan ini tidak memadamkan fail jauh atau menghentikan perkhidmatan jauh."
 }

@@ -922,5 +922,6 @@
   "imageEditor.fit": "Fit image",
   "imageEditor.gestureHint": "Use two fingers to zoom and move.",
   "im.channels.back": "IM channels",
-  "im.route.customize": "Customize this route"
+  "im.route.customize": "Customize this route",
+  "sshConnections.removeDescription": "Removing this connection does not delete remote files or stop remote services."
 }
