@@ -920,5 +920,7 @@
   "imageEditor.saveFailed": "Could not save this image. Keep editing or cancel.",
   "imageEditor.surface": "Image editing canvas",
   "imageEditor.fit": "Fit image",
-  "imageEditor.gestureHint": "Use two fingers to zoom and move."
+  "imageEditor.gestureHint": "Use two fingers to zoom and move.",
+  "im.channels.back": "IM channels",
+  "im.route.customize": "Customize this route"
 }
