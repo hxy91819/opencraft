@@ -39,7 +39,7 @@ try {
     assert.equal(await page.getByRole('menuitem',{name:'Task membership',exact:true}).locator('svg').count(),1);
     await page.screenshot({path:`/tmp/opencraft-conversation-header-menu/${touch?'touch':'desktop'}-${theme}.png`});
     const fork=page.getByRole('menuitem',{name:'Create branch',exact:true});
-    assert.equal(await fork.locator('svg.lucide-git-fork').count(),1);
+    assert.equal(await fork.locator('svg[data-action-glyph="fork"]').count(),1);
     const beforeError=await page.getByRole('menu').boundingBox();
     await activate(fork);
     await page.waitForFunction("window.fixture.state.forks===1");

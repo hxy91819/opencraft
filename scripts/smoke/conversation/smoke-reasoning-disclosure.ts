@@ -1120,7 +1120,7 @@ try {
       const summary = header.querySelector('.thread-activity-item__summary')!;
       const box = svg.getBBox(), screen = svg.getBoundingClientRect(), slot = rail.getBoundingClientRect();
       const type = getComputedStyle(summary);
-      return { glyph: svg.getAttribute('data-activity-glyph') ?? svg.getAttribute('data-opencraft-activity-icon') ?? svg.classList[1], paths: svg.innerHTML,
+      return { glyph: svg.getAttribute('data-activity-glyph') ?? svg.getAttribute('data-opencraft-activity-icon') ?? svg.getAttribute('data-action-glyph'), paths: svg.innerHTML,
         fontSize: parseFloat(type.fontSize), weight: type.fontWeight,
         width: screen.width, visibleWidth: box.width * screen.width / svg.viewBox.baseVal.width,
         centerOffset: Math.abs(screen.x + screen.width / 2 - slot.x - slot.width / 2),
@@ -1133,7 +1133,7 @@ try {
       assert.equal(icon.weight, '400');
       assert.ok(icon.visibleWidth >= 14.5 && icon.visibleWidth <= 15.5, `${icon.glyph}: balanced visible silhouette`);
       assert.ok(icon.centerOffset < 0.1, `${icon.glyph}: centered shared rail`);
-      if (icon.glyph?.startsWith('lucide-')) assert.ok(Math.abs(icon.renderedStroke - 1.2) < 0.01);
+      assert.ok(typeof icon.glyph === 'string' && icon.glyph.length > 0, 'Measured icons expose their shared artwork identity');
     }
     await page.screenshot({ path: join(output, `${theme}-${touch ? 'touch' : 'mouse'}-activity-scale.png`) });
     // Reproduce the previous proportions on the same real consumer, then remove

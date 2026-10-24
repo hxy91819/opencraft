@@ -133,7 +133,7 @@ try {
       await finish(`close-${id}`);
       assert.ok(Math.abs(await reason.evaluate(node => node.getBoundingClientRect().height) - closedHeight) < 0.5, "closing restores the original activity height");
     }
-    const image = page.locator(".thread-activity-item").filter({ has: page.locator(".lucide-image") });
+    const image = page.locator(".thread-activity-item").filter({ has: page.locator('[data-opencraft-activity-icon="image"]') });
     const imageToggle = image.getByRole("button").first();
     await start(imageToggle); await activate(imageToggle); await finish("open-image", "grow");
     await start(imageToggle); await activate(imageToggle); await finish("close-image");

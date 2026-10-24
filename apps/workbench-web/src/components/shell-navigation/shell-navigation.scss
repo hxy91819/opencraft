@@ -63,7 +63,7 @@
       @include typography.role(metadata, primary);
       display: flex; align-items: center; justify-content: center; gap: 0;
       width: var(--size-application-navigation-hit-min); height: var(--size-application-navigation-hit-min); padding: 0;
-      > svg:is(.lucide, .ui-action-glyph) { @include icons.navigation-leading-icon; }
+      > svg.ui-action-glyph { @include icons.navigation-leading-icon; }
       .shell-navigation__item-label { display: none; }
 
     }

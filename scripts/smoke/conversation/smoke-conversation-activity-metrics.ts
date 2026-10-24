@@ -60,7 +60,7 @@ try {
       const label = header.querySelector('.thread-activity-item__summary')!;
       const style = getComputedStyle(label), box = icon.getBBox(), rect = icon.getBoundingClientRect(), slot = rail.getBoundingClientRect();
       const scale = rect.width / icon.viewBox.baseVal.width;
-      return { glyph: icon.getAttribute('data-activity-glyph') ?? icon.getAttribute('data-opencraft-activity-icon') ?? icon.getAttribute('data-action-glyph') ?? Array.from(icon.classList).find(c => c.startsWith('lucide-')),
+      return { glyph: icon.getAttribute('data-activity-glyph') ?? icon.getAttribute('data-opencraft-activity-icon') ?? icon.getAttribute('data-action-glyph'),
         paths: icon.innerHTML, fontSize: parseFloat(style.fontSize), family: style.fontFamily, weight: style.fontWeight,
         lineHeight: parseFloat(style.lineHeight), width: rect.width, visibleWidth: box.width * scale,
         stroke: parseFloat(getComputedStyle(icon).strokeWidth) * scale,
@@ -84,6 +84,7 @@ try {
       assert.equal(status.weight, summaryType.fontWeight);
     }
     const normal = await measure();
+    assert.ok(normal.every(row => typeof row.glyph === "string" && row.glyph.length > 0), "Every measured icon exposes its shared artwork identity");
     const kinds = new Set(normal.map(row => row.glyph));
     for (const glyph of ["terminal", "read", "thinking", "image", "checklist"]) assert.ok(kinds.has(glyph), glyph);
     assert.ok(kinds.size >= 14, "include every tool glyph and supplemental file/interaction/web consumer");
