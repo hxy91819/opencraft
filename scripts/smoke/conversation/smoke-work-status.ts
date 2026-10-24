@@ -125,6 +125,18 @@ try {
     "settled labels must not retain live intervals",
   );
   await page.screenshot({ path: "/tmp/work-status-complete.png" });
+  await page.evaluate(() => (window as any).cached());
+  await page.waitForFunction(() => !document.body.textContent?.includes("Tool output"));
+  assert.equal(await page.locator("[data-work-status]").count(), 1,
+    "cached completed interval must have one visible label");
+  assert.equal(await page.locator(".thread-agent-activity__turn-header").count(), 1);
+  assert.equal(await page.locator(".thread-work-status__rule").count(), 1,
+    "cached interval must have one rule");
+  assert.equal(await page.locator(".thread-agent-activity__turn-header button").count(), 0,
+    "a static interval must not expose an empty disclosure");
+  assert.equal(await page.locator(".thread-agent-activity__outer-content").count(), 0,
+    "the static header owns the interval without a second content surface");
+  await page.screenshot({ path: "/tmp/work-status-cached.png" });
   await page.evaluate(() => (window as any).stop());
   await page.waitForSelector('[data-work-status="stopped"]');
   assert.equal(
