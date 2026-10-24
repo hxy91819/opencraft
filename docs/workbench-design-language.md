@@ -174,7 +174,9 @@ its caption and controls remain readable together. Daily and weekly charts show
 at most the latest 26 weeks; cumulative bars retain the usage from the entire
 selected range, including days before the first displayed week. The daily table
 and summary retain the complete selected range. Missing coverage remains partial;
-a model with unknown identity can still have a known token amount.
+a model with unknown identity can still have a known token amount. If an older
+response omits the optional settled-turn count, show an unknown count rather
+than relabeling every turn as settled. A known empty range still has zero turns.
 
 The persistent desktop titlebar rail has one disclosure rule: while the
 Sidebar is open, Start is the single new-task affordance; while it is hidden, a

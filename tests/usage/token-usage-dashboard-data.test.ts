@@ -137,3 +137,11 @@ test("cumulative bars retain earlier usage when the selected range exceeds the v
   assert.equal(cumulative.at(-1)!.turns, 3);
   assert.equal(buildActivityBars(daily, "2025-11-01", "2026-10-24", "weekly").at(-1)!.tokens, "300");
 });
+
+
+test("an omitted settled turn count stays unknown instead of borrowing the total turn count", () => {
+  const metrics = dashboardMetrics({summary: {tokens: "1500", turns: 3, categories: {settled: "1200"}}, daily: []});
+  assert.equal(metrics.settledTurns, null);
+  assert.equal(metrics.settled, "1200");
+  assert.equal(metrics.total, "1500");
+});

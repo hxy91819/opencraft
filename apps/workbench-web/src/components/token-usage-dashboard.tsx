@@ -396,7 +396,7 @@ export function TokenUsageDashboardView({
                 <small>{metrics.peakDay ?? "—"}</small>
               </div>
               <div className="token-usage__strip-cell">
-                <strong>{count(String(metrics.settledTurns))}</strong>
+                <strong>{metrics.settledTurns === null ? "—" : count(String(metrics.settledTurns))}</strong>
                 <span>{copy("已结算轮次", "Settled turns")}</span>
                 <small>{copy(`共 ${visible.summary.turns} 轮`, `${visible.summary.turns} turns total`)}</small>
               </div>

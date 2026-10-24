@@ -5,7 +5,7 @@ export interface DashboardMetrics {
   total: string;
   peak: string;
   peakDay: string | null;
-  settledTurns: number;
+  settledTurns: number | null;
   longestStreak: number;
   currentStreak: number;
 }
@@ -81,7 +81,7 @@ export function dashboardMetrics(
   const peak = max.toString();
   if (max === 0n) peakDay = null;
 
-  const settledTurns = snapshot.summary.settledTurns ?? snapshot.summary.turns ?? 0;
+  const settledTurns = snapshot.summary.settledTurns ?? (snapshot.summary.turns === 0 ? 0 : null);
 
   // Active days: turns > 0 or tokens > 0
   const activeDaySet = new Set<number>();
