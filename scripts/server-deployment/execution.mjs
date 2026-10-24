@@ -8,6 +8,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 
 import { assertExecutionNativePayload } from './native-preflight.mjs';
 import { attachDshHost, readPrivateJson } from './dsh-host-client.mjs';
+import { browserRuntimeIdentity } from '../browser-runtime-identity.mjs';
 
 const exec = promisify(execFile);
 const daemonPayloadFiles = ['gateway.mjs', 'daemon.cjs', 'dsh-capability-plugin.mjs'];
@@ -87,6 +88,14 @@ export async function computeExecutionHash(root, extraIdentity = []) {
     const content = normalizeReleaseIdentity(await readFile(join(directory, relative)), identity);
     hash.update(relative); hash.update('\0'); hash.update(String(content.length)); hash.update('\0'); hash.update(content);
   }
+  // Browser workers, assets and Electron live outside execution/, but are
+  // selected from the gateway's immutable startup root just like its bundles.
+  // An absent browser directory remains compatible with daemon/legacy releases.
+  const browserDirectory = join(root, 'runtime/browser');
+  let browserPresent = true;
+  try { await readdir(browserDirectory); }
+  catch (error) { if (error.code === 'ENOENT') browserPresent = false; else throw error; }
+  if (browserPresent) hash.update('\0browser-runtime\0').update(await browserRuntimeIdentity(browserDirectory));
   return hash.digest('hex');
 }
 // Observe the independent process identity. Protocol compatibility is checked by

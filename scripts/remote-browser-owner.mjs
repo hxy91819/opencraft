@@ -1,11 +1,12 @@
 import { connect } from 'node:net';
 import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
-import { cp, mkdir, rm, rename, readdir, readFile } from 'node:fs/promises';
+import { cp, mkdir, rm, rename } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import owner from './remote-browser/owner.cjs';
 import { prepareBrowserRuntimeAccess } from './remote-browser-access.mjs';
+import { browserRuntimeIdentity } from './browser-runtime-identity.mjs';
 
 function run(command, args) {
   return new Promise((resolve, reject) => {
@@ -40,16 +41,6 @@ export async function connectBrowserOwner(socketPath) {
   });
 }
 
-// Public scripts/assets are immutable while an owner is alive. Native binary
-// replacement retains the existing lifecycle contract; this detects JS updates.
-async function scriptsFingerprint(directory) {
-  const hash = createHash('sha256');
-  const entries = await readdir(directory, { withFileTypes: true });
-  for (const name of entries.filter(entry => entry.isFile()).map(entry => entry.name).sort()) {
-    hash.update(name); hash.update('\0'); hash.update(await readFile(join(directory, name))); hash.update('\0');
-  }
-  return hash.digest('hex');
-}
 export async function reuseBrowserOwner(transport, current, stop) {
   // This transport is the sole attached peer. Its inventory was taken after
   // draining the previous Gateway, so no other writer can create a page here.
@@ -71,7 +62,7 @@ export async function startBrowserOwner({ directory, dataDirectory }) {
   // Do filesystem work before attachment: once attached, native events must
   // reach the Gateway immediately, without an unobserved asynchronous gap.
   let runtimeCurrent = true;
-  try { runtimeCurrent = await scriptsFingerprint(directory) === await scriptsFingerprint(join(dataDirectory, 'owner-runtime')); }
+  try { runtimeCurrent = await browserRuntimeIdentity(directory) === await browserRuntimeIdentity(join(dataDirectory, 'owner-runtime')); }
   catch { /* Unknown runtime identity must never destroy tabs. */ }
   try {
     const attached = await connectBrowserOwner(socketPath);

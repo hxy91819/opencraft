@@ -298,3 +298,15 @@ that runtime root and the selected release; only a successful gateway restart
 retires its old file lifetime. Missing or unrecognized runtime identity retains
 all uncertain pins. Browser executables and lazily read runtime files must remain
 available while their owning gateway is alive.
+
+
+### Browser-only payload changes
+
+The execution digest includes runtime/browser scripts, assets and nested Electron
+files as well as execution/. Browser-only patches therefore replace the Gateway
+through the managed transaction, while identical payloads still allow Web-only
+updates without a restart. Native files are streamed into the digest during updates
+and owner attachment; they are not buffered as whole binaries or hashed per frame.
+The persistent owner uses the same complete browser identity. Live tabs keep their
+immutable owner and mark it stale; once all pages close an empty stale owner can
+be replaced, including when only the Electron binary or native resources changed.
