@@ -139,7 +139,7 @@ test("history can use retained Item clocks, but cannot invent clocks from a tota
   );
 });
 
-test("sleep, canceled, no final, and final-only Turns follow original work-item eligibility", () => {
+test("sleep, interrupted, failed, and final-only Turns have no work status", () => {
   assert.equal(
     deriveTurnWorkStatus({
       ...base,
