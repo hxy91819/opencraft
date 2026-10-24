@@ -1176,9 +1176,8 @@ function pruneAcknowledgedSubmissions(
     ) {
       submissions.delete(commandId);
     } else if (state.kind === "steer" && acknowledged && targetSettled) {
-      // Codex does not delete an accepted steeringUserMessage. The Turn owns
-      // that display item permanently; only its pending-command bookkeeping
-      // retires when the target Turn settles.
+      // The authoritative Turn keeps an accepted steering item permanently;
+      // only its pending-command bookkeeping retires when that Turn settles.
       confirmedSteers.set(commandId, state);
       submissions.delete(commandId);
     }
@@ -1635,8 +1634,8 @@ export function createReplicaConversationRuntime(
                 previous.kind === "steer" && receipt.turnId !== null
                   ? asTurnId(receipt.turnId)
                   : previous.targetTurnId,
-              // Codex treats the steer RPC as transport admission only. The
-              // steering Item becomes accepted exclusively when a matching
+              // A steer RPC receipt is transport admission only. The steering
+              // Item becomes accepted exclusively when a matching
               // authoritative userMessage arrives.
               state: previous.kind === "steer" ? previous.state : "accepted",
               error: null,
