@@ -1,12 +1,14 @@
+import { sharedActionIcon } from "./shared-action-icons";
 import React from "react";
 import { progressIndicatorGeometry } from "@opencraft/design-system/progress";
-import { ActionGlyph, BrainArtwork, PencilArtwork, TerminalArtwork, RoundedPage, type ActionIconProps } from "./icon-glyph";
+import { ActionGlyph, BrainArtwork, PencilArtwork, RoundedPage, type ActionIconProps } from "./icon-glyph";
 export type { ActionIconProps } from "./icon-glyph";
 export * from "./interface-icons";
 export * from "./image-edit-icons";
 export * from "./activity-icons";
 export { RecoveryScanArtwork } from "./recovery-scan";
 export * from "./layout-icons";
+export { BoldIcon, ItalicIcon, ParagraphIcon, QuoteIcon, OrderedListIcon, UndoIcon, HistoryIcon, CalendarClockIcon, NewFileIcon, SearchFileIcon, AddImageIcon } from "./shared-action-icons";
 
 /** Input geometry remains owned by ui-composer-input-icon (including touch). */
 export function MicrophoneIcon({ off = false, ...props }: ActionIconProps & { readonly off?: boolean }) {
@@ -70,38 +72,25 @@ export function LoadingRingIcon(props: ActionIconProps) {
 }
 
 /** Counterclockwise return shared by reset and retry actions. */
-export function ResetIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="reset">
-    <path d="M5 9a8 8 0 1 1-1 5" />
-    <path d="M5 4.5V9h4.5" />
-  </ActionGlyph>;
-}
+export const ResetIcon = sharedActionIcon("ResetIcon");
 
 
 /** Static controls use the same quiet contours without process-row animation. */
-export function SearchIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="search"><path d="M17.5 10.75a6.75 6.75 0 1 1-13.5 0 6.75 6.75 0 0 1 13.5 0ZM15.5 15.5l5 5" /></ActionGlyph>;
-}
+export const SearchIcon = sharedActionIcon("SearchIcon");
 
-export function TerminalIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="terminal"><TerminalArtwork /></ActionGlyph>;
-}
+export const TerminalIcon = sharedActionIcon("TerminalIcon");
 
 export function ModelIcon(props: ActionIconProps) {
   return <ActionGlyph {...props} kind="model"><BrainArtwork /></ActionGlyph>;
 }
 
-export function CopyIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="copy"><rect x="8" y="8" width="12" height="12" rx="2.75" /><path d="M15 4H7a3 3 0 0 0-3 3v8" /></ActionGlyph>;
-}
+export const CopyIcon = sharedActionIcon("CopyIcon");
 
 export function EditIcon(props: ActionIconProps) {
   return <ActionGlyph {...props} kind="edit"><PencilArtwork /></ActionGlyph>;
 }
 
-export function ComposeIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="compose"><path d="M11 4H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-4M10 11l7-7a2.1 2.1 0 0 1 3 3l-7 7-4 1 1-4Zm5.5-5.5 3 3" /></ActionGlyph>;
-}
+export const ComposeIcon = sharedActionIcon("ComposeIcon");
 
 export function DeleteIcon(props: ActionIconProps) {
   return <ActionGlyph {...props} kind="delete"><path d="M4.5 6.5h15M9 6.5V4h6v2.5m-9 0 1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M10 10v6.5M14 10v6.5" /></ActionGlyph>;
@@ -111,41 +100,23 @@ export function MoreIcon(props: ActionIconProps) {
   return <ActionGlyph {...props} kind="more"><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" /></ActionGlyph>;
 }
 
-export function AddIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="add"><path d="M12 5v14M5 12h14" /></ActionGlyph>;
-}
+export const AddIcon = sharedActionIcon("AddIcon");
 
-export function CloseIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="close"><path d="m6 6 12 12M6 18 18 6" /></ActionGlyph>;
-}
+export const CloseIcon = sharedActionIcon("CloseIcon");
 
-export function CheckIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="check"><path d="m5 12 4.5 4.5L19 7" /></ActionGlyph>;
-}
+export const CheckIcon = sharedActionIcon("CheckIcon");
 
-export function AttachmentIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="attachment"><path d="m9 13 6.5-6.5a2.5 2.5 0 0 1 3.5 3.5L10.5 18.5a4.5 4.5 0 0 1-6.4-6.4L13 3.2" /></ActionGlyph>;
-}
+export const AttachmentIcon = sharedActionIcon("AttachmentIcon");
 
-export function ChevronDownIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="chevron-down"><path d="m6 9 6 6 6-6" /></ActionGlyph>;
-}
+export const ChevronDownIcon = sharedActionIcon("ChevronDownIcon");
 export function ChevronUpIcon(props: ActionIconProps) {
   return <ActionGlyph {...props} kind="chevron-up"><path d="m6 15 6-6 6 6" /></ActionGlyph>;
 }
-export function ChevronRightIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="chevron-right"><path d="m9 6 6 6-6 6" /></ActionGlyph>;
-}
-export function ChevronLeftIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="chevron-left"><path d="m15 6-6 6 6 6" /></ActionGlyph>;
-}
+export const ChevronRightIcon = sharedActionIcon("ChevronRightIcon");
+export const ChevronLeftIcon = sharedActionIcon("ChevronLeftIcon");
 
-export function FolderIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="folder"><path d="M4 7a3 3 0 0 1 3-3h3l2 2.5h5a3 3 0 0 1 3 3V17a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7Z" /></ActionGlyph>;
-}
-export function FolderOpenIcon(props: ActionIconProps) {
-  return <ActionGlyph {...props} kind="folder-open"><path d="M4 12V7a3 3 0 0 1 3-3h3l2 2.5h5a3 3 0 0 1 3 3M4 12h16l-2 6a3 3 0 0 1-2.8 2H7a3 3 0 0 1-3-3v-5Z" /></ActionGlyph>;
-}
+export const FolderIcon = sharedActionIcon("FolderIcon");
+export const FolderOpenIcon = sharedActionIcon("FolderOpenIcon");
 
 /** Refresh, viewport rotation and conversation replay retain distinct meanings. */
 export function RefreshIcon(props: ActionIconProps) {

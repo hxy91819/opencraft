@@ -171,3 +171,12 @@ then inspect real sidebar menus, Composer, content toolbars and disabled states.
 Search overlays and the touch header also inherit the shared SVG weight; their
 slot sizing and materials do not carry a separate thin stroke override. Generated
 Bot personas are avatar artwork and retain their dedicated body/effect strokes.
+
+
+Native actions use `@opencraft/design-system-native/action-icons`. The plain
+`@opencraft/design-system/action-artwork` catalog owns shared action contours;
+Web and Native adapters choose SVG primitives and accessibility independently.
+Keep size, color, stroke and disabled-state decisions at existing control slots.
+The Native sidebar buttons use the existing `sidebar-toggle-glyphs` filled state
+contours and their 20-unit canvas. Do not import Web SVG components into Native
+or add a second local drawing when an action already has a shared semantic icon.

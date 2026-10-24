@@ -1,7 +1,7 @@
 import { nativeTypographyStyle } from "@opencraft/design-system/typography";
 import { Platform } from "react-native";
 import type { ChatNodeRendererProps } from "@opencraft/chat-render-react";
-import { Code2, Workflow, X } from "lucide-react-native";
+import { CodeIcon as Code2, BranchIcon as Workflow, CloseIcon as X } from "@opencraft/design-system-native/action-icons";
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, Modal, Pressable, SafeAreaView, ScrollView, Text, View } from "react-native";
 import WebView, { type WebViewMessageEvent } from "react-native-webview";

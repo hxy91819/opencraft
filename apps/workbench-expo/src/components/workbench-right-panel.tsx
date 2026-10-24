@@ -1,5 +1,5 @@
 import type { WorkbenchFileChange } from "@opencraft/workbench-runtime";
-import { Check, FileCode2, X } from "lucide-react-native";
+import { CheckIcon as Check, CodeFileIcon as FileCode2, CloseIcon as X } from "@opencraft/design-system-native/action-icons";
 import { ScrollView, Text, View } from "react-native";
 import { StyleSheet, useWorkbenchTheme } from "../styles/workbench-styles";
 import { Button, IconButton } from "./ui/button";

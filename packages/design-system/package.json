@@ -30,7 +30,8 @@
     "./sidebar-toggle-glyphs": "./src/sidebar-toggle-glyphs.ts",
     "./icons.web": "./src/icons.web.scss",
     "./typography-mixins.web": "./src/typography-mixins.web.scss",
-    "./interaction-mixins.web": "./src/interaction-mixins.web.scss"
+    "./interaction-mixins.web": "./src/interaction-mixins.web.scss",
+    "./action-artwork": "./src/action-artwork.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

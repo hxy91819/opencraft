@@ -2,7 +2,7 @@ import { nativeTypographyStyle } from "@opencraft/design-system/typography";
 import { Platform } from "react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, Text, View } from "react-native";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeftIcon as ArrowLeft } from "@opencraft/design-system-native/action-icons";
 import { StyleSheet, useWorkbenchTheme } from "../styles/workbench-styles";
 import { mobileDeveloperLog } from "../runtime/mobile-developer-log";
 import { decodeNativeChatResourceText } from "../runtime/native-chat-resource";

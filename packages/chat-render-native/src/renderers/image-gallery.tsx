@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, X } from "lucide-react-native";
+import { ChevronLeftIcon as ChevronLeft, ChevronRightIcon as ChevronRight, CloseIcon as X } from "@opencraft/design-system-native/action-icons";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Image, Modal, Pressable, SafeAreaView, View } from "react-native";
 import { StyleSheet } from "../styles";

@@ -3,7 +3,29 @@ import { BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import type { PermissionProfileSummary, Project } from "@opencraft/appserver-protocol/generated/v2";
-import { ArrowUp, Bold, Check, ChevronDown, Code2, FilePlus2, FolderOpen, ImagePlus, Italic, Link2, List, ListOrdered, Paperclip, Pilcrow, Quote, Redo2, RotateCcw, ShieldCheck, Square, Undo2, X } from "lucide-react-native";
+import {
+  ArrowUpIcon as ArrowUp,
+  BoldIcon as Bold,
+  CheckIcon as Check,
+  ChevronDownIcon as ChevronDown,
+  CodeIcon as Code2,
+  NewFileIcon as FilePlus2,
+  FolderOpenIcon as FolderOpen,
+  AddImageIcon as ImagePlus,
+  ItalicIcon as Italic,
+  LinkIcon as Link2,
+  ListIcon as List,
+  OrderedListIcon as ListOrdered,
+  AttachmentIcon as Paperclip,
+  ParagraphIcon as Pilcrow,
+  QuoteIcon as Quote,
+  RedoIcon as Redo2,
+  ResetIcon as RotateCcw,
+  ReviewShieldIcon as ShieldCheck,
+  SquareIcon as Square,
+  UndoIcon as Undo2,
+  CloseIcon as X,
+} from "@opencraft/design-system-native/action-icons";
 import {
   composerDocumentToPlainText,
   createClientId,

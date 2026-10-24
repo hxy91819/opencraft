@@ -2,7 +2,7 @@ import { nativeTypographyStyle, typographyRegistry } from "@opencraft/design-sys
 import { Platform } from "react-native";
 import { codeBlockWrapPreference, codeLanguageLabel, resolveCodeSurfacePolicy, type ChatNodeRendererProps } from "@opencraft/chat-render-react";
 import { nativeThemes } from "@opencraft/design-system/tokens.native";
-import { Check, Copy } from "lucide-react-native";
+import { CheckIcon as Check, CopyIcon as Copy, WrapTextIcon } from "@opencraft/design-system-native/action-icons";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import type { ChatCodeTokenLines, CodeHighlightTheme } from "@opencraft/chat-render-react/code-highlight";
@@ -76,7 +76,7 @@ export function NativeCodeRenderer({ node, context }: ChatNodeRendererProps) {
       <View style={styles.header}>
         <Text numberOfLines={1} style={styles.label}>{codeLanguageLabel(node.language, open)}</Text>
         {policy.wrap === "user-controlled" ? <Pressable accessibilityLabel={wrap ? "Disable word wrap" : "Enable word wrap"} accessibilityRole="button" accessibilityState={{ selected: wrap }} onPress={() => codeBlockWrapPreference.toggle()} style={styles.action}>
-          <Text style={styles.actionText}>↵</Text>
+          <WrapTextIcon size={16} color={actionColor} />
         </Pressable> : null}
         {!open ? <Pressable accessibilityLabel={copied ? "Copied code" : "Copy code"} accessibilityRole="button" onPress={copy} style={styles.action}>
           {copied ? <Check size={16} color={actionColor} /> : <Copy size={16} color={actionColor} />}

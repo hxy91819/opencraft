@@ -13,6 +13,8 @@ import * as mediaParagraph from "../../packages/chat-render-native/src/renderers
 import * as proseSpacing from "../../packages/chat-render-native/src/renderers/prose-spacing";
 import * as imageSize from "../../packages/chat-render-native/src/renderers/image-size";
 import * as resourceOpening from "../../packages/chat-render-native/src/renderers/resource-opening";
+import * as actionArtwork from "@opencraft/design-system/action-artwork";
+import * as sidebarArtwork from "@opencraft/design-system/sidebar-toggle-glyphs";
 import { workingShimmerMotion } from "@opencraft/design-system/tokens";
 import * as typography from "@opencraft/design-system/typography";
 import { nativeThemes } from "@opencraft/design-system/tokens.native";
@@ -76,8 +78,9 @@ const seams: Record<string, unknown> = {
   "react": React,
   "react/jsx-runtime": require("react/jsx-runtime"),
   "react-native": native,
-  "lucide-react-native": new Proxy({}, { get: () => icon }),
-  "react-native-svg": { default: icon, Circle: icon, Path: icon },
+  "react-native-svg": { __esModule: true, default: icon, Circle: icon, Path: icon, Rect: icon, Ellipse: icon, Line: icon, Polygon: icon, Polyline: icon },
+  "@opencraft/design-system/action-artwork": actionArtwork,
+  "@opencraft/design-system/sidebar-toggle-glyphs": sidebarArtwork,
   "@opencraft/chat-core": core,
   "@opencraft/design-system/tokens": { workingShimmerMotion },
   "@opencraft/chat-render-native": {},
@@ -123,6 +126,7 @@ async function compileNative(url: URL, expose = "") {
   }, module.exports, module);
   return module.exports;
 }
+seams["@opencraft/design-system-native/action-icons"] = await compileNative(new URL("../../packages/design-system-native/src/action-icons.tsx", import.meta.url));
 seams["./ui/interactive-surface"] = await compileNative(new URL("../../apps/workbench-expo/src/components/ui/interactive-surface.tsx", import.meta.url));
 const { NativeProseRenderer, nativeProseNodeKinds } = await compileNative(new URL("../../packages/chat-render-native/src/renderers/prose.tsx", import.meta.url));
 const { NativeCodeRenderer } = await compileNative(new URL("../../packages/chat-render-native/src/renderers/code.tsx", import.meta.url));
@@ -141,9 +145,9 @@ seams["@opencraft/chat-render-native"] = {
   },
 };
 test.after(async () => { removeResourcePolicy(); removeLink(); removeCode(); removeProse(); await nativeRuntime.dispose(); });
-const { ReasoningBlock, Frame, NativeDocumentHostContext } = await compileNative(
+const { ReasoningBlock, Frame, NativeDocumentHostContext, NativeTodoTimelineRenderer } = await compileNative(
   new URL("../../apps/workbench-expo/src/components/workbench-conversation.tsx", import.meta.url),
-  "\nexport { ReasoningBlock, Frame, NativeDocumentHostContext };\n",
+  "\nexport { ReasoningBlock, Frame, NativeDocumentHostContext, NativeTodoTimelineRenderer };\n",
 );
 
 function reason(summary: string, detail: string | null = null): core.ReasoningTimelineBlock {
@@ -349,5 +353,19 @@ test("Native response work retains independent thinking/tool choices across comp
     assert.equal(container.querySelector("[data-selectable]"), null);
     assert.equal(container.querySelectorAll("[data-block-type='command-execution']").length, withTools ? 2 : 0,
       "closing thinking and cycling the outer fold cannot reset tool intent");
+  });
+});
+
+
+test("Native todo status uses shared glyphs and keeps labelled step text", async () => {
+  await withNativeRoot(async (container, render) => {
+    await render(React.createElement(NativeTodoTimelineRenderer, { block: { type: "todo", id: "synthetic-todo", entries: [
+      { id: "done", status: "complete", text: "Finished step" },
+      { id: "next", status: "pending", text: "Remaining step" },
+    ] } }));
+    await act(async () => { (container.querySelector('[role="button"]') as HTMLElement).click(); });
+    assert.equal(container.querySelector('[aria-label="Completed: Finished step"]')?.textContent, "Finished step");
+    assert.equal(container.querySelector('[aria-label="Pending: Remaining step"]')?.textContent, "Remaining step");
+    assert.doesNotMatch(container.textContent ?? "", /[✓○]/u);
   });
 });

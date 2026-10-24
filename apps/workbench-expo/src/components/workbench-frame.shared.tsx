@@ -19,7 +19,7 @@ import {
 } from "@opencraft/workbench-runtime";
 import { setStringAsync } from "expo-clipboard";
 import { Button } from "heroui-native";
-import { History, Plus } from "lucide-react-native";
+import { HistoryIcon as History, AddIcon as Plus } from "@opencraft/design-system-native/action-icons";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Animated, KeyboardAvoidingView, Linking, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

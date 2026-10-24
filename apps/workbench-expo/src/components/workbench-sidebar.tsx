@@ -1,10 +1,6 @@
 import type { WorkbenchThread } from "@opencraft/workbench-runtime";
 import { BlurView } from "expo-blur";
-import {
-  PanelLeftClose,
-  Plus,
-  SquarePen,
-} from "lucide-react-native";
+import { SidebarVisibleIcon as PanelLeftClose, AddIcon as Plus, ComposeIcon as SquarePen } from "@opencraft/design-system-native/action-icons";
 import { ScrollView, Text, View } from "react-native";
 import { StyleSheet, useWorkbenchTheme } from "../styles/workbench-styles";
 import { IconButton } from "./ui/button";
