@@ -151,15 +151,15 @@ test('actual Headless bundle persists authenticated messages, binds execution an
 test('conversation tools execute in the server after the source viewer disconnects, with native history and the real target Host queue',async t=>{
   const f=await fixture(t);
   const human=f.actors.resolveHuman({provider:'local',subject:'source-user',displayName:'User',expiresAt:Date.now()+60000})!;
-  const reference={serverId:'fixture',threadId:'codex-fork-1'};
+  const reference={serverId:'fixture',threadId:'fixture-fork-1'};
   await f.rpc('thread/fork',{threadId:f.threadId});
   await f.rpc('test/setHistory',{threadId:reference.threadId,turns:[{id:'saved',items:[{type:'agentMessage',id:'answer',text:'Verified target history'}]}]});
-  const started=await f.rpc('turn/start',{threadId:f.threadId,input:[{type:'text',text:'inspect target opencraft://conversation/v1/fixture/codex-fork-1'}],clientUserMessageId:'source-input'},undefined,false,human);
+  const started=await f.rpc('turn/start',{threadId:f.threadId,input:[{type:'text',text:'inspect target opencraft://conversation/v1/fixture/fixture-fork-1'}],clientUserMessageId:'source-input'},undefined,false,human);
   const turnId=started.result.turn.id;
   const initial=(await f.rpc('test/readAcceptedInputs')).result.data.find((r:any)=>r.params.clientUserMessageId==='source-input');
   assert.equal(initial.params.additionalContext['opencraft.conversations'].kind,'untrusted');
   assert.match(initial.params.additionalContext['opencraft.conversations'].value,/Verified target history/);
-  const encoded='opencraft://conversation/v1/fixture/codex-fork-1';
+  const encoded='opencraft://conversation/v1/fixture/fixture-fork-1';
   await f.rpc('test/emitTool',{threadId:f.threadId,turnId,tool:'read_thread',arguments:{reference:encoded}});
   const waitResult=async(count:number)=>{for(let i=0;i<100;i++){const r=await f.rpc('test/readToolResults');if(r.result.data.length>=count)return r.result.data;await new Promise(r=>setTimeout(r,10));}throw Error('tool result timeout');};
   const reads=await waitResult(1);assert.equal(reads[0].result.success,true);assert.match(reads[0].result.contentItems[0].text,/Verified target history/);

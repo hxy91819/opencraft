@@ -63,7 +63,7 @@ input.on("line", line => {
     return;
   }
   if (message.method === "thread/list") {
-    const thread = { id: "codex-thread-1", name: threadNames.get("codex-thread-1") ?? null, preview: "", ephemeral: false, turns: [] };
+    const thread = { id: "fixture-thread-1", name: threadNames.get("fixture-thread-1") ?? null, preview: "", ephemeral: false, turns: [] };
     const matchesArchiveFilter = message.params?.archived === true ? archivedThreads.has(thread.id) : !archivedThreads.has(thread.id);
     send({ id: message.id, result: { data: loadedThreads.has(thread.id) && matchesArchiveFilter ? [thread] : [], nextCursor: null } });
     return;
@@ -210,7 +210,7 @@ input.on("line", line => {
       return;
     }
     const respond = () => {
-      const thread = { id: message.params.testDelayMs ? "codex-fork-late" : "codex-fork-1", forkedFromId: message.params.threadId, preview: "", ephemeral: message.params.ephemeral === true, turns: [] };
+      const thread = { id: message.params.testDelayMs ? "fixture-fork-late" : "fixture-fork-1", forkedFromId: message.params.threadId, preview: "", ephemeral: message.params.ephemeral === true, turns: [] };
       loadedThreads.add(thread.id);
       subscribedThreads.add(thread.id);
       send({ id: message.id, result: { thread, model: "gpt-test", modelProvider: "opencraft-account-pool", cwd: process.cwd() } });
@@ -224,7 +224,7 @@ input.on("line", line => {
   if (message.method === "thread/start") {
     const respond = () => {
       const title = process.env.OPENCRAFT_TEST_AUTO_TITLES && message.params.threadSource === "thread_title";
-      const thread = { id: title ? `title-thread-${++nextTitleThread}` : "codex-thread-1", preview: "", ephemeral: message.params.ephemeral === true, modelProvider: "opencraft-account-pool", createdAt: 1, updatedAt: 1, status: { type: "idle" }, turns: [] };
+      const thread = { id: title ? `title-thread-${++nextTitleThread}` : "fixture-thread-1", preview: "", ephemeral: message.params.ephemeral === true, modelProvider: "opencraft-account-pool", createdAt: 1, updatedAt: 1, status: { type: "idle" }, turns: [] };
       if (title) titleThreads.add(thread.id);
       loadedThreads.add(thread.id);
       subscribedThreads.add(thread.id);
@@ -238,7 +238,7 @@ input.on("line", line => {
     return;
   }
   if (typeof message.id === "number" && (message.result || message.error)) {
-    send({ method: "serverRequest/resolved", params: { threadId: "codex-thread-1", requestId: message.id } });
+    send({ method: "serverRequest/resolved", params: { threadId: "fixture-thread-1", requestId: message.id } });
     return;
   }
   if (message.method === "test/readAcceptedInputs") { send({ id: message.id, result: { data: acceptedInputs } }); return; }
