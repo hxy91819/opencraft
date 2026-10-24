@@ -18,7 +18,7 @@ export function assertSubmissionIdentity(context: TransportSubmissionContext): v
   }
 }
 
-/** Shared by native Codex and proxied DSH: trusted identity never enters model input. */
+/** Host-owned verified sender metadata never enters model input. */
 export class ThreadIdentity {
   readonly senders: OpenCraftMessageSenders;
   readonly metadata: ThreadMetadataExtension | null;

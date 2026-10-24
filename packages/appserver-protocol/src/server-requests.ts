@@ -54,7 +54,7 @@ export interface SetupCodexContextPickerResponse {
 export interface AppServerServerRequestMap {
   "item/commandExecution/requestApproval": {
     params: CommandExecutionRequestApprovalParams & {
-      /** Provider-owned persistent grant; absent on native Codex requests. */
+      /** Provider-owned grant scopes; offered only by providers that support them. */
       approvalScopes?: Array<"once" | "session" | "always" | "deny">;
     };
     result: CommandExecutionRequestApprovalResponse & {

@@ -2513,7 +2513,7 @@ test("native and legacy setup requests project to owned interaction types", () =
   }
 });
 
-test("request_user_input preserves every question and aggregates Codex-compatible answers", () => {
+test("request_user_input preserves every question and aggregates answers by question ID", () => {
   const snapshot = projectTimeline(source([{
     id: "turn-questions",
     status: "streaming",

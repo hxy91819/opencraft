@@ -138,7 +138,7 @@ Escape dismissal and mouse movement do not change that origin; Tab, arrow and
 navigation/activation keys restore keyboard presentation. Editing fields retain
 their own focus/caret and all controls retain selected/open surfaces and shadows. Coarse
 or touch-only devices receive 44px Settings action and menu targets; theme
-identity changes semantic colors, not this interaction contract. The Codex
+identity changes semantic colors, not this interaction contract. The
 account disclosure stays separate from its actions trigger: touch scrolling
 does not paint a mouse-hover row, while actions remain visible and reachable.
 

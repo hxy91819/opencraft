@@ -902,7 +902,7 @@ export class DshAppServerAdapter {
   }
 
   /**
-   * Project the host-wide default model selection onto the Codex-compatible
+   * Project the host-wide default model selection onto the AppServer
    * `Config` shape so the Composer can read new-thread defaults from the
    * standard `config/read`/`config/batchWrite` methods.
    */
@@ -1911,7 +1911,7 @@ export class DshAppServerAdapter {
         return { config, origins: {}, layers: null };
       }
       case "config/batchWrite": {
-        // Compose new-thread model defaults through the Codex-compatible config
+        // Compose new-thread model defaults through the AppServer config
         // surface. Route edits reset a stale explicit effort; a follow-up
         // effort edit in the same batch then applies the intended level.
         const ops: Array<RecordValue> = [];
