@@ -4,7 +4,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID }
 import { closeSync, constants, fstatSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { SshCodexServerBinding } from "./ssh-codex-connections.js";
-import { SshCodexTransport } from "./ssh-codex-transport.js";
+import { validateSshConnection } from "./ssh-connection.js";
 
 export interface SshConnectionRecord {
   serverId: string;
@@ -180,7 +180,7 @@ export class SshConnectionStore {
         return this.decrypt(serverId, current.credential as Uint8Array);
       } },
     };
-    new SshCodexTransport(connection);
+    validateSshConnection(connection);
     return { descriptor: { serverId, displayName: config.displayName, workspaceBrowseRoots: config.workspaceBrowseRoots }, connection };
   }
   close() { this.db.close(); this.key.fill(0); }
