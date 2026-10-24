@@ -1,4 +1,4 @@
-import { Clock as ClockIcon, ArrowUpRight as ArrowUpRightIcon, RefreshCw } from "lucide-react";
+import { ClockIcon, ArrowUpRightIcon, RefreshIcon as RefreshCw } from "@opencraft/design-system-web/action-icons";
 import type { ConversationSchedulesRequestPort } from "@opencraft/appserver-protocol";
 import { useEffect, useRef, useState } from "react";
 

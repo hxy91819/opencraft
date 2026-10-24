@@ -1,4 +1,4 @@
-import { Users, Activity, Boxes, Send } from "lucide-react";
+import { PeopleIcon as Users, PulseIcon as Activity, BoxesIcon as Boxes, SendIcon as Send } from "@opencraft/design-system-web/action-icons";
 import { useIntl } from "@opencraft/i18n/react";
 import "./morning-overview.scss";
 

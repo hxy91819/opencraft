@@ -118,7 +118,7 @@ export function ImSources({
         多个聊天接入这里时，会共用本会话的历史记录。
       </p>
       <details className="im-sources__advanced">
-        <summary>自定义路由</summary>
+        <summary className="ui-native-disclosure">自定义路由</summary>
         <p>复制此会话引用，在渠道的路由函数中使用。</p>
         {reference ? <pre>{reference}</pre> : <p>读取来源后可获取会话引用。</p>}
         <SettingsActions>

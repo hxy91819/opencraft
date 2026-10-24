@@ -1,7 +1,7 @@
 import * as DropdownMenu from "@opencraft/design-system-web/dropdown-menu";
 import { DiscreteSlider, type DiscreteSliderOption } from "@opencraft/design-system-web/discrete-slider";
 import { useIntl } from "@opencraft/i18n/react";
-import { BrainCircuit, ChevronRight, RotateCcw, Zap } from "lucide-react";
+import { ModelIcon as BrainCircuit, ChevronRightIcon as ChevronRight, ResetIcon as RotateCcw, LightningIcon as Zap } from "@opencraft/design-system-web/action-icons";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { useInputAuxiliaryMenuFocus } from "./use-input-auxiliary-menu-focus";
 
@@ -51,7 +51,7 @@ export function ComposerModelPicker({ label, modelLabel, fullLabel, effortLabel,
       <div className="opencraft-composer-model-quick__action-slot">
         {fast ? <DropdownMenu.CheckboxItem className="opencraft-composer-model-quick__action opencraft-composer-model-quick__fast" aria-label={fast.name} title={fast.description || fast.name}
           checked={fastEnabled} onSelect={event => event.preventDefault()} onCheckedChange={checked => onServiceTierChange(checked ? fast.id : null)}>
-          <Zap size={18} fill={fastEnabled ? "currentColor" : "none"} aria-hidden="true" />
+          <Zap size={18} filled={fastEnabled} aria-hidden="true" />
         </DropdownMenu.CheckboxItem> : null}
       </div>
       <div className="opencraft-composer-model-quick__labels">
@@ -85,7 +85,7 @@ export function ComposerModelPicker({ label, modelLabel, fullLabel, effortLabel,
             <BrainCircuit className="opencraft-composer-mode__model-icon" size={16} aria-hidden="true" />
             <span className="opencraft-composer-mode__model-label">{label}</span>
             {effortLabel ? <span className="opencraft-composer-mode__effort-label">{effortLabel}</span> : null}
-            {showFast ? <Zap className="opencraft-composer-mode__fast" size={14} fill="currentColor" aria-label={fast?.name ?? "Fast"} /> : null}
+            {showFast ? <Zap className="opencraft-composer-mode__fast" size={14} filled aria-label={fast?.name ?? "Fast"} /> : null}
           </button>
         </DropdownMenu.Trigger>
       </div>

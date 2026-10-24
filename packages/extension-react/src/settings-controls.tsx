@@ -1,4 +1,4 @@
-import { ChevronDownIcon } from "@opencraft/design-system-web/action-icons";
+import { ChevronDownIcon, LoadingRingIcon } from "@opencraft/design-system-web/action-icons";
 import type {
   ButtonHTMLAttributes,
   HTMLAttributes,
@@ -318,7 +318,7 @@ export interface SettingsButtonProps extends ButtonHTMLAttributes<HTMLButtonElem
 export function SettingsButton({ variant = "secondary", className, children, loading = false, disabled, ...props }: SettingsButtonProps) {
   return (
     <button {...props} disabled={disabled || loading} aria-busy={loading || props["aria-busy"]} className={classes("settings-control-button", `settings-control-button--${variant}`, className)}>
-      {loading ? <span className="settings-control-button__spinner" aria-hidden="true" /> : null}
+      {loading ? <LoadingRingIcon className="settings-control-button__spinner" size={14} /> : null}
       {children}
     </button>
   );
