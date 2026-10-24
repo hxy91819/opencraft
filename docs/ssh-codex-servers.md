@@ -16,14 +16,19 @@ OpenCraft installation on the remote machine.
   CodexEngineAdapter routing implementation is shared by local stdio and remote
   transports: one physical initialize, type-preserving logical request IDs,
   Client incarnations, Thread readers and one interaction owner. Remote mode does
-  not construct a local account pool, attachment store or queue database.
+  not start a local engine process, account pool or queue dispatcher. When a
+  state directory is configured, OpenCraft keeps per-binding Host metadata and
+  attachment display records through `OpenCraftHostStateDatabase` and
+  `OpenCraftMessageAttachments`. These backend stores do not own remote execution
+  or account credentials; staged file content is transferred over SSH/SFTP.
 - Disconnecting a page revokes its routing/answer lease, not a remote Turn. Closing
   the service closes only its SSH/proxy connection; no `pkill` or remote stop is sent.
 - Basic native model/Thread reads, creation/resume, turn/start, native turn/steer,
   interrupt and stateless remote filesystem RPCs are forwarded. Native rejection
   remains a rejection: generated types are not evidence of a server capability.
-  Local attachment staging, accounts, queue v2, Goal orchestration, PTY/watch/search
-  connection resources are **not exposed** until their remote ownership paths exist.
+  Configured SSH/SFTP storage enables remote attachment staging. Local accounts,
+  queue v2, Goal orchestration and PTY/watch/search connection resources are
+  **not exposed** until their remote ownership paths exist.
   The first-turn durability extension is a broker policy for native Codex, not a
   claim that remote storage is transactional.
 - SSH framing is transport, not a second definition of native Thread history.

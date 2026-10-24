@@ -7,10 +7,13 @@
 The Node backend can attach to existing Linux or Desktop-compatible HyperNode
 AppServers through OpenSSH exec and WebSocket-in-SSH. The existing Codex routing
 adapter shares initialize, request isolation, Thread readers and interaction
-ownership across local stdio and remote physical transports. Remote mode never
-constructs local account/queue/attachment services or resolves remote files on
-this machine. Backend SQLite owns administrator-managed recipes, pinned trust and
-encrypted credentials. Settings drafts are transient; a live read-only profile
+ownership across local stdio and remote physical transports. Remote mode does not
+start a local engine process, account pool or queue dispatcher. With a configured
+state directory, OpenCraft owns per-binding Host metadata and attachment display
+records in backend SQLite; file staging uses SSH/SFTP against the remote filesystem.
+Remote paths are never resolved as local files. Backend SQLite also owns
+administrator-managed recipes, pinned trust and encrypted credentials.
+Settings drafts are transient; a live read-only profile
 overlay never duplicates these recipes in IndexedDB. A separate installation-owner
 HttpOnly session gates management and `/ssh-apphost`, with exact Origin and
 frame-level revocation checks. Public access requires explicit fixed-HTTPS-origin
