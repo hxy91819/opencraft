@@ -525,7 +525,7 @@ export function createAppServerWorkbenchRuntime(
   const catalogMetadata = new Map<string, ProtocolThread>();
   const interactionLedger = new AppServerInteractionLedger();
   const ephemeralThreadIds = new Set<string>();
-  // Acknowledged durable forks can precede Codex's first child-Turn catalog entry.
+  // Acknowledged durable forks can precede their first child-Turn catalog entry.
   const unlistedForks = new Map<string, ProtocolThread>();
   const forkOperations = new Map<string, Promise<ProtocolThread>>();
   const bindingOperations = new Map<string, Promise<ConversationBinding>>();
@@ -1839,7 +1839,7 @@ export function createAppServerWorkbenchRuntime(
             limit: 30,
             sortDirection: "desc",
             sortKey: "updated_at",
-            // SSH Codex discovery is a hot catalog read, not a filesystem
+            // SSH discovery is a hot catalog read, not a filesystem
             // reconciliation. Keep the policy here so all catalog consumers
             // share it; an explicit repair caller can still override it.
             ...(config.hostKind === "remote-ssh" ? { useStateDbOnly: true } : {}),

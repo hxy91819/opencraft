@@ -60,7 +60,7 @@ export function selectUserInputQuestionOption(question: UserInputQuestion, draft
   return { selectedOptionId: null, selectedOptionIds: prior.includes(optionId) ? prior.filter(id => id !== optionId) : [...prior, optionId], freeformText: draft?.freeformText ?? "" };
 }
 
-/** Owned additive fields; generated Codex protocol files remain unchanged. */
+/** Parse client-owned question fields outside the generated request schema. */
 export function userInputQuestionExtensions(value: unknown): Pick<UserInputQuestion, "multiSelect" | "detail" | "intent"> {
   if (!value || typeof value !== "object") return {};
   const input = value as Record<string, unknown>;

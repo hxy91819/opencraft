@@ -62,8 +62,8 @@ test("activity rows present a complete project badge without Server artwork", ()
 test("identity alone never selects a different icon family", () => {
   const renderIdentity = (id: string) => renderToStaticMarkup(createElement(WorkbenchProductContext.Provider,
     {value: id}, createElement(WorkbenchIcon, {name: "appearance"})));
-  assert.equal(renderIdentity("lightvela-web"), renderIdentity("an-unrelated-product"));
-  assert.match(renderIdentity("lightvela-web"), /data-action-glyph="appearance"/);
+  assert.equal(renderIdentity("example-web"), renderIdentity("an-unrelated-product"));
+  assert.match(renderIdentity("example-web"), /data-action-glyph="appearance"/);
 });
 
 
@@ -117,5 +117,17 @@ test("shared actions retain semantic mapping and classic/core role geometry", ()
       assert.match(markup, /aria-hidden="true"/);
       if (name === "folder") assert.match(markup, new RegExp(`fill="${style === "classic" && selected ? "currentColor" : "none"}"`));
     }
+  }
+});
+
+
+test("layout contribution names use shared artwork without adding a focus target", () => {
+  for (const style of ["classic", "standard"] as const) for (const [name, kind] of [["panel-left", "sidebar-layout"], ["panel-left-close", "sidebar-collapse-layout"]]) {
+    const markup = render(createElement(WorkbenchIcon, { name, purpose: "navigation" }), style);
+    assert.match(markup, new RegExp(`data-action-glyph="${kind}"`));
+    assert.match(markup, new RegExp(`width="${style === "classic" ? 15 : 14}"`));
+    assert.match(markup, /aria-hidden="true"/);
+    assert.match(markup, /focusable="false"/);
+    assert.doesNotMatch(markup, /lucide|tabindex/);
   }
 });

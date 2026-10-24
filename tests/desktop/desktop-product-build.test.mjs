@@ -22,7 +22,10 @@ test("real desktop bundles exclude private accounts by default and package selec
   const directory = await mkdtemp(join(tmpdir(), "desktop composition ")); t.after(() => rm(directory, { recursive: true, force: true }));
   const plain = await bundleDesktopHost({ environment: {}, outdir: join(directory, "plain") });
   for (const result of [plain.main, plain.preload]) {
-    assert.equal(Object.keys(result.metafile.inputs).some(file => /lightvela-(login|session-store|account-http)/.test(file)), false);
+    const sourceRoots = ["apps/workbench-electron/src/", "packages/", "node_modules/"];
+    const unexpectedInputs = Object.keys(result.metafile.inputs).filter(file =>
+      file !== "scripts/serve-workbench-static.mjs" && !sourceRoots.some(root => file.startsWith(root)));
+    assert.deepEqual(unexpectedInputs, [], "Standalone desktop bundles only its core owners and dependencies");
   }
   const loadPreload = async name => {
     const exports = {};
@@ -37,7 +40,7 @@ test("real desktop bundles exclude private accounts by default and package selec
     return exports.opencraftDesktop;
   };
   const publicBridge = await loadPreload("plain");
-  assert.equal(publicBridge.kind, "electron"); assert.equal(publicBridge.lightvelaAccount, undefined);
+  assert.equal(publicBridge.kind, "electron"); assert.equal(publicBridge.exampleAccount, undefined);
   const main = join(directory, "product-main.ts"), preload = join(directory, "product-preload.ts"), identity = join(directory, "product-identity.ts");
   await writeFile(main, 'export const createDesktopProduct = api => { api.handle("example:identity", () => "fixture-identity"); return {receiveUrl:()=>null,cancelInteractions(){},dispose(){}}; };');
   await writeFile(preload, 'export const createDesktopPreload = port => ({exampleAccount:{read:()=>port.invoke("example:identity")}});');
@@ -51,5 +54,5 @@ test("real desktop bundles exclude private accounts by default and package selec
   assert.ok(Object.keys(selected.preload.metafile.inputs).some(file => resolve(file) === preload));
   const productBridge = await loadPreload("product");
   assert.equal(productBridge.kind, "electron"); assert.equal(await productBridge.exampleAccount.read(), "fixture-identity");
-  assert.equal(productBridge.lightvelaAccount, undefined);
+  assert.deepEqual(Object.keys(productBridge).sort(), [...Object.keys(publicBridge), "exampleAccount"].sort());
 });

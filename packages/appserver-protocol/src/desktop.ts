@@ -1,4 +1,4 @@
-/** Optional backend extension. Never forward these methods to native Codex. */
+/** Optional backend extension handled by the owning Host, never forwarded to the execution engine. */
 export const OPENCRAFT_DESKTOP_EXTENSION = "opencraft/desktop";
 export const OPENCRAFT_DESKTOP_ATTACH = "opencraft/desktop/attachment/create";
 export const OPENCRAFT_DESKTOP_RELEASE = "opencraft/desktop/attachment/release";
