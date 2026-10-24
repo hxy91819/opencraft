@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { mkdtemp, writeFile, rm, stat } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm, stat, chmod, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn } from 'node:child_process';
@@ -10,6 +10,7 @@ import { connect } from 'node:net';
 import { once, EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 import WebSocket from 'ws';
+import { browserRuntimeIdentity } from '../../scripts/browser-runtime-identity.mjs';
 import { connectBrowserOwner, reuseBrowserOwner } from '../../scripts/remote-browser-owner.mjs';
 import { RemoteBrowserService } from '../../scripts/remote-browser-service.mjs';
 const { createBrowserOwner } = createRequire(import.meta.url)('../../scripts/remote-browser/owner.cjs');
@@ -116,4 +117,39 @@ test('runtime script upgrade only stops empty owners under their exclusive attac
 test('socket errors racing intentional empty-owner replacement cannot escape into Gateway', async () => {
   const peer=Object.assign(new EventEmitter(),{inventory:[],kill(){this.emit('error',Error('late reset'));}});
   assert.equal(await reuseBrowserOwner(peer,async()=>false,async()=>{peer.emit('error',Error('reset during stop'));}),null);
+});
+
+
+test('native-only runtime changes keep live owners but replace an empty stale owner', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'browser-native-identity-'));
+  try {
+    const previous = join(root, 'previous'), candidate = join(root, 'candidate');
+    for (const directory of [previous, candidate]) {
+      await mkdir(join(directory, 'electron'), { recursive: true });
+      await writeFile(join(directory, 'worker.cjs'), '// identical worker');
+      await writeFile(join(directory, 'electron/electron'), 'old-binary');
+    }
+    assert.equal(await browserRuntimeIdentity(previous), await browserRuntimeIdentity(candidate));
+    await writeFile(join(candidate, 'electron/electron'), 'new-binary');
+    const current = async () => await browserRuntimeIdentity(previous) === await browserRuntimeIdentity(candidate);
+    assert.equal(await current(), false);
+    for (const pages of [[{ id: 'live-tab' }], []]) {
+      let stops = 0;
+      const peer = { inventory: pages, kill() {} };
+      const reused = await reuseBrowserOwner(peer, current, async () => { stops++; });
+      assert.equal(peer.runtimeCurrent, false);
+      assert.equal(stops, pages.length ? 0 : 1);
+      assert.equal(reused, pages.length ? peer : null);
+    }
+    const before = await browserRuntimeIdentity(candidate);
+    await chmod(join(candidate, 'electron/electron'), 0o755);
+    assert.notEqual(await browserRuntimeIdentity(candidate), before, 'executable permission is part of runtime identity');
+    const executable = await browserRuntimeIdentity(candidate);
+    await writeFile(join(candidate, 'electron/new-resource.pak'), 'native resource');
+    assert.notEqual(await browserRuntimeIdentity(candidate), executable);
+    await rm(join(candidate, 'electron/new-resource.pak'));
+    assert.equal(await browserRuntimeIdentity(candidate), executable, 'removed resources affect identity too');
+    await symlink(join(previous, 'electron/electron'), join(candidate, 'external'));
+    await assert.rejects(browserRuntimeIdentity(candidate), /regular files/);
+  } finally { await rm(root, { recursive: true, force: true }); }
 });

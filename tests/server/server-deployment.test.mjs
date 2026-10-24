@@ -371,6 +371,49 @@ test('web-only execution updates switch the pointer without restarting an unchan
   }
 });
 
+test('browser-only worker and native upgrades restart the gateway while web-only rebuilds reuse it', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'opencraft-browser-payload-'));
+  const link = join(root, 'current'), tokenPath = join(root, 'token'), endpoint = join(root, 'core.sock');
+  const identity = { protocolVersion: 1, pid: 11, codexPid: 12 };
+  const core = createServer((_request, response) => response.end(JSON.stringify(identity)));
+  let gateway, runningRoot, restarts = 0;
+  try {
+    await writeFile(tokenPath, 'synthetic-browser-payload-token');
+    await new Promise(done => core.listen(endpoint, done));
+    const releases = [];
+    for (let i = 0; i < 4; i++) {
+      const releaseRoot = join(root, 'release-' + i); releases.push(releaseRoot);
+      await mkdir(join(releaseRoot, 'execution/native'), { recursive: true });
+      await cp(new URL('../../node_modules/node-pty', import.meta.url), join(releaseRoot, 'execution/native/node-pty'), { recursive: true });
+      for (const file of ['gateway.mjs', 'daemon.cjs', 'dsh-capability-plugin.mjs', 'dsh-thread-persistence-plugin.mjs', 'dsh-thread-projection-plugin.mjs'])
+        await writeFile(join(releaseRoot, 'execution', file), '// unchanged execution bundle');
+      await mkdir(join(releaseRoot, 'runtime/browser/electron'), { recursive: true });
+      await writeFile(join(releaseRoot, 'runtime/browser/worker.cjs'), i === 0 ? 'worker-before' : 'worker-after');
+      await writeFile(join(releaseRoot, 'runtime/browser/electron/electron'), i < 2 ? 'native-before' : 'native-after');
+      await writeFile(join(releaseRoot, 'package.json'), JSON.stringify({ version: '1.0.' + i, opencraftWeb: { buildId: 'browser-build-' + i },
+        opencraftExecution: { protocolVersion: 1, platform: process.platform, arch: process.arch, nodeAbi: process.versions.modules, profile: 'headless' } }));
+    }
+    gateway = createServer(async (_request, response) => {
+      const manifest = JSON.parse(await readFile(join(await readlink(link), 'package.json'), 'utf8'));
+      response.end(JSON.stringify({ ok: true, profile: 'headless', version: manifest.version, buildId: manifest.opencraftWeb.buildId,
+        core: identity, runtimeReleaseRoot: runningRoot }));
+    });
+    await new Promise(done => gateway.listen(0, '127.0.0.1', done));
+    const execution = createExecutionDeployment({ link, unit: 'execution.service', coreUnit: 'core.service', coreEndpoint: endpoint, tokenPath,
+      profile: 'headless', healthUrl: `http://127.0.0.1:${gateway.address().port}/health`, validate: async () => {}, prepareAccess: async () => {},
+      restart: async () => { restarts++; runningRoot = await readlink(link); } });
+    for (let i = 0; i < releases.length; i++) {
+      await execution.apply({ releaseRoot: releases[i], version: '1.0.' + i, buildId: 'browser-build-' + i });
+      assert.equal(restarts, Math.min(i + 1, 3), 'worker and native changes activate; a web-only rebuild does not restart');
+    }
+    assert.equal(runningRoot, releases[2]);
+    assert.deepEqual(await execution.referencedRoots(), [releases[2], releases[3]]);
+  } finally {
+    for (const server of [gateway, core]) if (server) { server.closeAllConnections(); await new Promise(done => server.close(done)); }
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test('headless execution identity follows the current release pointer', async () => {
   const root = await mkdtemp(join(tmpdir(), 'opencraft-release-pointer-'));
   try {
