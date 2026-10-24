@@ -6,7 +6,7 @@ export interface UserInputQuestionDraft {
   readonly freeformText: string;
 }
 
-/** An option question starts on its first choice. */
+/** Single-select starts on its first choice; multi-select starts empty. */
 export function createUserInputQuestionDrafts(
   questions: readonly UserInputQuestion[],
 ): readonly UserInputQuestionDraft[] {
