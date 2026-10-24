@@ -20,8 +20,9 @@ server identity before selecting a local Host route.
 
 Each Headless server namespace uses its persisted installation identity plus an
 engine namespace. Moving its data retains that identity; connecting through
-another route does not create another resource. Cross-server resolution is not yet
-implemented, and an unknown server fails closed without requesting a supplied URL.
+another route does not create another resource. Resolution outside this
+installation is not yet implemented, and an unknown server fails closed without
+requesting a supplied URL.
 
 Actor remains the acting subject. Referencing an old thread does not create a
 Session Actor, issue a credential or wake the target. An explicit Actor run binding
