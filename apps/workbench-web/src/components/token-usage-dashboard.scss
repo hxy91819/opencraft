@@ -58,7 +58,7 @@
 .token-usage__bar-label { color:var(--color-text-secondary); }
 .token-usage__bar-track { height:8px; overflow:hidden; border-radius:999px; background:var(--color-background-muted,var(--color-border-subtle)); }
 .token-usage__bar-fill { display:block; height:100%; border-radius:inherit; background:var(--color-status-success); }
-.token-usage__bar-value { text-align:end; }
+.token-usage__bar-value { min-width:0; overflow-wrap:anywhere; text-align:end; }
 
 .token-usage__activity-table summary { cursor:pointer; color:var(--color-text-secondary); font:var(--typography-metadata-font); }
 .token-usage__activity-table table { max-height:240px; overflow:auto; display:block; }
