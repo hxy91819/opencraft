@@ -120,7 +120,7 @@ test("browser restoration works without iterator helpers on Safari 16", () => {
     const ownerId = asConversationScopeId("conversation:restored-browser");
     const retainedPage = runtime.create({ ownerId });
     const orphanPage = runtime.create({ ownerId });
-    records.set("vela.browser-tabs.v1", JSON.stringify([
+    records.set("opencraft.browser-tabs.v1", JSON.stringify([
       { id: "retained-tab", pageId: retainedPage, ownerId, createdAt: 1 },
       { id: "missing-page-tab", pageId: "missing-page", ownerId, createdAt: 2 },
     ]));

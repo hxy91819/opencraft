@@ -26,8 +26,6 @@ try {
     await page.waitForFunction(() => (window as any).extensionStorageProbe.workerMessages() > 0);
   }
   const initial = await a.evaluate(() => (window as any).extensionStorageProbe.read());
-  assert.equal((await a.evaluate(() => (window as any).extensionStorageProbe.legacySettings()))[0].value, true);
-  evidence.push("real current-origin legacy IndexedDB settings imported through the production platform factory");
   await a.evaluate(({ revision }: any) => (window as any).extensionStorageProbe.save(revision, { text: "browser fixture" }), initial);
   await b.waitForFunction(() => (window as any).extensionStorageProbe.notifications() > 0);
   const stale = await b.evaluate(({ revision }: any) => (window as any).extensionStorageProbe.save(revision, { text: "stale" }), initial);

@@ -31,29 +31,15 @@ test("root presentation follows explicit options and resets obsolete classic ove
 });
 
 
-test("built-in compatibility aliases preserve policy constraints without renaming extensions", () => {
-  const aliases = {
-    codex: builtinThemeIds.neutral, web: builtinThemeIds.canvas,
-    frost: builtinThemeIds.frost, lavender: builtinThemeIds.lavender,
-    mist: builtinThemeIds.mist, zencode: builtinThemeIds.graphite,
-  };
-  for (const [alias, canonical] of Object.entries(aliases)) {
-    const legacy = `vela.core.${alias}`;
-    assert.equal(normalizeBuiltinThemeId(legacy), canonical);
-    assert.equal(resolveWorkbenchPresentation({defaultThemeId:legacy}).defaultThemeId, canonical);
-    assert.deepEqual(resolveWorkbenchPresentation({hiddenBuiltinThemeIds:[legacy,canonical]}).hiddenBuiltinThemeIds,[canonical]);
-    for (const [selected, hidden] of [[legacy,canonical],[canonical,legacy]]) {
-      assert.throws(()=>resolveWorkbenchPresentation({defaultThemeId:selected,hiddenBuiltinThemeIds:[hidden!]}), TypeError);
-    }
-  }
+test("current built-in aliases preserve policy constraints without renaming extensions", () => {
   const previousGraphiteId = "opencraft.core.zencode";
   assert.equal(normalizeBuiltinThemeId(previousGraphiteId), builtinThemeIds.graphite);
   assert.equal(resolveWorkbenchPresentation({defaultThemeId:previousGraphiteId}).defaultThemeId, builtinThemeIds.graphite);
-  assert.deepEqual(resolveWorkbenchPresentation({hiddenBuiltinThemeIds:[previousGraphiteId,"vela.core.zencode",builtinThemeIds.graphite]}).hiddenBuiltinThemeIds,[builtinThemeIds.graphite]);
+  assert.deepEqual(resolveWorkbenchPresentation({hiddenBuiltinThemeIds:[previousGraphiteId,builtinThemeIds.graphite]}).hiddenBuiltinThemeIds,[builtinThemeIds.graphite]);
   for (const [selected,hidden] of [[previousGraphiteId,builtinThemeIds.graphite],[builtinThemeIds.graphite,previousGraphiteId]]) {
     assert.throws(()=>resolveWorkbenchPresentation({defaultThemeId:selected,hiddenBuiltinThemeIds:[hidden!]}), TypeError);
   }
-  for (const extension of ["vela.extension.paper", "vendor.core.web", "vela.core.custom", "vela.core.longing", builtinThemeIds.longing]) {
+  for (const extension of ["vendor.extension.paper", "vendor.core.web", "vendor.core.custom", builtinThemeIds.longing]) {
     assert.equal(normalizeBuiltinThemeId(extension), extension);
     assert.equal(resolveWorkbenchPresentation({defaultThemeId:extension}).defaultThemeId, extension);
   }

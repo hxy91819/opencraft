@@ -32,50 +32,24 @@ async function readInitialPreferences(stored: Map<string, string>, options: { un
   }
 }
 
-test("old appearance preferences copy forward once without changing selection or deleting recovery inputs", async () => {
-  const old = [["vela.appearance-theme", "light"], ["vela.appearance-theme-id", "vela.core.codex"]] as const;
-  const stored = new Map<string, string>(old), first = await readInitialPreferences(stored);
-  assert.equal(first.snapshot.preference, "light"); assert.equal(first.snapshot.requestedThemeId, "opencraft.core.neutral");
-  assert.equal(stored.get("opencraft.appearance-theme"), "light"); assert.equal(stored.get("opencraft.appearance-theme-id"), "opencraft.core.neutral");
-  for (const [key, value] of old) assert.equal(stored.get(key), value);
-  const next = await readInitialPreferences(stored);
-  assert.deepEqual(next.snapshot, first.snapshot); assert.deepEqual(next.writes, []);
-});
-
-test("current preferences win over stale old keys without additional writes", async () => {
-  const stored = new Map([["opencraft.appearance-theme", "dark"], ["opencraft.appearance-theme-id", "opencraft.core.canvas"], ["vela.appearance-theme", "light"], ["vela.appearance-theme-id", "vela.core.codex"]]);
+test("current preferences load without additional writes", async () => {
+  const stored = new Map([["opencraft.appearance-theme", "dark"], ["opencraft.appearance-theme-id", "opencraft.core.canvas"]]);
   const { snapshot, writes } = await readInitialPreferences(stored);
   assert.equal(snapshot.preference, "dark"); assert.equal(snapshot.requestedThemeId, "opencraft.core.canvas"); assert.deepEqual(writes, []);
 });
 
-test("old built-in identity in the current key normalizes without rewriting an opaque extension identity", async () => {
-  const stored = new Map([["opencraft.appearance-theme-id", "vela.core.codex"]]);
-  assert.equal((await readInitialPreferences(stored)).snapshot.requestedThemeId, "opencraft.core.neutral");
-  assert.equal(stored.get("opencraft.appearance-theme-id"), "opencraft.core.neutral");
-  const extension = new Map([["vela.appearance-theme-id", "plugin.example.paper"]]);
-  const { snapshot } = await readInitialPreferences(extension);
-  assert.equal(snapshot.requestedThemeId, "plugin.example.paper"); assert.equal(snapshot.themeId, "opencraft.core.neutral");
-  assert.equal(extension.get("opencraft.appearance-theme-id"), "plugin.example.paper", "a missing extension's display fallback must not replace the requested identity");
-});
-
-test("fresh or explicitly empty current selection does not persist a product default or resurrect stale keys", async () => {
+test("fresh or explicitly empty current selection does not persist a product default", async () => {
   assert.deepEqual((await readInitialPreferences(new Map())).writes, []);
-  const stored = new Map([["opencraft.appearance-theme", "invalid"], ["opencraft.appearance-theme-id", ""], ["vela.appearance-theme", "dark"], ["vela.appearance-theme-id", "vela.core.web"]]);
+  const stored = new Map([["opencraft.appearance-theme", "invalid"], ["opencraft.appearance-theme-id", ""]]);
   const { snapshot, writes } = await readInitialPreferences(stored);
   assert.equal(snapshot.preference, defaultThemePreference); assert.equal(snapshot.requestedThemeId, "opencraft.core.neutral"); assert.deepEqual(writes, []);
 });
 
-test("unreadable current keys cannot be overwritten using readable old preferences", async () => {
-  const stored = new Map([["opencraft.appearance-theme", "dark"], ["opencraft.appearance-theme-id", "opencraft.core.canvas"], ["vela.appearance-theme", "light"], ["vela.appearance-theme-id", "vela.core.codex"]]);
+test("unreadable current keys are not overwritten", async () => {
+  const stored = new Map([["opencraft.appearance-theme", "dark"], ["opencraft.appearance-theme-id", "opencraft.core.canvas"]]);
   const before = [...stored];
   const { writes } = await readInitialPreferences(stored, { unreadable: ["opencraft.appearance-theme", "opencraft.appearance-theme-id"] });
   assert.deepEqual(writes, []); assert.deepEqual([...stored], before);
-});
-
-test("failed migration writes preserve the in-memory choice and old preferences", async () => {
-  const stored = new Map([["vela.appearance-theme", "light"], ["vela.appearance-theme-id", "vela.core.codex"]]);
-  const before = [...stored], { snapshot } = await readInitialPreferences(stored, { denyWrites: true });
-  assert.equal(snapshot.preference, "light"); assert.equal(snapshot.requestedThemeId, "opencraft.core.neutral"); assert.deepEqual([...stored], before);
 });
 
 test("keyboard focus is neutral and independent of brand accent, including legacy aliases", () => {
@@ -206,7 +180,7 @@ test("The canvas theme defines a web-native shell material without changing the 
 });
 
 test("extension theme selection is root-owned and unload falls back atomically", async () => {
-  const stored = new Map<string, string>([["vela.appearance-theme", "light"], ["vela.appearance-theme-id", "vela.core.codex"]]);
+  const stored = new Map<string, string>([["opencraft.appearance-theme", "light"], ["opencraft.appearance-theme-id", "opencraft.core.neutral"]]);
   const properties = new Map<string, string>();
   const dataset: Record<string, string> = {};
   const classes = new Set<string>();
@@ -301,12 +275,10 @@ test("extension theme selection is root-owned and unload falls back atomically",
     assert.equal(appearance.getAppearanceThemePreviewProperties(appearance.graphiteThemeId)["--color-background-panel"], "#202020");
     appearance.setThemePreference("light");
 
-    appearance.setAppearanceThemeId("vela.core.web");
+    appearance.setAppearanceThemeId(appearance.canvasThemeId);
     assert.equal(dataset.themeId, appearance.canvasThemeId);
     assert.equal(stored.get("opencraft.appearance-theme-id"), appearance.canvasThemeId);
     assert.equal(stored.get("opencraft.appearance-theme"), "light");
-    assert.equal(stored.get("vela.appearance-theme-id"), "vela.core.codex");
-    assert.equal(stored.get("vela.appearance-theme"), "light");
     appearance.setAppearanceThemeId(appearance.canvasThemeId);
     assert.equal(dataset.themeId, appearance.canvasThemeId);
     assert.equal(properties.get("--opencraft-sidebar-material-background"), "#ffffff");
@@ -416,13 +388,4 @@ test("extension theme selection is root-owned and unload falls back atomically",
       value: previousDesktopBridge,
     });
   }
-});
-
-test("the first-party Paper palette migrates its exact old preference while other extension IDs stay opaque", async () => {
-  const stored = new Map([["opencraft.appearance-theme-id", "vela.theme-pack.paper"]]);
-  const { snapshot } = await readInitialPreferences(stored);
-  assert.equal(snapshot.requestedThemeId, "opencraft.theme-pack.paper");
-  assert.equal(stored.get("opencraft.appearance-theme-id"), "opencraft.theme-pack.paper");
-  const custom = new Map([["opencraft.appearance-theme-id", "vela.theme-pack.custom"]]);
-  assert.equal((await readInitialPreferences(custom)).snapshot.requestedThemeId, "vela.theme-pack.custom");
 });

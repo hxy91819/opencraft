@@ -162,52 +162,6 @@ test('generic release discovers runtime Codex Host and built-in settings before 
   await assertDeployment();
 });
 
-test('legacy generic website restores HyperNode selections on local without reviving an unretained draft', async ({ browser }) => {
-  const context = await browser.newContext({ locale: 'zh-CN' });
-  const page = await context.newPage();
-  const errors = []; page.on('pageerror', error => errors.push(error.message));
-  try {
-    // The pre-runtime generic website has no HTML config and activates its
-    // ephemeral HyperNode profile. Exercise that actual startup before upgrade.
-    const legacyHtml = async route => {
-      const response = await route.fetch();
-      const body = (await response.text()).replace(/<script id="opencraft-deployment-config" type="application\/json">.*?<\/script>/s, '');
-      await route.fulfill({ response, body });
-    };
-    await page.route(url => url.pathname === '/', legacyHtml);
-    await page.goto(`${base}/?hostId=hypernode&draftId=legacy-draft`);
-    await expect(page.getByRole('button', { name: '运行在', exact: true })).toContainText('HyperNode');
-    await page.evaluate(() => {
-      localStorage.setItem('vela.active-host-id', 'hypernode');
-      localStorage.setItem('vela.active-thread-id:hypernode', 'legacy-thread');
-      localStorage.setItem('vela.selected-project-id:hypernode', 'legacy-project');
-    });
-    await page.unrouteAll();
-    await page.reload();
-    // An arbitrary empty Draft reference has no persisted input/placement owner.
-    // Startup falls back to the migrated remembered Thread; the fixture
-    // deliberately cannot restore that Thread from its execution endpoint.
-    await expect(page).toHaveURL(/\/local\/legacy-thread\?hostId=local/);
-    await expect(page.getByRole('alert')).toContainText('无法恢复此会话');
-    expect(await page.evaluate(() => [
-      localStorage.getItem('opencraft.active-thread-id:local'), localStorage.getItem('opencraft.selected-project-id:local'),
-      localStorage.getItem('opencraft.active-thread-id:hypernode'),
-    ])).toEqual(['legacy-thread', 'legacy-project', 'legacy-thread']);
-    expect(await page.evaluate(() => Object.keys(localStorage).filter(key =>
-      key.startsWith('vela.active-') || key.startsWith('vela.selected-project-id:')))).toEqual([]);
-    await page.reload();
-    await expect(page).toHaveURL(/\/local\/legacy-thread\?hostId=local/);
-    await expect(page.getByRole('alert')).toContainText('无法恢复此会话');
-    await page.goto(`${base}/settings/updates`);
-    await expect(button(page, 'check')).toBeVisible();
-    // The two execution Hosts surface as Run › Machines with its count badge;
-    // the legacy HyperNode Host must not become a third settings entry.
-    await expect(page.getByRole('navigation', { name: 'Settings sections' }).getByRole('button', { name: machinesNav })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'HyperNode', exact: true })).toHaveCount(0);
-    expect(errors).toEqual([]);
-  } finally { await context.close(); }
-});
-
 test('anonymous check finds the real npm release and preserves the administrator draft during lookup', async ({ page }) => {
   expect((await status(page)).authenticated).toBe(false);
   await expect(button(page, 'install')).toHaveCount(0);

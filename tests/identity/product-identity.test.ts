@@ -25,7 +25,7 @@ const read = (path: string) => readFileSync(new URL(path, root), "utf8");
 
 const json = (path: string) => JSON.parse(read(path));
 
-test("all workspace packages use OpenCraft without old scope aliases", () => {
+test("all workspace packages use the OpenCraft scope", () => {
   assert.equal(json("package.json").name, "opencraft");
   for (const group of ["apps", "packages", "plugins"]) {
     for (const entry of readdirSync(new URL(`${group}/`, root), { withFileTypes: true })) {
@@ -34,7 +34,6 @@ test("all workspace packages use OpenCraft without old scope aliases", () => {
       if (!existsSync(new URL(path, root))) continue;
       const manifest = json(path);
       assert.match(manifest.name, /^@opencraft\//u, path);
-      assert.doesNotMatch(JSON.stringify(manifest), /@vela\//u, path);
     }
   }
 });
@@ -80,11 +79,10 @@ test("web product identity is normalized once for product-owned policies", () =>
 });
 
 
-test("owned Bot names canonicalize while saved conversation identity remains readable", () => {
+test("owned Bot resources preserve canonical conversation identity", () => {
   const key = createConversationKey("opaque-host", "stored-conversation");
-  const uri = "vela-bot:conversation?hostId=opaque-host&conversationId=stored-conversation";
-  assert.equal(botConversationResourceUri(key), uri.replace("vela-bot:", "opencraft-bot:"));
+  const uri = "opencraft-bot:conversation?hostId=opaque-host&conversationId=stored-conversation";
+  assert.equal(botConversationResourceUri(key), uri);
   assert.deepEqual(parseBotConversationViewResource(uri), { kind: "conversation", key });
   assert.equal(OPENCRAFT_BOT_CONVERSATIONS_EXTENSION, "opencraft/bot-conversations");
-  assert.doesNotMatch(read("apps/workbench-electron/src/daemon-client.ts"), /vela-daemon\.(?:sock|token)/u);
 });
