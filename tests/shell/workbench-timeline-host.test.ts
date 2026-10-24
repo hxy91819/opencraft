@@ -657,7 +657,7 @@ test("Native virtualizer publishes live Turn height while response policy owns c
   assert.match(
     nativeResponseSource,
     /Animated\.spring\(latestTurnOffset,[\s\S]{0,520}?Animated\.spring\(responseSpacerHeight/u,
-    "Native translation and spacer height must share the recovered zero-bounce spring",
+    "Native translation and spacer height must share the same zero-bounce spring",
   );
   assert.match(webResponseSource, /OPENCRAFT_LATEST_TURN_PLACEMENT_SPRING\.durationMs/u);
 });
