@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -652,4 +652,37 @@ test("Pi confirms Host tools only after native installation and retries a failed
   assert.equal(session.hostTools[0].inputSchema.properties.text.type, "string", "confirmed snapshot cannot alias provider schema");
   await (engine as any).refreshHostTools(session); assert.equal(calls.length, 4);
   await (engine as any).refreshHostTools(session); assert.equal(calls.length, 4, "identical configuration is installed once");
+});
+
+
+test("Pi skill discovery uses native roots, keeps explicit-only entries and rejects foreign retained references", async t => {
+  const f = await fixture(t, []);
+  const writeSkill = async (root: string, name: string, extra = "") => {
+    const path = join(root, name, "SKILL.md"); await mkdir(join(root, name), { recursive: true });
+    await writeFile(path, `---\nname: ${name}\ndescription: ${name} instructions\n${extra}---\nBODY_ONLY_SENTINEL`); return path;
+  };
+  const userPath = await writeSkill(join(f.directory, "skills"), "pi-user");
+  const projectPath = await writeSkill(join(f.directory, ".pi", "skills"), "pi-project", "disable-model-invocation: true\n");
+  await writeSkill(join(f.directory, ".codex", "skills"), "codex-only");
+  const host = await startEngineHost({ providers: [f.engine], defaultEngine: "pi" }); t.after(() => host.close());
+  const { createAppServerWorkbenchRuntime } = await import("../../packages/workbench-runtime/src/appserver-runtime.js");
+  const { WebSocketTransport } = await import("../../packages/appserver-transport-websocket/src/index.js");
+  const runtime = createAppServerWorkbenchRuntime({ hostId: "pi-skills", createTransport: () => new WebSocketTransport({ url: host.websocketUrl, createSocket: url => new WebSocket(url) as any }) });
+  t.after(() => runtime.dispose()); await runtime.connect();
+  const catalog = await runtime.resources.composerCatalog.listSkills({ cwds: [f.directory], model: piModel("faux", "faux-1") });
+  const skills = catalog.data[0]!.skills;
+  assert.equal(skills.find(skill => skill.name === "pi-user")?.path, userPath);
+  assert.equal(skills.find(skill => skill.name === "pi-project")?.path, projectPath);
+  assert.equal(skills.find(skill => skill.name === "pi-project")?.scope, "repo");
+  assert.equal(skills.some(skill => skill.name === "codex-only"), false);
+  assert.equal(JSON.stringify(catalog).includes("BODY_ONLY_SENTINEL"), false);
+  const { validatePiSkillInput } = await import("../../plugins/pi-engine/src/skills.js");
+  validatePiSkillInput([{ type: "skill", name: "pi-project", path: projectPath }], f.directory, f.directory);
+  assert.throws(() => validatePiSkillInput([{ type: "skill", name: "codex-only", path: join(f.directory, ".codex/skills/codex-only/SKILL.md") }], f.directory, f.directory), /unavailable/);
+  await rm(projectPath);
+  const reloaded = await runtime.resources.composerCatalog.listSkills({ cwds: [f.directory], forceReload: true });
+  assert.equal(reloaded.data[0]!.skills.some(skill => skill.name === "pi-project"), false);
+  assert.throws(() => validatePiSkillInput([{ type: "skill", name: "pi-project", path: projectPath }], f.directory, f.directory), /unavailable/);
+  await assert.rejects(runtime.resources.composerCatalog.listSkills({ threadId: "foreign-thread" }), /unavailable/);
+  assert.equal(f.faux.state.callCount, 0);
 });

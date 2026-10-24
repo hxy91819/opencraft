@@ -1099,8 +1099,9 @@ export const OpenCraftComposer = forwardRef<
   const catalogQueryText =
     catalogQueryKind === null ? "" : (suggestionQuery?.query.trim() ?? "");
   const catalogTargetKey = encodeComposerTarget(composerSnapshot.draft.target);
+  const catalogModel = catalogQueryKind === "skill" && !existingConversation ? selectedModelValue ?? undefined : undefined;
   const catalogSearchActive = catalogQueryKind !== null && shouldSearchComposerCatalog(catalogQueryKind, catalogQueryText);
-  const catalogRequestKey = JSON.stringify([catalogTargetKey, catalogQueryKind, catalogQueryText, catalogRetry, catalogQueryKind === "skill" ? catalogRevision : 0]);
+  const catalogRequestKey = JSON.stringify([catalogTargetKey, catalogModel, catalogQueryKind, catalogQueryText, catalogRetry, catalogQueryKind === "skill" ? catalogRevision : 0]);
   const currentCatalogResult = catalogResult?.key === catalogRequestKey
     && catalogResult.catalog === catalog && catalogResult.controller === controller ? catalogResult : null;
   const catalogSuggestions = currentCatalogResult?.phase === "ready" ? currentCatalogResult.items : [];
@@ -1149,6 +1150,7 @@ export const OpenCraftComposer = forwardRef<
           kind: catalogQueryKind,
           query: catalogQueryText,
           target: composerSnapshot.draft.target,
+          model: catalogModel,
           // skills/list already returns the complete directory. Do not hide
           // entries after an arbitrary first page; file search stays bounded.
           limit: catalogQueryKind === "skill" ? Number.MAX_SAFE_INTEGER : 50,
@@ -1173,7 +1175,7 @@ export const OpenCraftComposer = forwardRef<
       active = false;
       abortController.abort();
     };
-  }, [catalog, controller, catalogQueryKind, catalogQueryText, catalogTargetKey, catalogSearchActive, catalogRequestKey, conversationReferences]);
+  }, [catalog, controller, catalogQueryKind, catalogQueryText, catalogTargetKey, catalogModel, catalogSearchActive, catalogRequestKey, conversationReferences]);
 
   const dismissSuggestions = useCallback(() => {
     dismissedSuggestionRef.current = suggestionQueryRef.current;

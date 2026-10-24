@@ -13,6 +13,7 @@ export * from "./server-requests";
 export * from "./transport";
 export * from "./process";
 export * from "./profile-skills";
+export * from "./skill-catalog";
 export * from "./host-storage";
 export * from "./attachments";
 export * from "./thread-pins";

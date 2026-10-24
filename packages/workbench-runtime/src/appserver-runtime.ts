@@ -1,4 +1,5 @@
 import { executionEngineExtension } from "@opencraft/appserver-client";
+import { SCOPED_SKILL_CATALOG_EXTENSION, SCOPED_SKILL_CATALOG_METHOD, type ScopedSkillsListParams } from "@opencraft/appserver-protocol";
 import type { HostComposerCommandPort } from "./host-composer-commands";
 import { MCP_APPS_NAMESPACE } from "@opencraft/appserver-protocol/mcp-apps";
 import type { ConversationOutboxStorage } from "@opencraft/chat-runtime";
@@ -35,7 +36,6 @@ import type {
   ModelListResponse,
   PermissionProfileListParams,
   PermissionProfileListResponse,
-  SkillsListParams,
   SkillsListResponse,
   ProjectCreateParams,
   ProjectCreateResponse,
@@ -301,7 +301,7 @@ export interface AppServerComposerCatalogResourcePort {
   listPermissionProfiles(
     params?: Partial<PermissionProfileListParams>,
   ): Promise<PermissionProfileListResponse>;
-  listSkills(params?: Partial<SkillsListParams>): Promise<SkillsListResponse>;
+  listSkills(params?: ScopedSkillsListParams): Promise<SkillsListResponse>;
   createFuzzyFileSearchSession(
     options: FuzzyFileSearchSessionOptions,
   ): Promise<FuzzyFileSearchSession>;
@@ -2042,11 +2042,21 @@ export function createAppServerWorkbenchRuntime(
           });
         },
         async listSkills(params = {}) {
+          const scoped = client?.initializeResult?.capabilities?.extensions?.[SCOPED_SKILL_CATALOG_EXTENSION] as { version?: unknown } | undefined;
+          if (scoped?.version === 1) {
+            assertMethodAccess(SCOPED_SKILL_CATALOG_METHOD);
+            return requireClient().request(SCOPED_SKILL_CATALOG_METHOD, params);
+          }
+          if (client?.initializeResult?.capabilities?.extensions?.["opencraft/execution-engines"] !== undefined) {
+            throw new Error("This Host requires an update for engine-scoped Skill discovery");
+          }
+          // Old/native Hosts must not receive the OpenCraft routing fields.
+          const { threadId: _thread, model: _model, ...native } = params;
           assertMethodAccess("skills/list");
           return requireClient().request("skills/list", {
             cwds: [],
             forceReload: false,
-            ...params,
+            ...native,
           });
         },
         createFuzzyFileSearchSession(options) {

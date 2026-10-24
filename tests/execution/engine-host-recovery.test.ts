@@ -27,20 +27,21 @@ async function fixture(t: test.TestContext, proxy = false) {
   const thread = { id: "dsh-recovery", name: "Recovery", createdAt: 1, updatedAt: 1, cwd: "/tmp", source: "cli", preview: "", modelProvider: "dsh", status: { type: "idle" }, turns: [] };
   const lifecycle = new ThreadLifecycle(new ThreadCatalog(), async () => ({ released: true }), () => {});
   const connections: { socket: WebSocket; key: string; clientId: string }[] = [];
-  const calls: { key: string; method: string }[] = [];
+  const calls: { key: string; method: string; params: any }[] = [];
   let beforeRequest: ((method: string) => Promise<void>) | undefined;
   sockets.on("connection", socket => {
     const state = { socket, key: `physical-${connections.length + 1}`, clientId: "" }; connections.push(state);
     socket.on("message", async data => {
       const frame = JSON.parse(String(data)); state.clientId = frame[LOGICAL_CLIENT_FIELD] ?? "";
       if (frame.id === undefined) return;
-      calls.push({ key: state.key, method: frame.method });
+      calls.push({ key: state.key, method: frame.method, params: frame.params });
       try {
         await beforeRequest?.(frame.method);
         const result = await lifecycle.dispatch(frame.method, frame.params ?? {}, state.key, async method => {
           if (method === "initialize") return { userAgent: "recovery-fixture", platformFamily: "unix", platformOs: "linux" };
           if (["thread/resume", "thread/read"].includes(method)) return { thread, model: "dsh", modelProvider: "dsh", cwd: "/tmp", approvalPolicy: "never", approvalsReviewer: "user", sandbox: { type: "dangerFullAccess" }, runtimeWorkspaceRoots: [] };
           if (method === "turn/start") return { turn: { id: "accepted-once", status: "inProgress", items: [] } };
+          if (method === "skills/list") return { data: [{ cwd: "/tmp", skills: [{ name: "dsh-only" }], errors: [] }] };
           if (["thread/list", "model/list", "thread/turns/list", "thread/items/list", "permissionProfile/list"].includes(method)) return { data: [], nextCursor: null };
           return {};
         });
@@ -54,7 +55,7 @@ async function fixture(t: test.TestContext, proxy = false) {
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   const target = `ws://127.0.0.1:${(server.address() as any).port}`;
   let providerClosed = 0, providerDisconnected = 0;
-  const provider: any = { id: "pi", label: "Pi", threadPrefix: "pi_", modelPrefix: "pi:", extensions: {}, ownsThread: (id: string) => id.startsWith("pi_"), ownsModel: (id: string) => id.startsWith("pi:"), subscribe: () => () => {}, disconnect() { providerDisconnected++; }, async close() { providerClosed++; }, async request() { return { data: [], nextCursor: null }; } };
+  const provider: any = { id: "pi", label: "Pi", threadPrefix: "pi_", modelPrefix: "pi:", extensions: {}, ownsThread: (id: string) => id.startsWith("pi_"), ownsModel: (id: string) => id.startsWith("pi:"), subscribe: () => () => {}, disconnect() { providerDisconnected++; }, async close() { providerClosed++; }, async request(method: string) { return method === "skills/list" ? { data: [{ cwd: "/tmp", skills: [{ name: "pi-only" }], errors: [] }] } : { data: [], nextCursor: null }; } };
   let resolveTarget = async () => target;
   const host = await startEngineHost({ providers: [provider], defaultEngine: "dsh", legacy: { id: "dsh", label: "DSH", start: async () => ({ websocketUrl: target, resolveWebsocketUrl: () => resolveTarget(), async close() {} }) } });
   let url = host.websocketUrl, web: any, root: string | undefined;
@@ -264,4 +265,19 @@ test("legacy forwarding preserves typed archive, missing and retryable RPC failu
     socket.terminate(); await host.close(); for (const socket of sockets.clients) socket.terminate();
     await new Promise<void>(resolve => sockets.close(() => resolve())); await new Promise<void>(resolve => server.close(() => resolve()));
   }
+});
+
+test("Skill catalogs follow draft models and immutable thread owners without leaking scope to legacy Hosts", async t => {
+  const f = await fixture(t); await f.runtime.connect();
+  const catalog = f.runtime.resources.composerCatalog;
+  const names = async (scope: any) => (await catalog.listSkills({ cwds: ["/tmp"], ...scope })).data.flatMap(group => group.skills.map(skill => skill.name));
+  assert.deepEqual(await names({}), ["dsh-only"]);
+  assert.deepEqual(await names({ model: "pi:faux" }), ["pi-only"]);
+  assert.deepEqual(await names({ threadId: "pi_existing", model: "dsh" }), ["pi-only"]);
+  assert.deepEqual(await names({ threadId: f.thread.id, model: "pi:faux" }), ["dsh-only"]);
+  assert.deepEqual(await names({ model: "dsh" }), ["dsh-only"]);
+  const legacy = f.calls.filter(call => call.method === "skills/list");
+  assert.equal(legacy.length, 3);
+  for (const call of legacy) assert.deepEqual(call.params, { cwds: ["/tmp"] });
+  await assert.rejects(names({ threadId: 42 }), /Invalid Skill catalog target/);
 });

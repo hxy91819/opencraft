@@ -777,3 +777,22 @@ Image editor styles are delivered as trusted scoped CSS with the optional contri
 
 
 Image annotation text is entered at the tapped image position with a native multiline textarea for caret, selection and IME. It remains a local pending operation until confirmed or a tool/save action commits it once; Escape discards only pending text. View resize keeps native image coordinates and text. Normal editing shows tools without permanent instructions or a filename; accessible names and error feedback remain. Image editor interface glyphs use shared original artwork, including the pixel mosaic; sticker content previews are not interface artwork.
+
+
+### Engine-owned Skill candidates
+
+Composer includes the selected draft model in Skill catalog queries. Existing
+conversations always name their thread, whose engine cannot change. Negotiated
+`opencraft/scoped-skill-catalog` v1 Hosts route `opencraft/skills/list` to that
+owner (or the Host default for an unselected draft), never combine directories.
+The Host removes routing hints before calling native legacy `skills/list`.
+Native single-engine Hosts retain their upstream request shape; older multiplexed
+Hosts without scoped discovery report unavailable until upgraded.
+
+Client cache and in-flight suggestion identity include the scope. A model change
+invalidates the visible candidates while preserving the Composer document and
+focus; late previous-engine results cannot replace the current list. Pi uses its
+native `loadSkills` roots, precedence, diagnostics and paths; explicit-only skills
+remain user-selectable. No skill body is included in the catalog. Selection
+inserts canonical name/path, and Pi validates retained references against the
+current native registry before loading instructions or admitting inference.

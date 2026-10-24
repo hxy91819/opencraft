@@ -117,6 +117,8 @@ export interface ComposerCatalogQuery {
   readonly kind: "mention" | "command" | "skill" | "resource";
   readonly query: string;
   readonly target: ComposerTarget;
+  /** Selection context for engine-owned catalogs; never changes draft identity. */
+  readonly model?: string;
   readonly limit: number;
 }
 

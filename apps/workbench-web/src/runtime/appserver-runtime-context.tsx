@@ -1258,10 +1258,13 @@ export function useAppServerComposerCatalog(workspaceRoots: readonly string[]): 
           });
         }
         if (query.kind !== "skill") return [];
+        const scope = query.target.type === "new-thread"
+          ? { model: query.model }
+          : { threadId: query.target.key.threadId };
         const response = await queryClient.fetchQuery({
-          queryKey: ["appserver", snapshot.hostId, "skills", ...roots, skillRevision.current] as const,
+          queryKey: ["appserver", snapshot.hostId, "skills", scope, roots, skillRevision.current] as const,
           queryFn: async () => {
-            const result = await runtime.resources.composerCatalog.listSkills({ cwds: roots, forceReload: false });
+            const result = await runtime.resources.composerCatalog.listSkills({ cwds: roots, forceReload: false, ...scope });
             assertSkillDiscoveryAvailable(result);
             return result;
           },
