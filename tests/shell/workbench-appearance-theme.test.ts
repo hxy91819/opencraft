@@ -52,10 +52,10 @@ test("old built-in identity in the current key normalizes without rewriting an o
   const stored = new Map([["opencraft.appearance-theme-id", "vela.core.codex"]]);
   assert.equal((await readInitialPreferences(stored)).snapshot.requestedThemeId, "opencraft.core.neutral");
   assert.equal(stored.get("opencraft.appearance-theme-id"), "opencraft.core.neutral");
-  const extension = new Map([["vela.appearance-theme-id", "plugin.codex.paper"]]);
+  const extension = new Map([["vela.appearance-theme-id", "plugin.example.paper"]]);
   const { snapshot } = await readInitialPreferences(extension);
-  assert.equal(snapshot.requestedThemeId, "plugin.codex.paper"); assert.equal(snapshot.themeId, "opencraft.core.neutral");
-  assert.equal(extension.get("opencraft.appearance-theme-id"), "plugin.codex.paper", "a missing extension's display fallback must not replace the requested identity");
+  assert.equal(snapshot.requestedThemeId, "plugin.example.paper"); assert.equal(snapshot.themeId, "opencraft.core.neutral");
+  assert.equal(extension.get("opencraft.appearance-theme-id"), "plugin.example.paper", "a missing extension's display fallback must not replace the requested identity");
 });
 
 test("fresh or explicitly empty current selection does not persist a product default or resurrect stale keys", async () => {

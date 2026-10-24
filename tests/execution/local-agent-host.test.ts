@@ -590,7 +590,7 @@ test("local Agent Host applies the selected DSH model before opening a real even
   }
 });
 
-test("local Agent Host serves Codex-compatible config defaults with reasoning effort", async () => {
+test("local Agent Host serves AppServer config defaults with reasoning effort", async () => {
   const workspace = await mkdtemp(join(tmpdir(), "opencraft-config-workspace-"));
   const dsh = await fakeDsh();
   const host = await startLocalAgentHost({ dshUrl: dsh.url, token: "config-token" });
