@@ -100,6 +100,12 @@ try {
         assert.equal(await button.locator('svg[data-action-glyph=extensions]').count(),0);
       }
       assert.equal(await page.locator('[data-navigation-probe] svg[data-action-glyph=tasks]').count(),2);
+      const machines=page.locator('.settings-page__navigation-list button').filter({has:page.locator('.settings-machines-count')});
+      assert.equal(await machines.count(),1);
+      assert.equal(await machines.locator('svg[data-action-glyph=server]').count(),1);
+      const machineBounds=await machines.boundingBox();await machines.focus();await page.keyboard.press('Enter');
+      assert.equal(await machines.getAttribute('aria-current'),'page');assert.deepEqual(await machines.boundingBox(),machineBounds);
+      assert(await machines.evaluate(el=>document.activeElement===el));
       const layout=await page.locator('[data-layout-size-probe] > svg').evaluateAll(nodes=>nodes.map(svg=>({kind:svg.getAttribute('data-action-glyph'),width:svg.getBoundingClientRect().width,hidden:svg.getAttribute('aria-hidden'),focusable:svg.getAttribute('focusable')})));
       assert.deepEqual(layout.map(item=>item.width),[14,14,16,16,20,20,24,24]);
       assert.deepEqual(layout.map(item=>item.kind),Array.from({length:4},()=>['sidebar-layout','sidebar-collapse-layout']).flat());

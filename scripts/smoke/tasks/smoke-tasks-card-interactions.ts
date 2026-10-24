@@ -36,7 +36,10 @@ try {
     const card = page.locator('.tasks-card[data-task-id="item-0"]'); await card.waitFor();
     const before = JSON.stringify(snapshot());
     assert.equal(await page.locator('.tasks-card__handle, .tasks-card--overlay, .tasks-card [aria-roledescription="sortable"], .tasks-card [draggable="true"]').count(), 0);
-    assert.equal(await card.locator('.lucide-align-left, .lucide-list-checks, .tasks-card__summary').count(), 0, "Unlinked cards have no ambiguous icons or empty summary gap");
+    assert.equal(await card.locator('svg[data-action-glyph="list"], svg[data-action-glyph="checklist"]').count(), 0, "Description and criteria do not add presence glyphs");
+    assert.equal(await card.locator('.tasks-conversation, .tasks-card__summary').count(), 0, "Unlinked cards have no conversation shortcut or empty summary gap");
+    assert.equal(await card.getByText(task('item-0').description, { exact: true }).count(), 0);
+    assert.equal(await card.getByText(task('item-0').acceptanceCriteria, { exact: true }).count(), 0);
     const close = async () => { await page.keyboard.press("Escape"); await page.locator('.tasks-editor').waitFor({ state: 'hidden' }); };
     for (const region of ['.tasks-kind', '.tasks-avatar']) {
       await card.locator(region).click(); await page.locator('.tasks-editor').waitFor(); await close();

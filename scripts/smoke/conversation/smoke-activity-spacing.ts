@@ -133,20 +133,28 @@ try {
       await finish(`close-${id}`);
       assert.ok(Math.abs(await reason.evaluate(node => node.getBoundingClientRect().height) - closedHeight) < 0.5, "closing restores the original activity height");
     }
-    const image = page.locator(".thread-activity-item").filter({ has: page.locator(".lucide-image") });
+    const image = page.locator(".thread-activity-item").filter({ has: page.locator('[data-action-glyph="image"], [data-opencraft-activity-icon="image"], [data-activity-glyph="image"]') });
     const imageToggle = image.getByRole("button").first();
     await start(imageToggle); await activate(imageToggle); await finish("open-image", "grow");
     await start(imageToggle); await activate(imageToggle); await finish("close-image");
     assert.ok(await page.locator(".thread-agent-activity__group").count() > 0, "fixture includes a nested tool group");
+    let expandableGroups = 0;
     for (const group of await page.locator(".thread-agent-activity__group").all()) {
-      const toggle = group.getByRole("button").first();
+      const toggle = group.locator(':scope > .thread-agent-activity__group-disclosure > .thread-activity-item__header > button');
+      // Standalone activity units expose their own row disclosure, without a
+      // second group header. Exercise nesting only on actual grouped units.
+      if (await toggle.count() === 0) continue;
+      expandableGroups++;
+      if (await toggle.getAttribute("aria-expanded") === "true") { await activate(toggle); await page.waitForTimeout(450); }
       await start(toggle); await activate(toggle); await finish("open-tool-group", "grow");
       const command = group.locator('.thread-agent-activity__rows > .thread-activity-item > .thread-activity-item__header > button').first();
       await command.waitFor();
+      if (await command.getAttribute("aria-expanded") === "true") { await activate(command); await page.waitForTimeout(450); }
       await start(command); await activate(command); await finish("open-nested-command", "grow");
       await start(command); await activate(command); await finish("close-nested-command");
       await start(toggle); await activate(toggle); await finish("close-tool-group");
     }
+    assert.ok(expandableGroups > 0, "fixture exercises an actual collapsible tool group");
     await page.screenshot({ path: join(output, `${theme}-${mode}.png`), fullPage: true });
     assert.deepEqual(errors, []);
     await page.close();

@@ -55,7 +55,7 @@
 // Navigation rows share the sidebar's quiet typography and state treatment.
 // Menus keep their own denser geometry; consumers opt in only for sidebar rows.
 @mixin navigation-control {
-  > svg:is(.lucide, .ui-action-glyph) { @include icons.navigation-icon; }
+  > svg.ui-action-glyph { @include icons.navigation-icon; }
   @include quiet-control;
   @include typography.role(navigation-action, primary);
   display: flex;
